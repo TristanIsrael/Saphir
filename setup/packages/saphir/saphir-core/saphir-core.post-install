@@ -1,0 +1,6 @@
+#!/bin/sh
+
+echo "https://alefbet.net/wp-content/uploads/repositories/PSEC
+" >> /etc/apk/repositories
+
+apk update

@@ -1,0 +1,31 @@
+# Contributor:
+# Maintainer: Tristan Israël <tristan.israel@icloud.com>
+pkgname=saphir-core
+pkgver=1.0
+pkgrel=1
+pkgdesc="Saphir - Core"
+url="https://defense.gouv.fr/"
+arch="noarch"
+license="MIT"
+depends="psec-grub psec-core psec-sys-gui psec-sys-usb psec-lib"
+makedepends=""
+checkdepends=""
+install="$pkgname.pre-install $pkgname.post-install $pkgname.post-deinstall"
+subpackages=""
+replaces="psec-grub psec-core"
+builddir="$srcdir/"
+options="!check"  # no tests provided
+
+source="Splash.png
+Splash_1280_1024.ppm
+Splash_1024_768.ppm
+grub.confd
+splash.initd"
+
+package() {
+    # Splash screen for grub and boot
+	install -D -m644 "$srcdir"/Splash.png "$pkgdir"/boot/Splash.png
+    install -D -m644 "$srcdir"/Splash_1280_1024.ppm "$pkgdir"/boot/Splash_1280_1024.ppm
+    install -D -m644 "$srcdir"/Splash_1024_768.ppm "$pkgdir"/boot/Splash_1024_768.ppm
+}
+

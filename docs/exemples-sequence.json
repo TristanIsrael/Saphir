@@ -1,0 +1,246 @@
+### CONFIG
+{
+    "code": 2222,
+    "who": "python",
+    "cmd": "config",
+    "seq": 1
+}
+{
+    "answer": "config",
+    "error": 0,
+    "seq": 1
+}
+
+### VERSION
+{
+    "cmd": "version",
+    "seq": 2
+} 
+{
+    "answer": "version",
+    "com": 1,
+    "firmware": 256,
+    "product": 0,
+    "error": 0,
+    "seq": 2
+}
+
+### WR_USER
+{
+    "number": 1,
+    "label": "M.Dupont",
+    "level": 1,
+    "password": 1234,
+    "cmd": "wr_user",
+    "seq": 3
+}
+{
+    "answer": "wr_user",
+    "error": 0,
+    "seq": 3
+}
+
+### WR_OPTION
+{
+    "number": 1,
+    "type": 0,
+    "config": {
+        "bus_option": {
+            "num_configured_bus": 1,
+            "behavior": -1,
+            "num_configured_point": [
+                1,
+                0,
+                0,
+                0
+            ],
+            "bus_config": [
+                0,
+                -1,
+                -1,
+                -1
+            ]
+        }
+    },
+    "cmd": "wr_option",
+    "seq": 4
+}
+{
+    "answer": "wr_option",
+    "error": 0,
+    "seq": 4
+}
+
+### WR_ZONE
+{
+    "number": 1,
+    "label": "a",
+    "user_number": 0,
+    "type": 0,
+    "zone_flags": "",
+    "management": {
+        "time_slot1": 0,
+        "time_slot2": -1
+    },
+    "number_point": 1,
+    "num_picture": -1,
+    "instruction": -1,
+    "cmd": "wr_zone",
+    "seq": 5
+}
+{
+    "answer": "wr_zone",
+    "error": 0,
+    "seq": 5
+}
+
+### WR_DEVICE
+{
+    "number": 1,
+    "label": "a",
+    "device_characteristics": {
+        "cat": 0,
+        "type": {
+            "fire_type": 0
+        },
+        "properties": {
+            "properties": "",
+            "connection_type": 0,
+            "margin": -1,
+            "nb_usable_input": 1,
+            "nb_usable_output": 0,
+            "nb_wireable_input": 0,
+            "nb_wireable_output": 0,
+            "nb_channels": 0,
+            "sensor_types": []
+        },
+        "sku": "a"
+    },
+    "device_flags": "9",
+    "io": {
+        "input": {
+            "function_type": 0,
+            "function": {
+                "alarm_function": 0
+            },
+            "filtering": -1,
+            "zone": 1,
+            "index_in_zone": 1,
+            "controlled_zone": -1,
+            "controlled_group": -1,
+            "group": [
+                -1
+            ],
+            "action": 0,
+            "sensitivity": [
+                0,
+                -1
+            ],
+            "instruction": -1
+        },
+    },
+    "links": {
+        "parent": -1,
+        "first_child": -1,
+        "next_sibling": -1
+    },
+    "bus_address": {
+        "bus": 1,
+        "address": 1
+    },
+    "position": {
+        "bus_position": 1,
+        "stub_position": -1,
+        "stub_nb_downstream": -1
+    },
+    "num_picture": -1,
+    "last_maintenance": {
+        "day": 1,
+        "month": 1,
+        "year": 2024,
+        "hour": 0,
+        "minute": 0,
+        "second": 0
+    },
+    "installation_date": {
+        "day": 1,
+        "month": 1,
+        "year": 2024,
+        "hour": 0,
+        "minute": 0,
+        "second": 0
+    },
+    "cmd": "wr_device",
+    "seq": 6
+}
+{
+    "answer": "wr_device",
+    "error": 0,
+    "seq": 6
+}
+
+### WR_CIE_CONF
+{
+    "site_name": "a",
+    "cie_label": "a",
+    "contact_descr": "a",
+    "display_theme": -1,
+    "pre_configured_safety": -1,
+    "num_picture": -1,
+    "cie_number": 1,
+    "cmsi_config": "",
+    "number_front_panel": -1,
+    "date_setting": {
+        "format": 0,
+        "symbol": "/",
+        "zone": 1
+    },
+    "cie_flags": "",
+    "rs485_port_config": [],
+    "instruction": {
+        "lines": [],
+        "lists": []
+    },
+    "planning": {
+        "daily_planning": [],
+        "special_dates": []
+    },
+    "user_timeout": {
+        "level2": -1,
+        "level3": -1
+    },
+    "ip": {
+        "ip": "255,255,255,255",
+        "subnet": "255,255,255,255",
+        "gateway": "255,255,255,255",
+        "dns": [
+            "255,255,255,255",
+            "255,255,255,255"
+        ],
+        "mode": "0"
+    },
+    "cmd": "wr_cie_conf",
+    "seq": 7
+}
+{
+    "answer": "wr_cie_conf",
+    "error": 0,
+    "seq": 7
+}
+
+### COMMIT
+{
+    "cmd": "commit",
+    "seq": 8
+} 
+{
+    "answer": "commit",
+    "error": 0,
+    "seq": 8
+}
+
+### CLOSE
+{
+    "cmd": "close",
+    "seq": 9
+}

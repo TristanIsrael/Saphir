@@ -1,0 +1,1362 @@
+localhost
+    description: Desktop Computer
+    product: CELSIUS M770 (S26361-Kxxx-Vyyy)
+    vendor: FUJITSU
+    serial: YMFD005822
+    width: 64 bits
+    capabilities: smbios-3.1.1 dmi-3.1.1 smp vsyscall32
+    configuration: administrator_password=enabled boot=normal chassis=desktop family=CELSIUS-FTS power-on_password=disabled sku=S26361-Kxxx-Vyyy uuid=1FCBB849-3755-E911-8B37-4C526228CD3B
+  *-core
+       description: Motherboard
+       product: D3498-A1
+       vendor: FUJITSU
+       physical id: 0
+       version: S26361-D3498-A1
+       serial: 59327567
+     *-firmware
+          description: BIOS
+          vendor: FUJITSU // American Megatrends Inc.
+          physical id: 0
+          version: V5.0.0.13 R1.7.0 for D3498-A1x
+          date: 07/17/2018
+          size: 64KiB
+          capacity: 32MiB
+          capabilities: pci upgrade shadowing cdboot bootselect edd int5printscreen int14serial int17printer acpi usb biosbootspecification uefi
+     *-memory
+          description: System Memory
+          physical id: 14
+          slot: System board or motherboard
+          size: 8GiB
+          capabilities: ecc
+          configuration: errordetection=ecc
+        *-bank:0
+             description: DIMM Synchronous [empty]
+             physical id: 0
+             slot: DIMM 1A
+        *-bank:1
+             description: DIMM Synchronous [empty]
+             physical id: 1
+             slot: DIMM 2A
+        *-bank:2
+             description: DIMM DDR4 Synchronous 2666 MHz (0.4 ns)
+             product: HMA81GR7CJR8N-VK
+             vendor: Hynix
+             physical id: 2
+             serial: 52E691D5
+             slot: DIMM 1B
+             size: 8GiB
+             width: 64 bits
+             clock: 2666MHz (0.4ns)
+        *-bank:3
+             description: DIMM Synchronous [empty]
+             physical id: 3
+             slot: DIMM 2B
+        *-bank:4
+             description: DIMM Synchronous [empty]
+             physical id: 4
+             slot: DIMM 1C
+        *-bank:5
+             description: DIMM Synchronous [empty]
+             physical id: 5
+             slot: DIMM 2C
+        *-bank:6
+             description: DIMM Synchronous [empty]
+             physical id: 6
+             slot: DIMM 1D
+        *-bank:7
+             description: DIMM Synchronous [empty]
+             physical id: 7
+             slot: DIMM 2D
+     *-cache:0
+          description: L1 cache
+          physical id: 32
+          slot: L1-Cache
+          size: 256KiB
+          capacity: 256KiB
+          capabilities: synchronous internal write-back instruction
+          configuration: level=1
+     *-cache:1
+          description: L2 cache
+          physical id: 33
+          slot: L2-Cache
+          size: 4MiB
+          capacity: 4MiB
+          capabilities: synchronous internal varies unified
+          configuration: level=2
+     *-cache:2
+          description: L3 cache
+          physical id: 34
+          slot: L3-Cache
+          size: 8448KiB
+          capacity: 8448KiB
+          capabilities: synchronous internal varies unified
+          configuration: level=3
+     *-cpu
+          description: CPU
+          product: Intel(R) Xeon(R) W-2102 CPU @ 2.90GHz
+          vendor: Intel Corp.
+          physical id: 35
+          bus info: cpu@0
+          version: Intel(R) Xeon(R) W-2102 CPU @ 2.90GHz
+          slot: CPU0
+          size: 2900MHz
+          capacity: 4GHz
+          width: 64 bits
+          clock: 100MHz
+          capabilities: lm fpu fpu_exception wp de tsc msr pae mce cx8 apic sep mca cmov pat clflush acpi mmx fxsr sse sse2 ss ht syscall nx rdtscp x86-64 constant_tsc rep_good nopl nonstop_tsc cpuid tsc_known_freq pni pclmulqdq monitor est ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault ssbd ibrs ibpb stibp fsgsbase bmi1 avx2 bmi2 erms rtm avx512f avx512dq rdseed adx clflushopt clwb avx512cd avx512bw avx512vl xsaveopt xsavec xgetbv1
+          configuration: cores=4 enabledcores=4 threads=4
+     *-pci:0
+          description: Host bridge
+          product: Sky Lake-E DMI3 Registers
+          vendor: Intel Corporation
+          physical id: 100
+          bus info: pci@0000:00:00.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+        *-generic:0
+             description: System peripheral
+             product: Sky Lake-E CBDMA Registers
+             vendor: Intel Corporation
+             physical id: 4
+             bus info: pci@0000:00:04.0
+             version: 04
+             width: 64 bits
+             clock: 33MHz
+             capabilities: msix pciexpress pm bus_master cap_list
+             configuration: driver=ioatdma latency=0
+             resources: irq:26 memory:a3364000-a3367fff
+        *-generic:1
+             description: System peripheral
+             product: Sky Lake-E CBDMA Registers
+             vendor: Intel Corporation
+             physical id: 4.1
+             bus info: pci@0000:00:04.1
+             version: 04
+             width: 64 bits
+             clock: 33MHz
+             capabilities: msix pciexpress pm bus_master cap_list
+             configuration: driver=ioatdma latency=0
+             resources: irq:27 memory:a3360000-a3363fff
+        *-generic:2
+             description: System peripheral
+             product: Sky Lake-E CBDMA Registers
+             vendor: Intel Corporation
+             physical id: 4.2
+             bus info: pci@0000:00:04.2
+             version: 04
+             width: 64 bits
+             clock: 33MHz
+             capabilities: msix pciexpress pm bus_master cap_list
+             configuration: driver=ioatdma latency=0
+             resources: irq:26 memory:a335c000-a335ffff
+        *-generic:3
+             description: System peripheral
+             product: Sky Lake-E CBDMA Registers
+             vendor: Intel Corporation
+             physical id: 4.3
+             bus info: pci@0000:00:04.3
+             version: 04
+             width: 64 bits
+             clock: 33MHz
+             capabilities: msix pciexpress pm bus_master cap_list
+             configuration: driver=ioatdma latency=0
+             resources: irq:27 memory:a3358000-a335bfff
+        *-generic:4
+             description: System peripheral
+             product: Sky Lake-E CBDMA Registers
+             vendor: Intel Corporation
+             physical id: 4.4
+             bus info: pci@0000:00:04.4
+             version: 04
+             width: 64 bits
+             clock: 33MHz
+             capabilities: msix pciexpress pm bus_master cap_list
+             configuration: driver=ioatdma latency=0
+             resources: irq:26 memory:a3354000-a3357fff
+        *-generic:5
+             description: System peripheral
+             product: Sky Lake-E CBDMA Registers
+             vendor: Intel Corporation
+             physical id: 4.5
+             bus info: pci@0000:00:04.5
+             version: 04
+             width: 64 bits
+             clock: 33MHz
+             capabilities: msix pciexpress pm bus_master cap_list
+             configuration: driver=ioatdma latency=0
+             resources: irq:27 memory:a3350000-a3353fff
+        *-generic:6
+             description: System peripheral
+             product: Sky Lake-E CBDMA Registers
+             vendor: Intel Corporation
+             physical id: 4.6
+             bus info: pci@0000:00:04.6
+             version: 04
+             width: 64 bits
+             clock: 33MHz
+             capabilities: msix pciexpress pm bus_master cap_list
+             configuration: driver=ioatdma latency=0
+             resources: irq:26 memory:a334c000-a334ffff
+        *-generic:7
+             description: System peripheral
+             product: Sky Lake-E CBDMA Registers
+             vendor: Intel Corporation
+             physical id: 4.7
+             bus info: pci@0000:00:04.7
+             version: 04
+             width: 64 bits
+             clock: 33MHz
+             capabilities: msix pciexpress pm bus_master cap_list
+             configuration: driver=ioatdma latency=0
+             resources: irq:27 memory:a3348000-a334bfff
+        *-generic:8 UNCLAIMED
+             description: System peripheral
+             product: Sky Lake-E MM/Vt-d Configuration Registers
+             vendor: Intel Corporation
+             physical id: 5
+             bus info: pci@0000:00:05.0
+             version: 04
+             width: 32 bits
+             clock: 33MHz
+             capabilities: pciexpress cap_list
+             configuration: latency=0
+        *-generic:9 UNCLAIMED
+             description: System peripheral
+             product: Sky Lake-E RAS
+             vendor: Intel Corporation
+             physical id: 5.2
+             bus info: pci@0000:00:05.2
+             version: 04
+             width: 32 bits
+             clock: 33MHz
+             capabilities: pciexpress cap_list
+             configuration: latency=0
+        *-generic:10 UNCLAIMED
+             description: PIC
+             product: Sky Lake-E IOAPIC
+             vendor: Intel Corporation
+             physical id: 5.4
+             bus info: pci@0000:00:05.4
+             version: 04
+             width: 32 bits
+             clock: 33MHz
+             capabilities: pciexpress pm io_x_-apic bus_master cap_list
+             configuration: latency=0
+             resources: memory:a3370000-a3370fff
+        *-generic:11 UNCLAIMED
+             description: System peripheral
+             product: Sky Lake-E Ubox Registers
+             vendor: Intel Corporation
+             physical id: 8
+             bus info: pci@0000:00:08.0
+             version: 04
+             width: 32 bits
+             clock: 33MHz
+             capabilities: pciexpress cap_list
+             configuration: latency=0
+        *-generic:12 UNCLAIMED
+             description: Performance counters
+             product: Sky Lake-E Ubox Registers
+             vendor: Intel Corporation
+             physical id: 8.1
+             bus info: pci@0000:00:08.1
+             version: 04
+             width: 32 bits
+             clock: 33MHz
+             configuration: latency=0
+        *-generic:13 UNCLAIMED
+             description: System peripheral
+             product: Sky Lake-E Ubox Registers
+             vendor: Intel Corporation
+             physical id: 8.2
+             bus info: pci@0000:00:08.2
+             version: 04
+             width: 32 bits
+             clock: 33MHz
+             capabilities: pciexpress cap_list
+             configuration: latency=0
+        *-usb
+             description: USB controller
+             product: 200 Series/Z370 Chipset Family USB 3.0 xHCI Controller
+             vendor: Intel Corporation
+             physical id: 14
+             bus info: pci@0000:00:14.0
+             version: 00
+             width: 64 bits
+             clock: 33MHz
+             capabilities: pm msi xhci bus_master cap_list
+             configuration: driver=xhci_hcd latency=0
+             resources: irq:84 memory:a3330000-a333ffff
+           *-usbhost:0
+                product: xHCI Host Controller
+                vendor: Linux 5.15.32-0-lts xhci-hcd
+                physical id: 0
+                bus info: usb@1
+                logical name: usb1
+                version: 5.15
+                capabilities: usb-2.00
+                configuration: driver=hub slots=16 speed=480Mbit/s
+              *-usb:0
+                   description: Mouse
+                   product: Usb Mouse
+                   vendor: SIGMACHIP
+                   physical id: 4
+                   bus info: usb@1:4
+                   version: 1.10
+                   capabilities: usb-1.10
+                   configuration: driver=usbhid maxpower=100mA speed=2Mbit/s
+              *-usb:1
+                   description: Keyboard
+                   product: Fujitsu Keyboard
+                   vendor: Fujitsu
+                   physical id: 5
+                   bus info: usb@1:5
+                   version: 1.12
+                   capabilities: usb-1.10
+                   configuration: driver=usbhid maxpower=100mA speed=2Mbit/s
+              *-usb:2
+                   description: Mass storage device
+                   product: USB 2.0  SD MMC READER
+                   vendor: SDMMC MA8123
+                   physical id: 7
+                   bus info: usb@1:7
+                   version: 2.01
+                   serial: 812822222789
+                   capabilities: usb-2.00 scsi
+                   configuration: driver=usb-storage maxpower=100mA speed=480Mbit/s
+              *-usb:3
+                   description: Mass storage device
+                   product: Mass Storage Device
+                   vendor: Generic
+                   physical id: b
+                   bus info: usb@1:b
+                   version: 1.00
+                   serial: 00000000000006
+                   capabilities: usb-2.00 scsi
+                   configuration: driver=usb-storage maxpower=100mA speed=480Mbit/s
+              *-usb:4
+                   description: Mass storage device
+                   product: Mass Storage
+                   vendor: Generic
+                   physical id: c
+                   bus info: usb@1:c
+                   version: 1.00
+                   serial: 20180295
+                   capabilities: usb-2.00 scsi
+                   configuration: driver=usb-storage maxpower=200mA speed=480Mbit/s
+           *-usbhost:1
+                product: xHCI Host Controller
+                vendor: Linux 5.15.32-0-lts xhci-hcd
+                physical id: 1
+                bus info: usb@2
+                logical name: usb2
+                version: 5.15
+                capabilities: usb-3.00
+                configuration: driver=hub slots=10 speed=5000Mbit/s
+        *-generic:14 UNCLAIMED
+             description: Signal processing controller
+             product: 200 Series PCH Thermal Subsystem
+             vendor: Intel Corporation
+             physical id: 14.2
+             bus info: pci@0000:00:14.2
+             version: 00
+             width: 64 bits
+             clock: 33MHz
+             capabilities: pm msi bus_master cap_list
+             configuration: latency=0
+             resources: memory:a336f000-a336ffff
+        *-communication:0
+             description: Communication controller
+             product: 200 Series PCH CSME HECI #1
+             vendor: Intel Corporation
+             physical id: 16
+             bus info: pci@0000:00:16.0
+             version: 00
+             width: 64 bits
+             clock: 33MHz
+             capabilities: pm msi bus_master cap_list
+             configuration: driver=mei_me latency=0
+             resources: irq:96 memory:a336e000-a336efff
+        *-communication:1
+             description: Serial controller
+             product: Intel Corporation
+             vendor: Intel Corporation
+             physical id: 16.3
+             bus info: pci@0000:00:16.3
+             version: 00
+             width: 32 bits
+             clock: 66MHz
+             capabilities: msi pm 16550 bus_master cap_list
+             configuration: driver=serial latency=0
+             resources: irq:19 ioport:3060(size=8) memory:a336d000-a336dfff
+        *-sata
+             description: SATA controller
+             product: 200 Series PCH SATA controller [AHCI mode]
+             vendor: Intel Corporation
+             physical id: 17
+             bus info: pci@0000:00:17.0
+             version: 00
+             width: 32 bits
+             clock: 66MHz
+             capabilities: sata msi pm ahci_1.0 bus_master cap_list
+             configuration: driver=ahci latency=0
+             resources: irq:83 memory:a3368000-a3369fff memory:a336c000-a336c0ff ioport:3050(size=8) ioport:3040(size=4) ioport:3020(size=32) memory:a336b000-a336b7ff
+        *-pci:0
+             description: PCI bridge
+             product: 200 Series PCH PCI Express Root Port #17
+             vendor: Intel Corporation
+             physical id: 1b
+             bus info: pci@0000:00:1b.0
+             version: f0
+             width: 32 bits
+             clock: 33MHz
+             capabilities: pci pciexpress msi pm normal_decode bus_master cap_list
+             configuration: driver=pcieport
+             resources: irq:78
+        *-pci:1
+             description: PCI bridge
+             product: 200 Series PCH PCI Express Root Port #1
+             vendor: Intel Corporation
+             physical id: 1c
+             bus info: pci@0000:00:1c.0
+             version: f0
+             width: 32 bits
+             clock: 33MHz
+             capabilities: pci pciexpress msi pm normal_decode bus_master cap_list
+             configuration: driver=pcieport
+             resources: irq:79 ioport:1000(size=4096) memory:fdd00000-fdefffff ioport:380000000000(size=2097152)
+        *-pci:2
+             description: PCI bridge
+             product: 200 Series PCH PCI Express Root Port #9
+             vendor: Intel Corporation
+             physical id: 1d
+             bus info: pci@0000:00:1d.0
+             version: f0
+             width: 32 bits
+             clock: 33MHz
+             capabilities: pci pciexpress msi pm normal_decode bus_master cap_list
+             configuration: driver=pcieport
+             resources: irq:80 ioport:2000(size=4096) memory:90000000-901fffff ioport:380000200000(size=2097152)
+        *-isa
+             description: ISA bridge
+             product: C422 Chipset LPC/eSPI Controller
+             vendor: Intel Corporation
+             physical id: 1f
+             bus info: pci@0000:00:1f.0
+             version: 00
+             width: 32 bits
+             clock: 33MHz
+             capabilities: isa bus_master
+             configuration: latency=0
+        *-memory UNCLAIMED
+             description: Memory controller
+             product: 200 Series/Z370 Chipset Family Power Management Controller
+             vendor: Intel Corporation
+             physical id: 1f.2
+             bus info: pci@0000:00:1f.2
+             version: 00
+             width: 32 bits
+             clock: 33MHz (30.3ns)
+             capabilities: bus_master
+             configuration: latency=0
+             resources: memory:a3344000-a3347fff
+        *-multimedia
+             description: Audio device
+             product: 200 Series PCH HD Audio
+             vendor: Intel Corporation
+             physical id: 1f.3
+             bus info: pci@0000:00:1f.3
+             version: 00
+             width: 64 bits
+             clock: 33MHz
+             capabilities: pm msi bus_master cap_list
+             configuration: driver=snd_hda_intel latency=32
+             resources: irq:85 memory:a3340000-a3343fff memory:a3320000-a332ffff
+        *-serial
+             description: SMBus
+             product: 200 Series/Z370 Chipset Family SMBus Controller
+             vendor: Intel Corporation
+             physical id: 1f.4
+             bus info: pci@0000:00:1f.4
+             version: 00
+             width: 64 bits
+             clock: 33MHz
+             configuration: driver=i801_smbus latency=0
+             resources: irq:16 memory:a336a000-a336a0ff ioport:3000(size=32)
+        *-network DISABLED
+             description: Ethernet interface
+             product: Ethernet Connection (2) I219-LM
+             vendor: Intel Corporation
+             physical id: 1f.6
+             bus info: pci@0000:00:1f.6
+             logical name: eth0
+             version: 00
+             serial: 4c:52:62:28:cd:3b
+             capacity: 1Gbit/s
+             width: 32 bits
+             clock: 33MHz
+             capabilities: pm msi bus_master cap_list ethernet physical tp 10bt 10bt-fd 100bt 100bt-fd 1000bt-fd autonegotiation
+             configuration: autonegotiation=on broadcast=yes driver=e1000e driverversion=5.15.32-0-lts firmware=0.2-4 latency=0 link=no multicast=yes port=twisted pair
+             resources: irq:87 memory:a3300000-a331ffff
+     *-generic:0 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E VT-d
+          vendor: Intel Corporation
+          physical id: 1
+          bus info: pci@0000:16:05.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:1 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E RAS Configuration Registers
+          vendor: Intel Corporation
+          physical id: 2
+          bus info: pci@0000:16:05.2
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:2 UNCLAIMED
+          description: PIC
+          product: Sky Lake-E IOxAPIC Configuration Registers
+          vendor: Intel Corporation
+          physical id: 3
+          bus info: pci@0000:16:05.4
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress pm io_x_-apic bus_master cap_list
+          configuration: latency=0
+          resources: memory:be300000-be300fff
+     *-generic:3 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: 4
+          bus info: pci@0000:16:08.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:4 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: 8.1
+          bus info: pci@0000:16:08.1
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:5 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: 8.2
+          bus info: pci@0000:16:08.2
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:6 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: 8.3
+          bus info: pci@0000:16:08.3
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:7 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: 8.4
+          bus info: pci@0000:16:08.4
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:8 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: 8.5
+          bus info: pci@0000:16:08.5
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:9 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: 8.6
+          bus info: pci@0000:16:08.6
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:10 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: 8.7
+          bus info: pci@0000:16:08.7
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:11 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: 6
+          bus info: pci@0000:16:09.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:12 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: 9.1
+          bus info: pci@0000:16:09.1
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:13 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: e
+          bus info: pci@0000:16:0e.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:14 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: e.1
+          bus info: pci@0000:16:0e.1
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:15 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: e.2
+          bus info: pci@0000:16:0e.2
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:16 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: e.3
+          bus info: pci@0000:16:0e.3
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:17 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: e.4
+          bus info: pci@0000:16:0e.4
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:18 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: e.5
+          bus info: pci@0000:16:0e.5
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:19 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: e.6
+          bus info: pci@0000:16:0e.6
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:20 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: e.7
+          bus info: pci@0000:16:0e.7
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:21 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: f
+          bus info: pci@0000:16:0f.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:22 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: f.1
+          bus info: pci@0000:16:0f.1
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:23 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: 1d
+          bus info: pci@0000:16:1d.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:24 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: 1d.1
+          bus info: pci@0000:16:1d.1
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:25 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: 1d.2
+          bus info: pci@0000:16:1d.2
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:26 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E CHA Registers
+          vendor: Intel Corporation
+          physical id: 1d.3
+          bus info: pci@0000:16:1d.3
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:27 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E PCU Registers
+          vendor: Intel Corporation
+          physical id: 1e
+          bus info: pci@0000:16:1e.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:28 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E PCU Registers
+          vendor: Intel Corporation
+          physical id: 1e.1
+          bus info: pci@0000:16:1e.1
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:29 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E PCU Registers
+          vendor: Intel Corporation
+          physical id: 1e.2
+          bus info: pci@0000:16:1e.2
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:30 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E PCU Registers
+          vendor: Intel Corporation
+          physical id: 1e.3
+          bus info: pci@0000:16:1e.3
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:31 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E PCU Registers
+          vendor: Intel Corporation
+          physical id: 1e.4
+          bus info: pci@0000:16:1e.4
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:32 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E PCU Registers
+          vendor: Intel Corporation
+          physical id: 1e.5
+          bus info: pci@0000:16:1e.5
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:33 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E PCU Registers
+          vendor: Intel Corporation
+          physical id: 1e.6
+          bus info: pci@0000:16:1e.6
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-pci:1
+          description: PCI bridge
+          product: Sky Lake-E PCI Express Root Port A
+          vendor: Intel Corporation
+          physical id: 101
+          bus info: pci@0000:64:00.0
+          version: 04
+          width: 64 bits
+          clock: 33MHz
+          capabilities: pci msi pciexpress pm normal_decode bus_master cap_list
+          configuration: driver=pcieport
+          resources: iomemory:2000b0b00-2000b0aff irq:81 ioport:b000(size=4096) memory:df000000-e00fffff ioport:c0000000(size=301989888)
+        *-display
+             description: VGA compatible controller
+             product: GP107GL [Quadro P400]
+             vendor: NVIDIA Corporation
+             physical id: 0
+             bus info: pci@0000:65:00.0
+             version: a1
+             width: 64 bits
+             clock: 33MHz
+             capabilities: pm msi pciexpress vga_controller bus_master cap_list rom
+             configuration: driver=nouveau latency=0
+             resources: irq:86 memory:df000000-dfffffff memory:c0000000-cfffffff memory:d0000000-d1ffffff ioport:b000(size=128) memory:c0000-dffff
+        *-multimedia
+             description: Audio device
+             product: GP107GL High Definition Audio Controller
+             vendor: NVIDIA Corporation
+             physical id: 0.1
+             bus info: pci@0000:65:00.1
+             version: a1
+             width: 32 bits
+             clock: 33MHz
+             capabilities: pm msi pciexpress bus_master cap_list
+             configuration: driver=snd_hda_intel latency=0
+             resources: irq:44 memory:e0080000-e0083fff
+     *-generic:34 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E VT-d
+          vendor: Intel Corporation
+          physical id: 7
+          bus info: pci@0000:64:05.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:35 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E RAS Configuration Registers
+          vendor: Intel Corporation
+          physical id: 8
+          bus info: pci@0000:64:05.2
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:36 UNCLAIMED
+          description: PIC
+          product: Sky Lake-E IOxAPIC Configuration Registers
+          vendor: Intel Corporation
+          physical id: 9
+          bus info: pci@0000:64:05.4
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress pm io_x_-apic bus_master cap_list
+          configuration: latency=0
+          resources: memory:e0100000-e0100fff
+     *-generic:37 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E Integrated Memory Controller
+          vendor: Intel Corporation
+          physical id: 10
+          bus info: pci@0000:64:08.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:38 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E Integrated Memory Controller
+          vendor: Intel Corporation
+          physical id: 11
+          bus info: pci@0000:64:09.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:39 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E Integrated Memory Controller
+          vendor: Intel Corporation
+          physical id: a
+          bus info: pci@0000:64:0a.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:40 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E Integrated Memory Controller
+          vendor: Intel Corporation
+          physical id: a.1
+          bus info: pci@0000:64:0a.1
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:41 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E Integrated Memory Controller
+          vendor: Intel Corporation
+          physical id: a.2
+          bus info: pci@0000:64:0a.2
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:42 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E Integrated Memory Controller
+          vendor: Intel Corporation
+          physical id: a.3
+          bus info: pci@0000:64:0a.3
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:43 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E Integrated Memory Controller
+          vendor: Intel Corporation
+          physical id: a.4
+          bus info: pci@0000:64:0a.4
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:44 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E LM Channel 1
+          vendor: Intel Corporation
+          physical id: a.5
+          bus info: pci@0000:64:0a.5
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:45 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E LMS Channel 1
+          vendor: Intel Corporation
+          physical id: a.6
+          bus info: pci@0000:64:0a.6
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:46 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E LMDP Channel 1
+          vendor: Intel Corporation
+          physical id: a.7
+          bus info: pci@0000:64:0a.7
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:47 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E DECS Channel 2
+          vendor: Intel Corporation
+          physical id: b
+          bus info: pci@0000:64:0b.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:48 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E LM Channel 2
+          vendor: Intel Corporation
+          physical id: b.1
+          bus info: pci@0000:64:0b.1
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:49 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E LMS Channel 2
+          vendor: Intel Corporation
+          physical id: b.2
+          bus info: pci@0000:64:0b.2
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:50 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E LMDP Channel 2
+          vendor: Intel Corporation
+          physical id: b.3
+          bus info: pci@0000:64:0b.3
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:51 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E Integrated Memory Controller
+          vendor: Intel Corporation
+          physical id: c
+          bus info: pci@0000:64:0c.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:52 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E Integrated Memory Controller
+          vendor: Intel Corporation
+          physical id: c.1
+          bus info: pci@0000:64:0c.1
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:53 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E Integrated Memory Controller
+          vendor: Intel Corporation
+          physical id: c.2
+          bus info: pci@0000:64:0c.2
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:54 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E Integrated Memory Controller
+          vendor: Intel Corporation
+          physical id: c.3
+          bus info: pci@0000:64:0c.3
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:55 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E Integrated Memory Controller
+          vendor: Intel Corporation
+          physical id: c.4
+          bus info: pci@0000:64:0c.4
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:56 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E LM Channel 1
+          vendor: Intel Corporation
+          physical id: c.5
+          bus info: pci@0000:64:0c.5
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:57 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E LMS Channel 1
+          vendor: Intel Corporation
+          physical id: c.6
+          bus info: pci@0000:64:0c.6
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:58 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E LMDP Channel 1
+          vendor: Intel Corporation
+          physical id: c.7
+          bus info: pci@0000:64:0c.7
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:59 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E DECS Channel 2
+          vendor: Intel Corporation
+          physical id: d
+          bus info: pci@0000:64:0d.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:60 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E LM Channel 2
+          vendor: Intel Corporation
+          physical id: d.1
+          bus info: pci@0000:64:0d.1
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:61 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E LMS Channel 2
+          vendor: Intel Corporation
+          physical id: d.2
+          bus info: pci@0000:64:0d.2
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:62 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E LMDP Channel 2
+          vendor: Intel Corporation
+          physical id: d.3
+          bus info: pci@0000:64:0d.3
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:63 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E VT-d
+          vendor: Intel Corporation
+          physical id: 5
+          bus info: pci@0000:b2:05.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:64 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E RAS Configuration Registers
+          vendor: Intel Corporation
+          physical id: 5.2
+          bus info: pci@0000:b2:05.2
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:65 UNCLAIMED
+          description: PIC
+          product: Sky Lake-E IOxAPIC Configuration Registers
+          vendor: Intel Corporation
+          physical id: 5.4
+          bus info: pci@0000:b2:05.4
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress pm io_x_-apic bus_master cap_list
+          configuration: latency=0
+          resources: memory:fbf00000-fbf00fff
+     *-generic:66 UNCLAIMED
+          description: Performance counters
+          product: Sky Lake-E M3KTI Registers
+          vendor: Intel Corporation
+          physical id: 12
+          bus info: pci@0000:b2:12.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          capabilities: pciexpress cap_list
+          configuration: latency=0
+     *-generic:67 UNCLAIMED
+          description: Performance counters
+          product: Sky Lake-E M3KTI Registers
+          vendor: Intel Corporation
+          physical id: 12.1
+          bus info: pci@0000:b2:12.1
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:68 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E M3KTI Registers
+          vendor: Intel Corporation
+          physical id: 12.2
+          bus info: pci@0000:b2:12.2
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:69 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E M2PCI Registers
+          vendor: Intel Corporation
+          physical id: 15
+          bus info: pci@0000:b2:15.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:70 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E M2PCI Registers
+          vendor: Intel Corporation
+          physical id: 16
+          bus info: pci@0000:b2:16.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:71 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E M2PCI Registers
+          vendor: Intel Corporation
+          physical id: 16.4
+          bus info: pci@0000:b2:16.4
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-generic:72 UNCLAIMED
+          description: System peripheral
+          product: Sky Lake-E M2PCI Registers
+          vendor: Intel Corporation
+          physical id: 17
+          bus info: pci@0000:b2:17.0
+          version: 04
+          width: 32 bits
+          clock: 33MHz
+          configuration: latency=0
+     *-pnp00:00
+          product: AT Real-Time Clock
+          physical id: 13
+          capabilities: pnp
+          configuration: driver=rtc_cmos
+     *-pnp00:01
+          product: Motherboard registers
+          physical id: 18
+          capabilities: pnp
+          configuration: driver=system
+     *-pnp00:02
+          product: Motherboard registers
+          physical id: 19
+          capabilities: pnp
+          configuration: driver=system
+     *-pnp00:03
+          product: Motherboard registers
+          physical id: 1a
+          capabilities: pnp
+          configuration: driver=system
+     *-pnp00:04
+          product: Motherboard registers
+          physical id: 1b
+          capabilities: pnp
+          configuration: driver=system
+     *-pnp00:05
+          product: PnP device FXY0815
+          physical id: 1c
+          capabilities: pnp
+          configuration: driver=system
+  *-power UNCLAIMED
+       description: S26113-E595-V50
+       product: To Be Filled By O.E.M.
+       vendor: 50
+       physical id: 1
+       version: GS01 REV03
+       serial: 006502
+       capacity: 460mWh
+  *-scsi:0
+       physical id: 2
+       bus info: scsi@10
+       logical name: scsi10
+       capabilities: scsi-host
+       configuration: driver=usb-storage
+  *-scsi:1
+       physical id: 3
+       bus info: scsi@8
+       logical name: scsi8
+       capabilities: scsi-host
+       configuration: driver=usb-storage
+  *-scsi:2
+       physical id: 4
+       bus info: scsi@9
+       logical name: scsi9
+       capabilities: scsi-host
+       configuration: driver=usb-storage
