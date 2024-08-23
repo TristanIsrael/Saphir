@@ -7,19 +7,20 @@ GridLayout {
 
     property int infected: 99
     property int clean: 99
+    property int total: 9999
 
     rows: 1
-    columns: 2
+    columns: 3
     columnSpacing: height / 2
 
     width: implicitWidth
     height: implicitHeight
-    implicitWidth: 300
+    implicitWidth: 400
     implicitHeight: 100
 
     Text {
         id: lblInfectedFiles
-        text: infected
+        text: lyt.infected
         color: Constants.alertColor
         Layout.fillHeight: true
         Layout.fillWidth: true
@@ -33,8 +34,23 @@ GridLayout {
     }
 
     Text {
+        id: lblTotalFiles
+        text: lyt.total
+        color: Constants.textColor
+        Layout.fillHeight: true
+        Layout.fillWidth: true
+        horizontalAlignment: Qt.AlignHCenter
+        verticalAlignment: Qt.AlignVCenter
+        fontSizeMode: Text.Fit
+        font {
+            family: "Alien Encounters"
+            pixelSize: height*0.7
+        }
+    }
+
+    Text {
         id: lblCleanFiles
-        text: clean
+        text: lyt.clean
         color: Constants.successColor
         Layout.fillHeight: true
         Layout.fillWidth: true

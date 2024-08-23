@@ -53,7 +53,6 @@ Rectangle {
                 Connections {
                     onClicked: {
                         root.filesModel.folder_up()
-                        //root.tblView.contentY = 0
                         root.tblView.positionViewAtRow(0, TableView.Visible)
                     }
                 }
@@ -88,6 +87,31 @@ Rectangle {
                 text: "\ue03b"
                 visible: root.input
                 pixelSize: 40
+
+                Connections {
+                    onClicked: {
+                        var addToQueue = []
+
+                        const model = ApplicationController.inputFilesListModel
+                        for(var row = 0 ; row < model.rowCount() ; row++) {                            
+                            const idx = model.index(row, 0)
+                            const type = model.data(idx, root.roleFiletype)
+                            //console.debug(row, idx, type)
+                            if(type !== "file")
+                                continue
+                            const filename = model.data(idx, root.roleFilename)
+                            const filepath = model.data(idx, root.roleFilepath)                            
+                            const fpath = filepath+(filepath === "/" ? "" : filepath)+filename                            
+                            
+                            ApplicationController.analyse_file(fpath)       
+                            addToQueue.push(idx)                                                 
+                        }
+
+                        for(var i = addToQueue.length-1 ; i >=0 ; i--) {
+                            model.setData(addToQueue[i], true, root.roleInqueue)
+                        }
+                    }
+                }
             }           
         }
 

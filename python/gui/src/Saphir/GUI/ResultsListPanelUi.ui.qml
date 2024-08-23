@@ -102,8 +102,9 @@ Rectangle {
             right: parent.right
         }
 
-        visible: globalProgress > 0
+        //visible: globalProgress > 0        
         infected: 0
         clean: 0
+        total: root.tblView.rows
     }
 }
