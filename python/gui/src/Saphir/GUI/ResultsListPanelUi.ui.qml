@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import net.alefbet
 
 Rectangle {
     id: root
@@ -47,8 +48,9 @@ Rectangle {
     TableView {
         id: tblView
 
-        model: MockInputFilesListModel {}
+        model: ApplicationController.queueListModel
 
+        clip: true
         anchors {
             top: entete.bottom
             left: parent.left
@@ -57,12 +59,13 @@ Rectangle {
             margins: 10
         }
 
-        visible: globalProgress > 0
+        //visible: globalProgress > 0
         rowSpacing: 0
 
         delegate: Rectangle {
             implicitWidth: tblView.width
-            implicitHeight: type === "file" && progress < 100 ? 40 : 0.00001
+            //implicitHeight: type === "file" && progress < 100 ? 40 : 0.00001
+            implicitHeight: progress < 100 ? 40 : 0.00001
 
             Rectangle {
                 implicitHeight: parent.height
@@ -71,16 +74,18 @@ Rectangle {
             }
 
             PText {
-                text: filename
+                text: filepath
                 level: PText.TextLevel.Paragraph
                 color: progress === 100 ? Constants.contrastColor : Constants.textColor
-                visible: type === "file"
+                elide: Text.ElideMiddle
 
                 anchors {
                     left: parent.left
                     leftMargin: 10
                     top: parent.top
                     bottom: parent.bottom
+                    right: parent.right
+                    rightMargin: 10
                 }
                 verticalAlignment: Text.AlignVCenter
             }

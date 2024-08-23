@@ -19,4 +19,5 @@ Text {
     }
 
     color: level === PText.TextLevel.Paragraph ? Constants.paragraphColor : Constants.headingColor
+    clip: true
 }

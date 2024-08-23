@@ -10,7 +10,7 @@ Text {
 
     text: ""
     font.pixelSize: root.pixelSize
-    font.family: "Material Icons"
+    font.family: "Material Icons Outlined"
     color: enabled ? Constants.buttonColor : Constants.disabledColor
 
     MouseArea {

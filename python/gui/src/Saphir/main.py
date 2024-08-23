@@ -8,18 +8,19 @@ from pathlib import Path
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterSingletonInstance
 from ApplicationController import ApplicationController
-from mock_psec_controller import MockPSECController
+from PsecInputFilesListModel import PsecInputFilesListModel
+from psec import Parametres, Cles, Api
 
 if __name__ == "__main__":
     app = QGuiApplication(sys.argv)
-
-    mockPsecController = MockPSECController()
-    mockPsecController.start()
-
-    time.sleep(2)
-
-    applicationController = ApplicationController()
-    applicationController.start()
+    app.setQuitOnLastWindowClosed(True)
+    
+    applicationController = ApplicationController()        
+    ###
+    # A RETIRER EN PRODUCTION
+    Parametres().set_parametre(Cles.IDENTIFIANT_DOMAINE, "sys-gui")
+    applicationController.start(sys_usb_msg_socket= "/dev/ttys010")
+    ###
 
     # Expose Types
     qmlRegisterSingletonInstance(ApplicationController, "net.alefbet", 1, 0, "ApplicationController", applicationController)

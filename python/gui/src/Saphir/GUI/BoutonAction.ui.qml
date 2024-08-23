@@ -10,6 +10,8 @@ Rectangle {
     property alias text: lbl.text
     property string icone: "\ue03b"
 
+    signal clicked()
+
     implicitWidth: lbl.width + icn.width + marges * 2.5
     implicitHeight: lbl.height + marges
 
@@ -39,5 +41,13 @@ Rectangle {
         font.pointSize: 18
         text: qsTr("Bouton d'action")
         color: principal ? Constants.contrastColor : Constants.buttonColor
+    }
+
+    MouseArea {
+        anchors.fill: parent
+
+        onClicked: {
+            root.clicked()
+        }
     }
 }

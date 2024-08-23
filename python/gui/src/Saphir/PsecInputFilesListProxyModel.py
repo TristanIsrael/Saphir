@@ -1,0 +1,138 @@
+from PySide6.QtCore import QSortFilterProxyModel, QModelIndex, Qt, Signal, Slot
+from PySide6.QtCore import qDebug, QDir, QFileInfo, Property, QThread, qWarning
+from PsecInputFilesListModel import PsecInputFilesListModel
+from Enums import Roles
+from pathlib import Path
+import humanize
+import collections
+
+
+class PsecInputFilesListProxyModel(QSortFilterProxyModel):
+    current_folder_ = "/"
+    source_model_ = None
+    ###
+    # Signals
+    currentFolderChanged = Signal()
+
+    def __init__(self, source_model:PsecInputFilesListModel, parent=None):
+        super().__init__(parent)   
+        self.source_model_ = source_model
+        self.setSourceModel(source_model)    
+        self.setSortRole(Roles.RoleFilename)
+        self.sort(0)
+
+    def filterAcceptsRow(self, source_row:int, source_parent:QModelIndex):        
+        idx = self.sourceModel().index(source_row, 0, QModelIndex())
+        path = self.sourceModel().data(idx, Roles.RoleFilepath)
+        inqueue = self.sourceModel().data(idx, Roles.RoleInQueue)
+
+        return path == self.current_folder_ and not inqueue
+
+    def setData(self, index, value, role):
+        srcidx = self.mapToSource(index)
+
+        if role == Roles.RoleSelected:                        
+            file_type = self.source_model_.data(srcidx, Roles.RoleType)
+            file_path = self.source_model_.data(srcidx, Roles.RoleFilepath)
+            file_name = self.source_model_.data(srcidx, Roles.RoleFilename)
+            
+            if file_type is not None:
+                if file_type == "file":
+                    self.source_model_.set_selected(srcidx)
+                else:
+                    self.__set_current_folder("{}/{}".format("" if file_path == "/" else file_path, file_name))                                                         
+
+            return True
+        elif role == Roles.RoleInQueue:
+            self.source_model_.setData(srcidx, value, role)
+
+        return False
+
+    @Slot(int, result=str)
+    def get_filepath_at_row(self, i:int):
+        idx = self.index(i, 0)
+        srcidx = self.mapToSource(idx)
+
+        file = self.source_model_.get(srcidx)  
+        if file is not None:
+            filepath = "{}/{}".format("" if file["path"] == "/" else file["path"], file["name"])
+            return filepath
+        else:
+            return None
+        
+    @Slot(result=list)
+    def get_filepaths_for_current_folder(self):
+        paths = list()
+
+        for row in range(self.rowCount()):
+            idx = self.index(row, 0)
+            filename = self.data(idx, Roles.RoleFilename)
+            path = self.data(idx, Roles.RoleFilepath)
+            type = self.data(idx, Roles.RoleType)            
+            if type != "file":
+                continue
+            filepath = "{}/{}".format("" if path == "/" else path, filename)
+            paths.append(filepath)
+
+        return paths
+
+    @Slot(result=list)
+    def add_all_files_in_current_folder_to_queue(self):
+        paths = list()
+
+        # Get the list of files
+        for row in range(self.rowCount()):
+            idx = self.index(row, 0)
+            filename = self.data(idx, Roles.RoleFilename)
+            path = self.data(idx, Roles.RoleFilepath)
+            type = self.data(idx, Roles.RoleType)
+            if type != "file":
+                continue
+            filepath = "{}/{}".format("" if path == "/" else path, filename)
+            paths.append(filepath)
+
+        # Then change their status
+        self.setData(idx, True, Roles.RoleInQueue)
+
+        return paths
+
+    @Slot(str)
+    def add_to_queue(self, filepath:str):
+        pass 
+
+    @Slot()
+    def folder_up(self):
+        path = Path(self.current_folder_)        
+        self.__set_current_folder(path.parent.absolute().as_posix())
+
+    @Slot(str, result=int)
+    def role(self, role_name:str):
+        '''for key,value in self.source_model_.roleNames():
+            if value == role_name:
+                return key
+        '''
+        roles = self.source_model_.roleNames()
+        try:
+            return list(roles.keys())[list(roles.values()).index(role_name.encode())]
+        except:
+            return -1
+
+        return -1
+
+    ### 
+    # Private functions
+    def __current_folder(self):
+        return self.current_folder_
+    
+    def __set_current_folder(self, current_folder:str):
+        if self.current_folder_ == current_folder:
+            return
+        
+        self.current_folder_ = current_folder
+        self.currentFolderChanged.emit()
+        self.source_model_.reset_selection()
+        self.invalidate()
+    
+    ###
+    # Properties
+    currentFolder = Property(str, fget= __current_folder, fset= __set_current_folder, notify= currentFolderChanged)
