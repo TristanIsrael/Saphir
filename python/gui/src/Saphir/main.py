@@ -19,7 +19,7 @@ if __name__ == "__main__":
     ###
     # A RETIRER EN PRODUCTION
     Parametres().set_parametre(Cles.IDENTIFIANT_DOMAINE, "sys-gui")
-    applicationController.start(sys_usb_msg_socket= "/dev/ttys010")
+    applicationController.start(msg_socket= "/dev/ttys079")
     ###
 
     # Expose Types

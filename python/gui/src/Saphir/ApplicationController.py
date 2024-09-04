@@ -51,12 +51,12 @@ class ApplicationController(QObject):
         self.inputFilesListProxyModel_ = PsecInputFilesListProxyModel(self.inputFilesListModel_, self)
         self.queueListModel_ = QueueListModel(self)
 
-    def start(self, sys_usb_msg_socket= ""):
+    def start(self, msg_socket= ""):
         self.journal.info("Connecting to PSEC API")
         self.api = Api()
         self.api.set_ready_callback(self.__on_api_ready)
         self.api.set_message_callback(self.__on_api_message)
-        self.api.demarre(sys_usb_msg_socket)
+        self.api.demarre(msg_socket)
 
     def update_source_files_list(self):
         # Ask for the list of files
