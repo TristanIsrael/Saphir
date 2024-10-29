@@ -176,19 +176,29 @@ Rectangle {
                         rightMargin: 5
                         verticalCenter: parent.verticalCenter
                     }
-                    visible: selected && input
-                    pixelSize: 40
+                    visible: input && (selected || mAreaItem.containsMouse || mAreaAdd.containsMouse)
+                    pixelSize: 40                    
 
                     Connections {
                         function onClicked() {                            
                             const fpath = filepath +(filepath === "/" ? "" : "/") +filename
-                            ApplicationController.analyse_file(fpath)
+                            ApplicationController.enqueue_file(type, fpath) 
                             dlg.model.inqueue = true
                         }
                     }
-                }                
+                }   
 
                 MouseArea {
+                    id: mAreaAdd
+                    anchors.fill: icnAdd
+                    hoverEnabled: true     
+                    propagateComposedEvents: true                    
+                }             
+
+                MouseArea {
+                    id: mAreaItem
+                    hoverEnabled: true
+
                     anchors {
                         left: parent.left
                         top: parent.top

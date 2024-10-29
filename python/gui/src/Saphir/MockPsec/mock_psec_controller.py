@@ -2,28 +2,25 @@ import os, glob
 from os.path import expanduser
 from distutils.dir_util import copy_tree
 from psec import MockXenbus, ControleurDom0, Parametres, Cles, Constantes, Journal, ControleurVmSysUsb
-from mock_psec_sys_gui_inputs import MockPSECSysGuiInputs
-from mock_psec_sys_gui_messaging import MockPSECSysGuiMessaging
-from mock_psec_sys_usb_inputs import MockPSECSysUsbInputs
-from mock_psec_sys_usb_messaging import MockPSECSysUsbMessaging
 
 class MockPSECController():
+    ''' Exécute un processus simulant le socle PSEC.
+
+    Le contrôleur Dom0 est mis en oeuvre pour orchestrer les communications entre plusieurs DomU simulés :
+    - sys-usb : fournit le stockage ainsi que des fichiers de test pour la simulation
+    - sys-gui : fournit uniquement les sockets de messagerie et d'entrée pour le contrôleur Saphir (non simulé)
+    - mockav : fournit uniquement les sockets de messagerie et d'entrée pour le contrôleur antivirus simulé
+    '''
     xenbus_sys_usb_inputs = MockXenbus()
     xenbus_sys_usb_messaging = MockXenbus()
     xenbus_sys_gui_inputs = MockXenbus()
     xenbus_sys_gui_messaging = MockXenbus()
+    xenbus_mockav_inputs = MockXenbus()
+    xenbus_mockav_messaging = MockXenbus()
 
     xenbus_sockets_path = "/var/tmp"
     sys_usb_controller = None
     mount_point = "/tmp/mockpsec/mount_point"
-    
-    """
-    sys_gui_inputs = MockPSECSysGuiInputs()
-    sys_gui_messaging = MockPSECSysGuiMessaging()
-    sys_gui_messaging_serial_path = ""
-    sys_usb_inputs = MockPSECSysUsbInputs()
-    sys_usb_messaging = MockPSECSysUsbMessaging()
-    """
 
     logger = Journal("Mock PSEC Controller")
 
@@ -37,9 +34,11 @@ class MockPSECController():
 
             Things we need to do:
             - Create a Mock Xenbus for sys-usb I/O
-            - Create a Mock Xenbus for sys-gui I/O
             - Create a Mock Xenbus for sys-usb messaging
+            - Create a Mock Xenbus for sys-gui I/O            
             - Create a Mock Xenbus for sys-gui messaging
+            - Create a Mock Xenbus for MockAV I/O
+            - Create a Mock Xenbus for MockAV messaging
             
             - Create a PSEC Dom0 controller
             - Create a sys-usb controller
@@ -60,6 +59,8 @@ class MockPSECController():
         self.xenbus_sys_gui_messaging.start("sys-gui", "{}/sys-gui-msg.sock".format(self.xenbus_sockets_path))
         self.xenbus_sys_usb_inputs.start("sys-usb", "{}/sys-usb-input.sock".format(self.xenbus_sockets_path))
         self.xenbus_sys_usb_messaging.start("sys-usb", "{}/sys-usb-msg.sock".format(self.xenbus_sockets_path))
+        self.xenbus_mockav_inputs.start("mockav", "{}/mockav-input.sock".format(self.xenbus_sockets_path))
+        self.xenbus_mockav_messaging.start("mockav", "{}/mockav-msg.sock".format(self.xenbus_sockets_path))
 
         self.__start_sys_usb_controller()
         self.__start_dom0_controller()

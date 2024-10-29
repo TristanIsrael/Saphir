@@ -14,7 +14,6 @@ class QueueListModel(QAbstractListModel):
         super().__init__(parent)
 
     def rowCount(self, parent=QModelIndex()):
-        #qDebug("Files count : {}".format(len(self.fichiers_)))
         return len(self.files_)
 
     def flags(self, index):
@@ -48,6 +47,15 @@ class QueueListModel(QAbstractListModel):
             self.files_.append(file)
             self.endInsertRows()
             
+    def remove_file(self, filepath:str):             
+        for idx in range(0, len(self.files_)):
+            f = self.files_[idx]
+
+            if f.get("filepath") == filepath:
+                self.beginRemoveRows(QModelIndex(), idx, idx)
+                self.files_.remove(f)
+                self.endRemoveRows()
+
     def roleNames(self):
         roles = {
             Roles.RoleFilepath: b'filepath',

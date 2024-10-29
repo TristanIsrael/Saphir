@@ -4,7 +4,7 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 sys.path.append(parent_dir)
 from AbstractAntivirusController import AbstractAntivirusController
 
-class MockAntivirusController(AbstractAntivirusController):
+class MockSaphirAV(AbstractAntivirusController):
     ''' This class manages the antivirus analysis.
 
     The controller listens on the messaging socket and waits for commands. When a command is sent, it
@@ -12,8 +12,11 @@ class MockAntivirusController(AbstractAntivirusController):
     Answer to the requester and gives details on the analysis result.
     '''    
 
+    def __init__(self):
+        super().__init__("Mock AV")
+
     def _execute_command_analyse_file(self, command:Commande):
-        self.logger().info("Command : analyse file")
+        self.logger().info("[Mock AV] Command : analyse file")
 
         file_path = command.arguments.get("filepath")
         fingerprint = command.arguments.get("fingerprint")

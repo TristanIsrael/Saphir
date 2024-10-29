@@ -6,7 +6,7 @@ Text {
     property int pixelSize: 32
     property bool pressed: mArea.containsPress
 
-    signal clicked()    
+    signal clicked()     
 
     text: ""
     font.pixelSize: root.pixelSize
@@ -15,6 +15,7 @@ Text {
 
     MouseArea {
         id: mArea
+
         anchors.fill: parent
         onClicked: root.clicked()
     }

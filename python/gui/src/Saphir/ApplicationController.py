@@ -1,5 +1,5 @@
 from PySide6.QtCore import QObject, Signal, Slot, qDebug, qWarning, Property
-from psec import Journal, Api, Message, TypeMessage, TypeCommande
+from psec import Journal, Api, Message, TypeMessage, TypeCommande, TypeReponse, EtatComposant
 from enum import Enum
 from Enums import Status
 from PsecInputFilesListModel import PsecInputFilesListModel
@@ -12,20 +12,27 @@ class ApplicationController(QObject):
     
     # Variables membres
     journal = Journal("Saphir")
-    pret_ = True
+    pret_ = False
     clean_ = 0
     infected_ = 0
     sourceName_ = ""
     sourceReady_ = False
-    sourceFilesFiles_ = []
     targetName_ = ""
     targetReady_ = False
     status_ = Status.WaitingForDevice
+    systemState_ = Status.Starting
     api = None
+    inputFilesList_ = None
     inputFilesListModel_ = None
     inputFilesListProxyModel_ = None
     queueListModel_ = None
     queue_ = list()
+    componentsState = {
+        "core": [            
+        ],
+        "analysis": [
+        ]
+    }
 
     # Signaux
     pretChanged = Signal()
@@ -37,6 +44,8 @@ class ApplicationController(QObject):
     targetReadyChanged = Signal()
     statusChanged = Signal()
     sourceFilesListReceived = Signal(list)
+    systemStateChanged = Signal()
+    queueSizeChanged = Signal()
 
     # Fonctions publiques
     def __init__(self, parent=None):
@@ -62,11 +71,27 @@ class ApplicationController(QObject):
         # Ask for the list of files
         self.api.get_liste_fichiers(self.sourceName_)
 
+    @Slot(str, str)
+    def enqueue_file(self, filetype:str, filepath:str): 
+        self.journal.info("User added {} {} to the queue".format(filetype, filepath))
+        
+        if filetype == "file":
+            self.queue_.append(filepath)
+            self.queueListModel_.add_file(filepath)
+        else:
+            files = self.__get_files_in_folder(filepath)
+            for f in files:
+                self.queue_.append(f)
+                self.queueListModel_.add_file(f)
+
+        self.queueSizeChanged.emit()        
+
     @Slot(str)
-    def analyse_file(self, filepath:str):
-        self.journal.info("User added file {} to the queue".format(filepath))
-        self.queue_.append(filepath)
-        self.queueListModel_.add_file(filepath)
+    def dequeue_file(self, filepath:str):
+        self.journal.info("User removed {} from to the queue".format(filepath))
+
+        self.queueSizeChanged.emit()
+        self.queueListModel_.remove_file(filepath)
 
     ###
     # Private functions
@@ -74,17 +99,36 @@ class ApplicationController(QObject):
     def __on_api_ready(self):
         self.journal.debug("PSEC API is ready")
 
-        # We query the drives list
-        self.api.get_liste_disques()
+        # We have to wait for the system to be ready
+        # which includes sys-usb and AV DomUs
+        # First step is to query all the DomU states
+        self.api.get_components_states()
+
+    def __on_component_state_changed(self):
+        core = self.componentsState.get("core")
+        
+        for core_component in core:
+            if core_component.get("composant") == "sys-usb" and core_component.get("etat") == EtatComposant.OK:
+                # We query the drives list
+                self.api.get_liste_disques()
+
+                # We verify the state of the antiviruses
+                analysis = self.componentsState.get("analysis")
+                for component in analysis:
+                    if component.get("etat") == EtatComposant.OK:
+                        self.journal.info("Le composant {} est prêt".format(component.get("composant")))
+                        self.__set_pret(True)
+                        self.__setSystemState(Status.Ready)
 
     def __on_api_message(self, message:Message):
         self.journal.debug("Message received from API")
-        self.journal.debug(message.to_json())
+        #self.journal.debug(message.to_json())
 
         if message.type == TypeMessage.REPONSE:
             self.__handle_answer(message)
 
     def __handle_answer(self, message:Message):
+        #self.journal.debug(message)
         payload = message.payload
         command = payload.get("commande")
         data = payload.get("data")
@@ -109,9 +153,30 @@ class ApplicationController(QObject):
             self.sourceNameChanged.emit()
             self.sourceReadyChanged.emit()
         elif command == TypeCommande.LISTE_FICHIERS:
-            files_list = data.get("files")
-            if files_list is not None:
-                self.sourceFilesListReceived.emit(files_list)
+            self.inputFilesList_ = data.get("files")
+            if self.inputFilesList_ is not None:
+                self.sourceFilesListReceived.emit(self.inputFilesList_)
+                self.__setStatus(Status.Ready)
+        elif command == TypeReponse.ETAT_COMPOSANT:
+            component:str = data.get("composant")
+            etat = data.get("etat")
+            self.journal.info("Etat du composant {} : {}".format(component, etat))
+            
+            if component.startswith("sys-"):
+                self.componentsState["core"].append(data)
+            else:
+                self.componentsState["analysis"].append(data)
+
+            self.__on_component_state_changed()
+    
+    def __get_files_in_folder(self, filepath:str) -> list:
+        files = list()
+
+        for entry in self.inputFilesList_:
+            if entry.get("path").startswith(filepath):
+                files.append("{}/{}".format(entry.get("path"), entry.get("name")))
+
+        return files
 
     ###
     # Getters and setters
@@ -147,6 +212,10 @@ class ApplicationController(QObject):
     def __status(self):
         return self.status_.value
     
+    def __setStatus(self, status:Status):
+        self.status_ = status
+        self.statusChanged.emit()
+    
     def __inputFilesListModel(self):
         return self.inputFilesListModel_
     
@@ -155,6 +224,16 @@ class ApplicationController(QObject):
     
     def __queueListModel(self):
         return self.queueListModel_
+    
+    def __systemState(self):
+        return self.systemState_
+    
+    def __setSystemState(self, state:Status):
+        self.systemState_ = state
+        self.systemStateChanged.emit()
+
+    def __queue_size(self):
+        return len(self.queue_)
 
     pret = Property(bool, __pret, __set_pret, notify= pretChanged)
     clean = Property(int, __clean, notify= cleanChanged)
@@ -167,3 +246,5 @@ class ApplicationController(QObject):
     inputFilesListModel = Property(QObject, __inputFilesListModel, constant= True)
     inputFilesListProxyModel = Property(QObject, __inputFilesListProxyModel, constant= True)
     queueListModel = Property(QObject, __queueListModel, constant= True)
+    systemState = Property(int, __systemState, notify= systemStateChanged)
+    queueSize = Property(int, __queue_size, notify= queueSizeChanged)

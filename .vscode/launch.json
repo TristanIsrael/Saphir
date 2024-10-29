@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Débogueur Python : Fichier actuel",
+            "name": "Débogueur Python : Fichier actuel",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",

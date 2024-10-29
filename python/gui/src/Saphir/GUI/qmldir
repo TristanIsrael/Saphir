@@ -1,2 +1,3 @@
 module GUI
 singleton Constants 1.0 Constants.qml
+App 254.0 App.qml

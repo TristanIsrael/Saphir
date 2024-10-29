@@ -6,21 +6,32 @@ ActionsPanelUi {
 
     Connections {
         target: ApplicationController
+
         function onStatusChanged() {
-            statusChanged()
+            updateState()
+        }
+
+        function onSystemStateChanged() {
+            updateState()
+        }
+
+        function onQueueSizeChanged() {
+            root.btnStartPauseResumeAnalysis.enabled = ApplicationController.queueSize > 0
         }
     }
 
     Component.onCompleted: function() {
-        statusChanged()
+        updateState()
     }
 
-    function statusChanged() {        
-        console.debug(Enums.Status.WaitingForDevices)
+    function updateState() {    
+        console.debug("****STATUS****", ApplicationController.status)            
+        console.debug("****STATE****", ApplicationController.systemState)  
+
         switch(ApplicationController.status) {
             case Enums.Status.Inactive: state = ""; break;
             case Enums.Status.Starting: state = "starting"; break;
-            case Enums.Status.WaitingForDevices: console.debug("SBOUB"); state = "waiting"; break;
+            case Enums.Status.WaitingForDevices: state = "waiting"; break;
             case Enums.Status.Ready: state = "ready"; break;
             case Enums.Status.Running: state = "running"; break;
         }

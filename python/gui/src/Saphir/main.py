@@ -5,11 +5,15 @@ from pathlib import Path
 #libdir = os.path.realpath(curdir+"/../../../../../PSEC/python/lib/src") # Pour le débogage local
 #sys.path.append(libdir)
 
+from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterSingletonInstance
 from ApplicationController import ApplicationController
 from PsecInputFilesListModel import PsecInputFilesListModel
 from psec import Parametres, Cles, Api
+
+print(os.getenv("QT_QPA_PLATFORM_PLUGIN_PATH"))
+print(QCoreApplication.libraryPaths())
 
 if __name__ == "__main__":
     app = QGuiApplication(sys.argv)
@@ -19,7 +23,7 @@ if __name__ == "__main__":
     ###
     # A RETIRER EN PRODUCTION
     Parametres().set_parametre(Cles.IDENTIFIANT_DOMAINE, "sys-gui")
-    applicationController.start(msg_socket= "/dev/ttys079")
+    applicationController.start(msg_socket= "/dev/ttys009")
     ###
 
     # Expose Types

@@ -64,7 +64,6 @@ Rectangle {
 
         delegate: Rectangle {
             implicitWidth: tblView.width
-            //implicitHeight: type === "file" && progress < 100 ? 40 : 0.00001
             implicitHeight: progress < 100 ? 40 : 0.00001
 
             Rectangle {
@@ -84,10 +83,49 @@ Rectangle {
                     leftMargin: 10
                     top: parent.top
                     bottom: parent.bottom
-                    right: parent.right
-                    rightMargin: 10
+                    right: icnDel.left
+                    rightMargin: 5
                 }
                 verticalAlignment: Text.AlignVCenter
+            }
+
+            Icone {
+                id: icnDel
+                text: "\ueb80"
+                color: Constants.intermediateColor
+                anchors {
+                    right: parent.right
+                    rightMargin: 5
+                    verticalCenter: parent.verticalCenter
+                }
+                visible: (mAreaItem.containsMouse || mAreaDel.containsMouse)
+                pixelSize: 40                    
+
+                Connections {
+                    function onClicked() {                            
+                        //const fpath = filepath +(filepath === "/" ? "" : "/") +filename
+                        ApplicationController.dequeue_file(filepath) 
+                    }
+                }
+            }
+
+            MouseArea {
+                id: mAreaDel
+                anchors.fill: icnDel
+                hoverEnabled: true     
+                propagateComposedEvents: true                    
+            } 
+
+            MouseArea {
+                id: mAreaItem
+                hoverEnabled: true
+
+                anchors {
+                    left: parent.left
+                    top: parent.top
+                    bottom: parent.bottom
+                    right: icnDel.left
+                }                
             }
         }
     }

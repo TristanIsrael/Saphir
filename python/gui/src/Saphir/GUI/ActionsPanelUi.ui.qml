@@ -33,7 +33,7 @@ Rectangle {
             id: btnStartPauseResumeAnalysis
             pixelSize: parent.height * 0.9
             enabled: false
-            text: root.state === "" ? "\ue039" : root.state === "running" ? "\ue036" : "\ueb8b"
+            text: root.state === "ready" ? "\ue039" : root.state === "running" ? "\ue036" : "\ueb8b"
         }
 
         Icone {
