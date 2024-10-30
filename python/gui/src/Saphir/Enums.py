@@ -9,6 +9,10 @@ QML_IMPORT_MAJOR_VERSION = 1
 class Status(Enum):
     Inactive, Starting, WaitingForDevice, Ready, Running = range(5)
 
+@QEnum
+class AnalysisState(Enum):
+    NotReady, Running, Stopped = range(3)
+
 class Roles():
     RoleType = Qt.UserRole + 1
     RoleFilename = Qt.UserRole + 2
@@ -21,3 +25,7 @@ class Roles():
 @QmlElement
 class Enums(QObject):
     QEnum(Status)
+
+@QmlElement
+class Enmus(QObject):
+    QEnum(AnalysisState)

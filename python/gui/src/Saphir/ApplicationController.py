@@ -1,10 +1,11 @@
 from PySide6.QtCore import QObject, Signal, Slot, qDebug, qWarning, Property
 from psec import Journal, Api, Message, TypeMessage, TypeCommande, TypeReponse, EtatComposant
 from enum import Enum
-from Enums import Status
+from Enums import Status, AnalysisState
 from PsecInputFilesListModel import PsecInputFilesListModel
 from PsecInputFilesListProxyModel import PsecInputFilesListProxyModel
 from QueueListModel import QueueListModel
+from AnalysisContoller import AnalysisController
 import threading
 
 class ApplicationController(QObject):
@@ -21,18 +22,20 @@ class ApplicationController(QObject):
     targetReady_ = False
     status_ = Status.WaitingForDevice
     systemState_ = Status.Starting
-    api = None
+    api_ = Api()
     inputFilesList_ = None
     inputFilesListModel_ = None
     inputFilesListProxyModel_ = None
     queueListModel_ = None
-    queue_ = list()
-    componentsState = {
+    queue_ = list()    
+    componentsState_ = {
         "core": [            
         ],
         "analysis": [
         ]
     }
+    analysisComponents_ = list()
+    analysisController_ = AnalysisController(api= api_, queue= queue_, analysis_components= analysisComponents_)
 
     # Signaux
     pretChanged = Signal()
@@ -61,15 +64,14 @@ class ApplicationController(QObject):
         self.queueListModel_ = QueueListModel(self)
 
     def start(self, msg_socket= ""):
-        self.journal.info("Connecting to PSEC API")
-        self.api = Api()
-        self.api.set_ready_callback(self.__on_api_ready)
-        self.api.set_message_callback(self.__on_api_message)
-        self.api.demarre(msg_socket)
+        self.journal.info("Connecting to PSEC API")        
+        self.api_.set_ready_callback(self.__on_api_ready)
+        self.api_.set_message_callback(self.__on_api_message)
+        self.api_.demarre(msg_socket)
 
     def update_source_files_list(self):
         # Ask for the list of files
-        self.api.get_liste_fichiers(self.sourceName_)
+        self.api_.get_liste_fichiers(self.sourceName_)
 
     @Slot(str, str)
     def enqueue_file(self, filetype:str, filepath:str): 
@@ -84,7 +86,7 @@ class ApplicationController(QObject):
                 self.queue_.append(f)
                 self.queueListModel_.add_file(f)
 
-        self.queueSizeChanged.emit()        
+        self.queueSizeChanged.emit()            
 
     @Slot(str)
     def dequeue_file(self, filepath:str):
@@ -92,6 +94,15 @@ class ApplicationController(QObject):
 
         self.queueSizeChanged.emit()
         self.queueListModel_.remove_file(filepath)
+
+    @Slot()
+    def start_stop_analysis(self):
+        self.journal.debug("User wants to start the analysis")
+
+        if self.analysisController_.state == AnalysisState.Stopped:
+            self.analysisController_.start_analysis(self.sourceName_)
+        elif self.analysisController_.state == AnalysisState.Running:
+            self.analysisController_.stop_analysis(self.sourceName_)
 
     ###
     # Private functions
@@ -102,25 +113,26 @@ class ApplicationController(QObject):
         # We have to wait for the system to be ready
         # which includes sys-usb and AV DomUs
         # First step is to query all the DomU states
-        self.api.get_components_states()
+        self.api_.get_components_states()
 
     def __on_component_state_changed(self):
-        core = self.componentsState.get("core")
+        core = self.componentsState_.get("core")
         
         for core_component in core:
             if core_component.get("composant") == "sys-usb" and core_component.get("etat") == EtatComposant.OK:
                 # We query the drives list
-                self.api.get_liste_disques()
+                self.api_.get_liste_disques()
 
                 # We verify the state of the antiviruses
-                analysis = self.componentsState.get("analysis")
+                analysis = self.componentsState_.get("analysis")
                 for component in analysis:
                     if component.get("etat") == EtatComposant.OK:
                         self.journal.info("Le composant {} est prêt".format(component.get("composant")))
+                        self.analysisComponents_.append(component.get("composant"))
                         self.__set_pret(True)
                         self.__setSystemState(Status.Ready)
 
-    def __on_api_message(self, message:Message):
+    def __on_api_message(self, message:Message):        
         self.journal.debug("Message received from API")
         #self.journal.debug(message.to_json())
 
@@ -128,7 +140,6 @@ class ApplicationController(QObject):
             self.__handle_answer(message)
 
     def __handle_answer(self, message:Message):
-        #self.journal.debug(message)
         payload = message.payload
         command = payload.get("commande")
         data = payload.get("data")
@@ -163,9 +174,9 @@ class ApplicationController(QObject):
             self.journal.info("Etat du composant {} : {}".format(component, etat))
             
             if component.startswith("sys-"):
-                self.componentsState["core"].append(data)
+                self.componentsState_["core"].append(data)
             else:
-                self.componentsState["analysis"].append(data)
+                self.componentsState_["analysis"].append(data)
 
             self.__on_component_state_changed()
     
@@ -173,7 +184,7 @@ class ApplicationController(QObject):
         files = list()
 
         for entry in self.inputFilesList_:
-            if entry.get("path").startswith(filepath):
+            if entry.get("path").startswith(filepath) and entry.get("type") != "folder":
                 files.append("{}/{}".format(entry.get("path"), entry.get("name")))
 
         return files

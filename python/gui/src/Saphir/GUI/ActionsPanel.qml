@@ -20,6 +20,14 @@ ActionsPanelUi {
         }
     }
 
+    Connections {
+        target: btnStartPauseResumeAnalysis
+
+        function onClicked() {
+            ApplicationController.start_stop_analysis()
+        }
+    }
+
     Component.onCompleted: function() {
         updateState()
     }

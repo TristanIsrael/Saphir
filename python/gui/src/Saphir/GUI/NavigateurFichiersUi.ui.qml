@@ -9,7 +9,7 @@ Rectangle {
     property bool input: false
     property bool diskReady: false
     property string diskName: qsTr("Sans nom")
-    property var filesModel: diskReady ? (input ? inputFilesListModel : mockOutput) : undefined
+    property var filesModel: diskReady ? (input ? inputFilesListModel : mockOutput) : root.defaultModel
 
     property alias btnAddWholeDisk: btnAddWholeDisk
     property alias btnAddFolder: btnAddFolder
@@ -47,11 +47,11 @@ Rectangle {
 
                 color: Constants.contrastColor
                 text: "\ue5c4"
-                visible: root.filesModel.currentFolder !== "/"
+                visible: root.filesModel !== undefined ? root.filesModel.currentFolder !== "/" : false
                 pixelSize: 40
 
                 Connections {
-                    onClicked: {
+                    function onClicked() {
                         root.filesModel.folder_up()
                         root.tblView.positionViewAtRow(0, TableView.Visible)
                     }
@@ -89,7 +89,7 @@ Rectangle {
                 pixelSize: 40
 
                 Connections {
-                    onClicked: {
+                    function onClicked() {
                         var addToQueue = []
 
                         const model = ApplicationController.inputFilesListModel
@@ -278,11 +278,14 @@ Rectangle {
     }
 
     /** Models */
+    ListModel {
+        id: defaultModel
+    }
     property var inputFilesListModel: ApplicationController.inputFilesListProxyModel
-    property int roleFilename: root.filesModel.role("filename")
-    property int roleFilepath: root.filesModel.role("filepath")
-    property int roleFiletype: root.filesModel.role("type")
-    property int roleInqueue: root.filesModel.role("inqueue")
+    property int roleFilename: root.filesModel !== undefined ? root.filesModel.role("filename") : 0
+    property int roleFilepath: root.filesModel !== undefined ? root.filesModel.role("filepath") : 0
+    property int roleFiletype: root.filesModel !== undefined ? root.filesModel.role("type") : 0
+    property int roleInqueue: root.filesModel !== undefined ? root.filesModel.role("inqueue") : 0
     
     /** Développement */
     property var mockInput: MockInputFilesListModel {}

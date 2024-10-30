@@ -21,6 +21,7 @@ class MockPSECController():
     xenbus_sockets_path = "/var/tmp"
     sys_usb_controller = None
     mount_point = "/tmp/mockpsec/mount_point"
+    repository = "/tmp/mockpsec/repository"
 
     logger = Journal("Mock PSEC Controller")
 
@@ -78,6 +79,7 @@ class MockPSECController():
         Parametres().set_parametre(Cles.CHEMIN_SOCKETS_DOM0, self.xenbus_sockets_path)        
         Parametres().set_parametre(Cles.CHEMIN_SOCKET_INPUT_DOM0, "{}/sys-usb-input.sock".format(self.xenbus_sockets_path))
         Parametres().set_parametre(Cles.CHEMIN_SOCKET_MSG, self.xenbus_sys_gui_messaging.domu_serial_port_path())
+        Parametres().set_parametre(Cles.CHEMIN_DEPOT_DOM0, self.repository)
         self.logger.debug(self.xenbus_sys_gui_messaging.domu_serial_port_path())
         self.logger.debug(Parametres().parametre(Cles.CHEMIN_SOCKET_MSG))
         
@@ -91,6 +93,7 @@ class MockPSECController():
 
         self.logger.debug("Create Mocked mount point at {}".format(self.mount_point))
         os.makedirs(self.mount_point, exist_ok= True)
+        os.makedirs(self.repository, exist_ok= True)
 
         self.logger.debug("Copy some files into it")
         curdir = os.path.dirname(__file__)
