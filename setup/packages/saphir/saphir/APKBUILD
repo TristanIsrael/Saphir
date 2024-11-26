@@ -1,0 +1,35 @@
+# Contributor:
+# Maintainer: Tristan Israël <tristan.israel@icloud.com>
+pkgname=saphir
+pkgver=1.0
+pkgrel=1
+pkgdesc="Saphir is a robust sheep-dip solution"
+url="https://defense.gouv.fr/"
+arch="noarch"
+license="MIT"
+depends="psec-core psec-lib psec-sys-gui"
+makedepends="python3-dev py3-build py3-installer git"
+checkdepends=""
+install="$pkgname.pre-install $pkgname.post-install $pkgname.post-deinstall"
+subpackages=""
+replaces="psec-core"
+builddir="$srcdir/"
+options="!check"  # no tests provided
+
+source="
+boot/Splash.png
+boot/Splash_1280_1024.ppm
+boot/Splash_1024_768.ppm
+boot/grub.confd
+boot/splash.initd
+topology.json"
+
+package() {
+    install -D -m644 "$srcdir"/topology.json "$pkgdir/etc/psec/topology.json"
+
+    # Splash screen for grub and boot
+	install -D -m644 "$srcdir"/Splash.png "$pkgdir"/boot/Splash.png
+    install -D -m644 "$srcdir"/Splash_1280_1024.ppm "$pkgdir"/boot/Splash_1280_1024.ppm
+    install -D -m644 "$srcdir"/Splash_1024_768.ppm "$pkgdir"/boot/Splash_1024_768.ppm
+}
+

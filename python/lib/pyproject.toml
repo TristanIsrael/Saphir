@@ -3,12 +3,12 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "saphir-gui"
+name = "libsaphir"
 version = "0.1"
 authors = [ 
     { name="Tristan Israël", email="tristan.israel@alefbet.net" }, 
 ]
-description = "Contrôleur graphique pour les stations blanches"
+description = "Bibliothèque pour Saphir"
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [

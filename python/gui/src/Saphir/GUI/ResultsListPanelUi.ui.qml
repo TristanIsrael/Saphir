@@ -75,8 +75,12 @@ Rectangle {
             PText {
                 text: filepath
                 level: PText.TextLevel.Paragraph
-                color: progress === 100 ? Constants.contrastColor : Constants.textColor
+                color: status === Enums.FileStatus.FileStatusUndefined ? Constants.disabledColor : progress === 100 ? Constants.contrastColor : Constants.textColor
                 elide: Text.ElideMiddle
+
+                /*Component.onCompleted: function() {
+                    console.debug(status, Enums.FileStatus.FileStatusUndefined, status === Enums.FileStatus.FileStatusUndefined)
+                }*/
 
                 anchors {
                     left: parent.left

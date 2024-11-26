@@ -1,7 +1,7 @@
 import os, glob
 from os.path import expanduser
 from distutils.dir_util import copy_tree
-from psec import MockXenbus, ControleurDom0, Parametres, Cles, Constantes, Journal, ControleurVmSysUsb
+from psec import MockXenbus, ControleurDom0, Parametres, Cles, Constantes, Journal, ControleurVmSysUsb, Domaine
 
 class MockPSECController():
     ''' Exécute un processus simulant le socle PSEC.
@@ -80,6 +80,7 @@ class MockPSECController():
         Parametres().set_parametre(Cles.CHEMIN_SOCKET_INPUT_DOM0, "{}/sys-usb-input.sock".format(self.xenbus_sockets_path))
         Parametres().set_parametre(Cles.CHEMIN_SOCKET_MSG, self.xenbus_sys_gui_messaging.domu_serial_port_path())
         Parametres().set_parametre(Cles.CHEMIN_DEPOT_DOM0, self.repository)
+        Parametres().set_parametre(Cles.IDENTIFIANT_DOMAINE, Domaine.DOM0)
         self.logger.debug(self.xenbus_sys_gui_messaging.domu_serial_port_path())
         self.logger.debug(Parametres().parametre(Cles.CHEMIN_SOCKET_MSG))
         

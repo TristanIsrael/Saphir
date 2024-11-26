@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import net.alefbet
 
 Rectangle {
     id: root
@@ -16,7 +17,7 @@ Rectangle {
     implicitWidth: 1900
     implicitHeight: 190
     color: Constants.contrastColor
-    state: ""
+    //state: ""
 
     Item {
         anchors {
@@ -33,7 +34,7 @@ Rectangle {
             id: btnStartPauseResumeAnalysis
             pixelSize: parent.height * 0.9
             enabled: false
-            text: root.state === "ready" ? "\ue039" : root.state === "running" ? "\ue036" : "\ueb8b"
+            text: ApplicationController.systemState === Enums.SystemState.SystemReady ? "\ue039" : ApplicationController.systemState === Enums.SystemState.SystemRunning ? "\ue036" : "\ueb8b"
         }
 
         Icone {
@@ -80,12 +81,11 @@ Rectangle {
             anchors {
                 verticalCenter: parent.verticalCenter
                 horizontalCenter: parent.horizontalCenter
-            }
-            state: root.state
+            }            
         }
     }
 
-    states: [
+    /*states: [
         State {
             name: "starting"
         },
@@ -95,5 +95,5 @@ Rectangle {
         State {
             name: "running"
         }
-    ]
+    ]*/
 }

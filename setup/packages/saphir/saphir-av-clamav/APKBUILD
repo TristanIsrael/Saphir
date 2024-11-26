@@ -1,0 +1,32 @@
+# Contributor:
+# Maintainer: Tristan Israël <tristan.israel@icloud.com>
+pkgname=saphir-av-clamav
+pkgver=1.0
+pkgrel=1
+pkgdesc="Saphir - Clam Antivirus"
+url="https://defense.gouv.fr/"
+arch="noarch"
+license="MIT"
+depends="psec-lib clamav"
+makedepends="freshclam"
+checkdepends=""
+install="$pkgname.post-install"
+subpackages=""
+replaces=""
+builddir="$srcdir/"
+options="!check"  # no tests provided
+source="
+av-controller.initd
+"
+
+prepare() {
+    freshclam --datadir="$srcdir"
+}
+
+package() {
+    install -D -m755 "$srcdir"/av-controller.initd "$pkgdir"/etc/init.d/av-controller
+
+    install -D -m755 "$srcdir"/main.cvd "$pkgdir"/var/lib/clamav/main.cvd
+    install -D -m755 "$srcdir"/bytecode.cvd "$pkgdir"/var/lib/clamav/bytecode.cvd
+    install -D -m755 "$srcdir"/daily.cvd "$pkgdir"/var/lib/clamav/daily.cvd
+}

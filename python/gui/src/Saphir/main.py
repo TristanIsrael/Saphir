@@ -10,6 +10,7 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterSingletonInstance
 from ApplicationController import ApplicationController
 from PsecInputFilesListModel import PsecInputFilesListModel
+from Enums import Enums
 from psec import Parametres, Cles, Api
 
 print(os.getenv("QT_QPA_PLATFORM_PLUGIN_PATH"))
@@ -23,7 +24,7 @@ if __name__ == "__main__":
     ###
     # A RETIRER EN PRODUCTION
     Parametres().set_parametre(Cles.IDENTIFIANT_DOMAINE, "sys-gui")
-    applicationController.start(msg_socket= "/dev/ttys103")
+    applicationController.start(msg_socket= "/dev/ttys123")
     ###
 
     # Expose Types

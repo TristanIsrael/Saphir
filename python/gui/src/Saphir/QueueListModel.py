@@ -1,9 +1,8 @@
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, Signal, Slot
 from PySide6.QtCore import qDebug, QDir, QFileInfo, Property, QThread, qWarning
-from Enums import Roles
+from Enums import Roles, FileStatus
 import humanize
 import collections
-
 
 class QueueListModel(QAbstractListModel):    
 
@@ -30,6 +29,8 @@ class QueueListModel(QAbstractListModel):
             return file.get("filepath")
         elif role == Roles.RoleProgress:
             return file.get("progress")
+        elif role == Roles.RoleStatus:
+            return file.get("status").value
         
         return None    
 
@@ -42,7 +43,8 @@ class QueueListModel(QAbstractListModel):
             self.beginInsertRows(QModelIndex(), l, l+1)
             file = {
                 "filepath": filepath,
-                "progress": 0
+                "progress": 0,
+                "status": FileStatus.FileStatusUndefined
             }
             self.files_.append(file)
             self.endInsertRows()
@@ -56,10 +58,31 @@ class QueueListModel(QAbstractListModel):
                 self.files_.remove(f)
                 self.endRemoveRows()
 
+    def set_file_status(self, filepath:str, status:FileStatus) -> None:        
+        for file in self.files_:
+            if file.get("filepath") == filepath:
+                file["status"] = status
+
+                # Notify the view
+                row = self.files_.index(file)
+                idx = self.index(row, 0)
+                self.dataChanged.emit(idx, idx, [Roles.RoleStatus])
+
+    def set_file_progress(self, filepath:str, progress:int) -> None:        
+        for file in self.files_:
+            if file.get("filepath") == filepath:
+                file["progress"] = progress
+
+                # Notify the view
+                row = self.files_.index(file)
+                idx = self.index(row, 0)
+                self.dataChanged.emit(idx, idx, [Roles.RoleProgress])
+
     def roleNames(self):
         roles = {
             Roles.RoleFilepath: b'filepath',
             Roles.RoleSelected: b'selected',
-            Roles.RoleProgress: b'progress'
+            Roles.RoleProgress: b'progress',
+            Roles.RoleStatus: b'status'
         }
         return roles

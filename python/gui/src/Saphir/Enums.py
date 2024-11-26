@@ -6,12 +6,16 @@ QML_IMPORT_NAME = "net.alefbet"
 QML_IMPORT_MAJOR_VERSION = 1
 
 @QEnum
-class Status(Enum):
-    Inactive, Starting, WaitingForDevice, Ready, Running = range(5)
+class SystemState(Enum):
+    SystemInactive, SystemStarting, SystemWaitingForDevice, SystemReady, SystemRunning = range(5)
 
 @QEnum
 class AnalysisState(Enum):
-    NotReady, Running, Stopped = range(3)
+    AnalysisNotReady, AnalysisRunning, AnalysisStopped = range(3)
+
+@QEnum
+class FileStatus(Enum):
+    FileStatusUndefined, FileAvailableInRepository, FileAnalysing, FileAnalysisError, FileClean, FileInfected = range(6)
 
 class Roles():
     RoleType = Qt.UserRole + 1
@@ -21,11 +25,10 @@ class Roles():
     RolePartialSelection = Qt.UserRole + 5
     RoleProgress = Qt.UserRole + 6
     RoleInQueue = Qt.UserRole +7
+    RoleStatus = Qt.UserRole +8
 
 @QmlElement
 class Enums(QObject):
-    QEnum(Status)
-
-@QmlElement
-class Enmus(QObject):
+    QEnum(SystemState)
     QEnum(AnalysisState)
+    QEnum(FileStatus)

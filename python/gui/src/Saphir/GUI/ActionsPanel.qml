@@ -2,17 +2,13 @@ import QtQuick
 import net.alefbet
 
 ActionsPanelUi {
-    id: root    
+    id: root        
 
     Connections {
         target: ApplicationController
-
-        function onStatusChanged() {
-            updateState()
-        }
-
+        
         function onSystemStateChanged() {
-            updateState()
+            
         }
 
         function onQueueSizeChanged() {
@@ -28,20 +24,19 @@ ActionsPanelUi {
         }
     }
 
-    Component.onCompleted: function() {
+    /*Component.onCompleted: function() {
         updateState()
-    }
+    }*/
 
-    function updateState() {    
-        console.debug("****STATUS****", ApplicationController.status)            
-        console.debug("****STATE****", ApplicationController.systemState)  
+    function updateState() {          
+        console.debug("****System State****", ApplicationController.systemState)  
 
-        switch(ApplicationController.status) {
-            case Enums.Status.Inactive: state = ""; break;
-            case Enums.Status.Starting: state = "starting"; break;
-            case Enums.Status.WaitingForDevices: state = "waiting"; break;
-            case Enums.Status.Ready: state = "ready"; break;
-            case Enums.Status.Running: state = "running"; break;
-        }
+        /*switch(ApplicationController.systemState) {
+            case Enums.SystemState.SystemInactive: state = ""; break;
+            case Enums.SystemState.SystemStarting: state = "starting"; break;
+            case Enums.SystemState.SystemWaitingForDevices: state = "waiting"; break;
+            case Enums.SystemState.SystemReady: state = "ready"; break;
+            case Enums.SystemState.SystemRunning: state = "running"; break;
+        }*/
     }
 }

@@ -1,0 +1,28 @@
+{
+    "pci": {
+        "blacklist": "00:0d.0"
+    },
+    "usb": {
+        "use": 1
+    },
+    "gui": {
+        "use": 1,
+        "memory": 2000,
+        "app-package": "saphir-gui",        
+        "screen": {
+            "rotation": 90
+        }
+    },
+    "business": {
+        "repository": "http://192.168.64.1/alpine/saphir",
+        "domains": [
+            {
+                "name": "saphir-av-clam",
+                "app-package": "saphir-av-clam",
+                "memory": 2000,
+                "cpu": 1
+            }
+        ]
+    }
+
+}

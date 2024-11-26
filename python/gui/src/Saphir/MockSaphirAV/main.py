@@ -13,5 +13,5 @@ if __name__ == "__main__":
     mockPsecController = MockSaphirAVController()
 
     # Indiquer le chemin de la socket de messagerie du domaine mockav
-    mockPsecController.start(socket_path= "/dev/ttys120")
+    mockPsecController.start(socket_path= "/dev/ttys162")
     

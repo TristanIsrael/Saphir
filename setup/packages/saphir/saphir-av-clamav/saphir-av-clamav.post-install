@@ -1,0 +1,12 @@
+#!/bin/sh
+
+mkdir -p /var/log/clamav
+chmod 777 /var/log/clamav
+
+rc-update add clamd
+rc-service clamd start
+
+rc-update add av-controller
+rc-service av-controller start
+
+exit 0

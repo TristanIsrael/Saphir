@@ -1,7 +1,7 @@
 from PySide6.QtCore import QObject, Signal, Slot, qDebug, qWarning, Property
 from psec import Journal, Api, Message, TypeMessage, TypeCommande, TypeReponse, EtatComposant
 from enum import Enum
-from Enums import Status, AnalysisState
+from Enums import SystemState, AnalysisState
 from PsecInputFilesListModel import PsecInputFilesListModel
 from PsecInputFilesListProxyModel import PsecInputFilesListProxyModel
 from QueueListModel import QueueListModel
@@ -20,8 +20,8 @@ class ApplicationController(QObject):
     sourceReady_ = False
     targetName_ = ""
     targetReady_ = False
-    status_ = Status.WaitingForDevice
-    systemState_ = Status.Starting
+    #status_ = Status.SystemWaitingForDevice
+    systemState_:SystemState = SystemState.SystemStarting
     api_ = Api()
     inputFilesList_ = None
     inputFilesListModel_ = None
@@ -35,7 +35,7 @@ class ApplicationController(QObject):
         ]
     }
     analysisComponents_ = list()
-    analysisController_ = AnalysisController(api= api_, queue= queue_, analysis_components= analysisComponents_)
+    analysisController_:AnalysisController = None
 
     # Signaux
     pretChanged = Signal()
@@ -45,7 +45,7 @@ class ApplicationController(QObject):
     sourceReadyChanged = Signal()
     targetNameChanged = Signal()
     targetReadyChanged = Signal()
-    statusChanged = Signal()
+    #statusChanged = Signal()
     sourceFilesListReceived = Signal(list)
     systemStateChanged = Signal()
     queueSizeChanged = Signal()
@@ -62,6 +62,7 @@ class ApplicationController(QObject):
 
         self.inputFilesListProxyModel_ = PsecInputFilesListProxyModel(self.inputFilesListModel_, self)
         self.queueListModel_ = QueueListModel(self)
+        self.analysisController_ = AnalysisController(api= self.api_, queue= self.queue_, analysis_components= self.analysisComponents_, queue_listmodel=self.queueListModel_)
 
     def start(self, msg_socket= ""):
         self.journal.info("Connecting to PSEC API")        
@@ -99,9 +100,9 @@ class ApplicationController(QObject):
     def start_stop_analysis(self):
         self.journal.debug("User wants to start the analysis")
 
-        if self.analysisController_.state == AnalysisState.Stopped:
+        if self.analysisController_.state == AnalysisState.AnalysisStopped:
             self.analysisController_.start_analysis(self.sourceName_)
-        elif self.analysisController_.state == AnalysisState.Running:
+        elif self.analysisController_.state == AnalysisState.AnalysisRunning:
             self.analysisController_.stop_analysis(self.sourceName_)
 
     ###
@@ -130,7 +131,7 @@ class ApplicationController(QObject):
                         self.journal.info("Le composant {} est prêt".format(component.get("composant")))
                         self.analysisComponents_.append(component.get("composant"))
                         self.__set_pret(True)
-                        self.__setSystemState(Status.Ready)
+                        self.__setSystemState(SystemState.SystemReady)
 
     def __on_api_message(self, message:Message):        
         self.journal.debug("Message received from API")
@@ -167,7 +168,7 @@ class ApplicationController(QObject):
             self.inputFilesList_ = data.get("files")
             if self.inputFilesList_ is not None:
                 self.sourceFilesListReceived.emit(self.inputFilesList_)
-                self.__setStatus(Status.Ready)
+                self.__setSystemState(SystemState.SystemReady)
         elif command == TypeReponse.ETAT_COMPOSANT:
             component:str = data.get("composant")
             etat = data.get("etat")
@@ -220,13 +221,15 @@ class ApplicationController(QObject):
     def __targetReady(self):
         return self.targetReady_
     
+    '''
     def __status(self):
         return self.status_.value
     
     def __setStatus(self, status:Status):
         self.status_ = status
         self.statusChanged.emit()
-    
+    '''
+
     def __inputFilesListModel(self):
         return self.inputFilesListModel_
     
@@ -237,10 +240,11 @@ class ApplicationController(QObject):
         return self.queueListModel_
     
     def __systemState(self):
-        return self.systemState_
+        return self.systemState_.value
     
-    def __setSystemState(self, state:Status):
+    def __setSystemState(self, state:SystemState):
         self.systemState_ = state
+        qDebug("System state : {}".format(self.systemState_))
         self.systemStateChanged.emit()
 
     def __queue_size(self):
@@ -253,7 +257,7 @@ class ApplicationController(QObject):
     sourceReady = Property(bool, __sourceReady, notify= sourceReadyChanged)
     targetName = Property(str, __targetName, notify= targetNameChanged)
     targetReady = Property(bool, __targetReady, notify= targetReadyChanged)
-    status = Property(int, __status, notify= statusChanged)
+    #status = Property(int, __status, notify= statusChanged)
     inputFilesListModel = Property(QObject, __inputFilesListModel, constant= True)
     inputFilesListProxyModel = Property(QObject, __inputFilesListProxyModel, constant= True)
     queueListModel = Property(QObject, __queueListModel, constant= True)
