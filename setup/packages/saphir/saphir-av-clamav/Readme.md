@@ -1,4 +1,4 @@
-# saphir-gui
+# saphir-av-clamav
 
 This package provides the Clam antivirus.
 

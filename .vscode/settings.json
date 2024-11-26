@@ -1,5 +1,6 @@
 {    
     "python.analysis.extraPaths": [        
-        "${workspaceFolder}/../PSEC/python/lib/src"
+        "${workspaceFolder}/../PSEC/python/lib/src",
+        "${workspaceFolder}/../Saphir/python/libsaphir/src"
     ]
 }
