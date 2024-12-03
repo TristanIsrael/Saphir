@@ -5,19 +5,16 @@ from PySide6.QtQml import QmlElement
 QML_IMPORT_NAME = "net.alefbet"
 QML_IMPORT_MAJOR_VERSION = 1
 
-@QEnum
 class SystemState(Enum):
     SystemInactive, SystemStarting, SystemWaitingForDevice, SystemReady, SystemRunning = range(5)
 
-@QEnum
 class AnalysisState(Enum):
     AnalysisNotReady, AnalysisRunning, AnalysisStopped = range(3)
 
-@QEnum
 class FileStatus(Enum):
     FileStatusUndefined, FileAvailableInRepository, FileAnalysing, FileAnalysisError, FileClean, FileInfected = range(6)
 
-class Roles():
+class Roles():    
     RoleType = Qt.UserRole + 1
     RoleFilename = Qt.UserRole + 2
     RoleFilepath = Qt.UserRole + 3

@@ -1,8 +1,8 @@
-from PySide6.QtCore import QObject, Property, Signal, qDebug
+from PySide6.QtCore import QObject, Property, Signal
 from Enums import AnalysisState, FileStatus
 from QueueListModel import QueueListModel
-from psec import Api, Message, Reponse, TypeMessage, TypeReponse, Notification, TypeEvenement, Parametres
-from psec import Cles, Domaine, EtatFichier
+from psec import Api, Parametres, Topics
+from psec import Cles, MqttHelper
 
 class AnalysisController(QObject):
     ''' Cette classe contrôle la façon dont se déroule l'analyse des fichiers
@@ -15,68 +15,61 @@ class AnalysisController(QObject):
     state_ = AnalysisState.AnalysisStopped
     queue_ = list()
     analysis_components = list()
-    api_:Api = None
-    queue_listmodel_:QueueListModel = None
+    queue_listmodel_:QueueListModel
     files_ = list()
 
     # Signals
     stateChanged = Signal()
 
-    def __init__(self, api:Api, queue:list, analysis_components:list, queue_listmodel:QObject, parent:QObject=None) -> None:
+    def __init__(self, queue:list, analysis_components:list, queue_listmodel:QueueListModel, parent:QObject|None=None) -> None:
         QObject.__init__(self, parent)
 
-        self.api_ = api
         self.queue_ = queue
         self.queue_listmodel_ = queue_listmodel
         self.analysis_components_ = analysis_components
 
-        self.api_.set_message_callback(self.__on_api_message)
+        Api().add_message_callback(self.__on_api_message)
 
     def start_analysis(self, source_name:str) -> None:
-        qDebug("Starting the analysis")            
+        Api().info("Starting the analysis")            
 
         for file in self.queue_:
             # First step is to copy the file into the repository            
-            self.api_.lit_fichier(source_name, file)            
+            Api().read_file(source_name, file)            
 
     def stop_analysis(self) -> None:
-        qDebug("Stopping the analysis")
-        pass
+        Api().info("Stopping the analysis")
+        Api().warn("NOT IMPLEMENTED")
 
     ######
     ## Private functions
     #
-    def __on_api_message(self, message:Message) -> None:
-        qDebug("Message reçu sur AnalysisController")
-        if message.type == TypeMessage.NOTIFICATION:
+    def __on_api_message(self, topic:str, payload:dict) -> None:
+        Api().debug("Message received")
+        
+        if topic == Topics.NEW_FILE:
+            if not MqttHelper.check_payload(payload, ["disk", "filepath"]):
+                Api().error("Malformed message for topic {}".format(topic))
+                return
             
-            notif:Notification = message
-            if notif.evenement == TypeEvenement.FICHIER:
-                self.__on_file_event(notif)
+            #disk = payload.get("disk")
+            filepath = payload.get("filepath", "")
+            
+            self.__on_file_available(filepath)
 
-    def __on_file_event(self, notif:Notification) -> None:
-        qDebug("Traitement de la notification de fichier")
-
-        payload = notif.payload
-        if payload is not None and payload.get("evenement") == TypeEvenement.FICHIER:
-            data = payload.get("data")
-
-            if data is not None:
-                disk = data.get("disk")
-                filepath = data.get("filepath")                
-
-                if data.get("etat") == EtatFichier.DISPONIBLE:
-                    self.__on_fichier_disponible(filepath)
-
-    def __on_fichier_disponible(self, filepath:str) -> None:
-        fileInfo = self.__get_file_by_filepath(filepath)
-
+    def __on_file_available(self, filepath:str) -> None:
+        #fileInfo = self.__get_file_by_filepath(filepath)
         self.queue_listmodel_.set_file_status(filepath, FileStatus.FileAvailableInRepository)
+
+        # Next step is to analyse the file
+        
 
     def __get_file_by_filepath(self, filepath:str) -> dict:
         for file in self.files_:
             if file is not None and file.get("filepath") == filepath:
                 return file
+        
+        return {}
 
     ######
     ## Getters and setters

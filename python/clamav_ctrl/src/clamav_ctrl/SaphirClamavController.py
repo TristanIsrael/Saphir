@@ -1,4 +1,7 @@
 from libsaphir import AbstractAntivirusController
+from psec import Commande
 
 class SaphirClamavController(AbstractAntivirusController):
-    pass
+
+    def _execute_command_analyse_file(self, command:Commande):
+        pass

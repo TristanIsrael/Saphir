@@ -7,12 +7,12 @@ ActionsPanelUi {
     Connections {
         target: ApplicationController
         
-        function onSystemStateChanged() {
-            
+        function onAnalysisReadyChanged() {
+            updateStartStopState()
         }
 
         function onQueueSizeChanged() {
-            root.btnStartPauseResumeAnalysis.enabled = ApplicationController.queueSize > 0
+            updateStartStopState()
         }
     }
 
@@ -38,5 +38,9 @@ ActionsPanelUi {
             case Enums.SystemState.SystemReady: state = "ready"; break;
             case Enums.SystemState.SystemRunning: state = "running"; break;
         }*/
+    }
+
+    function updateStartStopState() {
+        root.btnStartPauseResumeAnalysis.enabled = ApplicationController.queueSize > 0 && ApplicationController.analysisReady
     }
 }

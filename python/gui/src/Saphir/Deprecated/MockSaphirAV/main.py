@@ -5,7 +5,7 @@ from psec import Parametres, Cles
 #curdir = os.path.dirname(__file__)
 #libdir = os.path.realpath(curdir+"/../../../../../PSEC/python/lib/src") # Pour le débogage local
 #sys.path.append(libdir)
-from mock_saphir_av_controller import MockSaphirAVController
+from python.gui.src.Saphir.Deprecated.mock_saphir_av_controller import MockSaphirAVController
 
 if __name__ == "__main__":
     Parametres().set_parametre(Cles.IDENTIFIANT_DOMAINE, "mock-saphir-av")

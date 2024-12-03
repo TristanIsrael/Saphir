@@ -1,18 +1,17 @@
-from PySide6.QtCore import QObject, Signal, Slot, qDebug, qWarning, Property
-from psec import Journal, Api, Message, TypeMessage, TypeCommande, TypeReponse, EtatComposant
-from enum import Enum
+from PySide6.QtCore import QObject, Signal, Slot, Property
+from psec import Api, MqttFactory, Topics, MqttHelper, ComponentsHelper, Constantes, EtatComposant
 from Enums import SystemState, AnalysisState
 from PsecInputFilesListModel import PsecInputFilesListModel
 from PsecInputFilesListProxyModel import PsecInputFilesListProxyModel
 from QueueListModel import QueueListModel
 from AnalysisContoller import AnalysisController
-import threading
+from DevModeHelper import DevModeHelper
+from Constants import DEVMODE
 
 class ApplicationController(QObject):
     "Cette classe gère l'interface entre le socle et la GUI"
     
     # Variables membres
-    journal = Journal("Saphir")
     pret_ = False
     clean_ = 0
     infected_ = 0
@@ -21,39 +20,34 @@ class ApplicationController(QObject):
     targetName_ = ""
     targetReady_ = False
     #status_ = Status.SystemWaitingForDevice
-    systemState_:SystemState = SystemState.SystemStarting
-    api_ = Api()
-    inputFilesList_ = None
-    inputFilesListModel_ = None
-    inputFilesListProxyModel_ = None
-    queueListModel_ = None
+    systemState_ = SystemState.SystemStarting
+    inputFilesList_ = [dict]
+    inputFilesListModel_:PsecInputFilesListModel
+    inputFilesListProxyModel_:PsecInputFilesListProxyModel
+    queueListModel_:QueueListModel
     queue_ = list()    
-    componentsState_ = {
-        "core": [            
-        ],
-        "analysis": [
-        ]
-    }
+    componentsHelper_ = ComponentsHelper()
+    analysisReady_ = False
     analysisComponents_ = list()
-    analysisController_:AnalysisController = None
+    analysisController_:AnalysisController
 
     # Signaux
-    pretChanged = Signal()
-    infectedChanged = Signal()
-    cleanChanged = Signal()
-    sourceNameChanged = Signal()
-    sourceReadyChanged = Signal()
-    targetNameChanged = Signal()
-    targetReadyChanged = Signal()
+    pretChanged = Signal(bool)
+    infectedChanged = Signal(int)
+    cleanChanged = Signal(int)
+    sourceNameChanged = Signal(str)
+    sourceReadyChanged = Signal(bool)
+    targetNameChanged = Signal(str)
+    targetReadyChanged = Signal(bool)
     #statusChanged = Signal()
     sourceFilesListReceived = Signal(list)
-    systemStateChanged = Signal()
-    queueSizeChanged = Signal()
+    systemStateChanged = Signal(int)
+    queueSizeChanged = Signal(int)
+    analysisReadyChanged = Signal(bool)
 
     # Fonctions publiques
     def __init__(self, parent=None):
         QObject.__init__(self, parent)
-        self.journal.debug("Starting Application controller")
 
         self.inputFilesListModel_ = PsecInputFilesListModel(self)
         self.inputFilesListModel_.updateFilesList.connect(self.update_source_files_list)   
@@ -62,133 +56,199 @@ class ApplicationController(QObject):
 
         self.inputFilesListProxyModel_ = PsecInputFilesListProxyModel(self.inputFilesListModel_, self)
         self.queueListModel_ = QueueListModel(self)
-        self.analysisController_ = AnalysisController(api= self.api_, queue= self.queue_, analysis_components= self.analysisComponents_, queue_listmodel=self.queueListModel_)
+        self.analysisController_ = AnalysisController(queue= self.queue_, analysis_components= self.analysisComponents_, queue_listmodel=self.queueListModel_)
 
-    def start(self, msg_socket= ""):
-        self.journal.info("Connecting to PSEC API")        
-        self.api_.set_ready_callback(self.__on_api_ready)
-        self.api_.set_message_callback(self.__on_api_message)
-        self.api_.demarre(msg_socket)
+    def start(self, ready_callback):
+        if DEVMODE:
+            self.mqtt_client = DevModeHelper.create_mqtt_client("Saphir")
+        else:
+            self.mqtt_client = MqttFactory.create_mqtt_client_domu("Saphir")
+
+        Api().add_message_callback(self.__on_message_received)
+        Api().add_ready_callback(ready_callback)
+        Api().add_ready_callback(self.__on_api_ready)
+        Api().start(self.mqtt_client)
 
     def update_source_files_list(self):
         # Ask for the list of files
-        self.api_.get_liste_fichiers(self.sourceName_)
+        Api().get_files_list(self.sourceName_)
+
+    @Slot()
+    def enqueue_all_files(self):
+        Api().info("User added the whole disk to the queue")
+
+        for file in self.__get_all_files():
+            self.queue_.append(file)
+            self.queueListModel_.add_file(file)
+            self.inputFilesListModel_.set_file_in_queue(file)
+
+        self.queueSizeChanged.emit(len(self.queue_))
 
     @Slot(str, str)
     def enqueue_file(self, filetype:str, filepath:str): 
-        self.journal.info("User added {} {} to the queue".format(filetype, filepath))
+        Api().info("User added {} {} to the queue".format(filetype, filepath))
         
         if filetype == "file":
-            self.queue_.append(filepath)
+            self.queue_.append(filepath)            
             self.queueListModel_.add_file(filepath)
+            self.inputFilesListModel_.set_file_in_queue(filepath)
         else:
             files = self.__get_files_in_folder(filepath)
             for f in files:
                 self.queue_.append(f)
                 self.queueListModel_.add_file(f)
+                self.inputFilesListModel_.set_file_in_queue(filepath)
 
-        self.queueSizeChanged.emit()            
+        self.queueSizeChanged.emit(len(self.queue_))
 
     @Slot(str)
     def dequeue_file(self, filepath:str):
-        self.journal.info("User removed {} from to the queue".format(filepath))
+        Api().info("User removed {} from to the queue".format(filepath))
 
-        self.queueSizeChanged.emit()
-        self.queueListModel_.remove_file(filepath)
+        self.queueSizeChanged.emit(len(self.queue_))
+        if self.queueListModel_.remove_file(filepath):
+            self.inputFilesListModel_.set_file_in_queue(filepath, False)
 
     @Slot()
     def start_stop_analysis(self):
-        self.journal.debug("User wants to start the analysis")
+        Api().debug("User wants to start the analysis")
 
         if self.analysisController_.state == AnalysisState.AnalysisStopped:
             self.analysisController_.start_analysis(self.sourceName_)
         elif self.analysisController_.state == AnalysisState.AnalysisRunning:
-            self.analysisController_.stop_analysis(self.sourceName_)
+            self.analysisController_.stop_analysis()
 
-    ###
-    # Private functions
-    #
-    def __on_api_ready(self):
-        self.journal.debug("PSEC API is ready")
+    @Slot(str, str)
+    def debug(self, message:str, module:str):
+        Api().debug(message, module)
+    
+    @Slot(str, str)
+    def info(self, message:str, module:str):
+        Api().info(message, module)
 
-        # We have to wait for the system to be ready
-        # which includes sys-usb and AV DomUs
-        # First step is to query all the DomU states
-        self.api_.get_components_states()
+    @Slot(str, str)
+    def warn(self, message:str, module:str):
+        Api().warn(message, module)
 
-    def __on_component_state_changed(self):
-        core = self.componentsState_.get("core")
+    @Slot(str, str)
+    def error(self, message:str, module:str):
+        Api().error(message, module)
+
+    def __on_api_ready(self):        
+        self.pret_ = True
+        Api().discover_components()
+        Api().get_disks_list()        
+
+    def __on_message_received(self, topic:str, payload:dict):        
+        print("topic: {}".format(topic))
+        #print("payload: {}".format(payload))
         
-        for core_component in core:
-            if core_component.get("composant") == "sys-usb" and core_component.get("etat") == EtatComposant.OK:
-                # We query the drives list
-                self.api_.get_liste_disques()
-
-                # We verify the state of the antiviruses
-                analysis = self.componentsState_.get("analysis")
-                for component in analysis:
-                    if component.get("etat") == EtatComposant.OK:
-                        self.journal.info("Le composant {} est prêt".format(component.get("composant")))
-                        self.analysisComponents_.append(component.get("composant"))
-                        self.__set_pret(True)
-                        self.__setSystemState(SystemState.SystemReady)
-
-    def __on_api_message(self, message:Message):        
-        self.journal.debug("Message received from API")
-        #self.journal.debug(message.to_json())
-
-        if message.type == TypeMessage.REPONSE:
-            self.__handle_answer(message)
-
-    def __handle_answer(self, message:Message):
-        payload = message.payload
-        command = payload.get("commande")
-        data = payload.get("data")
-
-        if command is None:
-            self.journal.error("The command from the peer is null")
-            return
-        
-        if command == TypeCommande.LISTE_DISQUES:
-            disks = data
-
-            if disks is None:
-                self.journal.error("The disks list is empty")
+        if topic == Topics.DISK_STATE:
+            disk = payload.get("disk")
+            if disk is None:
+                Api().error("The disk value is missing")
                 return
             
-            # We take only the first connected disk if there are more than one
-            disk = disks[0]
-            self.journal.debug("Connected source: {}".format(disk))
+            state = payload.get("state")
+            if state is None:
+                Api().error("The state value is missing")
+                return
+            
+            self.sourceReady_ = state == "connected"
+            self.sourceReadyChanged.emit(self.sourceReady_)
 
-            self.sourceName_ = disk
-            self.sourceReady_ = True
-            self.sourceNameChanged.emit()
-            self.sourceReadyChanged.emit()
-        elif command == TypeCommande.LISTE_FICHIERS:
-            self.inputFilesList_ = data.get("files")
+            if state == "connected":
+                self.sourceName_ = disk            
+            else:
+                self.sourceName_ = ""
+            
+            self.sourceNameChanged.emit(self.sourceName_)
+        elif topic == "{}/response".format(Topics.LIST_DISKS):
+            disks:list = payload.get("disks", list())
+            if not MqttHelper.check_payload(payload, ["disks"]):
+                Api().error("Message is malformed")
+                return
+            
+            if len(disks) == 0:
+                Api().info("The list of disks is empty.")
+                return
+                        
+            Api().debug("Disks list received : {}".format(disks))
+            if len(disks) > 0:
+                # We keep only the first
+                disk = disks[0]
+                self.sourceReady_ = True
+                self.sourceReadyChanged.emit(self.sourceReady_)
+                self.sourceName_ = disk
+                self.sourceNameChanged.emit(self.sourceName_)            
+                Api().info("The source disk name is {}".format(self.sourceName_))
+        elif topic == "{}/response".format(Topics.LIST_FILES):
+            disk = payload.get("disk")
+            files = payload.get("files")
+
+            if disk is None:
+                Api().error("The disk argument is missing")
+                return
+            
+            if files is None:
+                Api().error("The files argument is missing")
+                return
+
+            Api().debug("Files list received, count={}".format(len(files)))            
+            
+            # Inject the disk into the values
+            for file in files:
+                file["disk"] = disk
+
+            self.inputFilesList_ = files
             if self.inputFilesList_ is not None:
                 self.sourceFilesListReceived.emit(self.inputFilesList_)
-                self.__setSystemState(SystemState.SystemReady)
-        elif command == TypeReponse.ETAT_COMPOSANT:
-            component:str = data.get("composant")
-            etat = data.get("etat")
-            self.journal.info("Etat du composant {} : {}".format(component, etat))
+                self.__setSystemState(SystemState.SystemReady)  
+        elif topic == "{}/response".format(Topics.DISCOVER_COMPONENTS):
+            if not MqttHelper.check_payload(payload, ["components"]):
+                Api().error("The response is malformed")
+                return
             
-            if component.startswith("sys-"):
-                self.componentsState_["core"].append(data)
-            else:
-                self.componentsState_["analysis"].append(data)
-
-            self.__on_component_state_changed()
+            components = payload.get("components", list())
+            if len(components) > 0:
+                self.componentsHelper_.update(components)
+                self.__check_components_availability()
     
-    def __get_files_in_folder(self, filepath:str) -> list:
+    def __get_files_in_folder(self, filepath:str) -> list[str]:
         files = list()
 
         for entry in self.inputFilesList_:
-            if entry.get("path").startswith(filepath) and entry.get("type") != "folder":
-                files.append("{}/{}".format(entry.get("path"), entry.get("name")))
+            if entry.get("path").startswith(filepath) and entry.get("type") != "folder": # type: ignore
+                files.append("{}/{}".format(entry.get("path"), entry.get("name"))) # type: ignore
 
         return files
+    
+    def __get_all_files(self) -> list[str]:
+        files = list()
+
+        for entry in self.inputFilesList_: 
+            if entry.get("type") != "file": # type: ignore
+                continue
+            files.append("{}/{}".format(entry.get("path"), entry.get("name"))) # type: ignore
+
+        return files
+
+    def __check_components_availability(self):
+        states = self.componentsHelper_.get_states()
+
+        ready = True
+
+        if states.get(Constantes.PSEC_DISK_CONTROLLER) is None:
+            ready &= states.get(Constantes.PSEC_DISK_CONTROLLER) == EtatComposant.READY
+
+        ids = self.componentsHelper_.get_ids_by_type("antivirus")
+        ready &= len(ids) > 0
+        for id in ids:
+            av = self.componentsHelper_.get_by_id(id)
+            ready &= av.get("state") == EtatComposant.READY
+
+        self.analysisReady_ = ready
+
 
     ###
     # Getters and setters
@@ -201,7 +261,7 @@ class ApplicationController(QObject):
             return
         
         self.pret_ = pret
-        self.pretChanged.emit()
+        self.pretChanged.emit(self.pret_)
 
     def __infected(self):
         return self.infected_
@@ -244,13 +304,16 @@ class ApplicationController(QObject):
     
     def __setSystemState(self, state:SystemState):
         self.systemState_ = state
-        qDebug("System state : {}".format(self.systemState_))
-        self.systemStateChanged.emit()
+        Api().debug("System state : {}".format(self.systemState_))
+        self.systemStateChanged.emit(self.systemState_)
 
     def __queue_size(self):
         return len(self.queue_)
 
-    pret = Property(bool, __pret, __set_pret, notify= pretChanged)
+    def __analysisReady(self):
+        return self.analysisReady_
+
+    pret = Property(bool, __pret, __set_pret, notify=pretChanged) 
     clean = Property(int, __clean, notify= cleanChanged)
     infected = Property(int, __infected, notify= infectedChanged)
     sourceName = Property(str, __sourceName, notify= sourceNameChanged)
@@ -263,3 +326,4 @@ class ApplicationController(QObject):
     queueListModel = Property(QObject, __queueListModel, constant= True)
     systemState = Property(int, __systemState, notify= systemStateChanged)
     queueSize = Property(int, __queue_size, notify= queueSizeChanged)
+    analysisReady = Property(bool, __analysisReady, notify= analysisReadyChanged)

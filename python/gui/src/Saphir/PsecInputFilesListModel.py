@@ -1,6 +1,8 @@
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, Signal, Slot
-from PySide6.QtCore import qDebug, QDir, QFileInfo, Property, QThread, qWarning
+from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray
+from Constants import LIBELLE_DOSSIER_PRECEDENT
 from Enums import Roles
+from psec import Api
 import humanize
 import collections
 
@@ -21,8 +23,8 @@ class PsecInputFilesListModel(QAbstractListModel):
     changeSelection = Signal(str)  # dossier
 
     # Variables
-    fichiers_ = []
-    selection_ = None
+    fichiers_:list[dict] = list()
+    selection_:list[dict] = list()
     #racine_ = ""
     #dossierCourant_ = ""
     
@@ -81,7 +83,7 @@ class PsecInputFilesListModel(QAbstractListModel):
             
             return False
         
-        if role == Roles.RolePartialSelection:  
+        '''if role == Roles.RolePartialSelection:  
             if (
                 fichier["type"] == "folder"
                 and fichier["name"] != self.LibelleDossierPrecedent
@@ -95,6 +97,7 @@ class PsecInputFilesListModel(QAbstractListModel):
                     return True
             
             return False    
+        '''
         
         if role == Roles.RoleProgress: #0 to 100
             return 0
@@ -108,13 +111,15 @@ class PsecInputFilesListModel(QAbstractListModel):
     def get(self, index:QModelIndex):
         return self.fichiers_[index.row()]
 
-    def setData(self, index, value, role):
+    def setData(self, index, value, role = Qt.DisplayRole) -> bool:
         if role == Roles.RoleInQueue:            
             file = self.fichiers_[index.row()]
             file["inqueue"] = True
             self.dataChanged.emit(index, index, [Roles.RoleInQueue])
+
+        return True
     
-    def roleNames(self):
+    def roleNames(self) -> dict:
         roles = {
             Roles.RoleType: b'type',
             Roles.RoleFilename: b'filename',
@@ -129,15 +134,24 @@ class PsecInputFilesListModel(QAbstractListModel):
     def set_selected(self, index:QModelIndex):
         if len(self.fichiers_) > index.row():            
             file = self.fichiers_[index.row()]
-            self.selection_ = file                
+            self.selection_ = [ file ]
             self.selectionChanged.emit()
 
             idxBegin = self.index(0, 0)
             idxEnd = self.index(self.rowCount()-1, 0)
             self.dataChanged.emit(idxBegin, idxEnd, [Roles.RoleSelected])
             
+    def set_file_in_queue(self, filepath:str, inqueue:bool = True):
+        for row in range(len(self.fichiers_)):
+            file = self.fichiers_[row]
+            if "{}/{}".format(file["path"], file["name"]) == filepath:
+                file["inqueue"] = inqueue
+                index = self.index(row, 0)
+                self.dataChanged.emit(index, index, Roles.RoleInQueue)
+                return
+
     def reset_selection(self):
-        self.selection_ = None 
+        self.selection_.clear()
 
         idxBegin = self.index(0, 0)
         idxEnd = self.index(self.rowCount()-1, 0)
@@ -185,7 +199,7 @@ class PsecInputFilesListModel(QAbstractListModel):
     # de l'utilisateur suite à la sélection d'un fichier précis.
     @Slot(str, bool)
     def setSelectedByFilepath(self, filepath, selected):
-        qDebug("Changement d'état de sélection pour le fichier {} : {}".format(filepath, selected))
+        Api().debug("Changement d'état de sélection pour le fichier {} : {}".format(filepath, selected))
 
         element = self.findFileByFilepath(filepath)
 
@@ -216,7 +230,7 @@ class PsecInputFilesListModel(QAbstractListModel):
 
     @Slot(str)
     def setDeselectedByFolder(self, folder):
-        qDebug("Déselection des fichiers du dossier %s" % folder)
+        Api().debug("Déselection des fichiers du dossier {}".format(folder))
 
         nouvelleSelection = list()
         eltDossier = self.findFileByFilepath(folder)        
@@ -234,62 +248,81 @@ class PsecInputFilesListModel(QAbstractListModel):
 
         #self.dataChanged.emit(position, position, self.RoleSelected)
         self.selectionChanged.emit()
-        self.onTermine()
+        #self.onTermine()
 
     # La sélection des fichiers d'un stockage correspond à
     # l'action de l'utilisateur dans le menu contextel pour
     # changer l'état de sélection de l'ensemble des fichiers
     # d'un support connecté
+    '''
     @Slot()
     def selectAllFilesForStorage(self):
-        qDebug("Sélection de tous les fichiers du support")
+        Api().debug("Sélection de tous les fichiers du support")
         self.beginResetModel()
         self.selection_.clear()
-        self.filesystemControleur_.getAllFilesFromFolder(self.racine_, True)
+        for f in self.fichiers_:
+            self.selection_.append(f)
+        self.selectionChanged.emit()
+        self.endResetModel()
 
     @Slot()
     def deselectAllFiles(self):
         self.clearSelection()
+        self.selectionChanged.emit()
 
     @Slot(str)
-    def selectAllFilesForFolder(self, dossier):
-        qDebug("Changement de la sélection pour le dossier %s" % dossier)
+    def selectAllFilesForFolder(self, folder):
+        Api().debug("Changement de la sélection pour le dossier {}".format(folder))
 
         self.beginResetModel()
-        self.filesystemControleur_.getAllFilesFromFolder(dossier, True)        
+        self.selection_ = self.__get_all_files_from_folder(folder)
+        self.selectionChanged.emit()
+        self.endResetModel()                
 
     @Slot(str)
-    def deselectAllFilesForFolder(self, dossier):
-        qDebug("Retire la sélection de tous les fichiers du dossier %s" % dossier)
+    def deselectAllFilesForFolder(self, folder):
+        Api().debug("Retire la sélection de tous les fichiers du dossier {}".format(folder))
         self.beginResetModel()
-        self.setDeselectedByFolder(dossier)
+        self.setDeselectedByFolder(folder)
 
     # La sélection de tous les fichiers du dossier courant
     # correspond à l'action de l'utilisateur dans le menu contextuel
     # pour changer l'état de sélection des fichiers du dossier affiché
     @Slot()
     def selectAllFilesForCurrentFolder(self):
-        qDebug("Sélection de tous les fichiers du dossier courant")
+        Api().debug("Sélection de tous les fichiers du dossier courant")
 
         self.beginResetModel()
-        self.filesystemControleur_.getAllFilesFromFolder(self.dossierCourant_, False)
+        #self.selection_ = self.__get_all_files_from_folder(self.doss)
+        #self.filesystemControleur_.getAllFilesFromFolder(self.dossierCourant_, False)
+        self.endResetModel()
 
     @Slot()
     def deselectAllFilesForCurrentFolder(self):
-        qDebug("Retire la sélection de tous les fichiers du dossier courant")
+        Api().debug("Retire la sélection de tous les fichiers du dossier courant")
 
         self.beginResetModel()
-        self.setDeselectedByFolder(self.dossierCourant_)
+        #self.setDeselectedByFolder(self.dossierCourant_)
+        self.endResetModel()
 
     # Ce slot vide la liste des fichiers sélectionnés
     @Slot()
     def clearSelection(self):
-        qDebug("Suppression de la sélection")
+        Api().debug("Suppression de la sélection")
 
         self.selection_.clear()
         self.selectionChanged.emit()
-        self.updateFilesList(self.dossierCourant_)
-        self.travailTermine.emit()
+        #self.updateFilesList(self.dossierCourant_)
+        self.travailTermine.emit()        
+
+    def __get_all_files_from_folder(self, folder) -> list[dict]:
+        files:list[dict] = []
+
+        for entry in self.fichiers_:
+            if entry.get("path").startswith(folder) and entry.get("type") != "folder":
+                files.append("{}/{}".format(entry.get("path"), entry.get("name")))
+
+        return files
 
     @Slot(str)
     def isFolderTotallySelected(self, filepath):   
@@ -297,7 +330,8 @@ class PsecInputFilesListModel(QAbstractListModel):
         listeFichiersRepertoire = self.filesystemControleur_.getDirectoryContents(filepath, QDir.Name, True)
         listeFichiersRepertoireSelection = [f for f in self.selection_ if filepath in f['filepath']]
         
-        return len(listeFichiersRepertoireSelection) == len(listeFichiersRepertoire)
+        return len(listeFichiersRepertoireSelection) == len(listeFichiersRepertoire)    
+'''
 
     # Propriétés
     def _selection(self):

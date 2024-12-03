@@ -1,31 +1,48 @@
-import sys, os, time
+""" This is Saphir """
+
+import sys
+import threading
 from pathlib import Path
 
-#curdir = os.path.dirname(__file__)
-#libdir = os.path.realpath(curdir+"/../../../../../PSEC/python/lib/src") # Pour le débogage local
-#sys.path.append(libdir)
-
-from PySide6.QtCore import QCoreApplication
-from PySide6.QtGui import QGuiApplication
-from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterSingletonInstance
+from PySide6.QtGui import QGuiApplication, QCursor, QMouseEvent
+from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonType, qmlRegisterUncreatableType, qmlRegisterSingletonInstance
+from PySide6.QtCore import QObject, QCoreApplication, Qt, QEvent, QThread, QPoint, QSize
+from PySide6.QtQuickControls2 import QQuickStyle
+from psec import Api
 from ApplicationController import ApplicationController
 from PsecInputFilesListModel import PsecInputFilesListModel
 from Enums import Enums
 from psec import Parametres, Cles, Api
+from Constants import DEVMODE
+if DEVMODE:
+    from DevModeHelper import DevModeHelper
+    DevModeHelper.set_qt_plugins_path()
+    from Mock.MockSysUsbController import MockSysUsbController
+    from Mock.MockClamAntivirusController import MockClamAntivirusController
 
-print(os.getenv("QT_QPA_PLATFORM_PLUGIN_PATH"))
-print(QCoreApplication.libraryPaths())
+from PySide6.QtCore import QLibraryInfo
+    
+
+api_ready = threading.Event()
+
+def on_ready():
+    print("PSEC API is ready")
+    api_ready.set()    
 
 if __name__ == "__main__":
     app = QGuiApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
-    
-    applicationController = ApplicationController()        
-    ###
-    # A RETIRER EN PRODUCTION
-    Parametres().set_parametre(Cles.IDENTIFIANT_DOMAINE, "sys-gui")
-    applicationController.start(msg_socket= "/dev/ttys123")
-    ###
+
+    if DEVMODE:
+        print("Start Mock PSEC controllers")
+        MockSysUsbController().start() # type: ignore
+        MockClamAntivirusController().start() # type: ignore
+
+    applicationController = ApplicationController()
+    applicationController.start(on_ready)
+
+    print("Waiting for the API to be ready")
+    api_ready.wait()    
 
     # Expose Types
     qmlRegisterSingletonInstance(ApplicationController, "net.alefbet", 1, 0, "ApplicationController", applicationController)
@@ -36,5 +53,17 @@ if __name__ == "__main__":
     engine.load(qml_file)    
     if not engine.rootObjects():
         sys.exit(-1)
+    
+    qml_root = engine.rootObjects()[0]        
+    if not DEVMODE:
+        qml_root.showFullScreen()        
 
-    sys.exit(app.exec())
+    # Integrate with PSEC core
+    #applicationController.set_fenetre_app(qml_root)    
+    #applicationController.set_interface_socle(interfaceSocle)
+
+    Api().info("Saphir is ready")
+
+    res = app.exec()
+    Api().info("Saphir is terminating with exit code {}".format(res))
+    sys.exit(res)

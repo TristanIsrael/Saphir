@@ -1,5 +1,5 @@
 from PySide6.QtCore import QSortFilterProxyModel, QModelIndex, Qt, Signal, Slot
-from PySide6.QtCore import qDebug, QDir, QFileInfo, Property, QThread, qWarning
+from PySide6.QtCore import qDebug, QDir, QFileInfo, Property, QThread, QPersistentModelIndex
 from PsecInputFilesListModel import PsecInputFilesListModel
 from Enums import Roles
 from pathlib import Path
@@ -9,7 +9,6 @@ import collections
 
 class PsecInputFilesListProxyModel(QSortFilterProxyModel):
     current_folder_ = "/"
-    source_model_ = None
     ###
     # Signals
     currentFolderChanged = Signal()
@@ -21,14 +20,14 @@ class PsecInputFilesListProxyModel(QSortFilterProxyModel):
         self.setSortRole(Roles.RoleFilename)
         self.sort(0)
 
-    def filterAcceptsRow(self, source_row:int, source_parent:QModelIndex):        
+    def filterAcceptsRow(self, source_row:int, source_parent:QModelIndex|QPersistentModelIndex):        
         idx = self.sourceModel().index(source_row, 0, QModelIndex())
         path = self.sourceModel().data(idx, Roles.RoleFilepath)
-        inqueue = self.sourceModel().data(idx, Roles.RoleInQueue)
+        inqueue = self.sourceModel().data(idx, Roles.RoleInQueue)        
+        
+        return (path == self.current_folder_ and not inqueue)
 
-        return path == self.current_folder_ and not inqueue
-
-    def setData(self, index, value, role):
+    def setData(self, index, value, role=Qt.DisplayRole):
         srcidx = self.mapToSource(index)
 
         if role == Roles.RoleSelected:                        

@@ -1,0 +1,3 @@
+LIBELLE_DOSSIER_PRECEDENT = "Up"
+DEVMODE = True
+TOPIC_ANALYSE_FILE = "saphir/analyse"

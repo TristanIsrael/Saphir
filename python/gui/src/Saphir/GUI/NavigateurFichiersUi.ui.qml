@@ -7,9 +7,9 @@ Rectangle {
     id: root
 
     property bool input: false
-    property bool diskReady: false
-    property string diskName: qsTr("Sans nom")
-    property var filesModel: diskReady ? (input ? inputFilesListModel : mockOutput) : root.defaultModel
+    property bool diskReady: input ? ApplicationController.sourceReady : ApplicationController.targetReady
+    property string diskName: input ? ApplicationController.sourceName : ApplicationController.targetName
+    property var filesModel: diskReady ? (input ? inputFilesListModel : defaultModel) : root.defaultModel
 
     property alias btnAddWholeDisk: btnAddWholeDisk
     property alias btnAddFolder: btnAddFolder
@@ -90,7 +90,8 @@ Rectangle {
 
                 Connections {
                     function onClicked() {
-                        var addToQueue = []
+                        ApplicationController.enqueue_all_files()
+                        /*var addToQueue = []
 
                         const model = ApplicationController.inputFilesListModel
                         for(var row = 0 ; row < model.rowCount() ; row++) {                            
@@ -109,7 +110,7 @@ Rectangle {
 
                         for(var i = addToQueue.length-1 ; i >=0 ; i--) {
                             model.setData(addToQueue[i], true, root.roleInqueue)
-                        }
+                        }*/
                     }
                 }
             }           
@@ -183,7 +184,7 @@ Rectangle {
                         function onClicked() {                            
                             const fpath = filepath +(filepath === "/" ? "" : "/") +filename
                             ApplicationController.enqueue_file(type, fpath) 
-                            dlg.model.inqueue = true
+                            //dlg.model.inqueue = true
                         }
                     }
                 }   
@@ -281,13 +282,11 @@ Rectangle {
     ListModel {
         id: defaultModel
     }
+
     property var inputFilesListModel: ApplicationController.inputFilesListProxyModel
     property int roleFilename: root.filesModel !== undefined ? root.filesModel.role("filename") : 0
     property int roleFilepath: root.filesModel !== undefined ? root.filesModel.role("filepath") : 0
     property int roleFiletype: root.filesModel !== undefined ? root.filesModel.role("type") : 0
     property int roleInqueue: root.filesModel !== undefined ? root.filesModel.role("inqueue") : 0
     
-    /** Développement */
-    property var mockInput: MockInputFilesListModel {}
-    property var mockOutput: MockOutputFilesListModel {}
 }

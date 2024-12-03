@@ -11,16 +11,28 @@
         {
             "name": "Panoptiscan",
             "path": "../Panoptiscan"
-        },
-        {
-            "name": "aports",
-            "path": "../aports"
         }
-    ],
+    ],    
     "settings": {
         "launch": {
             "configurations": [],
             "compounds": []
-        }
+        },       
+        "editor.tokenColorCustomizations": {
+            "textMateRules": [
+                {
+                    "scope": "markup.warning",
+                    "settings": {
+                        "foreground": "#FF0000" // Remplace la couleur par du rouge
+                    }
+                },
+                {
+                    "scope": "markup.error",
+                    "settings": {
+                        "foreground": "#FF0000" // Assurez-vous que les erreurs restent rouges
+                    }
+                }
+            ]
+        }        
     }
 }

@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "env": {
-                "PYTHONPATH": "${workspaceFolder}/../PSEC/python/lib/src"
+                "PYTHONPATH": "${workspaceFolder}/../PSEC/python/lib/src:${PYTHONPATH}"                
             }
         }
     ]

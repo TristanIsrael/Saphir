@@ -23,8 +23,6 @@ FondEcranUi {
             id: pnlNavigatorInput
 
             input: true
-            diskName: ApplicationController.sourceName
-            diskReady: ApplicationController.sourceReady
             Layout.preferredHeight: parent.height
             Layout.preferredWidth: (parent.width - rLyt.spacing * 2) / 3
         }
@@ -40,8 +38,6 @@ FondEcranUi {
             id: pnlNavigatorOutput
 
             input: false
-            diskName: ApplicationController.targetName
-            diskReady: ApplicationController.targetReady
             Layout.preferredHeight: parent.height
             Layout.preferredWidth: (parent.width - rLyt.spacing * 2) / 3
         }

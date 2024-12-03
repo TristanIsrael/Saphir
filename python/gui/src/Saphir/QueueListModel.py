@@ -49,14 +49,17 @@ class QueueListModel(QAbstractListModel):
             self.files_.append(file)
             self.endInsertRows()
             
-    def remove_file(self, filepath:str):             
-        for idx in range(0, len(self.files_)):
+    def remove_file(self, filepath:str) -> bool:             
+        for idx in range(len(self.files_)):
             f = self.files_[idx]
 
             if f.get("filepath") == filepath:
                 self.beginRemoveRows(QModelIndex(), idx, idx)
-                self.files_.remove(f)
+                self.files_.remove(f)                
                 self.endRemoveRows()
+                return True
+            
+        return False
 
     def set_file_status(self, filepath:str, status:FileStatus) -> None:        
         for file in self.files_:
