@@ -4,7 +4,7 @@ import net.alefbet
 ActionsPanelUi {
     id: root        
 
-    Connections {
+    /*Connections {
         target: ApplicationController
         
         function onAnalysisReadyChanged() {
@@ -14,7 +14,7 @@ ActionsPanelUi {
         function onQueueSizeChanged() {
             updateStartStopState()
         }
-    }
+    }*/
 
     Connections {
         target: btnStartPauseResumeAnalysis
@@ -24,23 +24,13 @@ ActionsPanelUi {
         }
     }
 
-    /*Component.onCompleted: function() {
-        updateState()
-    }*/
+    Connections {
+        target: btnStartTransfer
 
-    function updateState() {          
-        console.debug("****System State****", ApplicationController.systemState)  
-
-        /*switch(ApplicationController.systemState) {
-            case Enums.SystemState.SystemInactive: state = ""; break;
-            case Enums.SystemState.SystemStarting: state = "starting"; break;
-            case Enums.SystemState.SystemWaitingForDevices: state = "waiting"; break;
-            case Enums.SystemState.SystemReady: state = "ready"; break;
-            case Enums.SystemState.SystemRunning: state = "running"; break;
-        }*/
+        function onClicked() {
+            ApplicationController.start_transfer()
+        }
     }
 
-    function updateStartStopState() {
-        root.btnStartPauseResumeAnalysis.enabled = ApplicationController.queueSize > 0 && ApplicationController.analysisReady
-    }
+
 }

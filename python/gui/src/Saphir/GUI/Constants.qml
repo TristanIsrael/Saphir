@@ -24,6 +24,7 @@ QtObject {
     readonly property color intermediateColor: "#384454" //"#2d396b"
     readonly property color titleColor: intermediateColor
     readonly property color alertColor: "#dd121c"
+    readonly property color errorColor: "#dd121c"
     readonly property color headingColor: "#53585F"
     readonly property color paragraphColor: "#111"
     readonly property color buttonColor: intermediateColor

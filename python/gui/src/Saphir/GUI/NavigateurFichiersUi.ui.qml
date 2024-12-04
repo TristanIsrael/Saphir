@@ -182,8 +182,8 @@ Rectangle {
 
                     Connections {
                         function onClicked() {                            
-                            const fpath = filepath +(filepath === "/" ? "" : "/") +filename
-                            ApplicationController.enqueue_file(type, fpath) 
+                            //const fpath = filepath +(filepath === "/" ? "" : "/") +filename
+                            ApplicationController.enqueue_file(type, filepath) 
                             //dlg.model.inqueue = true
                         }
                     }
@@ -288,5 +288,4 @@ Rectangle {
     property int roleFilepath: root.filesModel !== undefined ? root.filesModel.role("filepath") : 0
     property int roleFiletype: root.filesModel !== undefined ? root.filesModel.role("type") : 0
     property int roleInqueue: root.filesModel !== undefined ? root.filesModel.role("inqueue") : 0
-    
 }

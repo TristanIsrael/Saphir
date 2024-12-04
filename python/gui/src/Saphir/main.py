@@ -31,12 +31,7 @@ def on_ready():
 
 if __name__ == "__main__":
     app = QGuiApplication(sys.argv)
-    app.setQuitOnLastWindowClosed(True)
-
-    if DEVMODE:
-        print("Start Mock PSEC controllers")
-        MockSysUsbController().start() # type: ignore
-        MockClamAntivirusController().start() # type: ignore
+    app.setQuitOnLastWindowClosed(True)    
 
     applicationController = ApplicationController()
     applicationController.start(on_ready)

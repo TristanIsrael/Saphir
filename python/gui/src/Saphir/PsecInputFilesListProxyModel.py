@@ -22,7 +22,7 @@ class PsecInputFilesListProxyModel(QSortFilterProxyModel):
 
     def filterAcceptsRow(self, source_row:int, source_parent:QModelIndex|QPersistentModelIndex):        
         idx = self.sourceModel().index(source_row, 0, QModelIndex())
-        path = self.sourceModel().data(idx, Roles.RoleFilepath)
+        path = self.sourceModel().data(idx, Roles.RolePath)
         inqueue = self.sourceModel().data(idx, Roles.RoleInQueue)        
         
         return (path == self.current_folder_ and not inqueue)
@@ -32,7 +32,7 @@ class PsecInputFilesListProxyModel(QSortFilterProxyModel):
 
         if role == Roles.RoleSelected:                        
             file_type = self.source_model_.data(srcidx, Roles.RoleType)
-            file_path = self.source_model_.data(srcidx, Roles.RoleFilepath)
+            file_path = self.source_model_.data(srcidx, Roles.RolePath)
             file_name = self.source_model_.data(srcidx, Roles.RoleFilename)
             
             if file_type is not None:
@@ -66,7 +66,7 @@ class PsecInputFilesListProxyModel(QSortFilterProxyModel):
         for row in range(self.rowCount()):
             idx = self.index(row, 0)
             filename = self.data(idx, Roles.RoleFilename)
-            path = self.data(idx, Roles.RoleFilepath)
+            path = self.data(idx, Roles.RolePath)
             type = self.data(idx, Roles.RoleType)            
             if type != "file":
                 continue
@@ -83,7 +83,7 @@ class PsecInputFilesListProxyModel(QSortFilterProxyModel):
         for row in range(self.rowCount()):
             idx = self.index(row, 0)
             filename = self.data(idx, Roles.RoleFilename)
-            path = self.data(idx, Roles.RoleFilepath)
+            path = self.data(idx, Roles.RolePath)
             type = self.data(idx, Roles.RoleType)
             if type != "file":
                 continue

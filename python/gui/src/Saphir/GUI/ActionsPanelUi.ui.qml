@@ -11,6 +11,7 @@ Rectangle {
     property alias btnStartOver: btnStartOver
     property alias btnStartPauseResumeAnalysis: btnStartPauseResumeAnalysis
     property alias pnlState: pnlState
+    property alias btnStartTransfer: btnStartTransfer
 
     height: implicitHeight
     width: implicitWidth
@@ -25,39 +26,52 @@ Rectangle {
         }
 
         Icone {
+            id: btnStartTransfer
             anchors {
                 right: parent.right
                 rightMargin: 24
                 verticalCenter: parent.verticalCenter
             }
-
-            id: btnStartPauseResumeAnalysis
+            
             pixelSize: parent.height * 0.9
-            enabled: false
+            enabled: ApplicationController.cleanFilesCount > 0 && ApplicationController.targetReady
+            text: "\ue255"
+        }
+
+        Icone {
+            id: btnStartPauseResumeAnalysis
+            anchors {
+                right: btnStartTransfer.left
+                rightMargin: 24
+                verticalCenter: parent.verticalCenter
+            }
+            
+            pixelSize: parent.height * 0.9
+            enabled: ApplicationController.queueSize > 0 && ApplicationController.analysisReady
             text: ApplicationController.systemState === Enums.SystemState.SystemReady ? "\ue039" : ApplicationController.systemState === Enums.SystemState.SystemRunning ? "\ue036" : "\ueb8b"
         }
 
         Icone {
+            id: btnStartOver
             anchors {
                 right: btnStartPauseResumeAnalysis.left
                 rightMargin: 24
                 verticalCenter: parent.verticalCenter
             }
-
-            id: btnStartOver
+            
             pixelSize: parent.height * 0.9
             enabled: false
             text: "\uf053"
         }
 
         Icone {
+            id: btnShutdown
             anchors {
                 left: parent.left
                 leftMargin: 24
                 verticalCenter: parent.verticalCenter
             }
-
-            id: btnShutdown
+            
             pixelSize: parent.height * 0.9
             enabled: true
             text: "\ue646" //"\ue9b2"

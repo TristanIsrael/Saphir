@@ -19,4 +19,13 @@ class DevModeHelper():
     def get_mocked_source_disk_path():
         current_script_path = Path(__file__).resolve()
         root_path = current_script_path.parent.parent.parent.parent
-        return root_path    
+        #root_path = Path("/Applications/Adobe\ Acrobat\ DC/Adobe\ Acrobat.app/Contents/Frameworks").resolve()
+        return root_path
+    
+    @staticmethod
+    def get_mocked_destination_disk_path():
+        return "/tmp/saphir/destination"
+    
+    @staticmethod
+    def get_storate_path():
+        return "/tmp/saphir/repository"

@@ -1,7 +1,7 @@
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, Signal, Slot
 from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray
 from Constants import LIBELLE_DOSSIER_PRECEDENT
-from Enums import Roles
+from Enums import Roles, FileStatus
 from psec import Api
 import humanize
 import collections
@@ -23,7 +23,7 @@ class PsecInputFilesListModel(QAbstractListModel):
     changeSelection = Signal(str)  # dossier
 
     # Variables
-    fichiers_:list[dict] = list()
+    fichiers_:dict
     selection_:list[dict] = list()
     #racine_ = ""
     #dossierCourant_ = ""
@@ -31,19 +31,20 @@ class PsecInputFilesListModel(QAbstractListModel):
     # Caches locaux
     #cacheDossiers_ = {}
 
-    def __init__(self, parent=None):
+    def __init__(self, files:dict, parent=None):
         super().__init__(parent)       
+        self.fichiers_ = files
 
     def onSourceChanged(self):
         self.updateFilesList.emit()
 
-    def onSourceFilesListReceived(self, files_list:list):
+    '''def onSourceFilesListReceived(self, files_list:list):
         self.beginResetModel()
         self.fichiers_ = files_list
         self.endResetModel()
+    '''
 
     def rowCount(self, parent=QModelIndex()):
-        #qDebug("Files count : {}".format(len(self.fichiers_)))
         return len(self.fichiers_)
 
     def flags(self, index):
@@ -54,7 +55,7 @@ class PsecInputFilesListModel(QAbstractListModel):
             return None
 
         row = index.row()
-        fichier = self.fichiers_[row]
+        fichier = list(self.fichiers_.values())[row]
         #qDebug("fonction data() - filename:%s, filepath:%s" % (fichier["filename"], fichier["filepath"]))        
 
         if role == Roles.RoleType:
@@ -63,9 +64,15 @@ class PsecInputFilesListModel(QAbstractListModel):
         if role == Roles.RoleFilename:
             return fichier["name"]
         
-        if role == Roles.RoleFilepath:
+        if role == Roles.RolePath:
             return fichier["path"]
         
+        if role == Roles.RoleFilepath:
+            return fichier["filepath"]
+        
+        if role == Roles.RoleStatus:
+            return fichier["status"]
+
         if role == Roles.RoleSelected:
             if (
                 fichier["type"] == "file"
@@ -123,17 +130,19 @@ class PsecInputFilesListModel(QAbstractListModel):
         roles = {
             Roles.RoleType: b'type',
             Roles.RoleFilename: b'filename',
+            Roles.RolePath: b'path',
             Roles.RoleFilepath: b'filepath',
             Roles.RoleSelected: b'selected',
             Roles.RolePartialSelection: b'partialSelection',
             Roles.RoleProgress: b'progress',
-            Roles.RoleInQueue: b'inqueue'
+            Roles.RoleInQueue: b'inqueue',
+            Roles.RoleStatus: b'status'
         }
         return roles
     
     def set_selected(self, index:QModelIndex):
         if len(self.fichiers_) > index.row():            
-            file = self.fichiers_[index.row()]
+            file = list(self.fichiers_.values())[index.row()]
             self.selection_ = [ file ]
             self.selectionChanged.emit()
 
@@ -144,7 +153,7 @@ class PsecInputFilesListModel(QAbstractListModel):
     def set_file_in_queue(self, filepath:str, inqueue:bool = True):
         for row in range(len(self.fichiers_)):
             file = self.fichiers_[row]
-            if "{}/{}".format(file["path"], file["name"]) == filepath:
+            if file["filepath"] == filepath:
                 file["inqueue"] = inqueue
                 index = self.index(row, 0)
                 self.dataChanged.emit(index, index, Roles.RoleInQueue)
@@ -157,6 +166,28 @@ class PsecInputFilesListModel(QAbstractListModel):
         idxEnd = self.index(self.rowCount()-1, 0)
         self.dataChanged.emit(idxBegin, idxEnd, [Roles.RoleSelected])
 
+    def reset(self):
+        self.beginResetModel()
+        #self.fichiers_.clear()
+        self.selection_.clear()
+        self.endResetModel()
+
+    def on_files_updated(self):
+        self.beginResetModel()
+        self.endResetModel()
+
+    def on_file_updated(self, filepath:str, field:str):
+        row = list(self.fichiers_.keys()).index(filepath)
+        idx = self.index(row, 0)
+
+        role = Qt.DisplayRole
+        if field == "status":
+            role = Roles.RoleStatus
+        elif field == "progress":
+            role = Roles.RoleProgress
+
+        self.dataChanged.emit(idx, idx, role)
+
     #####
     ######
     ######
@@ -164,13 +195,14 @@ class PsecInputFilesListModel(QAbstractListModel):
         #qDebug("Recherche du fichier %s" %filepath)            
         return next((f for f in self.selection_ if f['path'].startswith(filepath)), None)        
 
-    def findFileByFilepath(self, filepath):        
+    def findFileByFilepath(self, filepath) -> dict:
+        return self.fichiers_[filepath]
         #qDebug("Recherche du fichier %s" %filepath)
-        return next((f for f in self.fichiers_ if filepath in f['path']), None)
+        #return next((f for f in self.fichiers_ if filepath in f['path']), dict())
 
-    def findSelectedFileByFilepath(self, filepath):
+    def findSelectedFileByFilepath(self, filepath) -> dict:
         #qDebug("Recherche du fichier %s" %filepath)        
-        return next((f for f in self.selection_ if f['path'] == filepath), None)
+        return next((f for f in self.selection_ if f['path'] == filepath), dict())
 
     # Cette fonction supprime effectivement un fichier
     # de la liste des fichiers sélectionnés

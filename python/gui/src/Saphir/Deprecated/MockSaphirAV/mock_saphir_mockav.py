@@ -21,7 +21,7 @@ class MockSaphirAV(AbstractAntivirusController):
         file_path = command.arguments.get("filepath")
         fingerprint = command.arguments.get("fingerprint")
 
-        repo_path = "{}/{}".format(Parametres().parametre(Cles.CHEMIN_DEPOT_DOMU), file_path)
+        repo_path = "{}/{}".format(Parametres().parametre(Cles.STORAGE_PATH_DOMU), file_path)
 
         self.logger().info("Starting analysis for {}".format(file_path))
         self.logger().debug("File location is {}".format(repo_path))
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     #m.start()
 
     # Surcharge des paramètres d'environnement pour le test
-    Parametres().set_parametre(Cles.CHEMIN_DEPOT_DOMU, "/tmp/mockpsec/mount_point")
+    Parametres().set_parametre(Cles.STORAGE_PATH_DOMU, "/tmp/mockpsec/mount_point")
 
     cmd = Commande("analyze_file", { "filepath": "/Saphir/Panoptiscan.qmlproject" })
     m._execute_command_analyse_file(cmd)

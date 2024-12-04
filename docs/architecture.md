@@ -35,6 +35,10 @@ The messages exchanged by the components are described in this chapter.
 
 | Topic | Request payload | Request description | Response payload | Response description |
 |--|--|--|--|--|
-| `saphir/analyse` | `{ "filepath": "" }` | Triggers the analysis of a file | `{ "component": "", "filepath": "", "success": true\|false, "details": "" }` | The `component` field contains the name of the component who analyzed the file |
+| `saphir/analysis` | `{ "filepath": "" }` | Triggers the analysis of a file | `{ "component": "", "filepath": "", "success": true\|false, "details": "" }` | The `component` field contains the name of the component who analyzed the file |
 
 ### Notifications
+
+| Topic | Payload | Description | 
+|--|--|--|
+| `saphir/analysis/status` | `{ "filepath": "", status: "", progress: 0-100 }` | Notifies the status of analysis of a file |

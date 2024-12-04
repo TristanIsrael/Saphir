@@ -48,7 +48,7 @@ Rectangle {
     TableView {
         id: tblView
 
-        model: ApplicationController.queueListModel
+        model: ApplicationController.queueListModel        
 
         clip: true
         anchors {
@@ -69,13 +69,18 @@ Rectangle {
             Rectangle {
                 implicitHeight: parent.height
                 implicitWidth: parent.width * (progress / 100)
-                color: progress === 100 ? infected ? Constants.alertColor : Constants.successColor : Constants.progressColor
+                color: textbackgroundColor(status, progress)
+                /*border {
+                    width: status == Enums.FileStatus.FileAnalysing ? 2 : 0
+                    color: Constants.headingColor
+                }*/
             }
 
             PText {
                 text: filepath
                 level: PText.TextLevel.Paragraph
-                color: status === Enums.FileStatus.FileStatusUndefined ? Constants.disabledColor : progress === 100 ? Constants.contrastColor : Constants.textColor
+                color: textColor(status, progress)
+                    //status === Enums.FileStatus.FileStatusUndefined ? Constants.disabledColor : progress === 100 ? Constants.contrastColor : Constants.textColor
                 elide: Text.ElideMiddle
 
                 /*Component.onCompleted: function() {
@@ -143,10 +148,27 @@ Rectangle {
             left: parent.left
             right: parent.right
         }
+    }
 
-        //visible: globalProgress > 0        
-        infected: 0
-        clean: 0
-        total: root.tblView.rows
+    // Functions
+    function textbackgroundColor(status, progress) {        
+        switch(status) {
+            case Enums.FileStatus.FileStatusUndefined: return Constants.contrastColor
+            case Enums.FileStatus.FileAvailableInRepository: return Constants.errorColor
+            case Enums.FileStatus.FileClean: return Constants.successColor
+            case Enums.FileStatus.FileInfected: return Constants.errorColor
+            case Enums.FileStatus.FileAnalysing: return Constants.selectionColor
+            default: return Constants.contrastColor
+        }                    
+    }
+
+    function textColor(status, progress) {
+        switch(status) {
+            case Enums.FileStatus.FileStatusUndefined: return Constants.disabledColor
+            case Enums.FileStatus.FileAvailableInRepository: return Constants.textColor
+            case Enums.FileStatus.FileClean: return Constants.contrastColor
+            case Enums.FileStatus.FileInfected: return Constants.contrastColor            
+            default: return Constants.disabledColor
+        }
     }
 }

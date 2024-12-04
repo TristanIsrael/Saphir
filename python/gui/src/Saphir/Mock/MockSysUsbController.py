@@ -1,8 +1,6 @@
-import os, shutil
+import os, shutil, threading
 from psec import MqttClient, ConnectionType, Topics, ResponseFactory, FichierHelper, MqttHelper, NotificationFactory, Constantes
 from DevModeHelper import DevModeHelper
-
-STORAGE = "/tmp/saphir/repository"
 
 class MockSysUsbController():
 
@@ -19,6 +17,8 @@ class MockSysUsbController():
         self.__debug("MQTT client connected")
         self.mqtt_client.subscribe("{}/+/+/request".format(Topics.SYSTEM))
         self.mqtt_client.subscribe("{}/+/request".format(Topics.DISCOVER))
+
+        #threading.Timer(10.0, self.__connect_destination).start()
 
     def __on_mqtt_message(self, topic:str, payload:dict):
         self.__debug("Message received on topic {}".format(topic))
@@ -56,13 +56,13 @@ class MockSysUsbController():
             filepath = payload.get("filepath", "")
 
             # Verify and create the local storage if needed
-            if not os.path.exists(STORAGE):
+            if not os.path.exists(DevModeHelper.get_storate_path()):
                 # Créer le dossier
-                os.makedirs(STORAGE)
+                os.makedirs(DevModeHelper.get_storate_path())
 
             root_path = DevModeHelper.get_mocked_source_disk_path()
             source_path = "{}/{}".format(root_path, filepath)
-            dest_filepath = "{}/{}".format(STORAGE, filepath)
+            dest_filepath = "{}/{}".format(DevModeHelper.get_storate_path(), filepath)
             dest_path = os.path.dirname(dest_filepath)
 
             # Verify and create paths if needed
@@ -89,5 +89,18 @@ class MockSysUsbController():
 
             self.mqtt_client.publish("{}/response".format(Topics.DISCOVER_COMPONENTS), response)
 
+    def __connect_destination(self):        
+        notif = NotificationFactory.create_notification_disk_state("TARGET", "connected")
+        self.mqtt_client.publish(Topics.DISK_STATE, notif)
+
     def __debug(self, message:str):
         print("[SYS-USB] {}".format(message))
+
+
+if __name__ == "__main__":
+    print("Starting Mock sys-usb controller")
+    mock = MockSysUsbController()
+    mock.start()
+
+    lock = threading.Event()
+    lock.wait()

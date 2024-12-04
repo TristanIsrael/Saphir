@@ -17,12 +17,13 @@ class FileStatus(Enum):
 class Roles():    
     RoleType = Qt.UserRole + 1
     RoleFilename = Qt.UserRole + 2
-    RoleFilepath = Qt.UserRole + 3
+    RolePath = Qt.UserRole + 3
     RoleSelected = Qt.UserRole + 4
     RolePartialSelection = Qt.UserRole + 5
     RoleProgress = Qt.UserRole + 6
     RoleInQueue = Qt.UserRole +7
     RoleStatus = Qt.UserRole +8
+    RoleFilepath = Qt.UserRole +9
 
 @QmlElement
 class Enums(QObject):

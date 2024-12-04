@@ -1,13 +1,10 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import net.alefbet
 
 GridLayout {
     id: lyt
-
-    property int infected: 99
-    property int clean: 99
-    property int total: 9999
 
     rows: 1
     columns: 3
@@ -20,7 +17,7 @@ GridLayout {
 
     Text {
         id: lblInfectedFiles
-        text: lyt.infected
+        text: ApplicationController.queueListModel.infectedFilesCount
         color: Constants.alertColor
         Layout.fillHeight: true
         Layout.fillWidth: true
@@ -35,7 +32,7 @@ GridLayout {
 
     Text {
         id: lblTotalFiles
-        text: lyt.total
+        text: ApplicationController.queueListModel.totalFilesCount
         color: Constants.textColor
         Layout.fillHeight: true
         Layout.fillWidth: true
@@ -50,7 +47,7 @@ GridLayout {
 
     Text {
         id: lblCleanFiles
-        text: lyt.clean
+        text: ApplicationController.queueListModel.cleanFilesCount
         color: Constants.successColor
         Layout.fillHeight: true
         Layout.fillWidth: true
