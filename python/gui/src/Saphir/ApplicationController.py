@@ -45,6 +45,11 @@ class ApplicationController(QObject):
     queueSizeChanged = Signal(int)
     analysisReadyChanged = Signal(bool)
 
+    totalFilesCountChanged = Signal(int)
+    infectedFilesCountChanged = Signal(int)
+    cleanFilesCountChanged = Signal(int)
+    globalProgressChanged = Signal(int)
+
     # Fonctions publiques
     def __init__(self, parent=None):
         QObject.__init__(self, parent)
@@ -78,6 +83,9 @@ class ApplicationController(QObject):
         #Api().info("User added the whole disk to the queue")
 
         for _, file in self.__inputFilesList.items():
+            if file["type"] != "file":
+                continue
+
             file["inqueue"] = True
             #self.queueListModel_.itemUpdated(filepath)
             #self.__inputFilesList.append(file)
@@ -86,6 +94,7 @@ class ApplicationController(QObject):
         
         self.inputFilesListModel_.on_files_updated()
         self.queueSizeChanged.emit(len(self.__inputFilesList))
+        self.totalFilesCountChanged.emit(self.__total_files_count())
 
     @Slot(str, str)
     def enqueue_file(self, filetype:str, filepath:str): 
@@ -111,6 +120,7 @@ class ApplicationController(QObject):
 
         self.inputFilesListModel_.on_files_updated()
         self.queueSizeChanged.emit(self.__queue_size())
+        self.totalFilesCountChanged.emit(self.__total_files_count())        
 
     @Slot(str)
     def dequeue_file(self, filepath:str):
@@ -122,7 +132,9 @@ class ApplicationController(QObject):
         if file is not None:
             file["inqueue"] = False
             #self.queueListModel_.itemUpdated(filepath)
-            self.inputFilesListModel_.on_files_updated()
+            self.inputFilesListModel_.on_file_updated(file["filepath"], "inqueue")
+            self.queueSizeChanged.emit(self.__queue_size())
+            self.totalFilesCountChanged.emit(self.__total_files_count())     
 
     @Slot()
     def start_stop_analysis(self):
@@ -137,10 +149,9 @@ class ApplicationController(QObject):
     def start_transfer(self):
         Api().info("Start transfer of clean files to target disk")
 
-        for _, file in self.__inputFilesList:
-            if file.get("status") == FileStatus.FileClean:
-                filepath = file.get("filepath")
-                Api().copy_file(self.sourceName_, filepath, self.targetName_)
+        for filepath_, file_ in self.__inputFilesList.items():
+            if file_.get("status") == FileStatus.FileClean:
+                Api().copy_file(self.sourceName_, filepath_, self.targetName_)
 
     @Slot(str, str)
     def debug(self, message:str, module:str):
@@ -161,11 +172,12 @@ class ApplicationController(QObject):
     def __on_api_ready(self):        
         self.pret_ = True
         self.analysisController_ = AnalysisController(files=self.__inputFilesList, analysis_components= self.analysisComponents_, files_list_model=self.inputFilesListModel_)
+        self.analysisController_.resultsChanged.connect(self.__on_results_changed)
         Api().discover_components()
         Api().get_disks_list()        
 
     def __on_message_received(self, topic:str, payload:dict):        
-        print("[ApplicationController] topic: {}".format(topic))
+        #print("[ApplicationController] topic: {}".format(topic))
         #print("payload: {}".format(payload))
         
         if topic == Topics.DISK_STATE:
@@ -314,6 +326,10 @@ class ApplicationController(QObject):
         self.analysisReady_ = ready
         self.analysisReadyChanged.emit(self.analysisReady_)
 
+    def __on_results_changed(self):        
+        self.cleanFilesCountChanged.emit(self.__clean_files_count())        
+        self.infectedFilesCountChanged.emit(self.__infected_files_count())        
+        self.globalProgressChanged.emit(self.__global_progress())
 
     ###
     # Getters and setters
@@ -371,7 +387,28 @@ class ApplicationController(QObject):
 
     def __analysisReady(self):
         return self.analysisReady_
+    
+    def __analysis_controller(self):
+        return self.analysisController_    
+    
+    def __total_files_count(self):
+        return sum(1 for item in self.__inputFilesList.values() if item.get("inqueue", False) == True and item.get("type", "") == "file")
 
+    def __clean_files_count(self):
+        return sum(1 for item in self.__inputFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean)
+
+    def __infected_files_count(self):
+        return (
+            sum(1 for item in self.__inputFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileInfected)
+            + sum(1 for item in self.__inputFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileAnalysisError)
+        )
+    
+    def __global_progress(self):
+        if self.__total_files_count() == 0:
+            return 0
+        
+        return (self.__clean_files_count() + self.__infected_files_count())*100 / self.__total_files_count()
+    
     pret = Property(bool, __pret, __set_pret, notify=pretChanged) 
     sourceName = Property(str, __sourceName, notify= sourceNameChanged)
     sourceReady = Property(bool, __sourceReady, notify= sourceReadyChanged)
@@ -384,3 +421,9 @@ class ApplicationController(QObject):
     systemState = Property(int, __systemState, notify= systemStateChanged)
     queueSize = Property(int, __queue_size, notify= queueSizeChanged)
     analysisReady = Property(bool, __analysisReady, notify= analysisReadyChanged)
+    analysisController = Property(AnalysisController, __analysis_controller, constant=True)
+
+    totalFilesCount = Property(int, __total_files_count, notify= totalFilesCountChanged)
+    infectedFilesCount = Property(int, __infected_files_count, notify= infectedFilesCountChanged)
+    cleanFilesCount = Property(int, __clean_files_count, notify= cleanFilesCountChanged)
+    globalProgress = Property(int, __global_progress, notify= globalProgressChanged)

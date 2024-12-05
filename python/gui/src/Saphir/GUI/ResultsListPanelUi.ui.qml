@@ -6,7 +6,6 @@ import net.alefbet
 Rectangle {
     id: root
 
-    property int globalProgress: 0
     property alias tblView: tblView
     property alias model: tblView.model
     property alias pnlDigits: pnlDigits
@@ -37,9 +36,7 @@ Rectangle {
 
             PText {
                 id: lblDriveName
-                text: globalProgress > 0 ? qsTr("Analyse en cours (%1 %)").arg(
-                                               globalProgress) : qsTr(
-                                               "Aucune analyse en cours")
+                text: globalProgressLabel()
                 color: Constants.contrastColor
             }
         }
@@ -53,18 +50,24 @@ Rectangle {
         clip: true
         anchors {
             top: entete.bottom
+            topMargin: 10
             left: parent.left
             right: parent.right
             bottom: pnlDigits.top
-            margins: 10
+            bottomMargin: 10
         }
 
         //visible: globalProgress > 0
         rowSpacing: 0
+        ScrollBar.vertical: ScrollBar {
+            id: scrollbar
+            policy: ScrollBar.AsNeeded
+        }
 
         delegate: Rectangle {
-            implicitWidth: tblView.width
-            implicitHeight: progress < 100 ? 40 : 0.00001
+            implicitWidth: tblView.width - scrollbar.width
+            implicitHeight: 40
+            //implicitHeight: progress < 100 ? 40 : 0.00001
 
             Rectangle {
                 implicitHeight: parent.height
@@ -107,7 +110,7 @@ Rectangle {
                     rightMargin: 5
                     verticalCenter: parent.verticalCenter
                 }
-                visible: (mAreaItem.containsMouse || mAreaDel.containsMouse)
+                visible: (mAreaItem.containsMouse || mAreaDel.containsMouse) && progress === 0
                 pixelSize: 40                    
 
                 Connections {
@@ -145,19 +148,21 @@ Rectangle {
         height: parent.width / 6
         anchors {
             bottom: parent.bottom
-            left: parent.left
-            right: parent.right
+            horizontalCenter: parent.horizontalCenter
+            //left: parent.left
+            //right: parent.right
         }
     }
 
     // Functions
-    function textbackgroundColor(status, progress) {        
+    function textbackgroundColor(status, progress) { 
         switch(status) {
             case Enums.FileStatus.FileStatusUndefined: return Constants.contrastColor
-            case Enums.FileStatus.FileAvailableInRepository: return Constants.errorColor
+            case Enums.FileStatus.FileAvailableInRepository: return Constants.selectionColor
             case Enums.FileStatus.FileClean: return Constants.successColor
             case Enums.FileStatus.FileInfected: return Constants.errorColor
             case Enums.FileStatus.FileAnalysing: return Constants.selectionColor
+            case Enums.FileStatus.FileAnalysisError: return Constants.selectionColor
             default: return Constants.contrastColor
         }                    
     }
@@ -167,8 +172,21 @@ Rectangle {
             case Enums.FileStatus.FileStatusUndefined: return Constants.disabledColor
             case Enums.FileStatus.FileAvailableInRepository: return Constants.textColor
             case Enums.FileStatus.FileClean: return Constants.contrastColor
-            case Enums.FileStatus.FileInfected: return Constants.contrastColor            
-            default: return Constants.disabledColor
+            case Enums.FileStatus.FileInfected: return Constants.contrastColor   
+            case Enums.FileStatus.FileAnalysing: return Constants.textColor   
+            case Enums.FileStatus.FileAnalysisError: return Constants.errorColor      
+            default: return Constants.textColor
+        }
+    }
+
+    function globalProgressLabel() {
+        if(ApplicationController.globalProgress > 0) {
+            if(ApplicationController.globalProgress === 100) {
+                return qsTr("Analyse terminée")
+            }            
+            return qsTr("Analyse en cours (%1 %)").arg(ApplicationController.globalProgress)
+        } else { 
+            return qsTr("Aucune analyse en cours")
         }
     }
 }

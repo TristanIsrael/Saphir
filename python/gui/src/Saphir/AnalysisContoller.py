@@ -22,6 +22,7 @@ class AnalysisController(QObject):
 
     # Signals
     stateChanged = Signal()
+    resultsChanged = Signal()
 
     def __init__(self, files:dict, analysis_components:list, files_list_model:PsecInputFilesListModel, parent:QObject|None=None) -> None:
         QObject.__init__(self, parent)
@@ -53,7 +54,7 @@ class AnalysisController(QObject):
     #
     def __on_api_message(self, topic:str, payload:dict) -> None:
         Api().debug("Message received on topic {}".format(topic), "AnalysisController")
-        print("[AnalysisController]", topic, payload)
+        #print("[AnalysisController]", topic, payload)
         
         if topic == Topics.NEW_FILE:
             if not MqttHelper.check_payload(payload, ["disk", "filepath"]):
@@ -75,7 +76,7 @@ class AnalysisController(QObject):
                 Api().error("Malformed message for topic {}".format(topic))
                 return
             
-            self.__handle_status(payload.get("filepath", ""), payload.get("status", int), payload.get("progress", 0))
+            self.__handle_status(payload.get("filepath", ""), FileStatus(payload.get("status", 0)), payload.get("progress", 0))
 
     def __on_file_available(self, filepath:str) -> None:
         #fileInfo = self.__get_file_by_filepath(filepath)
@@ -93,11 +94,12 @@ class AnalysisController(QObject):
             print("EXCEPTION")
             print(e)
 
-    def __handle_status(self, filepath:str, status:int, progress:int):
+    def __handle_status(self, filepath:str, status:FileStatus, progress:int):
         file = self.__files[filepath]
         file["status"] = status
-        file["progress"] = progress
-        #self.__files_list_model.on_files_updated()
+        if progress > file.get("progress", 0):
+            file["progress"] = progress
+        
         self.__files_list_model.on_file_updated(filepath, "status")
         self.__files_list_model.on_file_updated(filepath, "progress")
         
@@ -107,11 +109,13 @@ class AnalysisController(QObject):
         file["progress"] = 100
         self.__files_list_model.on_file_updated(filepath, "status")
         self.__files_list_model.on_file_updated(filepath, "progress")
+        
+        self.resultsChanged.emit()
 
     ######
     ## Getters and setters
     #
     def __state(self) -> AnalysisState:
-        return self.state_
+        return self.state_    
 
     state = Property(int, __state, notify= stateChanged)

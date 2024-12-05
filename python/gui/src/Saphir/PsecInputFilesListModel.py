@@ -71,7 +71,10 @@ class PsecInputFilesListModel(QAbstractListModel):
             return fichier["filepath"]
         
         if role == Roles.RoleStatus:
-            return fichier["status"]
+            return fichier["status"].value
+        
+        if role == Roles.RoleProgress:
+            return fichier.get("progress", 0)
 
         if role == Roles.RoleSelected:
             if (
@@ -88,23 +91,7 @@ class PsecInputFilesListModel(QAbstractListModel):
                 #qDebug("--non-sélectionné")
                 return True
             
-            return False
-        
-        '''if role == Roles.RolePartialSelection:  
-            if (
-                fichier["type"] == "folder"
-                and fichier["name"] != self.LibelleDossierPrecedent
-                and self.findFolderInSelection(fichier["path"]) is not None
-            ):            
-                if self.isFolderTotallySelected(fichier["path"]):
-                    #qDebug("//total")
-                    return False
-                else:
-                    #qDebug("//partiel")
-                    return True
-            
-            return False    
-        '''
+            return False        
         
         if role == Roles.RoleProgress: #0 to 100
             return 0
@@ -185,6 +172,8 @@ class PsecInputFilesListModel(QAbstractListModel):
             role = Roles.RoleStatus
         elif field == "progress":
             role = Roles.RoleProgress
+        elif field == "inqueue":
+            role = Roles.RoleInQueue
 
         self.dataChanged.emit(idx, idx, role)
 

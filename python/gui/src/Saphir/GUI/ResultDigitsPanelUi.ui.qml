@@ -17,7 +17,7 @@ GridLayout {
 
     Text {
         id: lblInfectedFiles
-        text: ApplicationController.queueListModel.infectedFilesCount
+        text: ApplicationController.infectedFilesCount
         color: Constants.alertColor
         Layout.fillHeight: true
         Layout.fillWidth: true
@@ -32,7 +32,7 @@ GridLayout {
 
     Text {
         id: lblTotalFiles
-        text: ApplicationController.queueListModel.totalFilesCount
+        text: ApplicationController.totalFilesCount
         color: Constants.textColor
         Layout.fillHeight: true
         Layout.fillWidth: true
@@ -47,7 +47,7 @@ GridLayout {
 
     Text {
         id: lblCleanFiles
-        text: ApplicationController.queueListModel.cleanFilesCount
+        text: ApplicationController.cleanFilesCount
         color: Constants.successColor
         Layout.fillHeight: true
         Layout.fillWidth: true

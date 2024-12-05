@@ -7,7 +7,7 @@ StatePanelUi {
     Connections {
         target: ApplicationController
         
-        onSystemStateChanged: function() {
+        function onSystemStateChanged() {
             console.debug("Current system state:", ApplicationController.systemState)
             console.debug("blah:", Enums.SystemState.SystemRunning)
             switch(ApplicationController.systemState) {            

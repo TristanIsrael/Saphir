@@ -124,16 +124,18 @@ Rectangle {
             rowSpacing: 0
             model: root.filesModel
             clip: true
-            //selectionBehavior: TableView.SelectRows
-            //selectionMode: TableView.SingleSelection
-            //selectionModel: ItemSelectionModel{}
+            
+            ScrollBar.vertical: ScrollBar {
+                id: scrollbar
+                policy: ScrollBar.AsNeeded
+            }
 
             delegate: Rectangle {
                 id: dlg
 
                 required property bool selected        
                 required property var model        
-                implicitWidth: tblView.width
+                implicitWidth: tblView.width - scrollbar.width
                 implicitHeight: 40
 
                 //Un fichier analysé ne peut pas être sélectionné
@@ -229,7 +231,7 @@ Rectangle {
 
                 Connections {
                     function onClicked() {                                                
-                        var addToQueue = []
+                        /*var addToQueue = []
 
                         for(var row = 0 ; row < root.filesModel.rowCount() ; row++) {                            
                             const idx = root.filesModel.index(row, 0)
@@ -247,7 +249,8 @@ Rectangle {
 
                         for(var i = addToQueue.length-1 ; i >=0 ; i--) {
                             root.filesModel.setData(addToQueue[i], true, root.roleInqueue)
-                        }
+                        }*/
+                        ApplicationController.enqueue_all_files()
                     }
                 }
             }
@@ -271,12 +274,12 @@ Rectangle {
         visible: !diskReady
     }
 
-    Connections {
+    /*Connections {
         target: root.filesModel
         function onCurrentFolderChanged() {
             root.tblView.positionViewAtRow(0, TableView.Visible)
         }
-    }
+    }*/
 
     /** Models */
     ListModel {

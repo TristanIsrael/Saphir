@@ -17,9 +17,9 @@ class DevModeHelper():
 
     @staticmethod
     def get_mocked_source_disk_path():
-        current_script_path = Path(__file__).resolve()
-        root_path = current_script_path.parent.parent.parent.parent
-        #root_path = Path("/Applications/Adobe\ Acrobat\ DC/Adobe\ Acrobat.app/Contents/Frameworks").resolve()
+        #current_script_path = Path(__file__).resolve()
+        #root_path = current_script_path.parent.parent.parent.parent
+        root_path = Path("/Applications/Adobe Acrobat DC/Adobe Acrobat.app/Contents/Frameworks").resolve()
         return root_path
     
     @staticmethod
