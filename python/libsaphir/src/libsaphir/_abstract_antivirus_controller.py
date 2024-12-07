@@ -75,7 +75,7 @@ class AbstractAntivirusController(ABC):
         self.debug("Current CPU count is {}. Using {} workers.".format(os.cpu_count(), self.__max_workers))
         Api().subscribe("{}/request".format(Topics.DISCOVER_COMPONENTS))
         Api().subscribe("{}/request".format(TOPIC_ANALYSE_FILE))
-        self._on_api_ready()
+        self.on_api_ready()
 
     def __on_message_received(self, topic:str, payload:dict):
         if topic == "{}/request".format(Topics.DISCOVER_COMPONENTS):

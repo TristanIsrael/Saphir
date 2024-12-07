@@ -1,6 +1,7 @@
 from enum import Enum
 from PySide6.QtCore import QEnum, QObject, Qt
 from PySide6.QtQml import QmlElement
+from libsaphir import FileStatus
 
 QML_IMPORT_NAME = "net.alefbet"
 QML_IMPORT_MAJOR_VERSION = 1
@@ -10,9 +11,6 @@ class SystemState(Enum):
 
 class AnalysisState(Enum):
     AnalysisNotReady, AnalysisRunning, AnalysisStopped = range(3)
-
-class FileStatus(Enum):
-    FileStatusUndefined, FileAvailableInRepository, FileAnalysing, FileAnalysisError, FileClean, FileInfected = range(6)
 
 class Roles():    
     RoleType = Qt.UserRole + 1

@@ -1,6 +1,6 @@
-from abstract_antivirus_controller import AbstractAntivirusController
+from libsaphir._abstract_antivirus_controller import AbstractAntivirusController
 from psec import EtatComposant, Parametres, Cles
-from Enums import FileStatus
+from libsaphir import FileStatus
 import subprocess, threading, os
 
 class ClamAntivirusController(AbstractAntivirusController):

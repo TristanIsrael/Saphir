@@ -10,7 +10,7 @@ depend() {
 start() {
     ebegin "Starting Clam antivirus"
 
-    start-stop-daemon --start --make-pidfile --exec /usr/bin/python3 --pidfile /var/run/$name.pid --background -- /usr/lib/saphir/bin/av-controller.py clam 
+    start-stop-daemon --start --make-pidfile --exec /usr/bin/python3 --pidfile /var/run/$name.pid --background -- /usr/lib/saphir/bin/av-controller.py
 }
 
 stop() {

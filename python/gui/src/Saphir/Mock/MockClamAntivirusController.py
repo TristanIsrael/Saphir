@@ -1,4 +1,4 @@
-from AntivirusControllers.ClamAntivirusController import ClamAntivirusController
+from libsaphir import ClamAntivirusController
 from DevModeHelper import DevModeHelper
 from psec import Parametres, Cles
 import threading
