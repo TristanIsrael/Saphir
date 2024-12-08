@@ -93,8 +93,10 @@ Rectangle {
         StatePanel {
             id: pnlState
             anchors {
-                verticalCenter: parent.verticalCenter
-                horizontalCenter: parent.horizontalCenter
+                top: parent.top
+                bottom: parent.bottom
+                left: btnHelp.right
+                right: btnStartOver.left
             }            
         }
     }

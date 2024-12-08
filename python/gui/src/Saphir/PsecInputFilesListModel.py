@@ -1,6 +1,6 @@
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, Signal, Slot
 from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray
-from Constants import LIBELLE_DOSSIER_PRECEDENT
+from constants import LIBELLE_DOSSIER_PRECEDENT
 from Enums import Roles, FileStatus
 from psec import Api
 import humanize
@@ -25,6 +25,8 @@ class PsecInputFilesListModel(QAbstractListModel):
     # Variables
     fichiers_:dict
     selection_:list[dict] = list()
+    __rowCount = 0
+    __lastRowCount = 0
     #racine_ = ""
     #dossierCourant_ = ""
     
@@ -45,7 +47,13 @@ class PsecInputFilesListModel(QAbstractListModel):
     '''
 
     def rowCount(self, parent=QModelIndex()):
-        return len(self.fichiers_)
+        '''rows = len(self.fichiers_)
+        if self.__lastRowCount != rows:
+            print("rowCount()", self.__lastRowCount, rows)
+        self.__lastRowCount = rows
+        return rows'''
+        self.__lastRowCount = self.__rowCount
+        return self.__rowCount
 
     def flags(self, index):
         return Qt.ItemIsEditable
@@ -59,7 +67,7 @@ class PsecInputFilesListModel(QAbstractListModel):
         #qDebug("fonction data() - filename:%s, filepath:%s" % (fichier["filename"], fichier["filepath"]))        
 
         if role == Roles.RoleType:
-            return fichier["type"]
+            return fichier.get("type", "")
         
         if role == Roles.RoleFilename:
             return fichier["name"]
@@ -155,28 +163,41 @@ class PsecInputFilesListModel(QAbstractListModel):
 
     def reset(self):
         self.beginResetModel()
-        #self.fichiers_.clear()
         self.selection_.clear()
+        self.__lastRowCount = 0
+        self.__rowCount = 0
         self.endResetModel()
 
-    def on_files_updated(self):
-        self.beginResetModel()
-        self.endResetModel()
+    #def on_files_updated(self):
+    #    self.beginResetModel()
+    #    self.endResetModel()
 
-    def on_file_updated(self, filepath:str, field:str):
+    #def on_file_updated(self, filepath:str, field:str):
+    def on_file_updated(self, filepath:str, fields:list):
         row = list(self.fichiers_.keys()).index(filepath)
+        #print(filepath)
         idx = self.index(row, 0)
 
-        role = Qt.DisplayRole
-        if field == "status":
-            role = Roles.RoleStatus
-        elif field == "progress":
-            role = Roles.RoleProgress
-        elif field == "inqueue":
-            role = Roles.RoleInQueue
+        if not idx.isValid():
+            return
 
-        self.dataChanged.emit(idx, idx, role)
+        roles = list()
+        if "status" in fields:
+            roles.append(Roles.RoleStatus)
+        if "progress" in fields:
+            roles.append(Roles.RoleProgress)
+        if "inqueue" in fields:
+            roles.append(Roles.RoleInQueue)
 
+        self.dataChanged.emit(idx, idx, roles)
+
+    def on_file_added(self):
+        self.__rowCount = len(self.fichiers_)
+        '''if self.__lastRowCount != rows:
+            print("on_file_added", self.__lastRowCount, rows)'''
+        self.beginInsertRows(QModelIndex(), self.__lastRowCount, self.__rowCount)
+        self.endInsertRows()
+        
     #####
     ######
     ######

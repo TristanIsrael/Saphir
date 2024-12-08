@@ -6,7 +6,6 @@ class QueueListProxyModel(QSortFilterProxyModel):
 
     def __init__(self, source_model:PsecInputFilesListModel, parent=None):
         super().__init__(parent)   
-        self.source_model_ = source_model
         self.setSourceModel(source_model)    
         self.setSortRole(Roles.RoleFilename)
         self.sort(0)
@@ -16,4 +15,5 @@ class QueueListProxyModel(QSortFilterProxyModel):
         inqueue = self.sourceModel().data(idx, Roles.RoleInQueue)
         type = self.sourceModel().data(idx, Roles.RoleType)
         
-        return inqueue and type != "folder"
+        res = inqueue and type != "folder"
+        return res if res is not None else True

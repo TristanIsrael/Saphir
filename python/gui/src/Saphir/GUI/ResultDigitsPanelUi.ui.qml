@@ -32,7 +32,7 @@ GridLayout {
 
     Text {
         id: lblTotalFiles
-        text: ApplicationController.totalFilesCount
+        text: ApplicationController.queueSize
         color: Constants.textColor
         Layout.fillHeight: true
         Layout.fillWidth: true

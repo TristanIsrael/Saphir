@@ -14,7 +14,7 @@ Item {
         }
 
         horizontalAlignment: Qt.AlignHCenter
-        text: ""
+        text: qsTr("Getting ready")
         level: PText.TextLevel.H3
     }
 
@@ -27,22 +27,48 @@ Item {
             bottomMargin: 5
         }
         horizontalAlignment: Qt.AlignHCenter
-        text: ""
+        text: qsTr("The system is starting")
         level: PText.TextLevel.Paragraph
     }
 
     states: [
         State {
+            name: "waiting"
+
+            PropertyChanges {
+                target: lblState
+                text: qsTr("En attente")
+            }
+
+            PropertyChanges {
+                target: lblInformation
+                text: qsTr("Veuillez connecter un support")
+            }
+        },
+        State {
             name: "starting"
 
             PropertyChanges {
                 target: lblState
-                text: qsTr("Initialisation en cours...")
+                text: qsTr("Démarrage")
             }
 
             PropertyChanges {
+                target: lblInformation
+                text: qsTr("Le système est en train de démarrer...")
+            }
+        },
+        State {
+            name: "waiting_for_user"
+
+            PropertyChanges {
                 target: lblState
-                text: qsTr("Veuillez patienter pendant le démarrage")
+                text: qsTr("En attente")
+            }
+
+            PropertyChanges {
+                target: lblInformation
+                text: qsTr("En attente d'une action utilisateur...")
             }
         },
         State {
@@ -50,29 +76,52 @@ Item {
 
             PropertyChanges {
                 target: lblState
-                text: qsTr("Prêt pour analyse")
+                text: qsTr("Prêt")
             }
 
             PropertyChanges {
-                target: lblState
-                text: qsTr("Veuillez sélectionner des fichiers")
+                target: lblInformation
+                text: qsTr("Le système est prêt")
             }
-        },
-        State {
-            name: "waiting"
-
-            PropertyChanges {
-                target: lblState
-                text: qsTr("En attente...")
-            }
-
-            PropertyChanges {
-                target: lblState
-                text: qsTr("Veuillez connecter un support")
-            }
-        },
+        },        
         State {
             name: "running"
+
+            PropertyChanges {
+                target: lblState
+                text: qsTr("Tâche en cours")
+            }
+
+            PropertyChanges {
+                target: lblInformation
+                text: qsTr("Une tâche est en cours...")
+            }
+        },
+        State {
+            name: "getting_files_list"
+
+            PropertyChanges {
+                target: lblState
+                text: qsTr("Lecture")
+            }
+
+            PropertyChanges {
+                target: lblInformation
+                text: qsTr("Récupération de la liste des fichiers...")
+            }
+        },
+        State {
+            name: "analysis_running"
+
+            PropertyChanges {
+                target: lblState
+                text: qsTr("Analyse")
+            }
+
+            PropertyChanges {
+                target: lblInformation
+                text: qsTr("Une analyse des fichiers est en cours...")
+            }
         }
     ]
 }

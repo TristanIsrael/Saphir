@@ -2,8 +2,8 @@ from psec import Api, MqttFactory, MqttHelper, Topics, EtatComposant
 import threading, time, os
 from queue import Queue
 from abc import ABC, abstractmethod
-from Constants import TOPIC_ANALYSE_FILE
-from Enums import FileStatus
+from libsaphir import TOPIC_ANALYSE_FILE
+from . import FileStatus
 
 class AbstractAntivirusController(ABC):
     """ This class manages the antivirus analysis.
@@ -75,7 +75,7 @@ class AbstractAntivirusController(ABC):
         self.debug("Current CPU count is {}. Using {} workers.".format(os.cpu_count(), self.__max_workers))
         Api().subscribe("{}/request".format(Topics.DISCOVER_COMPONENTS))
         Api().subscribe("{}/request".format(TOPIC_ANALYSE_FILE))
-        self.on_api_ready()
+        self._on_api_ready()
 
     def __on_message_received(self, topic:str, payload:dict):
         if topic == "{}/request".format(Topics.DISCOVER_COMPONENTS):

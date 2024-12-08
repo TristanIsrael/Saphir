@@ -9,7 +9,8 @@ Rectangle {
     property bool input: false
     property bool diskReady: input ? ApplicationController.sourceReady : ApplicationController.targetReady
     property string diskName: input ? ApplicationController.sourceName : ApplicationController.targetName
-    property var filesModel: diskReady ? (input ? inputFilesListModel : defaultModel) : root.defaultModel
+    //property var filesModel: diskReady ? (input ? inputFilesListModel : defaultModel) : root.defaultModel
+    property var filesModel: root.input ? ApplicationController.inputFilesListProxyModel : undefined
 
     property alias btnAddWholeDisk: btnAddWholeDisk
     property alias btnAddFolder: btnAddFolder
@@ -52,7 +53,8 @@ Rectangle {
 
                 Connections {
                     function onClicked() {
-                        root.filesModel.folder_up()
+                        //root.filesModel.folder_up()
+                        ApplicationController.go_to_parent_folder()
                         root.tblView.positionViewAtRow(0, TableView.Visible)
                     }
                 }
@@ -210,8 +212,9 @@ Rectangle {
                     }
 
                     Connections {
-                        function onClicked() {
-                            dlg.model.selected = !dlg.model.selected
+                        function onClicked() {                            
+                            ApplicationController.go_to_folder(filepath)
+                            //dlg.model.selected = !dlg.model.selected
                         }
                     }
                 }
@@ -281,14 +284,10 @@ Rectangle {
         }
     }*/
 
-    /** Models */
-    ListModel {
-        id: defaultModel
-    }
-
-    property var inputFilesListModel: ApplicationController.inputFilesListProxyModel
-    property int roleFilename: root.filesModel !== undefined ? root.filesModel.role("filename") : 0
+    /** Models */    
+    //property var inputFilesListModel: ApplicationController.inputFilesListProxyModel
+    /*property int roleFilename: root.filesModel !== undefined ? root.filesModel.role("filename") : 0
     property int roleFilepath: root.filesModel !== undefined ? root.filesModel.role("filepath") : 0
     property int roleFiletype: root.filesModel !== undefined ? root.filesModel.role("type") : 0
-    property int roleInqueue: root.filesModel !== undefined ? root.filesModel.role("inqueue") : 0
+    property int roleInqueue: root.filesModel !== undefined ? root.filesModel.role("inqueue") : 0*/
 }

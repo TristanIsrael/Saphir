@@ -8,7 +8,8 @@ import collections
 
 
 class PsecInputFilesListProxyModel(QSortFilterProxyModel):
-    current_folder_ = "/"
+    __current_folder = "/"
+
     ###
     # Signals
     currentFolderChanged = Signal()
@@ -25,7 +26,8 @@ class PsecInputFilesListProxyModel(QSortFilterProxyModel):
         path = self.sourceModel().data(idx, Roles.RolePath)
         inqueue = self.sourceModel().data(idx, Roles.RoleInQueue)        
         
-        return (path == self.current_folder_ and not inqueue)
+        res = (path == self.__current_folder and not inqueue)
+        return res if res is not None else False
 
     def setData(self, index, value, role=Qt.DisplayRole):
         srcidx = self.mapToSource(index)
@@ -39,7 +41,7 @@ class PsecInputFilesListProxyModel(QSortFilterProxyModel):
                 if file_type == "file":
                     self.source_model_.set_selected(srcidx)
                 else:
-                    self.__set_current_folder("{}/{}".format("" if file_path == "/" else file_path, file_name))                                                         
+                    self.set_current_folder("{}/{}".format("" if file_path == "/" else file_path, file_name))                                                         
 
             return True
         elif role == Roles.RoleInQueue:
@@ -47,7 +49,7 @@ class PsecInputFilesListProxyModel(QSortFilterProxyModel):
 
         return False
 
-    @Slot(int, result=str)
+    '''@Slot(int, result=str)
     def get_filepath_at_row(self, i:int):
         idx = self.index(i, 0)
         srcidx = self.mapToSource(idx)
@@ -74,7 +76,7 @@ class PsecInputFilesListProxyModel(QSortFilterProxyModel):
             paths.append(filepath)
 
         return paths
-
+    
     @Slot(result=list)
     def add_all_files_in_current_folder_to_queue(self):
         paths = list()
@@ -97,41 +99,37 @@ class PsecInputFilesListProxyModel(QSortFilterProxyModel):
 
     @Slot(str)
     def add_to_queue(self, filepath:str):
-        pass 
+        pass '''
 
     @Slot()
     def folder_up(self):
-        path = Path(self.current_folder_)        
-        self.__set_current_folder(path.parent.absolute().as_posix())
+        path = Path(self.__current_folder)        
+        self.set_current_folder(path.parent.absolute().as_posix())
 
-    @Slot(str, result=int)
-    def role(self, role_name:str):
-        '''for key,value in self.source_model_.roleNames():
-            if value == role_name:
-                return key
-        '''
+    '''@Slot(str, result=int)
+    def role(self, role_name:str):        
         roles = self.source_model_.roleNames()
         try:
             return list(roles.keys())[list(roles.values()).index(role_name.encode())]
         except:
             return -1
 
-        return -1
+        return -1'''
 
     ### 
     # Private functions
-    def __current_folder(self):
-        return self.current_folder_
+    def __get_current_folder(self):
+        return self.__current_folder
     
-    def __set_current_folder(self, current_folder:str):
-        if self.current_folder_ == current_folder:
+    def set_current_folder(self, current_folder:str):
+        if self.__current_folder == current_folder:
             return
         
-        self.current_folder_ = current_folder
+        self.__current_folder = current_folder
         self.currentFolderChanged.emit()
         self.source_model_.reset_selection()
-        self.invalidate()
+        self.invalidateFilter()
     
     ###
     # Properties
-    currentFolder = Property(str, fget= __current_folder, fset= __set_current_folder, notify= currentFolderChanged)
+    currentFolder = Property(str, fget= __get_current_folder, fset= set_current_folder, notify= currentFolderChanged)

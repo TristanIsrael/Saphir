@@ -134,4 +134,5 @@ FondEcranUi {
         visible: pnlEtatActions.btnHelp.pressed
         comment: qsTr("Mettre en pause l'analyse.")
     }
+
 }

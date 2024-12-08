@@ -45,7 +45,7 @@ Rectangle {
     TableView {
         id: tblView
 
-        model: ApplicationController.queueListModel        
+        model: ApplicationController.queueListModel
 
         clip: true
         anchors {
@@ -67,6 +67,7 @@ Rectangle {
         delegate: Rectangle {
             implicitWidth: tblView.width - scrollbar.width
             implicitHeight: 40
+            //visible: inqueue
             //implicitHeight: progress < 100 ? 40 : 0.00001
 
             Rectangle {

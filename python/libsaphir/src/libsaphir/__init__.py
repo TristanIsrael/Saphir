@@ -1,6 +1,7 @@
+from ._constants import TOPIC_ANALYSE_FILE, ANTIVIRUS_NEEDED
+from ._enums import FileStatus
 from ._abstract_antivirus_controller import AbstractAntivirusController
 from ._clam_antivirus_controller import ClamAntivirusController
-from enums import FileStatus
 
 __author__ = "Tristan Israël (tristan.israel@alefbet.net)"
 __version__ = '1.0'
@@ -10,7 +11,8 @@ from logging import NullHandler
 
 __all__ = [
     "AbstractAntivirusController", "ClamAntivirusController",
-    "FileStatus"
+    "FileStatus",
+    "ANTIVIRUS_NEEDED", "TOPIC_ANALYSE_FILE"
 ]
 
 logging.getLogger(__name__).addHandler(NullHandler())

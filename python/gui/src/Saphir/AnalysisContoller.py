@@ -1,7 +1,7 @@
 from PySide6.QtCore import QObject, Property, Signal
 from Enums import AnalysisState, FileStatus
 from PsecInputFilesListModel import PsecInputFilesListModel
-from Constants import TOPIC_ANALYSE_FILE
+from libsaphir import TOPIC_ANALYSE_FILE
 from psec import Api, Parametres, Topics
 from psec import Cles, MqttHelper
 from queue import Queue
@@ -17,18 +17,19 @@ class AnalysisController(QObject):
     state_ = AnalysisState.AnalysisStopped
     __files:dict
     analysis_components = list()
-    __files_list_model:PsecInputFilesListModel
+    #__files_list_model:PsecInputFilesListModel
     #files_ = list()
 
     # Signals
     stateChanged = Signal()
     resultsChanged = Signal()
+    fileUpdated = Signal(str, list)
 
-    def __init__(self, files:dict, analysis_components:list, files_list_model:PsecInputFilesListModel, parent:QObject|None=None) -> None:
+    def __init__(self, files:dict, analysis_components:list, parent:QObject|None=None) -> None:
         QObject.__init__(self, parent)
 
         self.__files = files
-        self.__files_list_model = files_list_model
+        #self.__files_list_model = files_list_model
         self.analysis_components_ = analysis_components
 
         Api().add_message_callback(self.__on_api_message)
@@ -53,7 +54,7 @@ class AnalysisController(QObject):
     ## Private functions
     #
     def __on_api_message(self, topic:str, payload:dict) -> None:
-        Api().debug("Message received on topic {}".format(topic), "AnalysisController")
+        #Api().debug("Message received on topic {}".format(topic), "AnalysisController")
         #print("[AnalysisController]", topic, payload)
         
         if topic == Topics.NEW_FILE:
@@ -83,7 +84,8 @@ class AnalysisController(QObject):
         try:
             file = self.__files[filepath]
             file["status"] = FileStatus.FileAvailableInRepository
-            self.__files_list_model.on_files_updated()
+            #self.__files_list_model.on_files_updated()
+            self.fileUpdated.emit(filepath, ["status"])
 
             # Next step is to analyse the file
             payload = {
@@ -100,15 +102,18 @@ class AnalysisController(QObject):
         if progress > file.get("progress", 0):
             file["progress"] = progress
         
-        self.__files_list_model.on_file_updated(filepath, "status")
-        self.__files_list_model.on_file_updated(filepath, "progress")
+        self.fileUpdated.emit(filepath, ["status", "progress"])
+        #self.__files_list_model.on_file_updated(filepath, "status")
+        #self.__files_list_model.on_file_updated(filepath, "progress")
         
     def __handle_result(self, component:str, filepath:str, success:bool, details:str):
         file = self.__files[filepath]
         file["status"] = FileStatus.FileClean if success else FileStatus.FileInfected
         file["progress"] = 100
-        self.__files_list_model.on_file_updated(filepath, "status")
-        self.__files_list_model.on_file_updated(filepath, "progress")
+
+        self.fileUpdated.emit(filepath, ["status", "progress"])
+        #self.__files_list_model.on_file_updated(filepath, "status")
+        #self.__files_list_model.on_file_updated(filepath, "progress")
         
         self.resultsChanged.emit()
 

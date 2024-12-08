@@ -18,20 +18,27 @@ class MockSysUsbController():
         self.mqtt_client.subscribe("{}/+/+/request".format(Topics.SYSTEM))
         self.mqtt_client.subscribe("{}/+/request".format(Topics.DISCOVER))
 
+        # Finally we announce our components
+        self.__handle_discover_components()
+
         #threading.Timer(10.0, self.__connect_destination).start()
 
     def __on_mqtt_message(self, topic:str, payload:dict):
-        self.__debug("Message received on topic {}".format(topic))
+        #self.__debug("Message received on topic {}".format(topic))
 
         if topic == "{}/request".format(Topics.LIST_DISKS):
             response = ResponseFactory.create_response_disks_list(["SAPHIR"])
             self.mqtt_client.publish("{}/response".format(Topics.LIST_DISKS), response)
-        elif topic == "{}/request".format(Topics.LIST_FILES):
-            disk = payload.get("disk")
 
-            if not MqttHelper.check_payload(payload, ["disk"]):
+
+        elif topic == "{}/request".format(Topics.LIST_FILES):            
+            if not MqttHelper.check_payload(payload, ["disk", "recursive", "from_dir"]):
                 self.__debug("Missing arguments")
                 return
+
+            disk = payload.get("disk")
+            recursive = payload.get("recursive", False)
+            from_dir = payload.get("from_dir", "")
 
             if disk != "SAPHIR":
                 self.__debug("The disk {} does not exist".format(disk))
@@ -43,10 +50,12 @@ class MockSysUsbController():
                 return                
 
             files = list()
-            FichierHelper.get_folder_contents(root_path.as_posix(), files, len(root_path.as_posix()))
+            FichierHelper.get_folder_contents(root_path.as_posix(), files, len(root_path.as_posix()), recursive, from_dir)
 
             response = ResponseFactory.create_response_list_files("SAPHIR", files)
             self.mqtt_client.publish("{}/response".format(Topics.LIST_FILES), response)
+
+
         elif topic == "{}/request".format(Topics.READ_FILE):
             if not MqttHelper.check_payload(payload, ["disk", "filepath"]):
                 self.__debug("Missing arguments")
@@ -73,21 +82,31 @@ class MockSysUsbController():
             try:
                 shutil.copy(source_path, dest_path)
 
-                notif = NotificationFactory.create_notification_new_file(Constantes.REPOSITORY, filepath)
+                source_footprint = FichierHelper.calculate_footprint(source_path)
+                dest_footprint = FichierHelper.calculate_footprint(dest_filepath)
+
+                notif = NotificationFactory.create_notification_new_file(Constantes.REPOSITORY, filepath, source_footprint, dest_footprint)
                 self.mqtt_client.publish(Topics.NEW_FILE, notif)
             except Exception as e:
                 self.__debug("Error during copy: {}".format(e))
                 return
-        elif topic == "{}/request".format(Topics.DISCOVER_COMPONENTS):
-            response = {
-                "components": [
-                    { "id": Constantes.PSEC_DISK_CONTROLLER, "label": "System disk controller", "type": "core", "state": "ready" },
-                    { "id": Constantes.PSEC_INPUT_CONTROLLER, "label": "Input controller", "type": "core", "state": "ready" },
-                    { "id": Constantes.PSEC_IO_BENCHMARK, "label": "System I/O benchmark", "type": "core", "state": "ready" }
-                ]
-            }
+            
 
-            self.mqtt_client.publish("{}/response".format(Topics.DISCOVER_COMPONENTS), response)
+        elif topic == "{}/request".format(Topics.DISCOVER_COMPONENTS):
+            self.__handle_discover_components()
+
+
+    def __handle_discover_components(self):
+        response = {
+            "components": [
+                { "id": Constantes.PSEC_DISK_CONTROLLER, "label": "System disk controller", "type": "core", "state": "ready" },
+                { "id": Constantes.PSEC_INPUT_CONTROLLER, "label": "Input controller", "type": "core", "state": "ready" },
+                { "id": Constantes.PSEC_IO_BENCHMARK, "label": "System I/O benchmark", "type": "core", "state": "ready" }
+            ]
+        }
+
+        self.mqtt_client.publish("{}/response".format(Topics.DISCOVER_COMPONENTS), response)
+
 
     def __connect_destination(self):        
         notif = NotificationFactory.create_notification_disk_state("TARGET", "connected")

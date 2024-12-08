@@ -13,7 +13,7 @@ from ApplicationController import ApplicationController
 from PsecInputFilesListModel import PsecInputFilesListModel
 from Enums import Enums
 from psec import Parametres, Cles, Api
-from Constants import DEVMODE
+from constants import DEVMODE
 if DEVMODE:
     from DevModeHelper import DevModeHelper
     DevModeHelper.set_qt_plugins_path()

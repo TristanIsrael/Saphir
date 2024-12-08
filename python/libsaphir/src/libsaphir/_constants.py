@@ -1,0 +1,3 @@
+DEVMODE = True
+TOPIC_ANALYSE_FILE = "saphir/analysis"
+ANTIVIRUS_NEEDED = 1
