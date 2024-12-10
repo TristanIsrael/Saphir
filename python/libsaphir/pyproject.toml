@@ -17,6 +17,9 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/libsaphir"]
+
 [project.urls]
 Homepage = "https://github.com/pypa/sampleproject"
 Issues = "https://github.com/pypa/sampleproject/issues"
