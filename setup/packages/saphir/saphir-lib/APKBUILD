@@ -1,6 +1,6 @@
 # Contributor:
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
-pkgname=saphir-gui
+pkgname=saphir-lib
 pkgver=1.0
 pkgrel=1
 pkgdesc="Saphir - Library"
@@ -10,7 +10,7 @@ license="MIT"
 depends="psec-lib"
 makedepends=""
 checkdepends=""
-install="$pkgname.post-install"
+install=""
 subpackages=""
 replaces=""
 builddir="$srcdir/"
