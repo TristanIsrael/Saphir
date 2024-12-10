@@ -1,7 +1,7 @@
 # Contributor:
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 pkgname=saphir-lib
-pkgver=1.0
+pkgver=0.1
 pkgrel=1
 pkgdesc="Saphir - Library"
 url="https://defense.gouv.fr/"
@@ -30,9 +30,6 @@ build() {
 }
 
 package() {
-    cd "$builddir/python/libsaphir/dist"
-    mkdir -p "$pkgdir/usr/lib/saphir/lib"
-    tar xvzf *.tar.gz -C "$pkgdir/usr/lib/saphir/lib"
-    cd "$pkgdir/usr/lib/saphir"
-    ln -s "libsaphir-$psec_branch" libsaphir 
+    cd "$builddir"/python/libsaphir/dist
+    python3 -m installer --destdir=$pkgdir "libspahir-$pkgver-py3-none-any.whl"
 }
