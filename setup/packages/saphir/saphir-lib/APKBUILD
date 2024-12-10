@@ -3,11 +3,11 @@
 pkgname=saphir-gui
 pkgver=1.0
 pkgrel=1
-pkgdesc="Saphir - Graphical User Interface"
+pkgdesc="Saphir - Library"
 url="https://defense.gouv.fr/"
 arch="noarch"
 license="MIT"
-depends="psec-lib psec-gui-base python3 py3-pyside6 py3-psutil py3-humanize fontconfig freetype font-roboto"
+depends="psec-lib"
 makedepends=""
 checkdepends=""
 install="$pkgname.post-install"
