@@ -174,6 +174,9 @@ class PsecInputFilesListModel(QAbstractListModel):
 
     #def on_file_updated(self, filepath:str, field:str):
     def on_file_updated(self, filepath:str, fields:list):
+        if filepath not in self.fichiers_:
+            return
+        
         row = list(self.fichiers_.keys()).index(filepath)
         #print(filepath)
         idx = self.index(row, 0)
@@ -193,8 +196,6 @@ class PsecInputFilesListModel(QAbstractListModel):
 
     def on_file_added(self):
         self.__rowCount = len(self.fichiers_)
-        '''if self.__lastRowCount != rows:
-            print("on_file_added", self.__lastRowCount, rows)'''
         self.beginInsertRows(QModelIndex(), self.__lastRowCount, self.__rowCount)
         self.endInsertRows()
         

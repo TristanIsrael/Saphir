@@ -30,7 +30,6 @@ class MockSysUsbController():
             response = ResponseFactory.create_response_disks_list(["SAPHIR"])
             self.mqtt_client.publish("{}/response".format(Topics.LIST_DISKS), response)
 
-
         elif topic == "{}/request".format(Topics.LIST_FILES):            
             if not MqttHelper.check_payload(payload, ["disk", "recursive", "from_dir"]):
                 self.__debug("Missing arguments")
@@ -54,7 +53,6 @@ class MockSysUsbController():
 
             response = ResponseFactory.create_response_list_files("SAPHIR", files)
             self.mqtt_client.publish("{}/response".format(Topics.LIST_FILES), response)
-
 
         elif topic == "{}/request".format(Topics.READ_FILE):
             if not MqttHelper.check_payload(payload, ["disk", "filepath"]):
@@ -91,9 +89,41 @@ class MockSysUsbController():
                 self.__debug("Error during copy: {}".format(e))
                 return
             
-
         elif topic == "{}/request".format(Topics.DISCOVER_COMPONENTS):
             self.__handle_discover_components()
+
+        elif topic == "{}/request".format(Topics.COPY_FILE):
+            if not MqttHelper.check_payload(payload, ["disk", "filepath", "destination"]):
+                self.__debug("Missing arguments for topic {}".format(topic))
+                return 
+            
+            disk = payload.get("disk", "")
+            filepath = payload.get("filepath", "")
+
+            source_root_path = DevModeHelper.get_mocked_source_disk_path()
+            source_path = "{}/{}".format(source_root_path, filepath)
+            dest_filepath = "{}/{}".format(DevModeHelper.get_mocked_destination_disk_path(), filepath)
+            dest_path = os.path.dirname(dest_filepath)            
+
+
+            if not os.path.exists(dest_path):
+                os.makedirs(dest_path)
+
+            try:
+                shutil.copy(source_path, dest_path)
+
+                source_footprint = FichierHelper.calculate_footprint(source_path)
+                dest_footprint = FichierHelper.calculate_footprint(dest_filepath)                
+
+                if source_footprint != dest_footprint:
+                    self.__debug("ERROR: Footprints are not equal")
+
+                response = ResponseFactory.create_response_copy_file(filepath, disk, source_footprint == dest_footprint, source_footprint)
+                self.mqtt_client.publish("{}/response".format(Topics.COPY_FILE), response)
+            except: 
+                pass
+
+            source_footprint = FichierHelper.calculate_footprint(source_path)
 
 
     def __handle_discover_components(self):

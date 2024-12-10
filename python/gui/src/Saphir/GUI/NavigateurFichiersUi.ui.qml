@@ -10,7 +10,7 @@ Rectangle {
     property bool diskReady: input ? ApplicationController.sourceReady : ApplicationController.targetReady
     property string diskName: input ? ApplicationController.sourceName : ApplicationController.targetName
     //property var filesModel: diskReady ? (input ? inputFilesListModel : defaultModel) : root.defaultModel
-    property var filesModel: root.input ? ApplicationController.inputFilesListProxyModel : undefined
+    property var filesModel: root.input ? ApplicationController.inputFilesListProxyModel : ApplicationController.outputFilesListProxyModel
 
     property alias btnAddWholeDisk: btnAddWholeDisk
     property alias btnAddFolder: btnAddFolder
@@ -48,12 +48,11 @@ Rectangle {
 
                 color: Constants.contrastColor
                 text: "\ue5c4"
-                visible: root.filesModel !== undefined ? root.filesModel.currentFolder !== "/" : false
+                visible: root.input ? root.filesModel !== undefined ? root.filesModel.currentFolder !== "/" : false : false
                 pixelSize: 40
 
                 Connections {
                     function onClicked() {
-                        //root.filesModel.folder_up()
                         ApplicationController.go_to_parent_folder()
                         root.tblView.positionViewAtRow(0, TableView.Visible)
                     }

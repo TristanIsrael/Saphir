@@ -46,8 +46,11 @@ class QueueListModel(QAbstractListModel):
             return fichier["status"].value
         
         if role == Roles.RoleProgress:
-            return fichier.get("progress", 0)              
+            return fichier.get("progress", 0)
         
+        if role == Roles.RoleInfected:
+            return fichier.get("status") == FileStatus.FileInfected
+
         return None    
 
     
@@ -61,7 +64,8 @@ class QueueListModel(QAbstractListModel):
             Roles.RolePartialSelection: b'partialSelection',
             Roles.RoleProgress: b'progress',
             Roles.RoleInQueue: b'inqueue',
-            Roles.RoleStatus: b'status'
+            Roles.RoleStatus: b'status',
+            Roles.RoleInfected: b'infected'
         }
         return roles
         
@@ -76,7 +80,7 @@ class QueueListModel(QAbstractListModel):
 
     @Slot(str, list)
     def on_file_updated(self, filepath:str, fields:list):
-        if not filepath in self.fichiers_:
+        if filepath not in self.fichiers_:
             return
         
         row = list(self.fichiers_.keys()).index(filepath)
@@ -90,11 +94,26 @@ class QueueListModel(QAbstractListModel):
         if "status" in fields:
             roles.append(Roles.RoleStatus)
         if "progress" in fields:
-            roles.append(Roles.RoleProgress)
+            roles.append(Roles.RoleProgress)        
         if "inqueue" in fields:
             roles.append(Roles.RoleInQueue)
 
-        self.dataChanged.emit(idx, idx, roles)
+        try:
+            self.dataChanged.emit(idx, idx, roles)
+        except Exception as e:
+            print(e)
+        
+        # If the file has been unqueued remove it from the list
+        '''
+        file = self.fichiers_.get(filepath)
+        if file is not None and file["inqueue"]: # inqueue is the state before it was changed otherwise
+            row = list(self.fichiers_.keys()).index(filepath)
+            self.beginRemoveRows(QModelIndex(), row, row)
+            self.fichiers_.pop(filepath)
+            self.endRemoveRows()
+        else:                
+            self.dataChanged.emit(idx, idx, roles)
+        '''
 
     @Slot()
     def on_file_added(self):
@@ -104,4 +123,8 @@ class QueueListModel(QAbstractListModel):
         self.beginInsertRows(QModelIndex(), self.__last_row_count, self.__row_count)
         self.endInsertRows()
         
-    
+    @Slot(str)
+    def on_file_removed(self, filepath:str):
+        self.beginResetModel()
+        self.__row_count -= 1
+        self.endResetModel()

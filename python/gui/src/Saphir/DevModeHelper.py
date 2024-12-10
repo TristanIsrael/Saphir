@@ -25,7 +25,7 @@ class DevModeHelper():
     
     @staticmethod
     def get_mocked_destination_disk_path():
-        return "/tmp/saphir/destination"
+        return "/tmp/saphir/OUT"
     
     @staticmethod
     def get_storate_path():

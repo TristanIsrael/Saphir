@@ -2,7 +2,7 @@ from psec import Api, MqttFactory, MqttHelper, Topics, EtatComposant
 import threading, time, os
 from queue import Queue
 from abc import ABC, abstractmethod
-from libsaphir import TOPIC_ANALYSE_FILE
+from libsaphir import TOPIC_ANALYSE
 from . import FileStatus
 
 class AbstractAntivirusController(ABC):
@@ -19,6 +19,7 @@ class AbstractAntivirusController(ABC):
     __commands_thread = None
     __max_workers = 1
     __workers = 0
+    __can_run = True
 
     DEVMODE = True
 
@@ -50,7 +51,7 @@ class AbstractAntivirusController(ABC):
             "details": details
         }
 
-        Api().publish("{}/response".format(TOPIC_ANALYSE_FILE), payload)
+        Api().publish("{}/response".format(TOPIC_ANALYSE), payload)
 
     def update_status(self, filepath:str, status:FileStatus, progress:int):
         payload = {
@@ -59,7 +60,7 @@ class AbstractAntivirusController(ABC):
             "progress": progress
         }
 
-        Api().publish("{}/status".format(TOPIC_ANALYSE_FILE), payload)
+        Api().publish("{}/status".format(TOPIC_ANALYSE), payload)
 
     def component_state_changed(self):
         components = [{
@@ -74,25 +75,51 @@ class AbstractAntivirusController(ABC):
     def __on_api_ready(self):
         self.debug("Current CPU count is {}. Using {} workers.".format(os.cpu_count(), self.__max_workers))
         Api().subscribe("{}/request".format(Topics.DISCOVER_COMPONENTS))
-        Api().subscribe("{}/request".format(TOPIC_ANALYSE_FILE))
+        Api().subscribe("{}/request".format(TOPIC_ANALYSE))
+        Api().subscribe("{}/stop".format(TOPIC_ANALYSE))
+        Api().subscribe("{}/resume".format(TOPIC_ANALYSE))
+        Api().subscribe("{}/reset".format(TOPIC_ANALYSE))
         self._on_api_ready()
 
     def __on_message_received(self, topic:str, payload:dict):
         if topic == "{}/request".format(Topics.DISCOVER_COMPONENTS):
             self.component_state_changed()            
-        elif topic == "{}/request".format(TOPIC_ANALYSE_FILE):
+
+        elif topic == "{}/request".format(TOPIC_ANALYSE):
             if not MqttHelper.check_payload(payload, ["filepath"]):
-                Api().error("Missing required argument filepath")
+                self.error("Missing required argument filepath")
                 return
             
             filepath = payload.get("filepath")
             self.__files_queue.put(filepath)
 
+        elif topic == "{}/stop".format(TOPIC_ANALYSE):
+            self.__can_run = False
+
+        elif topic == "{}/resume".format(TOPIC_ANALYSE):
+            self.__can_run = True
+            
+        elif topic == "{}/reset".format(TOPIC_ANALYSE):
+            self.__can_run = False
+
+            time.sleep(0.2)
+            # Clear the queue
+            while not self.__files_queue.empty():
+                self.__files_queue.get()
+
+            # Stop immediately
+            self.info("Stopping all running processes")
+            self._stop_immediately()
+            
+            self.info("The files queue has been cleared")
+            self.__can_run = True
+
     def __commands_loop(self):
         while True:
-            if not self.__files_queue.empty() and self.__workers < self.__max_workers: # type: ignore
-                filepath = self.__files_queue.get()
-                threading.Thread(target=self.__analyse_file, args=(filepath,)).start()
+            if self.__can_run:                
+                if not self.__files_queue.empty() and self.__workers < self.__max_workers: # type: ignore
+                    filepath = self.__files_queue.get()
+                    threading.Thread(target=self.__analyse_file, args=(filepath,)).start()
 
             time.sleep(0.1)
 
@@ -128,4 +155,7 @@ class AbstractAntivirusController(ABC):
         """
         pass
 
+    @abstractmethod
+    def _stop_immediately(self):        
+        pass
     

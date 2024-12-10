@@ -22,6 +22,7 @@ class Roles():
     RoleInQueue = Qt.UserRole +7
     RoleStatus = Qt.UserRole +8
     RoleFilepath = Qt.UserRole +9
+    RoleInfected = Qt.UserRole +10
 
 @QmlElement
 class Enums(QObject):

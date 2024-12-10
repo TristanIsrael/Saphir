@@ -3,6 +3,7 @@ from psec import Api, MqttFactory, Topics, MqttHelper, ComponentsHelper, Constan
 from Enums import SystemState, AnalysisState, FileStatus
 from PsecInputFilesListModel import PsecInputFilesListModel
 from PsecInputFilesListProxyModel import PsecInputFilesListProxyModel
+from PsecOutputFilesListProxyModel import PsecOutputFilesListProxyModel
 #from QueueListProxyModel import QueueListProxyModel
 from QueueListModel import QueueListModel
 from AnalysisContoller import AnalysisController
@@ -26,6 +27,7 @@ class ApplicationController(QObject):
     __queuedFilesList = dict()   # Contains the list of files in the queue
     inputFilesListModel_:PsecInputFilesListModel
     inputFilesListProxyModel_:PsecInputFilesListProxyModel
+    outputFilesListProxyModel_:PsecOutputFilesListProxyModel
     queueListModel_:QueueListModel
     componentsHelper_ = ComponentsHelper()
     analysisReady_ = False
@@ -50,7 +52,9 @@ class ApplicationController(QObject):
     analysisReadyChanged = Signal(bool)
     fileAdded = Signal(str)
     fileQueued = Signal(str)
+    fileUnqueued = Signal(str)
     fileUpdated = Signal(str, list)
+    #fileCopied = Signal(str, bool)
     totalFilesCountChanged = Signal(int)
     infectedFilesCountChanged = Signal(int)
     cleanFilesCountChanged = Signal(int)
@@ -62,15 +66,18 @@ class ApplicationController(QObject):
         QObject.__init__(self, parent)
 
         self.inputFilesListModel_ = PsecInputFilesListModel(self.__inputFilesList, self)
-        self.inputFilesListModel_.updateFilesList.connect(self.update_source_files_list)  
+        self.inputFilesListModel_.updateFilesList.connect(self.update_source_files_list)          
         self.fileAdded.connect(self.inputFilesListModel_.on_file_added) 
         self.fileUpdated.connect(self.inputFilesListModel_.on_file_updated) 
         self.sourceNameChanged.connect(self.inputFilesListModel_.onSourceChanged)
 
-        self.inputFilesListProxyModel_ = PsecInputFilesListProxyModel(self.inputFilesListModel_, self)
+        self.inputFilesListProxyModel_ = PsecInputFilesListProxyModel(self.inputFilesListModel_, self)        
         #self.queueListModel_ = QueueListProxyModel(self.inputFilesListModel_, self)
         self.queueListModel_ = QueueListModel(self.__queuedFilesList, self)
+        self.outputFilesListProxyModel_ = PsecOutputFilesListProxyModel(self.queueListModel_, self)
+        #self.fileCopied.connect(self.queueListModel_.on_file_updated)
         self.fileQueued.connect(self.queueListModel_.on_file_added)
+        self.fileUnqueued.connect(self.queueListModel_.on_file_removed)
         self.fileUpdated.connect(self.queueListModel_.on_file_updated)
 
     def start(self, ready_callback):
@@ -107,7 +114,7 @@ class ApplicationController(QObject):
     def enqueue_all_files(self):
         #Api().info("User added the whole disk to the queue")
         self.__files_to_enqueue = list(self.__inputFilesList.keys())
-        QTimer.singleShot(1, self.__enqueue_next_file)       
+        #QTimer.singleShot(1, self.__enqueue_next_file)       
 
 
     '''def __enqueue_next_file(self):
@@ -151,9 +158,7 @@ class ApplicationController(QObject):
             # Enqueue the folder at first to make it disappear
             file = self.__inputFilesList[filepath]
             file["inqueue"] = True
-            self.fileUpdated.emit(filepath, ["inqueue"])
-            #self.__files_to_enqueue.append(filepath)
-            #self.__enqueue_next_file()
+            self.fileUpdated.emit(filepath, ["inqueue"])            
 
             # Get the file tree from the disk and enqueue it
             self.__is_enquing = True
@@ -174,28 +179,53 @@ class ApplicationController(QObject):
         file = self.__inputFilesList.get(filepath)
         if file is not None:
             file["inqueue"] = False
-            #self.inputFilesListModel_.on_file_updated(file["filepath"], ["inqueue"])
-            self.fileUpdated.emit(file["filepath"], ["inqueue"])
-            self.queueSizeChanged.emit(self.__queue_size())
-            self.totalFilesCountChanged.emit(self.__total_files_count())     
+            self.fileUpdated.emit(filepath, ["inqueue"])
+
+        # We have to put the folder back in the list if it is not
+        '''
+        parent = Path(filepath).parent
+        if parent not in self.__inputFilesList:
+            path = {
+                "type": "folder",
+                "filepath": parent.as_posix(),
+                "path": parent.parent.as_posix(),
+                "status": FileStatus.FileStatusUndefined,
+                "name": parent.name
+            }
+            self.__inputFilesList[parent.as_posix()] = path
+            self.fileUpdated.emit(parent.as_posix(), ["inqueue"])
+        else:
+            file = self.__inputFilesList[parent]
+            file["inqueue"] = False
+            self.fileUpdated.emit(parent.as_posix(), ["inqueue"])
+        '''
+
+        self.__queuedFilesList.pop(filepath)
+        self.queueSizeChanged.emit(self.__queue_size())
+        self.fileUnqueued.emit(filepath)
+
+        #self.totalFilesCountChanged.emit(self.__total_files_count())     
 
 
     @Slot()
-    def start_stop_analysis(self):
-        Api().debug("User wants to start the analysis")
-
+    def start_stop_analysis(self):        
         if self.analysisController_.state == AnalysisState.AnalysisStopped:
+            Api().debug("User asked to start the analysis")
             self.analysisController_.start_analysis(self.sourceName_)
         elif self.analysisController_.state == AnalysisState.AnalysisRunning:
+            Api().debug("User asked to stop the analysis")
             self.analysisController_.stop_analysis()
+
 
     @Slot()
     def start_transfer(self):
         Api().info("Start transfer of clean files to target disk")
 
-        for filepath_, file_ in self.__inputFilesList.items():
+        self.analysisController_.stop_analysis()
+        for filepath_, file_ in self.__queuedFilesList.items():
             if file_.get("status") == FileStatus.FileClean:
                 Api().copy_file(self.sourceName_, filepath_, self.targetName_)
+
 
     @Slot(str, str)
     def debug(self, message:str, module:str):
@@ -215,9 +245,11 @@ class ApplicationController(QObject):
 
     def __on_api_ready(self):        
         self.pret_ = True
-        self.analysisController_ = AnalysisController(files=self.__inputFilesList, analysis_components= self.analysisComponents_)
+        self.analysisController_ = AnalysisController(files=self.__queuedFilesList, analysis_components= self.analysisComponents_, source_disk= self.sourceName_, parent= self)
         self.analysisController_.resultsChanged.connect(self.__on_results_changed)
-        self.analysisController_.fileUpdated.connect(self.inputFilesListModel_.on_file_updated)
+        self.analysisController_.fileUpdated.connect(self.queueListModel_.on_file_updated)
+        self.analysisController_.stateChanged.connect(self.__on_analysis_state_changed)
+        Api().subscribe("{}/response".format(Topics.COPY_FILE))
         self.__set_system_state(SystemState.SystemReady)
         Api().discover_components()        
 
@@ -343,28 +375,29 @@ class ApplicationController(QObject):
                 self.__check_components_availability()     
                 self.__set_system_state(SystemState.SystemReady)    
     
-    '''def __get_files_in_folder(self, filepath:str) -> list[str]:
-        files = list()
 
-        for entry in self.__inputFilesList:
-            if entry.get("path").startswith(filepath) and entry.get("type") != "folder": # type: ignore
-                files.append("{}/{}".format(entry.get("path"), entry.get("name"))) # type: ignore
+        elif topic == "{}/response".format(Topics.COPY_FILE):
+            if not MqttHelper.check_payload(payload, ["filepath", "status", "footprint"]):
+                Api().error("Missing arguments in the topic {}".format(topic))
+                return
+            
+            filepath = payload.get("filepath")
+            status = payload.get("status")
+            footprint = payload.get("footprint")
 
-        return files    
-    '''
+            file = self.__queuedFilesList.get(filepath)
+            if file is None:
+                Api().error("The file {} has not been found in the analysis queue".format(filepath))
+                return
+            
+            success = status == "ok"
+            file["status"] = FileStatus.FileCopySuccess if success else FileStatus.FileCopyError            
+            Api().info("The file {} has been copied to {}. The footprint is {}".format(filepath, self.__targetName, footprint))
+            self.fileUpdated.emit(filepath, ["status"])
+
+
     def __is_file_in_folder(self, filepath:str, folder:str) -> bool:
         return filepath.startswith(folder) # type: ignore
-    
-    '''def __get_all_files(self) -> list[str]:
-        files = list()
-
-        for entry in self.__inputFilesList: 
-            if entry.get("type") != "file": # type: ignore
-                continue
-            files.append("{}/{}".format(entry.get("path"), entry.get("name"))) # type: ignore
-
-        return files
-    '''
 
 
     def __check_components_availability(self):
@@ -397,6 +430,19 @@ class ApplicationController(QObject):
     def __on_disk_controller_state_changed(self, ready:bool):
         if ready:
             Api().get_disks_list()
+
+
+    @Slot(AnalysisState)
+    def __on_analysis_state_changed(self, state:AnalysisState):
+        if state == AnalysisState.AnalysisRunning:
+            Api().info("Analysis is running")
+            self.__set_system_state(SystemState.SystemAnalysisRunning)
+        elif state == AnalysisState.AnalysisStopped:
+            Api().info("Analysis is stopped")
+            self.__set_system_state(SystemState.SystemWaitingForUserAction)
+        else:
+            Api().info("Analysis state is unknown")
+            # TODO
 
     ###
     # Getters and setters
@@ -438,15 +484,19 @@ class ApplicationController(QObject):
     def __inputFilesListProxyModel(self):
         return self.inputFilesListProxyModel_
     
+    def __outputFilesListProxyModel(self):
+        return self.outputFilesListProxyModel_
+
     def __queueListModel(self):
         return self.queueListModel_
     
     def __get_system_state(self):
+        print(self.__system_state)
         return self.__system_state.value
     
     def __set_system_state(self, state:SystemState):
         self.__system_state = state
-        Api().debug("System state : {}".format(self.__system_state))
+        #Api().debug("System state : {}".format(self.__system_state))
         self.systemStateChanged.emit(self.__system_state.value)
 
     def __queue_size(self):
@@ -463,12 +513,12 @@ class ApplicationController(QObject):
     #    return sum(1 for item in self.__inputFilesList.values() if item.get("inqueue", False) == True and item.get("type", "") == "file")
 
     def __clean_files_count(self):
-        return sum(1 for item in self.__inputFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean)
+        return sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean)
 
     def __infected_files_count(self):
         return (
-            sum(1 for item in self.__inputFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileInfected)
-            + sum(1 for item in self.__inputFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileAnalysisError)
+            sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileInfected)
+            + sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileAnalysisError)
         )
     
     def __global_progress(self):
@@ -488,8 +538,9 @@ class ApplicationController(QObject):
     #status = Property(int, __status, notify= statusChanged)
     inputFilesListModel = Property(QObject, __inputFilesListModel, constant= True)
     inputFilesListProxyModel = Property(QObject, __inputFilesListProxyModel, constant= True)
+    outputFilesListProxyModel = Property(QObject, __outputFilesListProxyModel, constant= True)
     queueListModel = Property(QObject, __queueListModel, constant= True)
-    systemState = Property(SystemState, __get_system_state, notify= systemStateChanged)
+    systemState = Property(int, __get_system_state, notify= systemStateChanged)
     queueSize = Property(int, __queue_size, notify= queueSizeChanged)
     analysisReady = Property(bool, __analysisReady, notify= analysisReadyChanged)
     analysisController = Property(AnalysisController, __analysis_controller, constant=True)

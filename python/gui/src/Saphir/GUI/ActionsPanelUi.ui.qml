@@ -48,7 +48,7 @@ Rectangle {
             
             pixelSize: parent.height * 0.9
             enabled: ApplicationController.queueSize > 0 && ApplicationController.analysisReady
-            text: ApplicationController.systemState === Enums.SystemState.SystemReady ? "\ue039" : ApplicationController.systemState === Enums.SystemState.SystemRunning ? "\ue036" : "\ueb8b"
+            text: ApplicationController.systemState === Enums.SystemState.SystemAnalysisRunning ? "\ue036" : "\ue039"
         }
 
         Icone {

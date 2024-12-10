@@ -52,10 +52,19 @@ class ClamAntivirusController(AbstractAntivirusController):
             details = proc.stderr.decode()
         
         self.publish_result(filepath, success, details)
+        
 
     def _get_component_state(self):
         return self.__state
 
+
+    def _stop_immediately(self):
+        subprocess.run(["killall", "-9", "clamdscan"])
+
+
+    #######################
+    ## Private functions
+    #
     def __ping_clamd(self):
         cmd = ["clamdscan", "--ping", "1"]
         proc = subprocess.run(cmd, capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

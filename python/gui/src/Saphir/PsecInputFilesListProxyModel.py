@@ -24,10 +24,17 @@ class PsecInputFilesListProxyModel(QSortFilterProxyModel):
     def filterAcceptsRow(self, source_row:int, source_parent:QModelIndex|QPersistentModelIndex):        
         idx = self.sourceModel().index(source_row, 0, QModelIndex())
         path = self.sourceModel().data(idx, Roles.RolePath)
-        inqueue = self.sourceModel().data(idx, Roles.RoleInQueue)        
+        inqueue = self.sourceModel().data(idx, Roles.RoleInQueue)
+        type = self.sourceModel().data(idx, Roles.RoleType)
         
-        res = (path == self.__current_folder and not inqueue)
-        return res if res is not None else False
+        res = (path == self.__current_folder)
+        if res:
+            if type == "file" and inqueue:
+                return False
+            else:
+                return True
+        
+        return False
 
     def setData(self, index, value, role=Qt.DisplayRole):
         srcidx = self.mapToSource(index)
