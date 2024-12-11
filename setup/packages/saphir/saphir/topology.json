@@ -17,8 +17,8 @@
         "repository": "http://192.168.64.1/alpine/saphir",
         "domains": [
             {
-                "name": "saphir-av-clam",
-                "app-package": "saphir-av-clam",
+                "name": "saphir-av-clamav",
+                "app-package": "saphir-av-clamav",
                 "memory": 2000,
                 "cpu": 1
             }

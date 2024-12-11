@@ -21,7 +21,7 @@ source=""
 prepare() {
     mkdir -p "$builddir"
     cd "$builddir"
-    git clone "$giturl" .
+    git clone "$giturl"
 }
 
 build() {

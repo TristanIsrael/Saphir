@@ -1,0 +1,22 @@
+#!/sbin/openrc-run
+
+name="clamav"
+command_background="yes"
+
+depend() {    
+    before av-controller
+}
+
+start() {
+    ebegin "Starting Clam antivirus"
+
+    start-stop-daemon --start --make-pidfile --exec /usr/sbin/clamd --pidfile /var/run/$name.pid --background
+}
+
+stop() {
+    ebegin "Stopping Clam antivirus"
+    
+    kill -9 $(cat /var/run/$name.pid)
+
+    eend $?
+}

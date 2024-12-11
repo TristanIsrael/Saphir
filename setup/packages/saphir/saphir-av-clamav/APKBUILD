@@ -12,7 +12,7 @@ makedepends="freshclam"
 checkdepends=""
 install="$pkgname.post-install"
 subpackages=""
-replaces=""
+replaces="freshclam"
 builddir="$srcdir/"
 options="!check"  # no tests provided
 source="
@@ -29,4 +29,11 @@ package() {
     install -D -m755 "$srcdir"/main.cvd "$pkgdir"/var/lib/clamav/main.cvd
     install -D -m755 "$srcdir"/bytecode.cvd "$pkgdir"/var/lib/clamav/bytecode.cvd
     install -D -m755 "$srcdir"/daily.cvd "$pkgdir"/var/lib/clamav/daily.cvd
+
+    install -D -m644 "$srcdir"/freshclam.conf "$pkgdir"/etc/clamav/freshclam.conf
+    install -D -m644 "$srcdir"/clamd.conf "$pkgdir"/etc/clamav/clamd.conf
+
+    install -D -m755 "$srcdir"/av-controller.py "$pkgdir"/usr/lib/saphir/bin
+
+    #install -D -m644 "$srcdir"/clamd.confd "$pkgdir"/etc/conf.d/clamd.conf"
 }

@@ -21,16 +21,16 @@ source="gui.initd"
 prepare() {
     mkdir -p "$builddir"
     cd "$builddir"
-    git clone "$giturl" .
+    git clone "$giturl"
 }
 
-build() {
-    cd "$builddir/python/gui"
+build() {    
+    cd "$builddir/saphir/python/gui"
     python3 -m build
 }
 
 package() {
-    cd "$builddir/python/gui/dist"
+    cd "$builddir/saphir/python/gui/dist"
     mkdir -p "$pkgdir/usr/lib/saphir/gui"
     tar xvzf *.tar.gz -C "$pkgdir/usr/lib/saphir/gui"
     cd "$pkgdir/usr/lib/saphir"

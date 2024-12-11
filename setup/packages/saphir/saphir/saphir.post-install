@@ -1,6 +1,5 @@
 #!/bin/sh
 
-echo "https://alefbet.net/wp-content/uploads/repositories/PSEC
-" >> /etc/apk/repositories
+/usr/lib/psec/bin/post-install.sh
 
-apk update
+exit 0

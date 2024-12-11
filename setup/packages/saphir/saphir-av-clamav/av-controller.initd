@@ -8,13 +8,13 @@ depend() {
 }
 
 start() {
-    ebegin "Starting Clam antivirus"
+    ebegin "Starting Saphir ClamAV controller"
 
     start-stop-daemon --start --make-pidfile --exec /usr/bin/python3 --pidfile /var/run/$name.pid --background -- /usr/lib/saphir/bin/av-controller.py
 }
 
 stop() {
-    ebegin "Stopping Clam antivirus"
+    ebegin "Stopping Saphir ClamAV controller"
     
     kill -9 $(cat /var/run/$name.pid)
 
