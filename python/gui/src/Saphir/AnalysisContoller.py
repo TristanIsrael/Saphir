@@ -122,11 +122,8 @@ class AnalysisController(QObject):
         file["status"] = FileStatus.FileClean if success else FileStatus.FileInfected
         file["progress"] = 100
 
-        self.fileUpdated.emit(filepath, ["status", "progress"])
-        #self.__files_list_model.on_file_updated(filepath, "status")
-        #self.__files_list_model.on_file_updated(filepath, "progress")
-        
-        self.resultsChanged.emit()
+        self.fileUpdated.emit(filepath, ["status", "progress"])        
+        self.resultsChanged.emit()        
 
     ######
     ## Getters and setters

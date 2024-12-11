@@ -12,11 +12,15 @@ makedepends="freshclam"
 checkdepends=""
 install="$pkgname.post-install"
 subpackages=""
-replaces="freshclam"
+replaces="freshclam clamav-daemon"
 builddir="$srcdir/"
 options="!check"  # no tests provided
 source="
 av-controller.initd
+av-controller.py
+freshclam.conf
+clamd.conf
+clamav.initd
 "
 
 prepare() {
@@ -32,8 +36,9 @@ package() {
 
     install -D -m644 "$srcdir"/freshclam.conf "$pkgdir"/etc/clamav/freshclam.conf
     install -D -m644 "$srcdir"/clamd.conf "$pkgdir"/etc/clamav/clamd.conf
+    install -D -m644 "$srcdir"/clamav.initd "$pkgdir"/etc/init.d/clamav
 
-    install -D -m755 "$srcdir"/av-controller.py "$pkgdir"/usr/lib/saphir/bin
+    install -D -m755 "$srcdir"/av-controller.py "$pkgdir"/usr/lib/saphir/bin/av-controller.py
 
     #install -D -m644 "$srcdir"/clamd.confd "$pkgdir"/etc/conf.d/clamd.conf"
 }

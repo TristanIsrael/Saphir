@@ -36,6 +36,7 @@ Rectangle {
 
             PText {
                 id: lblDriveName
+                font.capitalization: Font.SmallCaps
                 text: globalProgressLabel()
                 color: Constants.contrastColor
             }

@@ -21,15 +21,15 @@ source=""
 prepare() {
     mkdir -p "$builddir"
     cd "$builddir"
-    git clone "$giturl"
+    git clone "$giturl" "$pkgname"
 }
 
 build() {
-    cd "$builddir/python/libsaphir"
+    cd "$builddir/$pkgname"/python/libsaphir
     python3 -m build
 }
 
 package() {
-    cd "$builddir"/python/libsaphir/dist
+    cd "$builddir/$pkgname"/python/libsaphir/dist
     python3 -m installer --destdir=$pkgdir "libspahir-$pkgver-py3-none-any.whl"
 }

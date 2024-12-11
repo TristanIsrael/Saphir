@@ -1,6 +1,9 @@
-from PySide6.QtCore import QObject, Signal, Slot, Property, Qt, QTimer, QCoreApplication, QThreadPool, QRunnable
-from psec import Api, MqttFactory, Topics, MqttHelper, ComponentsHelper, Constantes, EtatComposant
+from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer, QThread, QPoint
+from PySide6.QtWidgets import QWidget
+from psec import Api, MqttFactory, Topics, MqttHelper, ComponentsHelper, Constantes, EtatComposant, MouseWheel
 from Enums import SystemState, AnalysisState, FileStatus
+from MousePointer import MousePointer
+from InterfaceInputs import InterfaceInputs
 from PsecInputFilesListModel import PsecInputFilesListModel
 from PsecInputFilesListProxyModel import PsecInputFilesListProxyModel
 from PsecOutputFilesListProxyModel import PsecOutputFilesListProxyModel
@@ -9,7 +12,7 @@ from QueueListModel import QueueListModel
 from AnalysisContoller import AnalysisController
 from DevModeHelper import DevModeHelper
 from libsaphir import ANTIVIRUS_NEEDED
-from constants import DEVMODE
+from Constants import DEVMODE
 from pathlib import Path
 import copy
 
@@ -36,6 +39,8 @@ class ApplicationController(QObject):
     __files_to_enqueue = list()
     __current_folder = "/"
     __is_enquing = False
+    __interfaceInputs = None
+    __main_window:QWidget
     #__is_navigating = True
 
     # Signaux
@@ -59,7 +64,19 @@ class ApplicationController(QObject):
     infectedFilesCountChanged = Signal(int)
     cleanFilesCountChanged = Signal(int)
     globalProgressChanged = Signal(int)
-    taskRunningChanged = Signal(bool)
+    taskRunningChanged = Signal(bool)    
+
+    # IO
+    _mouse_x = 0
+    _mouse_y = 0
+    _clic_x = 0
+    _clic_y = 0
+    _wheel = MouseWheel.NO_MOVE
+    mouseXChanged = Signal()
+    mouseYChanged = Signal()
+    clicXChanged = Signal()
+    clicYChanged = Signal()
+    wheelChanged = Signal()
 
     # Fonctions publiques
     def __init__(self, parent=None):
@@ -90,6 +107,19 @@ class ApplicationController(QObject):
         Api().add_ready_callback(ready_callback)
         Api().add_ready_callback(self.__on_api_ready)
         Api().start(self.mqtt_client)
+
+
+    @Slot() 
+    def start_io_monitoring(self):
+        Api().debug("Démarrage de la surveillance des entrées", "AppController")
+        self.interfaceInputs = InterfaceInputs(self.__main_window)  
+        self.workerThread = QThread()        
+        self.interfaceInputs.moveToThread(self.workerThread)  
+        self.workerThread.start()
+        self.interfaceInputs.nouvellePosition.connect(self.__on_pointer_moved)
+        self.interfaceInputs.clicked.connect(self.on_clicked)
+        self.interfaceInputs.wheel.connect(self.__on_wheel)
+        QTimer.singleShot(1, self.interfaceInputs.demarre_surveillance)
 
 
     def update_source_files_list(self):
@@ -426,8 +456,12 @@ class ApplicationController(QObject):
         self.infectedFilesCountChanged.emit(self.__infected_files_count())        
         self.globalProgressChanged.emit(self.__global_progress())
 
+        if self.__global_progress() == 100:
+            self.__set_system_state(SystemState.SystemWaitingForUserAction)
+
 
     def __on_disk_controller_state_changed(self, ready:bool):
+        Api().debug("PSEC disk controller is {}".format("ready" if ready else "not ready"))
         if ready:
             Api().get_disks_list()
 
@@ -443,6 +477,26 @@ class ApplicationController(QObject):
         else:
             Api().info("Analysis state is unknown")
             # TODO
+
+    @Slot()
+    def __on_wheel(self, wheel:MouseWheel):
+        self.set_wheel(wheel)
+        
+    cibleGlob = QPoint(530, 143) # en coordonnées globales    
+    currentPos = QPoint(0, 0) 
+
+    @Slot(QPoint)
+    def __on_pointer_moved(self, position:QPoint):
+        self.mousePointer.on_nouvelle_position(position)
+
+        #if self.followMouseCursor:           
+        #    self.set_mouse_x(position.x())
+        #    self.set_mouse_y(position.y())
+
+    @Slot(QPoint)
+    def on_clicked(self, position:QPoint):
+        self.set_clic_x(position.x())
+        self.set_clic_y(position.y())
 
     ###
     # Getters and setters
@@ -530,6 +584,46 @@ class ApplicationController(QObject):
     def __is_task_running(self):
         return True
     
+    def __wheel(self):
+        return self._wheel
+
+    def set_wheel(self, wheel:MouseWheel):
+        self._wheel = wheel
+        self.wheelChanged.emit()
+
+    def __mouse_x(self):
+        return self._mouse_x
+    
+    def set_mouse_x(self, x:int):
+        self._mouse_x = x
+        self.mouseXChanged.emit()
+    
+    def __mouse_y(self):
+        return self._mouse_y
+    
+    def set_mouse_y(self, y:int):
+        self._mouse_y = y
+        self.mouseYChanged.emit()
+    
+    def __clic_x(self):
+        return self._clic_x
+    
+    def set_clic_x(self, x:int):
+        self._clic_x = x
+        self.clicXChanged.emit()
+    
+    def __clic_y(self):
+        return self._clic_y
+    
+    def set_clic_y(self, y:int):
+        self._clic_y = y
+        self.clicYChanged.emit()
+    
+    def set_main_window(self, window:QWidget):
+        self.__main_window = window
+        self.mousePointer = MousePointer(window.contentItem())
+        self.start_io_monitoring()
+    
     pret = Property(bool, __pret, __set_pret, notify=pretChanged) 
     sourceName = Property(str, __sourceName, notify= sourceNameChanged)
     sourceReady = Property(bool, __sourceReady, notify= sourceReadyChanged)
@@ -550,3 +644,9 @@ class ApplicationController(QObject):
     infectedFilesCount = Property(int, __infected_files_count, notify= infectedFilesCountChanged)
     cleanFilesCount = Property(int, __clean_files_count, notify= cleanFilesCountChanged)
     globalProgress = Property(int, __global_progress, notify= globalProgressChanged)    
+
+    mouseX = Property(int, __mouse_x, notify=mouseXChanged)
+    mouseY = Property(int, __mouse_y, notify=mouseYChanged)
+    clicX = Property(int, __clic_x, notify=clicXChanged)
+    clicY = Property(int, __clic_y, notify=clicYChanged)
+    wheel = Property(int, __wheel, notify=wheelChanged)

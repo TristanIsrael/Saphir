@@ -12,7 +12,7 @@ Rectangle {
     implicitHeight: 40
     color: Constants.contrastColor
 
-    Text {
+    PText {
         id: mention
         text: qsTr("Niveau max : DR")
         anchors {
@@ -38,7 +38,7 @@ Rectangle {
         color: Constants.titleColor
     }
 
-    Text {
+    PText {
         id: lblCurrentTime
 
         anchors {

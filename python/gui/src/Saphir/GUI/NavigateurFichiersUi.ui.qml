@@ -211,8 +211,10 @@ Rectangle {
                     }
 
                     Connections {
-                        function onClicked() {                            
-                            ApplicationController.go_to_folder(filepath)
+                        function onClicked() {            
+                            if(type === "folder") {
+                                ApplicationController.go_to_folder(filepath)
+                            }
                             //dlg.model.selected = !dlg.model.selected
                         }
                     }

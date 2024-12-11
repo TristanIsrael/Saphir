@@ -1,6 +1,6 @@
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, Signal, Slot
 from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray
-from constants import LIBELLE_DOSSIER_PRECEDENT
+from Constants import LIBELLE_DOSSIER_PRECEDENT
 from Enums import Roles, FileStatus
 from psec import Api
 import humanize

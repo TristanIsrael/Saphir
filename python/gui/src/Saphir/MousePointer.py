@@ -5,7 +5,7 @@ import pathlib
 
 class MousePointer(QQuickPaintedItem):    
 
-    image = QImage("{}/images/cursor.png".format(pathlib.Path(__file__).parent.resolve()))
+    image = QImage("{}/GUI/images/cursor.png".format(pathlib.Path(__file__).parent.resolve()))
 
     def __init__(self, parent:QQuickItem = None):        
         QQuickPaintedItem.__init__(self, parent)
