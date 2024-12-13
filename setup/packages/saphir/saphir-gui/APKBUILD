@@ -31,10 +31,10 @@ build() {
 
 package() {
     cd "$builddir/saphir/python/gui/dist"
-    mkdir -p "$pkgdir/usr/lib/saphir/gui"
+    mkdir -p "$pkgdir/usr/lib/saphir"
     tar xvzf *.tar.gz -C "$pkgdir/usr/lib/saphir"    
-    cd "$pkgdir/usr/lib/saphir/gui"
-    ln -s "saphir_$pkgname" saphir
+    cd "$pkgdir/usr/lib/saphir"
+    ln -s "saphir_$pkgname-$pkgver" gui
 
     install -D -m755 "$srcdir"/gui.initd "$pkgdir"/etc/init.d/gui
 }

@@ -1,3 +1,3 @@
-DEVMODE = True
+DEVMODE = False
 TOPIC_ANALYSE = "saphir/analysis"
 ANTIVIRUS_NEEDED = 1
