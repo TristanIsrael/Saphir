@@ -27,7 +27,7 @@ def load_fonts(fonts:list):
     for font in fonts:
         font_id = QFontDatabase.addApplicationFont("GUI/fonts/{}".format(font))
         if font_id == -1:
-            print("Could not load font Material Icons")    
+            print("Could not load font {}".format(font))
 
 if __name__ == "__main__":
     app = QGuiApplication(sys.argv)

@@ -17,11 +17,6 @@ builddir="$srcdir/"
 options="!check"  # no tests provided
 
 source="
-boot/Splash.png
-boot/Splash_1280_1024.ppm
-boot/Splash_1024_768.ppm
-boot/grub.confd
-boot/splash.initd
 topology.json"
 
 package() {

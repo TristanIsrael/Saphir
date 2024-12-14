@@ -1,3 +1,4 @@
 #!/bin/sh
 
-DISPLAY=:0 /usr/bin/python3 /usr/lib/saphir/gui/src/Saphir/main.py -platform xcb 
+cd /usr/lib/saphir/gui/src/Saphir/
+DISPLAY=:0 /usr/bin/python3 main.py -platform xcb 

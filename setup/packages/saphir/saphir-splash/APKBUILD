@@ -1,0 +1,30 @@
+# Contributor:
+# Maintainer: Tristan Israël <tristan.israel@icloud.com>
+pkgname=saphir-splash
+pkgver=1.0
+pkgrel=1
+pkgdesc="Splash screen for Saphir system"
+url="https://defense.gouv.fr/"
+arch="noarch"
+license="MIT"
+depends=""
+makedepends=""
+checkdepends=""
+install=""
+subpackages=""
+replaces="psec-core"
+builddir="$srcdir/"
+options="!check"  # no tests provided
+
+source="
+boot/Splash.png
+boot/Splash_800_1280.ppm
+boot/splash.initd
+"
+
+package() {
+    # Splash screen for grub and boot
+	install -D -m644 "$srcdir"/Splash.png "$pkgdir"/boot/Splash.png
+    install -D -m644 "$srcdir"/Splash_800_1280.ppm "$pkgdir"/boot/Splash_800_1280.ppm
+}
+
