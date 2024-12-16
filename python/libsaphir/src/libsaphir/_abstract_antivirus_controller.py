@@ -2,7 +2,7 @@ from psec import Api, MqttFactory, MqttHelper, Topics, EtatComposant
 import threading, time, os
 from queue import Queue
 from abc import ABC, abstractmethod
-from libsaphir import TOPIC_ANALYSE
+from libsaphir import TOPIC_ANALYSE, DEVMODE
 from . import FileStatus
 
 class AbstractAntivirusController(ABC):
@@ -21,8 +21,6 @@ class AbstractAntivirusController(ABC):
     __workers = 0
     __can_run = True
 
-    DEVMODE = True
-
     def __init__(self, component_name:str, component_description:str):
         self.__component_name = component_name
         self.__component_description = component_description
@@ -30,7 +28,7 @@ class AbstractAntivirusController(ABC):
             self.__max_workers = os.cpu_count()
 
     def start(self):
-        if not self.DEVMODE:
+        if not DEVMODE:
             self.__mqtt_client = MqttFactory.create_mqtt_client_domu(self.__component_name)
         else:
             self.__mqtt_client = MqttFactory.create_mqtt_network_dev(self.__component_name)

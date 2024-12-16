@@ -9,12 +9,10 @@ from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSin
 from psec import Api
 from ApplicationController import ApplicationController
 from psec import Api
-from Constants import DEVMODE
+from libsaphir import DEVMODE
 if DEVMODE:
     from DevModeHelper import DevModeHelper
     DevModeHelper.set_qt_plugins_path()
-    from Mock.MockSysUsbController import MockSysUsbController
-    from Mock.MockClamAntivirusController import MockClamAntivirusController
     
 
 api_ready = threading.Event()

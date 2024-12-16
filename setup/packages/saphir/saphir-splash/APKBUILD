@@ -19,7 +19,6 @@ options="!check"  # no tests provided
 source="
 boot/Splash.png
 boot/Splash_800_1280.ppm
-boot/splash.initd
 "
 
 package() {

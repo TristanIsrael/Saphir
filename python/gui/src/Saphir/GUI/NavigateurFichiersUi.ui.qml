@@ -64,13 +64,13 @@ Rectangle {
 
                 Icone {
                     id: icnUsb
-                    text: root.input ? "\uf090" : "\uf09b"
+                    text: root.diskReady ? (root.input ? "\uf090" : "\uf09b") : "\ue4fa"
                     color: Constants.contrastColor
                 }
 
                 PText {
                     id: lblDriveName
-                    text: root.diskReady ? diskName : qsTr("Aucun disque branché")
+                    text: root.diskReady ? diskName : qsTr("Aucun disque connecté")
                     color: Constants.contrastColor
                     font.capitalization: Font.SmallCaps
                 }
@@ -91,27 +91,7 @@ Rectangle {
 
                 Connections {
                     function onClicked() {
-                        ApplicationController.enqueue_all_files()
-                        /*var addToQueue = []
-
-                        const model = ApplicationController.inputFilesListModel
-                        for(var row = 0 ; row < model.rowCount() ; row++) {                            
-                            const idx = model.index(row, 0)
-                            const type = model.data(idx, root.roleFiletype)
-                            //console.debug(row, idx, type)
-                            if(type !== "file")
-                                continue
-                            const filename = model.data(idx, root.roleFilename)
-                            const filepath = model.data(idx, root.roleFilepath)                            
-                            const fpath = filepath+(filepath === "/" ? "" : filepath)+filename                            
-                            
-                            ApplicationController.analyse_file(fpath)       
-                            addToQueue.push(idx)                                                 
-                        }
-
-                        for(var i = addToQueue.length-1 ; i >=0 ; i--) {
-                            model.setData(addToQueue[i], true, root.roleInqueue)
-                        }*/
+                        ApplicationController.enqueue_all_files()                        
                     }
                 }
             }           
@@ -185,9 +165,7 @@ Rectangle {
 
                     Connections {
                         function onClicked() {                            
-                            //const fpath = filepath +(filepath === "/" ? "" : "/") +filename
                             ApplicationController.enqueue_file(type, filepath) 
-                            //dlg.model.inqueue = true
                         }
                     }
                 }   
@@ -215,7 +193,6 @@ Rectangle {
                             if(type === "folder") {
                                 ApplicationController.go_to_folder(filepath)
                             }
-                            //dlg.model.selected = !dlg.model.selected
                         }
                     }
                 }
@@ -234,26 +211,7 @@ Rectangle {
                 icone: "\ue03b"
 
                 Connections {
-                    function onClicked() {                                                
-                        /*var addToQueue = []
-
-                        for(var row = 0 ; row < root.filesModel.rowCount() ; row++) {                            
-                            const idx = root.filesModel.index(row, 0)
-                            const type = root.filesModel.data(idx, root.roleFiletype)
-                            //console.debug(row, idx, type)
-                            if(type !== "file")
-                                continue
-                            const filename = root.filesModel.data(idx, root.roleFilename)
-                            const filepath = root.filesModel.data(idx, root.roleFilepath)                            
-                            const fpath = filepath+(filepath === "/" ? "" : filepath)+filename                            
-                            
-                            ApplicationController.analyse_file(fpath)       
-                            addToQueue.push(idx)                                                 
-                        }
-
-                        for(var i = addToQueue.length-1 ; i >=0 ; i--) {
-                            root.filesModel.setData(addToQueue[i], true, root.roleInqueue)
-                        }*/
+                    function onClicked() {                                                                        
                         ApplicationController.enqueue_all_files()
                     }
                 }
@@ -261,7 +219,7 @@ Rectangle {
         }
     }
 
-    PText {
+    /*PText {
         id: lblAskForDevice
 
         anchors {
@@ -276,19 +234,21 @@ Rectangle {
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
         visible: !diskReady
-    }
-
-    /*Connections {
-        target: root.filesModel
-        function onCurrentFolderChanged() {
-            root.tblView.positionViewAtRow(0, TableView.Visible)
-        }
     }*/
 
-    /** Models */    
-    //property var inputFilesListModel: ApplicationController.inputFilesListProxyModel
-    /*property int roleFilename: root.filesModel !== undefined ? root.filesModel.role("filename") : 0
-    property int roleFilepath: root.filesModel !== undefined ? root.filesModel.role("filepath") : 0
-    property int roleFiletype: root.filesModel !== undefined ? root.filesModel.role("type") : 0
-    property int roleInqueue: root.filesModel !== undefined ? root.filesModel.role("inqueue") : 0*/
+    Icone {
+        anchors {
+            left: parent.left
+            right: parent.right
+            margins: 10
+            centerIn: parent
+        }
+
+        text: "\ue4fa"
+        pixelSize: parent.width/5
+        color: Constants.disabledColor
+        //width: parent.width/3
+        //height: width
+        visible: !diskReady
+    }
 }

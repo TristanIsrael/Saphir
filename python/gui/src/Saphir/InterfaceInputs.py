@@ -4,12 +4,11 @@ from PySide6.QtGui import QMouseEvent, QWheelEvent, QHoverEvent, QEnterEvent, QG
 from PySide6.QtWidgets import QWidget
 from MousePointer import MousePointer
 from psec import Parametres, Cles, Mouse, MouseButton, MouseWheel, MouseMove, Api
-import serial, subprocess #, threading
+from typing import Optional
+import serial, subprocess  #, threading
 
 class InterfaceInputs(QObject):
-    """! Cette classe traite les informations sur les entrées (clavier, souris et tactile) en provenance du socle.
-
-    """
+    """ Cette classe traite les informations sur les entrées (clavier, souris et tactile) en provenance du socle. """
     
     fenetre_app:QWidget = None
     dernier_bouton = Qt.MouseButton.NoButton
@@ -24,7 +23,7 @@ class InterfaceInputs(QObject):
     wheel = Signal(MouseWheel)
 
 
-    def __init__(self, fenetre_app:QWidget, parent:QObject=None):
+    def __init__(self, fenetre_app:QWidget, parent:Optional[QObject]):
         QObject.__init__(self, parent)
         self.fenetre_app = fenetre_app
         
@@ -36,7 +35,7 @@ class InterfaceInputs(QObject):
             self.__connecte_interface_xenbus()
         except Exception as e:
             Api().error("Impossible d'ouvrir le port Xenbus Inputs", "InterfaceInputs")
-            Api().error(e, "InterfaceInputs")
+            Api().error(str(e), "InterfaceInputs")
 
     def mock(self):       
         print("MOCK") 
@@ -57,7 +56,7 @@ class InterfaceInputs(QObject):
             self.pret.emit()       
         except serial.SerialException as e:
             Api().error("Impossible de se connecter au port série %s" % self.chemin_socket_inputs, "InterfaceInputs")
-            Api().error(e, "InterfaceInputs")  
+            Api().error(str(e), "InterfaceInputs")  
             return
         
         try:
@@ -69,7 +68,7 @@ class InterfaceInputs(QObject):
 
         except serial.SerialException as e:
             Api().error("Erreur de lecture sur le port inputs %s" % self.chemin_socket_inputs, "InterfaceInputs")
-            Api().error(e, "InterfaceInputs")    
+            Api().error(str(e), "InterfaceInputs")    
 
     def __traite_donnees_input(self, data:bytes):
         # On recoit une version sérialisée d'un objet
@@ -103,14 +102,17 @@ class InterfaceInputs(QObject):
         
         # On traite d'abord le clic de souris
         diff = self.mouse.buttons ^ mouse.buttons
+        mouse_button = MouseButton.UNKNOWN
         if self.mouse.buttons != mouse.buttons:
             if diff & MouseButton.LEFT == MouseButton.LEFT:
-                self.__genere_evt_bouton_souris(mouse, MouseButton.LEFT, screenPos)
+                mouse_button = MouseButton.LEFT
             if diff & MouseButton.MIDDLE == MouseButton.MIDDLE:
-                self.__genere_evt_bouton_souris(mouse, MouseButton.MIDDLE, screenPos)
+                mouse_button = MouseButton.MIDDLE
             if diff & MouseButton.RIGHT == MouseButton.RIGHT:
-                self.__genere_evt_bouton_souris(mouse, MouseButton.RIGHT, screenPos)
+                mouse_button = MouseButton.RIGHT
             self.mouse.buttons = mouse.buttons            
+
+            self.__genere_evt_bouton_souris(mouse, mouse_button, screenPos)
 
             # On émet le signal du clic
             self.clicked.emit(screenPos)
@@ -136,7 +138,7 @@ class InterfaceInputs(QObject):
             return
 
         # On émet le signal de la nouvelle position
-        event = QMouseEvent(QEvent.Type.MouseMove, screenPos, screenPos, Qt.MouseButton.NoButton, Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier)
+        event = QMouseEvent(QEvent.Type.MouseMove, screenPos, screenPos, self.__mouse_button_to_qbutton(mouse_button), self.__mouse_button_to_qbutton(mouse_button), Qt.KeyboardModifier.NoModifier)
         QCoreApplication.postEvent(self.fenetre_app, event)
         self.nouvellePosition.emit(screenPos)
 
@@ -158,7 +160,8 @@ class InterfaceInputs(QObject):
                 event = QMouseEvent(QEvent.Type.MouseButtonRelease, screenPos, screenPos, qbutton, qbutton, Qt.KeyboardModifier.NoModifier)
                 QCoreApplication.postEvent(self.fenetre_app, event)                
 
-    def __genereMouseEvent(self, eventType: QEvent.Type, localPos: QPoint, screenPos: QPoint, button: Qt.MouseButton, buttons: Qt.MouseButtons):
+    '''
+    def __genereMouseEvent(self, eventType: QEvent.Type, localPos: QPoint, screenPos: QPoint, button: Qt.MouseButton, buttons: Qt.MouseButton):
         """Génère un événement de souris et l'insère dans l'event-loop de Qt
 
         :param eventType: Le type d'événement à générer
@@ -179,18 +182,17 @@ class InterfaceInputs(QObject):
         # Création des événements press et release pour la souris
         event = QMouseEvent(eventType, localPos, screenPos, button, buttons, Qt.KeyboardModifier.NoModifier)
         QCoreApplication.postEvent(self.fenetre_app, event)
+    '''
 
-    def __mouse_buttons_to_qbuttons(self, mouse:Mouse) -> Qt.MouseButtons:        
-        buttons = Qt.MouseButton.NoButton
+    def __mouse_button_to_qbutton(self, mouse_button:MouseButton) -> Qt.MouseButton:
+        if mouse_button == MouseButton.LEFT:
+            return Qt.MouseButton.LeftButton
+        if mouse_button == MouseButton.MIDDLE:
+            return Qt.MouseButton.MiddleButton
+        if mouse_button == MouseButton.RIGHT:
+            return Qt.MouseButton.RightButton
 
-        if mouse.button_pressed(MouseButton.LEFT):
-            buttons &= Qt.MouseButton.LeftButton
-        if mouse.button_pressed(MouseButton.MIDDLE):
-            buttons &= Qt.MouseButton.MiddleButton
-        if mouse.button_pressed(MouseButton.RIGHT):
-            buttons &= Qt.MouseButton.RightButton
-
-        return buttons    
+        return Qt.MouseButton.NoButton
     
     def __get_screen_rotation(self) -> int:
         try:

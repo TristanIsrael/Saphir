@@ -4,7 +4,7 @@ import QtQuick.Controls
 Item {
     id: root
 
-    PText {
+    /*PText {
         id: lblState
         anchors {
             top: parent.top
@@ -16,111 +16,110 @@ Item {
         horizontalAlignment: Qt.AlignHCenter
         text: qsTr("Getting ready")
         level: PText.TextLevel.H3
-    }
+    }*/
 
     PText {
         id: lblInformation
         anchors {
-            left: parent.left
-            right: parent.right
-            bottom: parent.bottom
-            bottomMargin: 5
+            fill: parent
+            margins: 5
         }
         horizontalAlignment: Qt.AlignHCenter
+        verticalAlignment: Qt.AlignVCenter
         text: qsTr("The system is starting")
-        level: PText.TextLevel.Paragraph
+        level: PText.TextLevel.H3
     }
 
     states: [
         State {
             name: "waiting"
 
-            PropertyChanges {
+            /*PropertyChanges {
                 target: lblState
                 text: qsTr("En attente")
-            }
+            }*/
 
             PropertyChanges {
                 target: lblInformation
-                text: qsTr("Veuillez connecter un support")
+                text: qsTr("Please connect a drive")
             }
         },
         State {
             name: "starting"
 
-            PropertyChanges {
+            /*PropertyChanges {
                 target: lblState
                 text: qsTr("Démarrage")
-            }
+            }*/
 
             PropertyChanges {
                 target: lblInformation
-                text: qsTr("Le système est en train de démarrer...")
+                text: qsTr("The system is starting")
             }
         },
         State {
             name: "waiting_for_user"
 
-            PropertyChanges {
+            /*PropertyChanges {
                 target: lblState
                 text: qsTr("En attente")
-            }
+            }*/
 
             PropertyChanges {
                 target: lblInformation
-                text: qsTr("En attente d'une action utilisateur...")
+                text: qsTr("Waiting for user action")
             }
         },
         State {
             name: "ready"
 
-            PropertyChanges {
+            /*PropertyChanges {
                 target: lblState
                 text: qsTr("Prêt")
-            }
+            }*/
 
             PropertyChanges {
                 target: lblInformation
-                text: qsTr("Le système est prêt")
+                text: qsTr("The system is ready")
             }
         },        
         State {
             name: "running"
 
-            PropertyChanges {
+            /*PropertyChanges {
                 target: lblState
                 text: qsTr("Tâche en cours")
-            }
+            }*/
 
             PropertyChanges {
                 target: lblInformation
-                text: qsTr("Une tâche est en cours...")
+                text: qsTr("Task running...")
             }
         },
         State {
             name: "getting_files_list"
 
-            PropertyChanges {
+            /*PropertyChanges {
                 target: lblState
                 text: qsTr("Lecture")
-            }
+            }*/
 
             PropertyChanges {
                 target: lblInformation
-                text: qsTr("Récupération de la liste des fichiers...")
+                text: qsTr("Getting files list")
             }
         },
         State {
             name: "analysis_running"
 
-            PropertyChanges {
+            /*PropertyChanges {
                 target: lblState
                 text: qsTr("Analyse")
-            }
+            }*/
 
             PropertyChanges {
                 target: lblInformation
-                text: qsTr("Une analyse des fichiers est en cours...")
+                text: qsTr("Analysis running...")
             }
         }
     ]

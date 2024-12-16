@@ -11,7 +11,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "env": {
-                "PYTHONPATH": "${workspaceFolder}/../PSEC/python/lib/src:${workspaceFolder}/../Saphir/python/gui/src/Saphir:${workspaceFolder}/../Saphir/python/libsaphir/src:${PYTHONPATH}"
+                "PYTHONPATH": "${workspaceFolder}/../PSEC/python/lib/src:${workspaceFolder}/../Saphir/python/gui/src/Saphir:${workspaceFolder}/../Saphir/python/libsaphir/src:${PYTHONPATH}",
+                "DEVMODE": "1"
             }
         }
     ]

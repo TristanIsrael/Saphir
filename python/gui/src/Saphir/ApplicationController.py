@@ -11,8 +11,7 @@ from PsecOutputFilesListProxyModel import PsecOutputFilesListProxyModel
 from QueueListModel import QueueListModel
 from AnalysisContoller import AnalysisController
 from DevModeHelper import DevModeHelper
-from libsaphir import ANTIVIRUS_NEEDED
-from Constants import DEVMODE
+from libsaphir import ANTIVIRUS_NEEDED, DEVMODE
 from pathlib import Path
 import copy
 
