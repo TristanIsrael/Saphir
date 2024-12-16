@@ -111,7 +111,7 @@ class ApplicationController(QObject):
     @Slot() 
     def start_io_monitoring(self):
         Api().debug("Démarrage de la surveillance des entrées", "AppController")
-        self.interfaceInputs = InterfaceInputs(self.__main_window)  
+        self.interfaceInputs = InterfaceInputs(fenetre_app=self.__main_window)  
         self.workerThread = QThread()        
         self.interfaceInputs.moveToThread(self.workerThread)  
         self.workerThread.start()
