@@ -4,6 +4,7 @@ import sys
 import threading
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QGuiApplication, QFont, QFontDatabase
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonType, qmlRegisterUncreatableType, qmlRegisterSingletonInstance
 from psec import Api
@@ -55,12 +56,13 @@ if __name__ == "__main__":
         sys.exit(-1)
     
     qml_root = engine.rootObjects()[0]        
+    qml_root.setCursor(Qt.ArrowCursor)
     if not DEVMODE:
         qml_root.showFullScreen()        
 
     # Integrate with PSEC core
-    if not DEVMODE:
-        applicationController.set_main_window(qml_root)
+    #if not DEVMODE:
+    #    applicationController.set_main_window(qml_root)
 
     Api().info("Saphir is ready")
 

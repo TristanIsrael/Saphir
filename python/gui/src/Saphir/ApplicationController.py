@@ -2,8 +2,8 @@ from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer, QThread, QPo
 from PySide6.QtWidgets import QWidget
 from psec import Api, MqttFactory, Topics, MqttHelper, ComponentsHelper, Constantes, EtatComposant, MouseWheel
 from Enums import SystemState, AnalysisState, FileStatus
-from MousePointer import MousePointer
-from InterfaceInputs import InterfaceInputs
+#from python.gui.src.Saphir.Deprecated.MousePointer import MousePointer
+#from python.gui.src.Saphir.Deprecated.InterfaceInputs import InterfaceInputs
 from PsecInputFilesListModel import PsecInputFilesListModel
 from PsecInputFilesListProxyModel import PsecInputFilesListProxyModel
 from PsecOutputFilesListProxyModel import PsecOutputFilesListProxyModel
@@ -38,8 +38,8 @@ class ApplicationController(QObject):
     __files_to_enqueue = list()
     __current_folder = "/"
     __is_enquing = False
-    __interfaceInputs = None
-    __main_window:QWidget
+    #__interfaceInputs = None
+    #__main_window:QWidget
     #__is_navigating = True
 
     # Signaux
@@ -108,6 +108,7 @@ class ApplicationController(QObject):
         Api().start(self.mqtt_client)
 
 
+    '''
     @Slot() 
     def start_io_monitoring(self):
         Api().debug("Démarrage de la surveillance des entrées", "AppController")
@@ -119,7 +120,7 @@ class ApplicationController(QObject):
         self.interfaceInputs.clicked.connect(self.on_clicked)
         self.interfaceInputs.wheel.connect(self.__on_wheel)
         QTimer.singleShot(1, self.interfaceInputs.demarre_surveillance)
-
+    '''
 
     def update_source_files_list(self):
         # Ask for the list of files
@@ -477,6 +478,7 @@ class ApplicationController(QObject):
             Api().info("Analysis state is unknown")
             # TODO
 
+    '''
     @Slot()
     def __on_wheel(self, wheel:MouseWheel):
         self.set_wheel(wheel)
@@ -496,6 +498,7 @@ class ApplicationController(QObject):
     def on_clicked(self, position:QPoint):
         self.set_clic_x(position.x())
         self.set_clic_y(position.y())
+    '''
 
     ###
     # Getters and setters
@@ -618,10 +621,11 @@ class ApplicationController(QObject):
         self._clic_y = y
         self.clicYChanged.emit()
     
-    def set_main_window(self, window:QWidget):
+    '''def set_main_window(self, window:QWidget):
         self.__main_window = window
         self.mousePointer = MousePointer(window.contentItem())
         self.start_io_monitoring()
+    '''
     
     pret = Property(bool, __pret, __set_pret, notify=pretChanged) 
     sourceName = Property(str, __sourceName, notify= sourceNameChanged)
