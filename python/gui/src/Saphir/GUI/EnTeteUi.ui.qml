@@ -29,7 +29,7 @@ Rectangle {
     }
 
     Text {
-        text: qsTr("Panoptiscan")
+        text: qsTr("Saphir")
         anchors.centerIn: parent
         font {
             family: "freshbot"
