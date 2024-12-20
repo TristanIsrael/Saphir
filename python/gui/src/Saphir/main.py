@@ -40,7 +40,7 @@ if __name__ == "__main__":
     load_fonts(["MaterialIconsOutlined-Regular.otf", "FRESHBOT.TTF", "Alien-Encounters-Regular.ttf"])
     
     applicationController = ApplicationController()
-    applicationController.start(on_ready)    
+    applicationController.start(on_ready)     
 
     print("Waiting for the API to be ready")
     api_ready.wait()    
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     #if not DEVMODE:
     #    applicationController.set_main_window(qml_root)
 
-    Api().info("Saphir is ready")
+    Api().info("Saphir is ready")    
 
     res = app.exec()
     Api().info("Saphir is terminating with exit code {}".format(res))

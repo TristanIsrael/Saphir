@@ -7,6 +7,8 @@ import net.alefbet
 FondEcranUi {
     id: root
 
+    property alias msgBox: msgBox
+
     RowLayout {
         id: rLyt
         anchors {
@@ -133,6 +135,15 @@ FondEcranUi {
         width: pnlNavigatorInput.btnAddFolder.width
         visible: pnlEtatActions.btnHelp.pressed
         comment: qsTr("Mettre en pause l'analyse.")
+    }
+
+    MessageBox {
+        id: msgBox        
+
+        anchors {
+            fill: parent
+        }
+        visible: false
     }
 
 }

@@ -64,6 +64,7 @@ class ApplicationController(QObject):
     cleanFilesCountChanged = Signal(int)
     globalProgressChanged = Signal(int)
     taskRunningChanged = Signal(bool)    
+    showMessage = Signal(str, str, bool)
 
     # IO
     _mouse_x = 0
@@ -94,7 +95,7 @@ class ApplicationController(QObject):
         #self.fileCopied.connect(self.queueListModel_.on_file_updated)
         self.fileQueued.connect(self.queueListModel_.on_file_added)
         self.fileUnqueued.connect(self.queueListModel_.on_file_removed)
-        self.fileUpdated.connect(self.queueListModel_.on_file_updated)
+        self.fileUpdated.connect(self.queueListModel_.on_file_updated)        
 
     def start(self, ready_callback):
         if DEVMODE:
@@ -105,7 +106,7 @@ class ApplicationController(QObject):
         Api().add_message_callback(self.__on_message_received)
         Api().add_ready_callback(ready_callback)
         Api().add_ready_callback(self.__on_api_ready)
-        Api().start(self.mqtt_client)
+        Api().start(self.mqtt_client)        
 
 
     '''
@@ -279,7 +280,10 @@ class ApplicationController(QObject):
         self.analysisController_.resultsChanged.connect(self.__on_results_changed)
         self.analysisController_.fileUpdated.connect(self.queueListModel_.on_file_updated)
         self.analysisController_.stateChanged.connect(self.__on_analysis_state_changed)
+        
         Api().subscribe("{}/response".format(Topics.COPY_FILE))
+        Api().subscribe("{}/response".format(Topics.SHUTDOWN))
+
         self.__set_system_state(SystemState.SystemReady)
         Api().discover_components()        
 
@@ -425,10 +429,24 @@ class ApplicationController(QObject):
             Api().info("The file {} has been copied to {}. The footprint is {}".format(filepath, self.__targetName, footprint))
             self.fileUpdated.emit(filepath, ["status"])
 
+        elif topic == "{}/response".format(Topics.SHUTDOWN):
+            if not MqttHelper.check_payload(payload, ["state", "reason"]):
+                Api().error("Missing arguments in the topic {}".format(topic))
+                return
+
+            state = payload.get("state", "")
+            if state == "accepted":
+                self.showMessage.emit("Shutdown", "The system is shutting down", True)
+            elif state == "refused":
+                self.showMessage.emit("Shutdown", "The system refuses to shut down", True)
 
     def __is_file_in_folder(self, filepath:str, folder:str) -> bool:
         return filepath.startswith(folder) # type: ignore
 
+
+    @Slot()
+    def shutdown(self):
+        Api().shutdown()
 
     def __check_components_availability(self):
         states = self.componentsHelper_.get_states()

@@ -32,5 +32,13 @@ ActionsPanelUi {
         }
     }
 
+    Connections {
+        target: btnShutdown
+
+        function onClicked() {
+            ApplicationController.shutdown()
+        }
+    }
+
 
 }
