@@ -10,6 +10,7 @@ Item {
     property alias btnClose: btnClose
     property bool modal: false
     property bool alert: false
+    property bool canClose: true
 
     implicitHeight: Screen.height
     implicitWidth: Screen.width
@@ -74,6 +75,7 @@ Item {
                 width: btnTxt.width*1.4
                 height: btnTxt.height*1.4
                 Layout.alignment: Qt.AlignHCenter
+                visible: root.canClose
 
                 border {
                     color: Constants.contrastColor
@@ -84,7 +86,7 @@ Item {
                     id: btnTxt
                     anchors.centerIn: parent
                     text: qsTr("Close")
-                    color: Constants.contrastColor                    
+                    color: Constants.contrastColor
                 }
 
                 MouseArea {

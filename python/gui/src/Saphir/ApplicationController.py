@@ -64,7 +64,7 @@ class ApplicationController(QObject):
     cleanFilesCountChanged = Signal(int)
     globalProgressChanged = Signal(int)
     taskRunningChanged = Signal(bool)    
-    showMessage = Signal(str, str, bool) #Title, Message, alert
+    showMessage = Signal(str, str, bool, bool) #Title, Message, alert, modal
 
     # IO
     _mouse_x = 0
@@ -95,7 +95,7 @@ class ApplicationController(QObject):
         #self.fileCopied.connect(self.queueListModel_.on_file_updated)
         self.fileQueued.connect(self.queueListModel_.on_file_added)
         self.fileUnqueued.connect(self.queueListModel_.on_file_removed)
-        self.fileUpdated.connect(self.queueListModel_.on_file_updated)        
+        self.fileUpdated.connect(self.queueListModel_.on_file_updated)                
 
     def start(self, ready_callback):
         if DEVMODE:
@@ -283,10 +283,9 @@ class ApplicationController(QObject):
         self.analysisController_.stateChanged.connect(self.__on_analysis_state_changed)
         
         Api().subscribe("{}/response".format(Topics.COPY_FILE))
-        Api().subscribe("{}/response".format(Topics.SHUTDOWN))
 
         self.__set_system_state(SystemState.SystemReady)
-        Api().discover_components()        
+        Api().discover_components()                
 
     def __on_message_received(self, topic:str, payload:dict):        
         #print("[ApplicationController] topic: {}".format(topic))
@@ -430,23 +429,13 @@ class ApplicationController(QObject):
             Api().info("The file {} has been copied to {}. The footprint is {}".format(filepath, self.__targetName, footprint))
             self.fileUpdated.emit(filepath, ["status"])
 
-        elif topic == "{}/response".format(Topics.SHUTDOWN):
-            if not MqttHelper.check_payload(payload, ["state", "reason"]):
-                Api().error("Missing arguments in the topic {}".format(topic))
-                return
-
-            state = payload.get("state", "")
-            if state == "accepted":
-                self.showMessage.emit("Shutdown", "The system is shutting down", True)
-            elif state == "refused":
-                self.showMessage.emit("Shutdown", "The system refuses to shut down", True)
 
     def __is_file_in_folder(self, filepath:str, folder:str) -> bool:
         return filepath.startswith(folder) # type: ignore
 
 
     @Slot()
-    def shutdown(self):
+    def shutdown(self):        
         Api().shutdown()
 
     def __check_components_availability(self):
@@ -519,8 +508,12 @@ class ApplicationController(QObject):
         self.set_clic_y(position.y())
     '''
 
-    def __on_shutdown(self):
-        self.showMessage.emit("System shutdown", "The system is shutting down", True)
+    def __on_shutdown(self, accepted:bool):
+        if accepted:
+            self.showMessage.emit("Shutdown", "The system is shutting down", True, True)
+        else:
+            self.showMessage.emit("Shutdown", "The system refuses to shut down", True, False)
+
 
     ###
     # Getters and setters

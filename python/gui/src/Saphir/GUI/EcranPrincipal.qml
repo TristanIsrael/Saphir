@@ -7,10 +7,12 @@ EcranPrincipalUi {
     Connections {
         target: ApplicationController
         
-        function onShowMessage(title, message, alert) {
+        function onShowMessage(title, message, alert, modal) {
             root.msgBox.title = title
             root.msgBox.message = message
-            root.alert = alert
+            root.msgBox.alert = alert
+            root.msgBox.modal = modal
+            root.msgBox.visible = true
         }
     }
 
