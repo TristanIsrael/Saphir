@@ -64,7 +64,7 @@ class ApplicationController(QObject):
     cleanFilesCountChanged = Signal(int)
     globalProgressChanged = Signal(int)
     taskRunningChanged = Signal(bool)    
-    showMessage = Signal(str, str, bool)
+    showMessage = Signal(str, str, bool) #Title, Message, alert
 
     # IO
     _mouse_x = 0
@@ -106,6 +106,7 @@ class ApplicationController(QObject):
         Api().add_message_callback(self.__on_message_received)
         Api().add_ready_callback(ready_callback)
         Api().add_ready_callback(self.__on_api_ready)
+        Api().add_shutdown_callback(self.__on_shutdown)
         Api().start(self.mqtt_client)        
 
 
@@ -517,6 +518,9 @@ class ApplicationController(QObject):
         self.set_clic_x(position.x())
         self.set_clic_y(position.y())
     '''
+
+    def __on_shutdown(self):
+        self.showMessage.emit("System shutdown", "The system is shutting down", True)
 
     ###
     # Getters and setters
