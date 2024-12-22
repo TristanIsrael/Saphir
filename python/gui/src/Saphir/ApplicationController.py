@@ -508,7 +508,7 @@ class ApplicationController(QObject):
         self.set_clic_y(position.y())
     '''
 
-    def __on_shutdown(self, accepted:bool):
+    def __on_shutdown(self, accepted:bool, reason:str=""):
         if accepted:
             self.showMessage.emit("Shutdown", "The system is shutting down", True, True)
         else:
