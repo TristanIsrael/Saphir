@@ -40,7 +40,7 @@ if __name__ == "__main__":
     load_fonts(["MaterialIconsOutlined-Regular.otf", "FRESHBOT.TTF", "Alien-Encounters-Regular.ttf"])
     
     applicationController = ApplicationController()
-    applicationController.start(on_ready)     
+    applicationController.start(on_ready)
 
     print("Waiting for the API to be ready")
     api_ready.wait()    

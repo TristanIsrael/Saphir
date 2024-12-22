@@ -40,5 +40,12 @@ ActionsPanelUi {
         }
     }
 
+    Connections {
+        target: btnStartOver
+
+        function onClicked() {
+            ApplicationController.reset()
+        }
+    }
 
 }

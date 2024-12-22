@@ -259,6 +259,20 @@ class ApplicationController(QObject):
                 Api().copy_file(self.sourceName_, filepath_, self.targetName_)
 
 
+    @Slot()
+    def reset(self):
+        Api().info("User wants to reset the environment")
+
+        # Reset the environment means destroying and re-creating dirty VMs:
+        # - sys-usb
+        # - all analysis VM
+        Api().restart_domain("sys-usb")
+
+        ids = self.componentsHelper_.get_ids_by_type("antivirus")
+        for id in ids:
+            Api().restart_domain(id)
+
+
     @Slot(str, str)
     def debug(self, message:str, module:str):
         Api().debug(message, module)
@@ -282,7 +296,7 @@ class ApplicationController(QObject):
         self.analysisController_.fileUpdated.connect(self.queueListModel_.on_file_updated)
         self.analysisController_.stateChanged.connect(self.__on_analysis_state_changed)
         
-        Api().subscribe("{}/response".format(Topics.COPY_FILE))
+        Api().subscribe("{}/response".format(Topics.COPY_FILE))        
 
         self.__set_system_state(SystemState.SystemReady)
         Api().discover_components()                
