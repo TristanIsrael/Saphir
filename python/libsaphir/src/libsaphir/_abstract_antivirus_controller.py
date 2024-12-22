@@ -1,5 +1,5 @@
 from psec import Api, MqttFactory, MqttHelper, Topics, EtatComposant
-import threading, time, os
+import threading, time, os, platform
 from queue import Queue
 from abc import ABC, abstractmethod
 from libsaphir import TOPIC_ANALYSE, DEVMODE
@@ -63,9 +63,10 @@ class AbstractAntivirusController(ABC):
     def component_state_changed(self):
         components = [{
             "id": self.__component_name,
-                "label": self.__component_description,
-                "type": "antivirus",
-                "state": self._get_component_state()
+            "domain_name": platform.node(),
+            "label": self.__component_description,
+            "type": "antivirus",
+            "state": self._get_component_state()
         }]
         
         Api().publish_components(components)

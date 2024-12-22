@@ -60,7 +60,7 @@ Rectangle {
             }
             
             pixelSize: parent.height * 0.9
-            enabled: false
+            enabled: ApplicationController.analysisReady
             text: "\uf053"
         }
 

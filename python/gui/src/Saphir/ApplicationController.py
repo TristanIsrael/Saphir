@@ -270,7 +270,10 @@ class ApplicationController(QObject):
 
         ids = self.componentsHelper_.get_ids_by_type("antivirus")
         for id in ids:
-            Api().restart_domain(id)
+            component = self.componentsHelper_.get_by_id(id)
+            domain_name = component.get("domain_name", "")
+            if domain_name != "":
+                Api().restart_domain(domain_name)
 
 
     @Slot(str, str)
