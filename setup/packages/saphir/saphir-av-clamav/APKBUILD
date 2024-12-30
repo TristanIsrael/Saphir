@@ -23,8 +23,9 @@ clamd.conf
 clamav.initd
 "
 
-prepare() {
-    freshclam --datadir="$srcdir"
+build() {
+    mkdir -p "$srcdir"
+    freshclam --config-file=freshclam.conf --datadir="$srcdir"
 }
 
 package() {

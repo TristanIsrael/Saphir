@@ -1,12 +1,5 @@
 #!/bin/sh
 
-mkdir -p /var/log/clamav
-chmod 777 /var/log/clamav
-
-rc-update add clamav
-rc-service clamav start
-
-rc-update add av-controller
-rc-service av-controller start
+lxc-start -n saphir-container-eset
 
 exit 0

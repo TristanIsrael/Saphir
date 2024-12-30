@@ -16,12 +16,11 @@ replaces=""
 builddir="$srcdir/"
 options="!check"  # no tests provided
 source="
+av-controller.initd
+av-controller.py
 "
 
-prepare() {
-    
-}
-
 package() {
-    
+    install -D -m755 "$srcdir"/av-controller.initd "$pkgdir"/etc/init.d/av-controller
+    install -D -m755 "$srcdir"/av-controller.py "$pkgdir"/usr/lib/saphir/bin/av-controller.py
 }
