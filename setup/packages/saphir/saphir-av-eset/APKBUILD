@@ -1,0 +1,27 @@
+# Contributor:
+# Maintainer: Tristan Israël <tristan.israel@icloud.com>
+pkgname=saphir-av-eset
+pkgver=1.0
+pkgrel=1
+pkgdesc="Saphir - ESET Antivirus"
+url="https://defense.gouv.fr/"
+arch="noarch"
+license="MIT"
+depends="saphir-container-eset saphir-lib psec-lib"
+makedepends=""
+checkdepends=""
+install="$pkgname.post-install"
+subpackages=""
+replaces=""
+builddir="$srcdir/"
+options="!check"  # no tests provided
+source="
+"
+
+prepare() {
+    
+}
+
+package() {
+    
+}

@@ -1,0 +1,82 @@
+# Contributor:
+# Maintainer: Tristan Israël <tristan.israel@icloud.com>
+pkgname=saphir-container-eset
+pkgver=1.0
+pkgrel=1
+pkgdesc="Saphir - LXC Container for ESET Antivirus"
+url="https://defense.gouv.fr/"
+arch="x86_64"
+license="MIT"
+depends=""
+makedepends="psec-container-debian"
+checkdepends=""
+install="$pkgname.post-install"
+subpackages=""
+replaces=""
+builddir="$srcdir/"
+options="!check"  # no tests provided
+source="https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/eeau_x86_64.bin"
+
+clean() {
+    sudo rm -rf "$srcdir" 
+    sudo rm -rf "$pkgdir"
+    sudo rm -rf "$builddir"
+    sudo rm -rf /var/lib/lxc/"$pkgname"
+}
+
+build() {
+    # We need to install ESET inside of the Debian container
+    # That is done by adding network capabilities to the container
+    # Then pushing ESET installer inside of the container
+    # and finally run the installer
+
+    # Rename the LXC container and reconfigure
+    mv /var/lib/lxc/psec-container-debian /var/lib/lxc/"$pkgname"
+    sed -i '/^lxc\.rootfs\.path/d' /var/lib/lxc/"$pkgname"/config
+    sed -i '/^lxc\.uts\.name/d' /var/lib/lxc/"$pkgname"/config
+    echo "" >> /var/lib/lxc/"$pkgname"/config
+    echo "lxc.rootfs.path = dir:/var/lib/lxc/$pkgname/rootfs" >> /var/lib/lxc/"$pkgname"/config
+    echo "lxc.uts.name = $pkgname" >> /var/lib/lxc/"$pkgname"/config
+
+    # Extract the debian installer
+    chmod +x "$srcdir"/eeau_x86_64.bin
+    cd "$srcdir"
+    ./eeau_x86_64.bin -n -y
+    rm "$srcdir"/*.rpm
+    rm "$srcdir"/eeau_x86_64.bin
+    debfile=$(ls "$srcdir" | grep eea | grep .deb | head -n 1)
+
+    # Copy the installer into the container
+    sudo mv "$debfile" "/var/lib/lxc/$pkgname/rootfs/root/"
+
+    # Setup the network
+    sed -i '/^#lxc\.net/s/^#//' "/var/lib/lxc/$pkgname/config"
+    sudo service dnsmasq.lxcbr0 start
+
+    # Start the container and install ESET
+    sudo lxc-start -n "$pkgname"
+    sudo lxc-attach -n "$pkgname" -- apt update
+    sudo lxc-attach -n "$pkgname" -- apt upgrade
+    sudo lxc-attach -n "$pkgname" -- dpkg -i "/root/$debfile" || true # Ignore the error
+    sudo lxc-attach -n "$pkgname" -- apt --fix-broken install -y
+
+    # Stop the container
+    sudo lxc-stop -n "$pkgname"
+
+    # Disable networking
+    sed -i 's/^lxc\.net/#&/' /var/lib/lxc/"$pkgname"/config
+}
+
+package() {
+    # The new package will be based on the vanilla psec-container-debian
+    # which won't be useful anymore. We will package the whole container
+    # including ESET installation
+    mkdir -p "$pkgdir"/var/lib/lxc/
+
+    # Tar container
+    sudo tar cf "$pkgdir"/var/lib/lxc/"$pkgname".tar -C /var/lib/lxc/ .
+    sudo chown $USER "$pkgdir"/var/lib/lxc/"$pkgname".tar
+
+    # Compress archive
+    bzip2 "$pkgdir"/var/lib/lxc/"$pkgname".tar
+}

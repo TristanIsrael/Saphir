@@ -298,11 +298,12 @@ class ApplicationController(QObject):
         self.analysisController_.resultsChanged.connect(self.__on_results_changed)
         self.analysisController_.fileUpdated.connect(self.queueListModel_.on_file_updated)
         self.analysisController_.stateChanged.connect(self.__on_analysis_state_changed)
-        
+
+        Api().notify_gui_ready()  
         Api().subscribe("{}/response".format(Topics.COPY_FILE))        
 
         self.__set_system_state(SystemState.SystemReady)
-        Api().discover_components()                
+        Api().discover_components()                        
 
     def __on_message_received(self, topic:str, payload:dict):        
         #print("[ApplicationController] topic: {}".format(topic))

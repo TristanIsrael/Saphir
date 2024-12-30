@@ -1,0 +1,4 @@
+#!/bin/sh
+
+tar xjf /var/lib/lxc/saphir-container-eset.tar.bz2 -C /var/lib/lxc
+rm /var/lib/lxc/saphir-container-eset.tar.bz2

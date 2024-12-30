@@ -26,5 +26,6 @@ package() {
 	#install -D -m644 "$srcdir"/Splash.png "$pkgdir"/boot/Splash.png
     #install -D -m644 "$srcdir"/Splash_1280_1024.ppm "$pkgdir"/boot/Splash_1280_1024.ppm
     #install -D -m644 "$srcdir"/Splash_1024_768.ppm "$pkgdir"/boot/Splash_1024_768.ppm
+    install -D -m644 "$srcdir"/splash_1280_800.png "$pkgdir"/boot/splash_1280_800.png
 }
 

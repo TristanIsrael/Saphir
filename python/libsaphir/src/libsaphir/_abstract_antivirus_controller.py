@@ -8,6 +8,8 @@ from . import FileStatus
 class AbstractAntivirusController(ABC):
     """ This class manages the antivirus analysis.
 
+    It is ran on each analysis domain.
+
     The controller listens on the messaging socket and waits for commands. When a command is sent, it
     starts and monitors the analysis of one particular file of the repository. When done it sends an 
     Answer to the requester and gives details on the analysis result.

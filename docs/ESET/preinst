@@ -1,0 +1,63 @@
+#!/bin/sh
+
+# Script to be run before package is installed / upgraded
+
+SYSTEMD_CAT="$(which systemd-cat 2>/dev/null || true)"
+print_error() {
+        errorstr="ESET Endpoint Antivirus error: $1"
+        echo "$errorstr" 1>&2
+        if [ -n "$SYSTEMD_CAT" ]; then
+                printf "%s" "$errorstr" | $SYSTEMD_CAT -t "eea" -p err
+        fi
+}
+
+# Check for UTF-8 support
+if ! localectl list-locales | grep -i "UTF-8\|UTF8" 1>/dev/null ; then
+        print_error 'UTF-8 support is not installed in the system. Please install a UTF-8 locale first. Aborting installation.'
+        exit 1
+fi
+
+# Check noexec flag for /var/opt /tmp and MODMAPDIR
+if findmnt -n --target /var/opt | grep "noexec" 1>/dev/null && \
+        findmnt -n --target /tmp | grep "noexec" 1>/dev/null ; then
+        if [ -z "$MODMAPDIR" ] ; then
+                print_error '"/var/opt" and "/tmp" are both mounted as NOEXEC. Please disable NOEXEC flag for one of them or set variable MODMAPIDR according to documentation.'
+                exit 1
+        elif findmnt -n --target "$MODMAPDIR" | grep "noexec" 1>/dev/null ; then
+                print_error '"/var/opt", "/tmp" and directory specified in MODMAPDIR are all mounted as NOEXEC. Please disable NOEXEC flag for one of them or set variable MODMAPIDR according to documentation.'
+                exit 1
+        fi
+fi
+
+# Check for previous product
+if [ -d "/opt/eset/esets/" ] || [ -f "/opt/eset/efs/etc/pkgid" ] || [ -f "/etc/opt/eset/esets/info/pkgid" ] || [ -f "/etc/opt/eset/esets/esets.cfg" ]; then
+        print_error 'Previous ESET Security product must be uninstalled first, package won'\''t be installed.'
+        exit 1
+fi
+
+#################################### Upgrade ####################################
+if [ "$1" = "upgrade" ] || [ "$1" = "2" ]; then
+        # stop and unregister old product
+        '/opt/eset/eea/lib/install_scripts/unregister_service.sh'
+
+        # export configuration from old product to xml
+        # this path must be into old product
+        if [ -f '/var/opt/eset/eea/confd/settings.json' ]; then
+                confd_ug='eset-eea-confd:eset-eea-daemons'
+                sudo -u ${confd_ug%:*} -- '/opt/eset/eea/lib/cfg-upgrade' --export-xml '/var/opt/eset/eea/confd/exported.xml'
+        fi
+
+        # convert product license file name to newer format
+        if [ -f /var/opt/eset/eea/licensed/license.lf ]; then
+                mv /var/opt/eset/eea/licensed/license.lf /var/opt/eset/eea/licensed/license_113.lf
+        fi
+        if [ -f /var/opt/eset/eea/licensed/license_cfg.json ]; then
+                mv /var/opt/eset/eea/licensed/license_cfg.json /var/opt/eset/eea/licensed/license_cfg_113.json
+        fi
+
+        # remove potential upgrade package already prepared in product, as we are upgrading first
+        # because /var/opt/eset is left intact during upgrade, prepared upgrade
+        # package can be present there, which would cause "pcu update when product starts" during this
+        # upgrade
+        rm -f '/var/opt/eset/eea/updated/app/eea.bin'
+fi

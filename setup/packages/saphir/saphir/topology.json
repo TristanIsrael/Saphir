@@ -21,6 +21,12 @@
                 "app-package": "saphir-av-clamav",
                 "memory": 2000,
                 "cpu": 1
+            },
+            {
+                "name": "saphir-av-eset",
+                "app-package": "saphir-av-eset",
+                "memory": 2000,
+                "cpu": 1
             }
         ]
     }
