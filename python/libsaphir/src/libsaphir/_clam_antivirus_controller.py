@@ -19,13 +19,15 @@ class ClamAntivirusController(AbstractAntivirusController):
     
     def _analyse_file(self, filepath: str) -> None:
         if self.__state != EtatComposant.READY:
-            self.error("The component is not ready.")
+            self.error("The component is not ready.")            
             return        
         
         storage_filepath = "{}{}".format(Parametres().parametre(Cles.STORAGE_PATH_DOMU), filepath)
 
         if not os.path.exists(storage_filepath):
-            self.error("The file {} does not exist or is not accessible.".format(storage_filepath))
+            errstr = "The file {} does not exist or is not accessible.".format(storage_filepath)
+            self.error(errstr)
+            self.publish_result(filepath, False, errstr)
             return
 
         self.update_status(filepath, FileStatus.FileAnalysing, 0)

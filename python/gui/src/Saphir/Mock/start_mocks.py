@@ -1,5 +1,6 @@
 from psec import MockSysUsbController
 from MockClamAntivirusController import MockClamAntivirusController
+from MockEeaAntivirusController import MockEeaAntivirusController
 from DevModeHelper import DevModeHelper
 import threading
 
@@ -13,6 +14,10 @@ if __name__ == "__main__":
     print("... Starting Mock ClamAV controller")
     mockAV = MockClamAntivirusController()
     mockAV.start()
+
+    print("... Starting Mock ESET controller")
+    mockEEA = MockEeaAntivirusController()
+    mockEEA.start()
 
     print("Démarrage des mocks terminé")
 

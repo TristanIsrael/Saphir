@@ -17,7 +17,9 @@ builddir="$srcdir/"
 options="!check"  # no tests provided
 
 source="
-topology.json"
+topology.json
+splash_1280_800.png
+"
 
 package() {
     install -D -m644 "$srcdir"/topology.json "$pkgdir/etc/psec/topology.json"
