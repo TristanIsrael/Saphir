@@ -16,17 +16,17 @@ class DevModeHelper():
         os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = plugins_path
 
     @staticmethod
-    def get_mocked_source_disk_path():
+    def get_mocked_source_disk_path() -> str:
         #current_script_path = Path(__file__).resolve()
         #root_path = current_script_path.parent.parent.parent.parent
         #root_path = Path("/Applications/Adobe Acrobat DC/Adobe Acrobat.app/Contents/Frameworks").resolve()
         root_path = Path("/Applications").resolve()
-        return root_path
+        return root_path.as_posix()
     
     @staticmethod
-    def get_mocked_destination_disk_path():
+    def get_mocked_destination_disk_path() -> str:
         return "/tmp/saphir/OUT"
     
     @staticmethod
-    def get_storate_path():
+    def get_storage_path() -> str:
         return "/tmp/saphir/repository"

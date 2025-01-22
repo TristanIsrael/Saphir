@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "saphir-gui"
+version = "0.1"
+authors = [ 
+    { name="Tristan Israël", email="tristan.israel@alefbet.net" }, 
+]
+description = "Contrôleur graphique pour les stations blanches"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX :: Linux",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gui"]
+
+[project.urls]
+Homepage = "https://github.com/pypa/sampleproject"
+Issues = "https://github.com/pypa/sampleproject/issues"

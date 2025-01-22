@@ -7,7 +7,7 @@ class MockClamAntivirusController(ClamAntivirusController):
 
     def __init__(self):
         super().__init__()
-        Parametres().set_parametre(Cles.STORAGE_PATH_DOMU, DevModeHelper.get_storate_path())
+        Parametres().set_parametre(Cles.STORAGE_PATH_DOMU, DevModeHelper.get_storage_path())
 
 
 if __name__ == "__main__":

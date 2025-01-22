@@ -66,6 +66,7 @@ class ClamAntivirusController(AbstractAntivirusController):
     ## Private functions
     #
     def __ping_clamd(self):
+        
         cmd = ["clamdscan", "--ping", "1"]
         proc = subprocess.run(cmd, capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if proc.returncode > 0:

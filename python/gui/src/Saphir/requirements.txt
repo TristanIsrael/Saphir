@@ -1,5 +1,4 @@
 PySide6
-PySide6-stubs
 pyserial
 humanize
 joblib
