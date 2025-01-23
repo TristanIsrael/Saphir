@@ -11,11 +11,12 @@ class QueueListModel(QAbstractListModel):
     # Variables
     __last_row_count = 0
     __row_count = 0
-    fichiers_:dict
+    __fichiers:dict
     
-    def __init__(self, files:dict, parent=None):
-        super().__init__(parent)       
-        self.fichiers_ = files    
+    def __init__(self, files:dict, analysisComponents:list, parent=None):
+        super().__init__(parent)
+        self.__fichiers = files
+        self.__analysisComponents = analysisComponents
 
     def rowCount(self, parent=QModelIndex()):        
         self.__last_row_count = self.__row_count
@@ -27,7 +28,7 @@ class QueueListModel(QAbstractListModel):
             return None
 
         row = index.row()
-        fichier = list(self.fichiers_.values())[row]
+        fichier = list(self.__fichiers.values())[row]
         #qDebug("fonction data() - filename:%s, filepath:%s" % (fichier["filename"], fichier["filepath"]))        
 
         if role == Roles.RoleType:
@@ -46,7 +47,8 @@ class QueueListModel(QAbstractListModel):
             return fichier["status"].value
         
         if role == Roles.RoleProgress:
-            return fichier.get("progress", 0)
+            progress = fichier.get("progress", 0)            
+            return progress / max(1, len(self.__analysisComponents))
         
         if role == Roles.RoleInfected:
             return fichier.get("status") == FileStatus.FileInfected
@@ -80,10 +82,10 @@ class QueueListModel(QAbstractListModel):
 
     @Slot(str, list)
     def on_file_updated(self, filepath:str, fields:list):
-        if filepath not in self.fichiers_:
+        if filepath not in self.__fichiers:
             return
         
-        row = list(self.fichiers_.keys()).index(filepath)
+        row = list(self.__fichiers.keys()).index(filepath)
         #print(filepath)
         idx = self.index(row, 0)
 
@@ -117,7 +119,7 @@ class QueueListModel(QAbstractListModel):
 
     @Slot()
     def on_file_added(self):
-        self.__row_count = len(self.fichiers_)
+        self.__row_count = len(self.__fichiers)
         '''if self.__lastRowCount != rows:
             print("on_file_added", self.__lastRowCount, rows)'''
         self.beginInsertRows(QModelIndex(), self.__last_row_count, self.__row_count)

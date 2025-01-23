@@ -164,7 +164,8 @@ Rectangle {
             case Enums.FileStatus.FileClean: return Constants.successColor
             case Enums.FileStatus.FileInfected: return Constants.errorColor
             case Enums.FileStatus.FileAnalysing: return Constants.selectionColor
-            case Enums.FileStatus.FileAnalysisError: return Constants.selectionColor
+            case Enums.FileStatus.FileAnalysisError: return Constants.errorColor
+            case Enums.FileStatus.FileCopyError: return Constants.errorColor
             default: return Constants.contrastColor
         }                    
     }
@@ -176,7 +177,8 @@ Rectangle {
             case Enums.FileStatus.FileClean: return Constants.contrastColor
             case Enums.FileStatus.FileInfected: return Constants.contrastColor   
             case Enums.FileStatus.FileAnalysing: return Constants.textColor   
-            case Enums.FileStatus.FileAnalysisError: return Constants.errorColor      
+            case Enums.FileStatus.FileAnalysisError: return Constants.contrastColor      
+            case Enums.FileStatus.FileCopyError: return Constants.contrastColor
             default: return Constants.textColor
         }
     }

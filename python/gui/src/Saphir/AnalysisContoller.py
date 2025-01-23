@@ -36,6 +36,7 @@ class AnalysisController(QObject):
         Api().subscribe("{}/response".format(TOPIC_ANALYSE))
         Api().subscribe("{}/status".format(TOPIC_ANALYSE))
 
+
     def start_analysis(self, source_name:str) -> None:
         Api().info("Starting the analysis", "AnalysisController")            
 
@@ -47,6 +48,7 @@ class AnalysisController(QObject):
             # First step is to copy the file into the repository
             if file.get("inqueue"):
                 Api().read_file(source_name, file.get("filepath", ""))
+
 
     def stop_analysis(self) -> None:
         Api().info("Stopping the analysis", "AnalysisController")        
@@ -74,6 +76,7 @@ class AnalysisController(QObject):
             filepath = payload.get("filepath", "")
             
             self.__on_file_available(filepath)
+
 
         elif topic == "{}/response".format(TOPIC_ANALYSE):
             if not MqttHelper.check_payload(payload, ["component", "filepath", "success", "details"]):
@@ -107,6 +110,7 @@ class AnalysisController(QObject):
             print("EXCEPTION")
             print(e)
 
+
     def __handle_status(self, filepath:str, status:FileStatus, progress:int):
         file = self.__files[filepath]
         file["status"] = status
@@ -117,6 +121,7 @@ class AnalysisController(QObject):
         #self.__files_list_model.on_file_updated(filepath, "status")
         #self.__files_list_model.on_file_updated(filepath, "progress")
         
+
     def __handle_result(self, component:str, filepath:str, success:bool, details:str):
         file = self.__files[filepath]
         file["status"] = FileStatus.FileClean if success else FileStatus.FileInfected
@@ -131,8 +136,10 @@ class AnalysisController(QObject):
     def __state(self) -> AnalysisState:
         return self.state_    
     
+
     def __set_state(self, state:AnalysisState):
         self.state_ = state
         self.stateChanged.emit(state)
+
 
     state = Property(int, __state, notify= stateChanged)

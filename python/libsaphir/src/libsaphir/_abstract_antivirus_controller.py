@@ -55,6 +55,7 @@ class AbstractAntivirusController(ABC):
 
     def update_status(self, filepath:str, status:FileStatus, progress:int):
         payload = {
+            "component": self.__component_name,
             "filepath": filepath,
             "status": status.value,
             "progress": progress

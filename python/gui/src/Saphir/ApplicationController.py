@@ -78,6 +78,7 @@ class ApplicationController(QObject):
     clicYChanged = Signal()
     wheelChanged = Signal()
 
+
     # Fonctions publiques
     def __init__(self, parent=None):
         QObject.__init__(self, parent)
@@ -90,12 +91,13 @@ class ApplicationController(QObject):
 
         self.inputFilesListProxyModel_ = PsecInputFilesListProxyModel(self.inputFilesListModel_, self)        
         #self.queueListModel_ = QueueListProxyModel(self.inputFilesListModel_, self)
-        self.queueListModel_ = QueueListModel(self.__queuedFilesList, self)
+        self.queueListModel_ = QueueListModel(self.__queuedFilesList, self.analysisComponents_, self)
         self.outputFilesListProxyModel_ = PsecOutputFilesListProxyModel(self.queueListModel_, self)
         #self.fileCopied.connect(self.queueListModel_.on_file_updated)
         self.fileQueued.connect(self.queueListModel_.on_file_added)
         self.fileUnqueued.connect(self.queueListModel_.on_file_removed)
         self.fileUpdated.connect(self.queueListModel_.on_file_updated)                
+
 
     def start(self, ready_callback):
         if DEVMODE:
@@ -137,10 +139,12 @@ class ApplicationController(QObject):
         self.__current_folder = folder
         Api().get_files_list(self.sourceName_, False, folder)        
 
+
     @Slot()
     def go_to_parent_folder(self):
         path = Path(self.__current_folder)                
         self.go_to_folder(path.parent.absolute().as_posix())
+
 
     @Slot()
     def enqueue_all_files(self):
@@ -300,7 +304,7 @@ class ApplicationController(QObject):
         self.analysisController_.stateChanged.connect(self.__on_analysis_state_changed)
 
         Api().notify_gui_ready()  
-        Api().subscribe("{}/response".format(Topics.COPY_FILE))        
+        Api().subscribe("{}/response".format(Topics.COPY_FILE))
 
         self.__set_system_state(SystemState.SystemReady)
         Api().discover_components()                        
@@ -413,8 +417,7 @@ class ApplicationController(QObject):
 
             #if not self.__is_enquing and len(self.__inputFilesList) > 0:
             #    self.__set_system_state(SystemState.SystemWaitingForUserAction)
-            self.__set_system_state(SystemState.SystemWaitingForUserAction)
-            
+            self.__set_system_state(SystemState.SystemWaitingForUserAction)            
 
         elif topic == "{}/response".format(Topics.DISCOVER_COMPONENTS):
             if not MqttHelper.check_payload(payload, ["components"]):
@@ -425,8 +428,7 @@ class ApplicationController(QObject):
             if len(components) > 0:
                 self.componentsHelper_.update(components)
                 self.__check_components_availability()     
-                self.__set_system_state(SystemState.SystemReady)    
-    
+                self.__set_system_state(SystemState.SystemReady)        
 
         elif topic == "{}/response".format(Topics.COPY_FILE):
             if not MqttHelper.check_payload(payload, ["filepath", "status", "footprint"]):
@@ -447,6 +449,25 @@ class ApplicationController(QObject):
             Api().info("The file {} has been copied to {}. The footprint is {}".format(filepath, self.__targetName, footprint))
             self.fileUpdated.emit(filepath, ["status"])
 
+        elif topic == Topics.ERROR:
+            if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
+                Api().error("Missing arguments in the topic {}".format(topic))
+                return
+
+            disk = payload.get("disk", "")
+            filepath = payload.get("filepath", "")
+            error = payload.get("error", "")
+
+            file = self.__queuedFilesList.get(filepath)
+            if file is None:
+                Api().error("The file {} has not been found in the analysis queue".format(filepath))
+                return
+
+            Api().error("The file {} could not be copied".format(filepath))            
+            file["status"] = FileStatus.FileAnalysisError
+            file["progress"] = 100
+            self.fileUpdated.emit(filepath, ["status", "progress"])
+
 
     def __is_file_in_folder(self, filepath:str, folder:str) -> bool:
         return filepath.startswith(folder) # type: ignore
@@ -455,6 +476,7 @@ class ApplicationController(QObject):
     @Slot()
     def shutdown(self):        
         Api().shutdown()
+
 
     def __check_components_availability(self):
         states = self.componentsHelper_.get_states()
@@ -607,7 +629,7 @@ class ApplicationController(QObject):
     def __infected_files_count(self):
         return (
             sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileInfected)
-            + sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileAnalysisError)
+            + sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileAnalysisError)            
         )
     
     def __global_progress(self):
