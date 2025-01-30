@@ -1,10 +1,6 @@
 {
 	"folders": [
         {
-            "name": "PSEC",
-            "path": "../PSEC"
-        },
-        {
             "name": "Saphir",
             "path": "."
         },

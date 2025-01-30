@@ -7,7 +7,7 @@
     },
     "gui": {
         "use": 1,
-        "memory": 2000,
+        "memory": 500,
         "app-package": "saphir-gui",        
         "screen": {
             "rotation": 90

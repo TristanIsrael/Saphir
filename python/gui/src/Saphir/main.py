@@ -68,7 +68,8 @@ if __name__ == "__main__":
     #if not DEVMODE:
     #    applicationController.set_main_window(qml_root)
 
-    Api().info("Saphir is ready")    
+    Api().info("Saphir is ready")
+    Api().notify_gui_ready()
 
     res = app.exec()
     Api().info("Saphir is terminating with exit code {}".format(res))
