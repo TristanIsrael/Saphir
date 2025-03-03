@@ -31,7 +31,9 @@ build() {
     # and finally run the installer
 
     # Rename the LXC container and reconfigure
-    mv /var/lib/lxc/psec-container-debian /var/lib/lxc/"$pkgname"
+    sudo rm -rf /var/lib/lxc/"$pkgname"
+    sudo cp -r /var/lib/lxc/psec-container-debian /var/lib/lxc/"$pkgname"
+    sudo chmod 770 /var/lib/lxc/"$pkgname"
     sed -i '/^lxc\.rootfs\.path/d' /var/lib/lxc/"$pkgname"/config
     sed -i '/^lxc\.uts\.name/d' /var/lib/lxc/"$pkgname"/config
     echo "" >> /var/lib/lxc/"$pkgname"/config
@@ -46,19 +48,48 @@ build() {
     rm "$srcdir"/eeau_x86_64.bin
     debfile=$(ls "$srcdir" | grep eea | grep .deb | head -n 1)
 
-    # Copy the installer into the container
-    sudo mv "$debfile" "/var/lib/lxc/$pkgname/rootfs/root/"
+    # Extract the content of the debfile
+    mkdir -p eset-deb
+    ar x $debfile
+    tar xzf control.tar.gz -C eset-deb
+    tar xzf data.tar.gz -C eset-deb
+    
+    # Copy the post install script into the container
+    sudo cp eset-deb/postinst /var/lib/lxc/"$pkgname"/rootfs/root
+
+    # Copy ESET files into the container
+    sudo cp -r eset-deb/opt/* /var/lib/lxc/"$pkgname"/rootfs/opt
+    sudo cp -r eset-deb/var/* /var/lib/lxc/"$pkgname"/rootfs/var
+    sudo cp -r eset-deb/usr/* /var/lib/lxc/"$pkgname"/rootfs/usr
 
     # Setup the network
     sed -i '/^#lxc\.net/s/^#//' "/var/lib/lxc/$pkgname/config"
     sudo service dnsmasq.lxcbr0 start
 
     # Start the container and install ESET
-    sudo lxc-start -n "$pkgname"
-    sudo lxc-attach -n "$pkgname" -- apt update
-    sudo lxc-attach -n "$pkgname" -- apt upgrade
-    sudo lxc-attach -n "$pkgname" -- dpkg -i "/root/$debfile" || true # Ignore the error
-    sudo lxc-attach -n "$pkgname" -- apt --fix-broken install -y
+    echo Start LXC container
+    sudo rc-service cgroups start
+    sudo lxc-start -n "$pkgname"    
+
+    #echo *** Update APT
+    #sudo lxc-attach -n "$pkgname" -- apt update
+
+    echo Install libcurl
+    sudo lxc-attach -n "$pkgname" -- apt install -y libcurl4    
+
+    echo Execute ESET post install script
+    sudo lxc-attach -n "$pkgname" -- env ESET_DISABLE_WAP=1 /root/postinst configure
+
+    echo Clean repository files
+    sudo lxc-attach -n "$pkgname" -- rm -rf /var/opt/eset/eea/updated
+    sudo lxc-attach -n "$pkgname" -- rm -rf /var/opt/eset/eea/lib/*.tar
+    sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/doc
+    sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/man
+    sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/mime
+    sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/info
+    sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/vim
+    sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/i18n
+    sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/locale
 
     # Stop the container
     sudo lxc-stop -n "$pkgname"    

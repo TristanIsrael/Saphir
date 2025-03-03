@@ -30,7 +30,15 @@ Aucune charte graphique n'est imposée. Cependant certains codes couleurs et th�
   - bleu (évocation du saphir)
   - gris
   - blanc
-  
+
+
+ 
+| | Clair | Sombre | Furtif |
+|-|-|-|-|
+| Vert (succès/sain) |  32CD32 | 8BC34A | 0B0F14 |
+| Rouge (échec/infecté) | B0283A | B0283A | 2F0A35 |
+
+
 ## Objets et indicateurs
 
 Cette section décrit les indicateurs.
