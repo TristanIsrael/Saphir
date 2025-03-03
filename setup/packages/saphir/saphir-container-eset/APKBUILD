@@ -80,6 +80,7 @@ build() {
     echo Execute ESET post install script
     sudo lxc-attach -n "$pkgname" -- env ESET_DISABLE_WAP=1 /root/postinst configure
 
+sudo lxc-attach -n saphir-container-eset --
     echo Clean repository files
     sudo lxc-attach -n "$pkgname" -- rm -rf /var/opt/eset/eea/updated
     sudo lxc-attach -n "$pkgname" -- rm -rf /var/opt/eset/eea/lib/*.tar
@@ -90,6 +91,8 @@ build() {
     sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/vim
     sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/i18n
     sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/locale
+    sudo lxc-attach -n "$pkgname" -- rm -rf /var/lib/apt/lists
+    sudo lxc-attach -n "$pkgname" -- apt-get clean
 
     # Stop the container
     sudo lxc-stop -n "$pkgname"    
