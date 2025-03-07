@@ -31,6 +31,7 @@ build() {
     # and finally run the installer
 
     # Rename the LXC container and reconfigure
+    echo Copy the template container
     sudo rm -rf /var/lib/lxc/"$pkgname"
     sudo cp -r /var/lib/lxc/psec-container-debian /var/lib/lxc/"$pkgname"
     sudo chmod 770 /var/lib/lxc/"$pkgname"
@@ -41,6 +42,7 @@ build() {
     echo "lxc.uts.name = $pkgname" >> /var/lib/lxc/"$pkgname"/config
 
     # Extract the debian installer
+    echo Extract ESET installer
     chmod +x "$srcdir"/eeau_x86_64.bin
     cd "$srcdir"
     ./eeau_x86_64.bin -n -y
@@ -55,14 +57,17 @@ build() {
     tar xzf data.tar.gz -C eset-deb
     
     # Copy the post install script into the container
+    echo Copy post install script into the container
     sudo cp eset-deb/postinst /var/lib/lxc/"$pkgname"/rootfs/root
 
     # Copy ESET files into the container
+    echo Copy ESET files into the container
     sudo cp -r eset-deb/opt/* /var/lib/lxc/"$pkgname"/rootfs/opt
     sudo cp -r eset-deb/var/* /var/lib/lxc/"$pkgname"/rootfs/var
     sudo cp -r eset-deb/usr/* /var/lib/lxc/"$pkgname"/rootfs/usr
 
     # Setup the network
+    echo Start networking
     sed -i '/^#lxc\.net/s/^#//' "/var/lib/lxc/$pkgname/config"
     sudo service dnsmasq.lxcbr0 start
 
@@ -80,7 +85,6 @@ build() {
     echo Execute ESET post install script
     sudo lxc-attach -n "$pkgname" -- env ESET_DISABLE_WAP=1 /root/postinst configure
 
-sudo lxc-attach -n saphir-container-eset --
     echo Clean repository files
     sudo lxc-attach -n "$pkgname" -- rm -rf /var/opt/eset/eea/updated
     sudo lxc-attach -n "$pkgname" -- rm -rf /var/opt/eset/eea/lib/*.tar
@@ -95,16 +99,20 @@ sudo lxc-attach -n saphir-container-eset --
     sudo lxc-attach -n "$pkgname" -- apt-get clean
 
     # Stop the container
+    echo Stop the container
     sudo lxc-stop -n "$pkgname"    
 
     # Disable networking
+    echo Disable netorking
     sed -i 's/^lxc\.net/#&/' /var/lib/lxc/"$pkgname"/config
 
     # Add PSEC mount points
+    echo Add mount points
     echo "" >> /var/lib/lxc/"$pkgname"/config
     echo "lxc.mount.entry = /mnt/storage mnt/storage none bind,optional,create=dir" >> /var/lib/lxc/"$pkgname"/config
 
     # Add XEN pv channels
+    echo Add XEN PV channels
     echo "" >> /var/lib/lxc/"$pkgname"/config
     echo "lxc.mount.entry = /dev/hvc1 dev/hvc1 none bind,optional,create=file" >> /var/lib/lxc/"$pkgname"/config
 }
