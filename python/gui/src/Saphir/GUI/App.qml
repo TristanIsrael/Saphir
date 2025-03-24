@@ -2,30 +2,46 @@
 // SPDX-License-Identifier: LicenseRef-Qt-Commercial OR GPL-3.0-only
 
 import QtQuick
-import net.alefbet
+import "components"
+import "imports"
 
-Window {    
-    id: window
-
-    property bool themeClair: true
-    property bool pret: ApplicationController.pret
-
+Window {
     visible: true
-    title: "Panoptiscan"
+    //visibility: Window.Maximized
+    minimumHeight: Constants.height
+    minimumWidth: Constants.width
+    title: "SAPHIR"
 
-    width: Constants.width
-    height: Constants.height
-
-    Splash {
-        id: splash
-        visible: !pret
+    SplashScreen {
+        id: splashScreen
         anchors.fill: parent
     }
 
-    EcranPrincipal {
-        id: mainScreen
+    Connections {
+        target: Constants
+        onHideSplashScreen: splashScreen.visible = false
+    }
+
+    Loader {
+        id: mainWindowLoader
+        visible: !splashScreen.visible
+        source: Qt.resolvedUrl("MainScreen.qml")
         anchors.fill: parent
-        visible: pret
+
+        function reloadWindow()
+        {
+            console.log("Reloading")
+            mainWindowLoader.sourceComponent = null;
+            mainWindowLoader.source = Qt.resolvedUrl("MainScreen.qml");
+        }
+    }
+
+    Connections {
+        target: Constants
+        function onReloadRequested() {
+            mainWindowLoader.reloadWindow()
+        }
+
     }
 
 }

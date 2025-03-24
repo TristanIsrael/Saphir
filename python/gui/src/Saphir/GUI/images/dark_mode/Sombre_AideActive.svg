@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="18.733mm"
+   height="18.493mm"
+   version="1.1"
+   viewBox="0 0 53.102 52.422"
+   id="svg2"
+   sodipodi:docname="AideActive.svg"
+   inkscape:version="1.4 (86a8ad7, 2024-10-11)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs2" />
+  <sodipodi:namedview
+     id="namedview2"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="11.631766"
+     inkscape:cx="35.420245"
+     inkscape:cy="41.825119"
+     inkscape:window-width="2880"
+     inkscape:window-height="1514"
+     inkscape:window-x="-11"
+     inkscape:window-y="-11"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="g2" />
+  <!-- Generator: Adobe Illustrator 28.7.4, SVG Export Plug-In . SVG Version: 1.2.0 Build 166)  -->
+  <g
+     id="g2">
+    <g
+       id="Calque_1"
+       style="fill:#087bf8;fill-opacity:1">
+      <g
+         id="g1"
+         style="fill:#087bf8;fill-opacity:1">
+        <path
+           d="M26.551,1.025C12.693,1.025,1.4,12.334,1.4,26.212s11.294,25.185,25.152,25.185h19.562c3.075,0,5.589-2.517,5.589-5.595v-19.59c0-13.878-11.294-25.188-25.151-25.188ZM26.551,45.802c-10.838,0-19.563-8.739-19.563-19.589S15.715,6.622,26.551,6.622s19.562,8.736,19.562,19.591-8.726,19.589-19.562,19.589Z"
+           fill="#fff"
+           id="path1"
+           style="fill:#087bf8;fill-opacity:1" />
+        <text
+           transform="translate(17.36 36.72)"
+           fill="#fff"
+           font-family="Arial-BoldMT, Arial"
+           font-size="30.951"
+           font-weight="700"
+           id="text1"
+           style="fill:#087bf8;fill-opacity:1"><tspan
+             x="0"
+             y="0"
+             id="tspan1"
+             style="fill:#087bf8;fill-opacity:1">?</tspan></text>
+      </g>
+    </g>
+  </g>
+</svg>

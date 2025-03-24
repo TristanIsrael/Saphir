@@ -1,0 +1,216 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import "../../imports"
+
+
+Item {
+    property bool modeSelected: Constants.isFileSelectionMode
+
+    function selectMode(mode)
+    {
+        Constants.isFileSelectionMode = mode
+    }
+
+    function togglePlay(newState)
+    {
+        if(newState === Constants.isAnalysePlaying)
+            return
+        Constants.isAnalysePlaying = newState
+    }
+
+    Connections {
+        target: Constants
+        onUpdateProgress: {
+            Constants.globalProgress = newProgress
+            Constants.globalTimeLeft = newTimeLeft
+            loadingCircleCanvas.requestPaint()
+        }
+    }
+
+    ColumnLayout
+    {
+        anchors.fill: parent
+        Image {
+            source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BarreSeparationAnalyse.svg")
+            Layout.alignment: Qt.AlignHCenter
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.preferredHeight: 10
+        }
+
+        Rectangle {
+            Layout.preferredHeight: 10
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            color: "transparent"
+            Image {
+                anchors.fill: parent
+                source: !modeSelected ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BoutonScanAutoActive.svg")
+                                      : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BoutonScanAutoDesactive.svg")
+                fillMode: Image.PreserveAspectFit
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: { selectMode(false) }
+                }
+            }
+        }
+
+
+        Rectangle {
+            Layout.preferredHeight: 10
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            color: "transparent"
+            Image {
+                anchors.fill: parent
+                source: modeSelected ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BoutonScanSelectActive.svg")
+                                     : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BoutonScanSelectDesactive.svg")
+                fillMode: Image.PreserveAspectFit
+
+                //Layout.alignment: Qt.AlignCenter
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: { selectMode(true) }
+                }
+            }
+
+        }
+
+        Rectangle {
+            Layout.preferredHeight: 40
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            color: "transparent"
+            Rectangle
+            {
+                id: loadingCircle
+                anchors.centerIn: parent
+                height: parent.height
+                width: height
+                color: "transparent"
+                radius: width * 0.5
+                border.color: Constants.currentColorMode !== Constants.ColorMode.STEALTH ? "lightblue" : "#292929"
+                border.width: parent.width * 0.01
+                Canvas {
+                    id: loadingCircleCanvas
+                    anchors.fill: parent
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.reset()
+                        ctx.beginPath()
+                        ctx.strokeStyle = Constants.currentColorMode !== Constants.ColorMode.STEALTH ? "#00D400" : Constants.colorGreen
+                        ctx.lineWidth = parent.parent.width * 0.06
+                        ctx.arc(width * 0.5,
+                                height * 0.5,
+                                width * 0.45 - ctx.lineWidth * 0.5,
+                                -Math.PI * 0.5,
+                                -Math.PI * 0.5 + Math.PI * 2 * Constants.globalProgress)
+                        ctx.stroke()
+                    }
+                }
+
+                Column {
+                    anchors.centerIn: parent
+                    spacing: -7
+                    Text {
+                        text: Math.round(Constants.globalProgress * 100) + " %"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        font.pixelSize: Math.min(loadingCircle.height * 0.2, loadingCircle.width * 0.2)
+                        font.bold: true
+                        color: Constants.currentColorMode == Constants.ColorMode.STEALTH ? Constants.colorText : "#7E8EAC"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+
+                    }
+
+                    Text {
+                        text: "Rest. " + Constants.globalTimeLeft + " sec"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        font.pixelSize: Math.min(loadingCircle.height * 0.1, loadingCircle.width * 0.1)
+                        color: Constants.currentColorMode == Constants.ColorMode.STEALTH ? Constants.colorText : "#7E8EAC"
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+            }
+        }
+
+
+        Rectangle {
+            id: buttonsContainer
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.preferredHeight: 10
+            color: "transparent"
+
+            RowLayout {
+                anchors.fill: parent
+                Rectangle {
+                    Layout.preferredWidth: 35
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.alignment: Qt.AlignLeft
+                    color: "transparent"
+                    Image {
+                        id: buttonPause
+                        source: Constants.isAnalysePlaying == false ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseActif.svg")
+                                                                        : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg")
+                        fillMode: Image.PreserveAspectFit
+                        anchors.fill: parent
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                togglePlay(false)
+                                Constants.pause()
+                            }
+                        }
+                    }
+                }
+
+                Item { //Spacer
+                    Layout.preferredWidth: 30
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: 35
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.alignment: Qt.AlignRight
+                    color: "transparent"
+                    Image {
+                        id: buttonPlay
+                        source: Constants.isAnalysePlaying ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayActif.svg")
+                                                               : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg")
+                        fillMode: Image.PreserveAspectFit
+                        anchors.fill: parent
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                togglePlay(true)
+                                Constants.play()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Image {
+            source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BarreSeparationProgression.svg")
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredHeight: 10
+        }
+    }
+
+    // Timer {
+    //     interval: 1000
+    //     running: Constants.globalProgress <= 100
+    //     repeat: true
+    //     onTriggered: Constants.updateProgress(Constants.globalProgress + 0.01, Constants.globalTimeLeft-1)
+    // }
+}

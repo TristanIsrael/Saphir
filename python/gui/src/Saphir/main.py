@@ -41,7 +41,7 @@ if __name__ == "__main__":
     app.setFont(font)
 
     # Load special fonts
-    load_fonts(["MaterialIconsOutlined-Regular.otf", "FRESHBOT.TTF", "Alien-Encounters-Regular.ttf"])
+    #load_fonts(["MaterialIconsOutlined-Regular.otf", "FRESHBOT.TTF", "Alien-Encounters-Regular.ttf"])
     
     applicationController = ApplicationController()
     applicationController.start(on_ready)

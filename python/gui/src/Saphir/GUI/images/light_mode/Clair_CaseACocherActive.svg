@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="10.969mm"
+   height="10.991mm"
+   version="1.1"
+   viewBox="0 0 31.092 31.157"
+   id="svg1"
+   sodipodi:docname="Clair_CaseACocherGrise.svg"
+   inkscape:version="1.4 (86a8ad7, 2024-10-11)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="19.42669"
+     inkscape:cx="20.744656"
+     inkscape:cy="24.88844"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="3832"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg1" />
+  <!-- Generator: Adobe Illustrator 28.7.4, SVG Export Plug-In . SVG Version: 1.2.0 Build 166)  -->
+  <g
+     id="g1"
+     style="fill:#909090;fill-opacity:1">
+    <g
+       id="Calque_1"
+       style="fill:#909090;fill-opacity:1">
+      <rect
+         x="754.756"
+         y="1107.576"
+         width="25.045"
+         height="25.045"
+         fill="#00d200"
+         fill-opacity=".2"
+         stroke="#00d200"
+         stroke-linecap="round"
+         stroke-linejoin="round"
+         stroke-width="3"
+         id="rect1"
+         style="fill:#909090;fill-opacity:1" />
+      <path
+         d="M26.301,30.761H4.811c-2.467,0-4.467-2-4.467-4.467V4.799C.344,2.334,2.342.337,4.806.337h21.497c2.465,0,4.463,1.998,4.463,4.463v21.496c0,2.466-1.999,4.465-4.465,4.465ZM5.5,2.572c-1.61,0-2.921,1.307-2.921,2.919v20.115c0,1.607,1.311,2.919,2.921,2.919h20.113c1.607,0,2.916-1.311,2.916-2.919V5.491c0-1.612-1.309-2.919-2.916-2.919H5.5Z"
+         fill="#fff"
+         id="path1"
+         style="fill:#909090;fill-opacity:1" />
+    </g>
+  </g>
+</svg>

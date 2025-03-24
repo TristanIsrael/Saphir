@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="19.833mm"
+   height="15.5mm"
+   version="1.1"
+   viewBox="0 0 56.22 43.937"
+   id="svg1"
+   sodipodi:docname="Sombre_IconeRepertoireParent.svg"
+   inkscape:version="1.4 (86a8ad7, 2024-10-11)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     inkscape:zoom="13.775403"
+     inkscape:cx="37.421773"
+     inkscape:cy="35.243978"
+     inkscape:window-width="2880"
+     inkscape:window-height="1514"
+     inkscape:window-x="-11"
+     inkscape:window-y="-11"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg1" />
+  <!-- Generator: Adobe Illustrator 28.7.4, SVG Export Plug-In . SVG Version: 1.2.0 Build 166)  -->
+  <g
+     id="g1"
+     style="fill:#ffffff;fill-opacity:1">
+    <g
+       id="Calque_1"
+       style="fill:#ffffff;fill-opacity:1">
+      <path
+         d="M.991,6.991v30.049c-.047,3.309,2.598,6.03,5.908,6.077.028,0,.057,0,.085,0h42.203c3.31,0,5.993-2.682,5.993-5.992,0-.028,0-.057,0-.085V14.994c0-3.31-2.683-5.993-5.993-5.993h-18.063L23.038.914H6.984c-3.31,0-5.993,2.682-5.993,5.992,0,.028,0,.057,0,.085Z"
+         fill="#fff"
+         id="path1"
+         style="fill:#ffffff;fill-opacity:1" />
+    </g>
+  </g>
+  <path
+     d="M 33.50717,19.036255 H 27.692157 L 31.82328,10.953224 11.251257,20.504639 31.82328,30.05857 27.692157,21.973652 h 5.815013 c 3.537167,0 6.414504,3.270205 6.414504,7.290332 0,4.020124 -2.877337,7.290328 -6.414504,7.290328 h -9.418603 v 2.937398 h 9.418603 c 4.962549,0 8.999015,-4.588228 8.999015,-10.227726 0,-5.639502 -4.037018,-10.227729 -8.999015,-10.227729 z"
+     fill="#ffffff"
+     id="path2"
+     style="stroke-width:0.590127;fill:#445060;fill-opacity:1" />
+</svg>
