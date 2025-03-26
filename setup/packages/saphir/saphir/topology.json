@@ -13,8 +13,10 @@
             "rotation": 90
         }
     },
-    "business": {
-        "repository": "http://192.168.64.1/alpine/saphir",
+    "network": {
+        "repository": "http://psec-depots/depots/saphir"
+    },
+    "business": {    
         "domains": [
             {
                 "name": "saphir-av-clamav",
