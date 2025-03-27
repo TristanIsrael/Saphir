@@ -1,7 +1,7 @@
 # Contributor:
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 pkgname=saphir-container-eset
-pkgver=1.0
+pkgver=2.0
 pkgrel=1
 pkgdesc="Saphir - LXC Container for ESET Antivirus"
 url="https://defense.gouv.fr/"
@@ -35,6 +35,7 @@ build() {
     sudo rm -rf /var/lib/lxc/"$pkgname"
     sudo cp -r /var/lib/lxc/psec-container-debian /var/lib/lxc/"$pkgname"
     sudo chmod 770 /var/lib/lxc/"$pkgname"
+    sudo chown -R admin /var/lib/lxc/"$pkgname"
     sed -i '/^lxc\.rootfs\.path/d' /var/lib/lxc/"$pkgname"/config
     sed -i '/^lxc\.uts\.name/d' /var/lib/lxc/"$pkgname"/config
     echo "" >> /var/lib/lxc/"$pkgname"/config
@@ -76,8 +77,10 @@ build() {
     sudo rc-service cgroups start
     sudo lxc-start -n "$pkgname"    
 
-    #echo *** Update APT
-    #sudo lxc-attach -n "$pkgname" -- apt update
+    sleep 1
+
+    echo *** Update APT
+    sudo lxc-attach -n "$pkgname" -- apt update
 
     echo Install libcurl
     sudo lxc-attach -n "$pkgname" -- apt install -y libcurl4    
@@ -85,17 +88,17 @@ build() {
     echo Execute ESET post install script
     sudo lxc-attach -n "$pkgname" -- env ESET_DISABLE_WAP=1 /root/postinst configure
 
-    echo Clean repository files
-    sudo lxc-attach -n "$pkgname" -- rm -rf /var/opt/eset/eea/updated
-    sudo lxc-attach -n "$pkgname" -- rm -rf /var/opt/eset/eea/lib/*.tar
-    sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/doc
-    sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/man
-    sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/mime
-    sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/info
-    sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/vim
-    sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/i18n
-    sudo lxc-attach -n "$pkgname" -- rm -rf /usr/share/locale
-    sudo lxc-attach -n "$pkgname" -- rm -rf /var/lib/apt/lists
+    echo Clean the container to make it smaller
+    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/var/opt/eset/eea/updated
+    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/var/opt/eset/eea/lib/*.tar
+    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/doc
+    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/man
+    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/mime
+    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/info
+    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/vim
+    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/i18n
+    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/locale
+    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/var/lib/apt/lists
     sudo lxc-attach -n "$pkgname" -- apt-get clean
 
     # Stop the container
@@ -115,20 +118,25 @@ build() {
     echo Add XEN PV channels
     echo "" >> /var/lib/lxc/"$pkgname"/config
     echo "lxc.mount.entry = /dev/hvc1 dev/hvc1 none bind,optional,create=file" >> /var/lib/lxc/"$pkgname"/config
+
+    # Change the rootfs path
+    sed -i '/^lxc\.rootfs\.path/d' /var/lib/lxc/"$pkgname"/config
+    echo "lxc.rootfs.path = dir:/mnt/merged" >> /var/lib/lxc/"$pkgname"/config
 }
 
 package() {
     # The new package will be based on the vanilla psec-container-debian
     # which won't be useful anymore. We will package the whole container
     # including ESET installation
-    mkdir -p "$pkgdir"/var/lib/lxc/
+    mkdir -p "$pkgdir"/var/lib/saphir
 
+    # Since 2.0 We use Squashfs to make it smaller and quicker
     # Tar container
-    sudo tar cf "$pkgdir"/var/lib/lxc/"$pkgname".tar -C /var/lib/lxc/ .
-    sudo chown $USER "$pkgdir"/var/lib/lxc/"$pkgname".tar
-
+    # sudo tar cf "$pkgdir"/var/lib/lxc/"$pkgname".tar -C /var/lib/lxc/ .
+    # sudo chown $USER "$pkgdir"/var/lib/lxc/"$pkgname".tar
     # Compress archive
-    bzip2 "$pkgdir"/var/lib/lxc/"$pkgname".tar
+    # bzip2 "$pkgdir"/var/lib/lxc/"$pkgname".tar    
 
-    sudo rm -rf /var/lib/lxc/"$pkgname"
+    cd /var/lib/lxc/"$pkgname"    
+    sudo mksquashfs rootfs "$pkgdir"/var/lib/saphir/"$pkgname".sqfs -comp xz -b 1M -Xdict-size 100%
 }
