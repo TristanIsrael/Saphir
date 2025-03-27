@@ -139,4 +139,5 @@ package() {
 
     cd /var/lib/lxc/"$pkgname"    
     sudo mksquashfs rootfs "$pkgdir"/var/lib/saphir/"$pkgname".sqfs -comp xz -b 1M -Xdict-size 100%
+    sudo chown admin:admin "$pkgdir"/var/lib/saphir/"$pkgname".sqfs
 }
