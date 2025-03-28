@@ -7,7 +7,7 @@ pkgdesc="Saphir - LXC Container for ESET Antivirus"
 url="https://defense.gouv.fr/"
 arch="x86_64"
 license="MIT"
-depends="lxc"
+depends="lxc sudo"
 makedepends="psec-container-debian"
 checkdepends=""
 install="$pkgname.post-install $pkgname.pre-deinstall"
@@ -140,4 +140,6 @@ package() {
     cd /var/lib/lxc/"$pkgname"    
     sudo mksquashfs rootfs "$pkgdir"/var/lib/saphir/"$pkgname".sqfs -comp xz -b 1M -Xdict-size 100%
     sudo chown admin:admin "$pkgdir"/var/lib/saphir/"$pkgname".sqfs
+
+    install -D -m755 /var/lib/lxc/"$pkgname"/config "$pkgdir"/var/lib/lxc/"$pkgname"/config
 }

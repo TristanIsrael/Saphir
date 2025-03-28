@@ -8,12 +8,12 @@ pkgname=saphir-container-eset
 mntdir=/mnt
 
 # Mount the squash image
-sudo mkdir -p /mnt/rootfs
-sudo mount -t squashfs /var/lib/saphir/"$pkgname".sqfs /mnt/rootfs -o loop
+mkdir -p /mnt/rootfs
+mount -t squashfs /var/lib/saphir/"$pkgname".sqfs /mnt/rootfs -o loop
 
 # Create an overlay
-sudo mkdir -p "$mntdir"/upper
-sudo mkdir -p "$mntdir"/work
-sudo mkdir -p "$mntdir"/merged
-sudo mount -t overlay overlay -o lowerdir=/mnt/rootfs,upperdir="$mntdir"/upper,workdir="$mntdir"/work "$mntdir"/merged
+mkdir -p "$mntdir"/upper
+mkdir -p "$mntdir"/work
+mkdir -p "$mntdir"/merged
+mount -t overlay overlay -o lowerdir=/mnt/rootfs,upperdir="$mntdir"/upper,workdir="$mntdir"/work "$mntdir"/merged
 

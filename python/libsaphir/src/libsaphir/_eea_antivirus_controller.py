@@ -35,7 +35,7 @@ class EeaAntivirusController(AbstractAntivirusController):
         self.update_status(filepath, FileStatus.FileAnalysing, 0)
 
         # The command will be executed in the container        
-        eset_cmd = ["/opt/eset/eea/sbin/odscan", "-s", "--profile='@In-depth scan'", storage_filepath]
+        eset_cmd = ["/opt/eset/eea/bin/odscan", "-s", "--profile='@In-depth scan'", storage_filepath]
         proc = subprocess.run(self.__lxc_cmd + eset_cmd, capture_output=True)
         success = False
         details = ""
