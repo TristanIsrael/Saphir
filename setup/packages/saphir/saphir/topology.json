@@ -27,7 +27,7 @@
             {
                 "name": "saphir-av-eset",
                 "app-package": "saphir-av-eset",
-                "memory": 500,
+                "memory": 700,
                 "cpu": 1
             }
         ]
