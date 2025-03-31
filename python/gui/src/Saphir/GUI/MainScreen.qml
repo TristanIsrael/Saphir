@@ -75,7 +75,7 @@ Rectangle {
             Layout.rightMargin: width * coreMargin
 
             Mode
-            {
+            {                
                 Layout.preferredWidth: 20
                 Layout.fillHeight: true
                 Layout.fillWidth: true

@@ -66,6 +66,9 @@ class PsecInputFilesListModel(QAbstractListModel):
         fichier = list(self.fichiers_.values())[row]
         #qDebug("fonction data() - filename:%s, filepath:%s" % (fichier["filename"], fichier["filepath"]))        
 
+        if role == Roles.RoleId:
+            return fichier.get("id")
+
         if role == Roles.RoleType:
             return fichier.get("type", "")
         

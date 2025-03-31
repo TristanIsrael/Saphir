@@ -47,7 +47,7 @@ QtObject {
     property int currentDirectoryId: 0
     property string currentDirectory: "://"
     property bool isAnalysePlaying: false
-    property real batteryLevel: 0.0
+    property real batteryLevel: 1.0
     property bool isInputUSBPlugged: false
     property string inputUSBName: ""
     property bool isOutputUSBPlugged: false
@@ -72,7 +72,7 @@ QtObject {
     //2 : ListElement{type:"folder";name:"main";selected:false;status:Constants.FileState.NOT_ANALYSED;parent: 0}
     //Le champ parent correspond à l'index dans la liste du dossier parent
     property ListModel fileList:ListModel
-    {
+    /*{
         //Le dossier racine est important pour y mettre les fichiers à la racine
         ListElement{backId:0;type:"folder";name:"racine";selected:false;status:Constants.FileState.NOT_ANALYSED;parent: -1}
         ListElement{backId:5;type:"file";name:"4";selected:false;status:Constants.FileState.INFECTED;parent: 0}
@@ -81,7 +81,7 @@ QtObject {
         ListElement{backId:3;type:"file";name:"fichierDeTest";selected:false;status:Constants.FileState.ANALYSING;parent: 1}
         ListElement{backId:4;type:"file";name:"3";selected:false;status:Constants.FileState.ANALYSING;parent: 1}
         ListElement{backId:6;type:"file";name:"5";selected:false;status:Constants.FileState.SANE;parent: 1}
-    }
+    }*/
     //Modèle dee données des fichiers envoyés à l'analyse
     //Exemple : ListElement{type:"file";name:"test";selected:false;status:Constants.FileState.ANALYSING;progress: 0.00;backId: 7}
     property ListModel runningFileList : ListModel
@@ -195,7 +195,7 @@ QtObject {
         switch (mode)
         {
         case Constants.ColorMode.STEALTH:
-            Constants.colorModePath = Qt.resolvedUrl("../PANOPTISCANContent/images/stealth_mode/")
+            Constants.colorModePath = Qt.resolvedUrl("../images/stealth_mode/")
             Constants.colorModePrefix = "Furtif_"
             Constants.currentColorMode = Constants.ColorMode.STEALTH
             Constants.colorRed = "#2F0A35"
@@ -204,7 +204,7 @@ QtObject {
             Constants.colorText = /*"#1E1E1E"*/"#3B3B3B"
             break;
         case Constants.ColorMode.DARK:
-            Constants.colorModePath = Qt.resolvedUrl("../PANOPTISCANContent/images/dark_mode/")
+            Constants.colorModePath = Qt.resolvedUrl("../images/dark_mode/")
             Constants.colorModePrefix = "Sombre_"
             Constants.currentColorMode = Constants.ColorMode.DARK
             Constants.colorRed = "#B0283A"
@@ -213,7 +213,7 @@ QtObject {
             Constants.colorText = "#FFFFFF"
             break;
         default:
-            Constants.colorModePath = Qt.resolvedUrl("../PANOPTISCANContent/images/light_mode/")
+            Constants.colorModePath = Qt.resolvedUrl("../images/light_mode/")
             Constants.colorModePrefix = "Clair_"
             Constants.currentColorMode = Constants.ColorMode.LIGHT
             Constants.colorRed = "#B0283A"

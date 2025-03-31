@@ -7,7 +7,7 @@ import "imports"
 
 Window {
     visible: true
-    //visibility: Window.Maximized
+    visibility: Window.Maximized
     minimumHeight: Constants.height
     minimumWidth: Constants.width
     title: "SAPHIR"

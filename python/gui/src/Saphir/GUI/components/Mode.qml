@@ -17,9 +17,18 @@ Item
         }
     }
 
-    Image {
+    /*Image {
         source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "EncartSelectionLuminosite.svg")
         anchors.fill: parent
+    }*/
+    Rectangle {
+        anchors.fill: parent
+        color: "transparent"
+        radius: height
+        border {            
+            width: 1.5
+            color: Constants.currentColorMode === Constants.LIGHT ? "#848484" : Constants.currentColorMode === Constants.DARK ? "#66788F" : "#272727"
+        }        
     }
     RowLayout
     {

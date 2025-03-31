@@ -5,8 +5,8 @@
    version="1.1"
    viewBox="0 0 62.732 25.031"
    id="svg4"
-   sodipodi:docname="IconeEnCharge.svg"
-   inkscape:version="1.4 (86a8ad7, 2024-10-11)"
+   sodipodi:docname="Furtif_IconeEnCharge_Inactif.svg"
+   inkscape:version="1.3 (0e150ed, 2023-07-21)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -23,14 +23,14 @@
      inkscape:pagecheckerboard="true"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="21.686962"
-     inkscape:cx="41.822363"
-     inkscape:cy="24.046706"
-     inkscape:window-width="2880"
-     inkscape:window-height="1514"
-     inkscape:window-x="-11"
-     inkscape:window-y="-11"
-     inkscape:window-maximized="1"
+     inkscape:zoom="5.4217405"
+     inkscape:cx="33.199671"
+     inkscape:cy="22.686442"
+     inkscape:window-width="1472"
+     inkscape:window-height="449"
+     inkscape:window-x="0"
+     inkscape:window-y="38"
+     inkscape:window-maximized="0"
      inkscape:current-layer="svg4" />
   <!-- Generator: Adobe Illustrator 28.7.4, SVG Export Plug-In . SVG Version: 1.2.0 Build 166)  -->
   <g
@@ -49,7 +49,7 @@
            height="8.144"
            fill="#fff"
            id="rect1"
-           style="stroke:none;stroke-opacity:1;fill:#292929;fill-opacity:1" />
+           style="stroke:none;stroke-opacity:1;fill:none;fill-opacity:1" />
         <rect
            x="59.942"
            y="7.877"
@@ -57,17 +57,17 @@
            height="8.144"
            fill="#fff"
            id="rect2"
-           style="stroke:none;stroke-opacity:1;fill:#292929;fill-opacity:1" />
+           style="stroke:none;stroke-opacity:1;fill:none;fill-opacity:1" />
         <path
            d="M26.19.548h-8.839c-1.993,0-3.511.152-4.557.457-1.404.414-2.608,1.149-3.611,2.205-.746.788-1.359,1.708-1.84,2.758h-3.283v12.033h2.85c.595,1.669,1.425,3.032,2.503,4.077.838.817,1.973,1.454,3.396,1.912,1.068.338,2.496.506,4.28.506h9.101v-5.542h5.178v-4.255h-5.178v-4.549h5.178v-4.255h-5.178V.548ZM22.602,4.6v17.11h-4.858c-1.469,0-2.525-.087-3.228-.266-.982-.246-1.819-.678-2.485-1.281-.695-.629-1.226-1.569-1.623-2.874-.367-1.204-.546-2.758-.546-4.75s.182-3.524.554-4.654c.392-1.187.964-2.141,1.701-2.837.753-.711,1.705-1.195,2.82-1.437.784-.177,2.132-.26,4.244-.26h3.421v1.248Z"
            fill="#fff"
            id="path2"
-           style="stroke:none;stroke-opacity:1;fill:#292929;fill-opacity:1" />
+           style="stroke:none;stroke-opacity:1;fill:none;fill-opacity:1" />
         <path
            d="M53.053,3.211c-1.003-1.056-2.206-1.791-3.611-2.205-1.045-.305-2.564-.457-4.557-.457h-8.839v23.949h9.101c1.784,0,3.211-.168,4.28-.506,1.425-.457,2.559-1.095,3.397-1.912,1.077-1.045,1.907-2.408,2.503-4.077h3.514V5.969h-3.947c-.481-1.051-1.095-1.971-1.841-2.758ZM51.828,17.289c-.397,1.305-.928,2.245-1.623,2.874-.666.604-1.503,1.035-2.486,1.281-.701.178-1.758.266-3.227.266h-4.858V3.352h3.421c2.112,0,3.46.083,4.244.26,1.115.241,2.067.726,2.82,1.437.737.696,1.31,1.65,1.701,2.837.372,1.13.553,2.653.553,4.654s-.178,3.545-.545,4.75Z"
            fill="#fff"
            id="path3"
-           style="stroke:none;stroke-opacity:1;fill:#292929;fill-opacity:1" />
+           style="stroke:none;stroke-opacity:1;fill:none;fill-opacity:1" />
       </g>
     </g>
   </g>

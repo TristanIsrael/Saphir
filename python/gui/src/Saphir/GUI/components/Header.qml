@@ -5,8 +5,9 @@ import "../imports"
 
 
 Rectangle
-{
+{    
     property double fontSize: 0.5
+    property bool timeFormatZulu: true
     id: header
     color: "transparent"
 
@@ -31,12 +32,20 @@ Rectangle
         }
     }
 
-    Image {
+    /*Image {
         id: background
         width: parent.width
         height: parent.height
         source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BarreEtat.svg")
         fillMode: Image.Stretch
+        anchors.fill: parent
+    }*/
+    Rectangle {
+        id: background
+        width: parent.width
+        height: parent.height
+        //source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BarreEtat.svg")
+        color: Constants.colorModePrefix === Constants.STEALTH ? "#292929" : "#3975F6"        
         anchors.fill: parent
     }
     RowLayout
@@ -58,28 +67,39 @@ Rectangle
             verticalAlignment: Text.AlignVCenter
             horizontalAlignment: Text.AlignLeft
             font.pixelSize: height * fontSize
+
+            MouseArea {
+                anchors.fill: parent 
+
+                onClicked: {
+                    header.timeFormatZulu = !header.timeFormatZulu
+                    header.updateTime()
+                }
+            }
         }
+
         Timer
         {
             triggeredOnStart: true
             interval: 1000 // Mise à jour toutes les secondes
             running: true
             repeat: true
-            onTriggered: {
-                timeLabel.text = Qt.formatTime(new Date(), "HH:mm:ss Z");
-            }
+            onTriggered: header.updateTime()
         }
 
         Label
         {
-            color: Constants.currentColorMode == Constants.ColorMode.STEALTH ? "1E1E1E" : "white"
+            color: Constants.currentColorMode == Constants.ColorMode.STEALTH ? "1E1E1E" : "red"
             text: "Diffusion Restreinte"
+            style: Text.Outline
+            styleColor: "#999"
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 60
             Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft
             font.pixelSize: height * fontSize
             font.bold: true
+            font.capitalization: Font.AllUppercase
             verticalAlignment: Text.AlignVCenter
             horizontalAlignment: Text.AlignLeft
         }
@@ -92,7 +112,7 @@ Rectangle
             Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
             Layout.bottomMargin: height * 0.2
             Layout.topMargin: height * 0.2
-            //spacing: 0
+            spacing: 10
 
             Image {
                 source: Constants.isWired ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeEnCharge_Actif.svg")
@@ -117,7 +137,7 @@ Rectangle
                 font.pixelSize: height * fontSize
             }
 
-            RowLayout {
+            /*RowLayout {
                 id: batteryState
                 Layout.fillHeight: true
                 Layout.fillWidth: true
@@ -132,7 +152,8 @@ Rectangle
                 }
 
                 Image {
-                    source: getLoadingImage()
+                    //source: getLoadingImage()
+                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "Batterie0Barre.svg")
                     Layout.fillHeight: true
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
@@ -140,6 +161,28 @@ Rectangle
                     Layout.bottomMargin: height * 0.2
                     Layout.topMargin: height * 0.2
                     fillMode: Image.Stretch
+                }
+            }*/
+
+            Image {
+                //source: getLoadingImage()
+                source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "Batterie0Barre.svg")
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter | Qt.AlignRight
+                horizontalAlignment: Image.AlignHCenter
+                Layout.bottomMargin: height * 0.2
+                Layout.topMargin: height * 0.2
+                fillMode: Image.Stretch
+
+                Label {
+                    anchors.fill: parent
+                    text: Math.round(Constants.batteryLevel * 100.0) + "%"
+                    color: Constants.currentColorMode == Constants.ColorMode.STEALTH ? "1E1E1E" : "white"
+                    horizontalAlignment: Label.AlignHCenter
+                    verticalAlignment: Label.AlignVCenter
+                    font.pixelSize: height * fontSize *1.2
+                    font.bold: true
                 }
             }
 
@@ -175,4 +218,13 @@ Rectangle
     //         Constants.updateBatteryLevel(Constants.batteryLevel + 0.01)
     //     }
     // }
+
+    function updateTime() {    
+        //Conversion en TZ Zulu                
+        const now = new Date()
+        const zulu = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDay(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds())
+        const localTime = Qt.formatTime(new Date(), "HH:mm:ss");
+        const zuluTime = Qt.formatTime(zulu, "HH:mm:ssZ");
+        timeLabel.text = header.timeFormatZulu ? zuluTime : localTime
+    }
 }

@@ -394,7 +394,7 @@ class ApplicationController(QObject):
 
             Api().debug("Files list received, count={}".format(len(files)))            
                         
-            for file in files:
+            for file in files:                
                 file["disk"] = disk
                 filepath = "{}{}{}".format(file.get("path"), "/" if file.get("path") != "/" else "", file.get("name"))
                 file["filepath"] = filepath
@@ -408,6 +408,10 @@ class ApplicationController(QObject):
                     self.fileQueued.emit(filepath)
                     self.queueSizeChanged.emit(len(self.__queuedFilesList))
                 else:
+                    # L'ID est attribué uniquement lors de la première réception de
+                    # la liste des fichiers. 
+                    # Le premier identifiant est 1
+                    file["id"] = len(self.__inputFilesList)+1
                     file["inqueue"] = False
                     self.__inputFilesList[filepath] = file
                     self.fileAdded.emit(filepath)
