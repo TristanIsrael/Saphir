@@ -63,10 +63,12 @@ class ApplicationController(QObject):
     infectedFilesCountChanged = Signal(int)
     cleanFilesCountChanged = Signal(int)
     globalProgressChanged = Signal(int)
+    analysingCountChanged = Signal(int)
     taskRunningChanged = Signal(bool)    
     showMessage = Signal(str, str, bool, bool) #Title, Message, alert, modal
     currentFolderChanged = Signal()
     idCurrentFolderChanged = Signal()
+    transferProgressChanged = Signal()
 
     # IO
     _mouse_x = 0
@@ -279,6 +281,20 @@ class ApplicationController(QObject):
 
 
     @Slot()
+    def select_all_clean_files_for_copy(self):
+        for filepath_, file_ in self.__queuedFilesList.items():
+            if file_["status"] == FileStatus.FileClean:
+                file_["select_for_copy"] = True
+                self.fileUpdated.emit(filepath_, ["select_for_copy"])
+
+    @Slot()
+    def deselect_all_clean_files_for_copy(self):
+        for filepath_, file_ in self.__queuedFilesList.items():
+            if file_["status"] == FileStatus.FileClean:
+                file_["select_for_copy"] = False
+                self.fileUpdated.emit(filepath_, ["select_for_copy"])
+
+    @Slot()
     def reset(self):
         Api().info("User wants to reset the environment")
 
@@ -295,21 +311,21 @@ class ApplicationController(QObject):
                 Api().restart_domain(domain_name)
 
 
-    @Slot(str, str)
-    def debug(self, message:str, module:str):
-        Api().debug(message, module)
+    @Slot(str)
+    def debug(self, message:str):
+        Api().debug(message, "Saphir")
     
-    @Slot(str, str)
-    def info(self, message:str, module:str):
-        Api().info(message, module)
+    @Slot(str)
+    def info(self, message:str):
+        Api().info(message, "Saphir")
 
-    @Slot(str, str)
-    def warn(self, message:str, module:str):
-        Api().warn(message, module)
+    @Slot(str)
+    def warn(self, message:str):
+        Api().warn(message, "Saphir")
 
-    @Slot(str, str)
-    def error(self, message:str, module:str):
-        Api().error(message, module)
+    @Slot(str)
+    def error(self, message:str):
+        Api().error(message, "Saphir")
 
     def __on_api_ready(self):        
         self.pret_ = True
@@ -462,8 +478,9 @@ class ApplicationController(QObject):
             
             success = status == "ok"
             file["status"] = FileStatus.FileCopySuccess if success else FileStatus.FileCopyError            
-            Api().info("The file {} has been copied to {}. The footprint is {}".format(filepath, self.__targetName, footprint))
+            Api().info("The file {} has been copied to {}. The footprint is {}".format(filepath, self.__targetName(), footprint))
             self.fileUpdated.emit(filepath, ["status"])
+            self.transferProgressChanged.emit()
 
         elif topic == Topics.ERROR:
             if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
@@ -645,12 +662,12 @@ class ApplicationController(QObject):
     #    return sum(1 for item in self.__inputFilesList.values() if item.get("inqueue", False) == True and item.get("type", "") == "file")
 
     def __clean_files_count(self):
-        return sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean)
+        return sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean and item.get("progress", 0) == 100)
 
     def __infected_files_count(self):
         return (
-            sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileInfected)
-            + sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileAnalysisError)            
+            sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileInfected and item.get("progress", 0) == 100)
+            + sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileAnalysisError and item.get("progress", 0) == 100)            
         )
     
     def __global_progress(self):
@@ -659,6 +676,18 @@ class ApplicationController(QObject):
         
         return (self.__clean_files_count() + self.__infected_files_count())*100 / self.__queue_size()
     
+    def __analysing_count(self):
+        return sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileAnalysing)
+
+    def __transferred_count(self):
+        clean_files = sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean)
+        copy_success = sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileCopySuccess) 
+
+        if copy_success > 0:
+            return copy_success / (copy_success + clean_files)
+        else:
+            return 0            
+
     def __is_task_running(self):
         return True
     
@@ -724,7 +753,9 @@ class ApplicationController(QObject):
     #totalFilesCount = Property(int, __total_files_count, notify= totalFilesCountChanged)
     infectedFilesCount = Property(int, __infected_files_count, notify= infectedFilesCountChanged)
     cleanFilesCount = Property(int, __clean_files_count, notify= cleanFilesCountChanged)
-    globalProgress = Property(int, __global_progress, notify= globalProgressChanged)    
+    globalProgress = Property(int, __global_progress, notify= globalProgressChanged)
+    analysingCount = Property(int, __analysing_count, notify= analysingCountChanged)
+    transferProgress = Property(int, __transferred_count, notify= transferProgressChanged)
 
     mouseX = Property(int, __mouse_x, notify=mouseXChanged)
     mouseY = Property(int, __mouse_y, notify=mouseYChanged)

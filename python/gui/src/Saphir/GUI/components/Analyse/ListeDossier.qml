@@ -136,7 +136,8 @@ Rectangle {
                 Layout.fillWidth: true
                 //font.pixelSize: height*0.6
                 font.pointSize: 24
-                verticalAlignment: Text.AlignLeft
+                horizontalAlignment: Text.AlignLeft
+                verticalAlignment: Text.AlignVCenter
                 elide: Label.ElideRight
 
                 MouseArea {
@@ -245,7 +246,7 @@ Rectangle {
 
                     contentItem: Image {
                         source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherActive.svg")
-                        anchors.centerIn: parent
+                        //anchors.centerIn: parent
                         fillMode: Image.PreserveAspectFit
                         anchors.fill: parent
                     }

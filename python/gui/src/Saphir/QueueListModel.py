@@ -45,6 +45,7 @@ class QueueListModel(QAbstractListModel):
             return fichier.get("filepath", "#err")
         
         if role == Roles.RoleStatus:
+            #qDebug("{} -> {} ({})".format(fichier.get("name"), fichier.get("status", FileStatus.FileStatusUndefined), fichier.get("status", FileStatus.FileStatusUndefined).value))
             return fichier.get("status", FileStatus.FileStatusUndefined).value
         
         if role == Roles.RoleProgress:            
@@ -52,6 +53,9 @@ class QueueListModel(QAbstractListModel):
         
         if role == Roles.RoleInfected:
             return fichier.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileInfected
+
+        if role == Roles.RoleSelected:
+            return fichier.get("select_for_copy", False)
 
         return None
 
@@ -99,6 +103,8 @@ class QueueListModel(QAbstractListModel):
             roles.append(Roles.RoleProgress)        
         if "inqueue" in fields:
             roles.append(Roles.RoleInQueue)
+        if "select_for_copy" in fields:
+            roles.append(Roles.RoleSelected)
 
         try:
             self.dataChanged.emit(idx, idx, roles)
@@ -127,7 +133,7 @@ class QueueListModel(QAbstractListModel):
             # La liste des fichiers est déjà complètement affichée
             return
         
-        qDebug("Add {} {}".format(self.__row_count, nbFichiers-1))
+        #qDebug("Add {} {}".format(self.__row_count, nbFichiers-1))
         self.beginInsertRows(QModelIndex(), self.__row_count, nbFichiers-1)
         self.__row_count = nbFichiers
         self.endInsertRows()

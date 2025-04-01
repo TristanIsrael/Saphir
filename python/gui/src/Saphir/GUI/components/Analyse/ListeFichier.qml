@@ -63,25 +63,32 @@ Rectangle {
     {
         switch (state)
         {
-        case Constants.FileState.ANALYSING:
-            return Constants.colorBlue;
-        case Constants.FileState.SANE:
-            return Constants.colorGreen;
-        case Constants.FileState.INFECTED:
-            return Constants.colorRed;
+        case Enums.FileStatus.FileAnalysing:
+            return Constants.colorBlue
+        case Enums.FileStatus.FileClean:        
+            return Constants.colorGreen
+        case Enums.FileStatus.FileInfected:
+        case Enums.FileStatus.FileCopyError:
+        case Enums.FileStatus.FileAnalysisError:
+            return Constants.colorRed
         default :
-            return Constants.colorText;
+            return Constants.colorText
         }
     }
 
     function getStatusText(state) {
         switch (state)
         {
-        case Constants.FileState.SANE:
+        case Enums.FileStatus.FileClean:
             return "Sain";
-        case Constants.FileState.INFECTED:
+        case Enums.FileStatus.FileInfected:
             return "Infecté";
-        default :
+        case Enums.FileStatus.FileCopyError:
+        case Enums.FileStatus.FileAnalysisError:
+            return "Erreur"
+        case Enums.FileStatus.FileCopySuccess:
+            return "Copié"
+        default:
             return "";
         }
     }
@@ -108,11 +115,15 @@ Rectangle {
     }
 
     ColumnLayout {
-        anchors.fill: container
+        anchors {
+            fill: container
+            //topMargin: parent.height*0.01
+            bottomMargin: parent.height*0.1
+        }
+        spacing: 20
 
         Rectangle {
             Layout.preferredHeight: 40
-            //Layout.fillHeight: true
             Layout.fillWidth: true
             color: "transparent"
 
@@ -125,9 +136,6 @@ Rectangle {
                     width: parent.width * 0.1
                     height: parent.height
                     id: checkBox
-                    visible: true
-                    /*checked: selected
-                    onCheckedChanged: { toggleSaneFiles() }*/
 
                     contentItem: Image {
                         anchors.verticalCenter: parent.verticalCenter
@@ -143,7 +151,16 @@ Rectangle {
                         source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheActif.svg")
                         anchors.horizontalCenter: parent.horizontalCenter
                         fillMode: Image.PreserveAspectFit
-                        width: parent.width*0.5
+                        width: height
+                        height: parent.height * 0.6
+                    }
+
+                    onCheckedChanged: function() {
+                        if(checked) {
+                            ApplicationController.select_all_clean_files_for_copy()
+                        } else {
+                            ApplicationController.deselect_all_clean_files_for_copy()
+                        }
                     }
                 }
 
@@ -199,24 +216,23 @@ Rectangle {
                 CheckBox
                 {
                     visible: status === Enums.FileStatus.FileClean
-                    Layout.preferredWidth: 10
-                    Layout.preferredHeight: 10
+                    Layout.preferredHeight: parent.height
+                    Layout.preferredWidth: parent.height
+                    checked: selected
 
                     contentItem: Image {
-                        anchors.verticalCenter: parent.verticalCenter
                         source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherVerte.svg")
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.fill: parent                 
                         fillMode: Image.PreserveAspectFit
-                        Layout.fillHeight: true
                     }
 
                     indicator: Image {
-                        visible: parent.checked
-                        anchors.verticalCenter: parent.verticalCenter
-                        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheSain.svg")
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        visible: parent.checked                        
+                        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheSain.svg")                        
                         fillMode: Image.PreserveAspectFit
-                        width: parent.width*0.5
+                        width: parent.width*0.6
+                        height: width
+                        anchors.centerIn: parent
                     }
                 }
 
@@ -227,13 +243,10 @@ Rectangle {
                 }
 
                 Label {
-                    //Layout.preferredWidth: 50
                     Layout.preferredHeight: parent.height
-                    //Layout.fillHeight: true;
                     Layout.fillWidth: true
                     text: filename
                     color: getTextColor(status)
-                    //font.pixelSize: Math.min(height * 0.6, width * 0.15)
                     font.pointSize: 24
                     horizontalAlignment: Text.AlignLeft
                     verticalAlignment: Text.AlignVCenter
@@ -252,6 +265,7 @@ Rectangle {
                     color: "transparent"
                     border.width: 2
                     border.color: Constants.colorBlue
+                    visible: progress < 100
 
                     Rectangle {
                         width: Math.min(parent.width * progress/100, parent.width)
@@ -272,7 +286,17 @@ Rectangle {
                     }
                 }                
 
-
+                Label {
+                    Layout.preferredWidth: fileListListView.width / 3
+                    Layout.preferredHeight: parent.height
+                    text: getStatusText(status)
+                    color: getTextColor(status)
+                    font.pointSize: 24
+                    horizontalAlignment: Text.AlignLeft
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Label.ElideRight
+                    visible: progress === 100
+                }
             }
         }
 
@@ -312,19 +336,7 @@ Rectangle {
 
     /*Component {
         id: textStatus
-        Label {
-            property string displayText: ""
-            property string displayTextColor: ""
-            anchors.centerIn: parent.parent
-            width: parent.parent.width
-            height: parent.parent.height
-            text: displayText
-            color: displayTextColor
-            font.pixelSize:  Math.min(height * 0.8, width * 0.3)
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            elide: Label.ElideRight
-        }
+        
     }*/
 
     //Test de barre de chargement

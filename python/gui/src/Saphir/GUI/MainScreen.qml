@@ -10,13 +10,14 @@ import "components"
 import "components/Analyse"
 import QtQuick.Controls
 import QtQuick.Layouts
+import net.alefbet
 import "imports"
 
 Rectangle {
     property double coreMargin : 0.03
     color: "transparent"
 
-    Connections {
+    /*Connections {
         target: Constants
         onCopySaneFiles: {
             if(!Constants.isCopyingSaneFiles)
@@ -27,7 +28,7 @@ Rectangle {
             if (newProgress >= 1.0)
                 Constants.isCopyingSaneFiles = false
         }
-    }
+    }*/
 
     Image {
         id: background
@@ -262,13 +263,15 @@ Rectangle {
 
             RowLayout {
                 id: copySaneFilesComponent
-                visible: Constants.isOutputUSBPlugged
+                visible: Constants.isOutputUSBPlugged //&& ApplicationController.cleanFilesCount > 0
                 width: parent.width * 0.2
                 height: parent.height * 0.05
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.rightMargin: parent.width * 0.12 + (width * 0.5)
                 anchors.topMargin: parent.height * 0.26 + (height * 0.5)
+                spacing: 10
+
                 Rectangle {
                     Layout.preferredWidth: 20
                     Layout.fillWidth: true
@@ -283,7 +286,7 @@ Rectangle {
                         MouseArea {
                             anchors.fill: parent
                             onClicked: {
-                                Constants.copySaneFiles()
+                                ApplicationController.start_transfer()
                             }
                         }
                     }
@@ -317,8 +320,9 @@ Rectangle {
                 color: "transparent"
                 border.width: height * 0.1
                 border.color: Constants.colorText
+                
                 Rectangle {
-                    width: Math.min(parent.width * Constants.copyProgress, parent.width)
+                    width: Math.min(parent.width * ApplicationController.transferProgress, parent.width)
                     height: parent.height
                     color: Constants.colorText
                     opacity: 0.3
@@ -327,7 +331,7 @@ Rectangle {
                     anchors.centerIn: parent
                     width: parent.width
                     height: parent.height
-                    text: Math.round(Constants.copyProgress * 100.0) + "%"
+                    text: Math.round(ApplicationController.transferProgress * 100.0) + "%"
                     color: Constants.colorText
                     font.pixelSize: Math.min(height * 0.6, width * 0.15)
                     horizontalAlignment: Text.AlignHCenter

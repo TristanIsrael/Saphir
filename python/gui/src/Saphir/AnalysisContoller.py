@@ -43,10 +43,11 @@ class AnalysisController(QObject):
         self.__set_state(AnalysisState.AnalysisRunning)
         Api().publish("{}/resume".format(TOPIC_ANALYSE), {})
 
-        #while self.__files.empty():
         for file in self.__files.values():            
             # First step is to copy the file into the repository
             if file.get("inqueue"):
+                file["status"] = FileStatus.FileAnalysing
+                self.fileUpdated.emit(file["filepath"], (file["status"]))
                 Api().read_file(source_name, file.get("filepath", ""))
 
 
@@ -114,6 +115,7 @@ class AnalysisController(QObject):
     def __handle_status(self, filepath:str, status:FileStatus, progress:int):
         file = self.__files[filepath]
         file["status"] = status
+
         if progress > file.get("progress", 0):
             file["progress"] = progress
         
@@ -124,7 +126,14 @@ class AnalysisController(QObject):
 
     def __handle_result(self, component:str, filepath:str, success:bool, details:str):
         file = self.__files[filepath]
-        file["status"] = FileStatus.FileClean if success else FileStatus.FileInfected
+
+        # Si le fichier est déjà identifié comme infecté ou en erreur
+        # on le laisse en l'état
+        if not success:
+            file["status"] = FileStatus.FileInfected
+        else:
+            if file.get("status") not in (FileStatus.FileAnalysisError, FileStatus.FileCopyError, FileStatus.FileInfected):
+                file["status"] = FileStatus.FileClean
 
         # S'il y a déjà un champ progress on ajoute la valeur
         progress = file.get("progress", 0)
