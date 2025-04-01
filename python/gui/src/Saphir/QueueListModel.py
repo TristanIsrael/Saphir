@@ -1,5 +1,5 @@
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, Signal, Slot
-from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray
+from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray, qDebug
 from Enums import Roles, FileStatus
 from psec import Api
 import humanize
@@ -9,7 +9,7 @@ import collections
 class QueueListModel(QAbstractListModel):
     
     # Variables
-    __last_row_count = 0
+    #__last_row_count = 0
     __row_count = 0
     __fichiers:dict
     
@@ -19,9 +19,10 @@ class QueueListModel(QAbstractListModel):
         self.__analysisComponents = analysisComponents
 
     def rowCount(self, parent=QModelIndex()):        
-        self.__last_row_count = self.__row_count
-        return self.__row_count
-        #return len(self.fichiers_)
+        #self.__last_row_count = self.__row_count
+        #qDebug("{} {}".format(self.__row_count, self.__last_row_count))
+        #return self.__row_count
+        return len(self.__fichiers)
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
@@ -29,31 +30,30 @@ class QueueListModel(QAbstractListModel):
 
         row = index.row()
         fichier = list(self.__fichiers.values())[row]
-        #qDebug("fonction data() - filename:%s, filepath:%s" % (fichier["filename"], fichier["filepath"]))        
+        #qDebug("fonction data() - filename:%s, filepath:%s" % (fichier["name"], fichier["filepath"]))        
 
         if role == Roles.RoleType:
             return fichier.get("type", "")
         
         if role == Roles.RoleFilename:
-            return fichier["name"]
+            return fichier.get("name", "#err")
         
         if role == Roles.RolePath:
-            return fichier["path"]
+            return fichier.get("path", "#err")
         
         if role == Roles.RoleFilepath:
-            return fichier["filepath"]
+            return fichier.get("filepath", "#err")
         
         if role == Roles.RoleStatus:
-            return fichier["status"].value
+            return fichier.get("status", FileStatus.FileStatusUndefined).value
         
-        if role == Roles.RoleProgress:
-            progress = fichier.get("progress", 0)            
-            return progress / max(1, len(self.__analysisComponents))
+        if role == Roles.RoleProgress:            
+            return fichier.get("progress", 0)
         
         if role == Roles.RoleInfected:
-            return fichier.get("status") == FileStatus.FileInfected
+            return fichier.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileInfected
 
-        return None    
+        return None
 
     
     def roleNames(self) -> dict:
@@ -75,7 +75,7 @@ class QueueListModel(QAbstractListModel):
     def reset(self):
         self.beginResetModel()        
         #self.selection_.clear()
-        self.__last_row_count = 0
+        #self.__last_row_count = 0
         self.__row_count = 0
         self.endResetModel()
 
@@ -119,11 +119,25 @@ class QueueListModel(QAbstractListModel):
 
     @Slot()
     def on_file_added(self):
-        self.__row_count = len(self.__fichiers)
-        '''if self.__lastRowCount != rows:
-            print("on_file_added", self.__lastRowCount, rows)'''
+        ''' Cette fonction peut être appelée plusieurs fois alors que les données
+        sont déjà dans la liste des fichiers.
+        '''
+        nbFichiers = len(self.__fichiers)
+        if nbFichiers == self.__row_count:
+            # La liste des fichiers est déjà complètement affichée
+            return
+        
+        qDebug("Add {} {}".format(self.__row_count, nbFichiers-1))
+        self.beginInsertRows(QModelIndex(), self.__row_count, nbFichiers-1)
+        self.__row_count = nbFichiers
+        self.endInsertRows()
+        '''self.__row_count = len(self.__fichiers)
+        if self.__last_row_count == self.__row_count:
+            return
+        
         self.beginInsertRows(QModelIndex(), self.__last_row_count, self.__row_count)
         self.endInsertRows()
+        '''
         
     @Slot(str)
     def on_file_removed(self, filepath:str):

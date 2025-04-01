@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Shapes
 import QtQuick.Layouts
+import net.alefbet
 import "../../imports"
 
 
@@ -9,25 +10,31 @@ Rectangle {
     id: etatFichier
     color:"transparent"
 
-    property int fichierNonAnalyse: Constants.countNotAnalysedFiles
-    property int fichierAnalyse: Constants.countAnalysingFiles
-    property int fichierSain: Constants.countSaneFiles
-    property int fichierInfecte: Constants.countInfectedFiles
-    property int fichierTotal: fichierNonAnalyse + fichierAnalyse + fichierSain + fichierInfecte
+    property int fichierNonAnalyse: fichierTotal - fichierSain - fichierInfecte //Constants.countNotAnalysedFiles
+    property int fichierAnalyse: fichierSain + fichieInfecte //Constants.countAnalysingFiles
+    property int fichierSain: ApplicationController.cleanFilesCount //Constants.countSaneFiles
+    property int fichierInfecte: ApplicationController.infectedFilesCount //Constants.countInfectedFiles
+    property int fichierTotal: ApplicationController.queueSize //fichierNonAnalyse + fichierAnalyse + fichierSain + fichierInfecte
 
     Connections {
-        target: Constants
-        onUpdateStateTracker: {
-            Constants.countNotAnalysedFiles = toAnalyse
-            Constants.countAnalysingFiles = analysing
-            Constants.countSaneFiles = sane
-            Constants.countInfectedFiles = infected
+        target: ApplicationController
+
+        function onQueueSizeChanged() { updateStateTracker() }
+        function onInfectedFilesCountChanged() { updateStateTracker() }
+        function onCleanFilesCount() { updateStateTracker() }
+        
+    }
+
+    function updateStateTracker() {
+            /*Constants.countNotAnalysedFiles = ApplicationController.queueSize
+            Constants.countAnalysingFiles = 1 //TODO
+            Constants.countSaneFiles = ApplicationController.cleanFilesCount
+            Constants.countInfectedFiles = ApplicationController.infectedFilesCount*/
             circleAnalyse.requestPaint()
             circleSane.requestPaint()
             circleInfected.requestPaint()
             circleNotAnalysed.requestPaint()
         }
-    }
 
     Rectangle {
         anchors.fill: parent

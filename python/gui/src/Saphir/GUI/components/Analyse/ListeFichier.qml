@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import net.alefbet
 import "../../imports"
 
 
@@ -9,15 +10,17 @@ Rectangle {
     color: "transparent"
 
     property int maxItemDisplayed: 10
-    property ListModel _fileList
+    property var _fileList: ApplicationController.queueListModel
     property bool selectSaneFiles: false
     property bool selectionMode: false
 
-    Connections {
+    /*Connections {
         target: Constants
+
         onAnalyseFile: {
             Constants.addToAnalyse(type, name, selected, status, analyseProgress, backId)
         }
+
         onUpdateFileProgress: {
             for (let i = 0; i < Constants.runningFileList.count; i++)
             {
@@ -31,6 +34,7 @@ Rectangle {
                 }
             }
         }
+
         onUpdateFileStatus: {
             for (let i = 0; i < Constants.runningFileList.count; i++)
             {
@@ -44,10 +48,11 @@ Rectangle {
                 }
             }
         }
+        
         onClearRunningFileList: {
             Constants.runningFileList.clear()
         }
-    }
+    }*/
 
     Image {
         anchors.fill: parent
@@ -81,7 +86,7 @@ Rectangle {
         }
     }
 
-    function toggleSaneFiles()
+    /*function toggleSaneFiles()
     {
         coreFileList.selectSaneFiles = !coreFileList.selectSaneFiles
         for (let i = 0; i < _fileList.count; i++) {
@@ -91,7 +96,7 @@ Rectangle {
             }
         }
 
-    }
+    }*/
 
     Rectangle {
         id: container
@@ -106,21 +111,24 @@ Rectangle {
         anchors.fill: container
 
         Rectangle {
-            Layout.preferredHeight: 10
-            Layout.fillHeight: true
+            Layout.preferredHeight: 40
+            //Layout.fillHeight: true
             Layout.fillWidth: true
             color: "transparent"
+
             Row {
                 width: parent.width
                 height: parent.height
+
                 CheckBox
                 {
                     width: parent.width * 0.1
                     height: parent.height
                     id: checkBox
                     visible: true
-                    checked: model.selected = checked
-                    onCheckedChanged: { toggleSaneFiles() }
+                    /*checked: selected
+                    onCheckedChanged: { toggleSaneFiles() }*/
+
                     contentItem: Image {
                         anchors.verticalCenter: parent.verticalCenter
                         source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherActive.svg")
@@ -128,6 +136,7 @@ Rectangle {
                         fillMode: Image.PreserveAspectFit
                         Layout.fillHeight: true
                     }
+
                     indicator: Image {
                         visible: parent.checked
                         anchors.verticalCenter: parent.verticalCenter
@@ -152,141 +161,126 @@ Rectangle {
             }
         }
 
-        Rectangle {
-            Layout.preferredHeight: 90
+        ListView {            
+            id: fileListListView
+            clip: true
+            Layout.alignment: Qt.AlignCenter
+            //Layout.preferredHeight: 90
             Layout.fillHeight: true
             Layout.fillWidth: true
-            color: "transparent"
-            ListView {
-                clip: true
-                id: fileListListView
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width
-                height: parent.height
-                model: _fileList
+            model: _fileList
+            spacing: 10
 
-                ScrollBar.vertical: ScrollBar
+            ScrollBar.vertical: ScrollBar
+            {
+                policy: parent.contentHeight > parent.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+                width:parent.width*0.03
+                background: Rectangle {
+                    implicitWidth: parent.parent.width*0.01
+                    color: "#00000000"  // Couleur du fond de la scrollbar
+                    radius: 6
+                    border.color: Constants.colorText
+                }
+
+                contentItem: Rectangle {
+                    implicitWidth: parent.parent.width*0.01
+                    color: Constants.colorText  // Couleur de la barre de défilement
+                    radius: 6
+                }
+            }
+
+            delegate : RowLayout {
+                width: fileListListView.width *0.95
+                //width: parent.width*0.95
+                //height: parent.parent.height * (1.0/maxItemDisplayed)
+                height: 25
+                spacing: 10
+
+                CheckBox
                 {
-                    policy: parent.contentHeight > parent.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
-                    width:parent.width*0.03
-                    background: Rectangle {
-                        implicitWidth: parent.parent.width*0.01
-                        color: "#00000000"  // Couleur du fond de la scrollbar
-                        radius: 6
-                        border.color: Constants.colorText
+                    visible: status === Enums.FileStatus.FileClean
+                    Layout.preferredWidth: 10
+                    Layout.preferredHeight: 10
+
+                    contentItem: Image {
+                        anchors.verticalCenter: parent.verticalCenter
+                        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherVerte.svg")
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        fillMode: Image.PreserveAspectFit
+                        Layout.fillHeight: true
                     }
 
-                    contentItem: Rectangle {
-                        implicitWidth: parent.parent.width*0.01
-                        color: Constants.colorText  // Couleur de la barre de défilement
-                        radius: 6
+                    indicator: Image {
+                        visible: parent.checked
+                        anchors.verticalCenter: parent.verticalCenter
+                        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheSain.svg")
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        fillMode: Image.PreserveAspectFit
+                        width: parent.width*0.5
                     }
                 }
 
-                delegate : RowLayout {
-                    width: parent.width*0.95
-                    height: parent.parent.height * (1.0/maxItemDisplayed)
-                    spacing: 0
+                Item {
+                    //Spacer pour aligner quand la checkbox n'est pas visible
+                    Layout.preferredWidth: 10
+                    visible: status !== Enums.FileStatus.FileClean
+                }
 
-                    CheckBox
-                    {
-                        Layout.preferredWidth: 10
-                        Layout.fillHeight: true;
-                        Layout.fillWidth: true;
+                Label {
+                    //Layout.preferredWidth: 50
+                    Layout.preferredHeight: parent.height
+                    //Layout.fillHeight: true;
+                    Layout.fillWidth: true
+                    text: filename
+                    color: getTextColor(status)
+                    //font.pixelSize: Math.min(height * 0.6, width * 0.15)
+                    font.pointSize: 24
+                    horizontalAlignment: Text.AlignLeft
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Label.ElideRight
+                }
 
-                        visible: model.status === Constants.FileState.SANE
-                        checked: model.selected
-                        onCheckedChanged: model.selected = checked
-                        contentItem: Image {
-                            anchors.verticalCenter: parent.verticalCenter
-                            source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherVerte.svg")
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            fillMode: Image.PreserveAspectFit
-                            Layout.fillHeight: true
-                        }
-                        indicator: Image {
-                            visible: parent.checked
-                            anchors.verticalCenter: parent.verticalCenter
-                            source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheSain.svg")
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            fillMode: Image.PreserveAspectFit
-                            width: parent.width*0.5
-                        }
-                    }
+                Rectangle {
+                    //property real progress: 0.0
+                    //anchors.centerIn : parent.parent
 
-                    Item {
-                        //Spacer pour aligner quand la checkbox n'est pas visible
-                        Layout.preferredWidth: 10
-                        Layout.fillHeight: true;
-                        Layout.fillWidth: true;
-                        visible: model.status !== Constants.FileState.SANE
+                    //width: parent.parent.width
+                    //height: parent.parent.parent.height
+                    Layout.preferredHeight: parent.height
+                    Layout.preferredWidth: fileListListView.width / 3
+                    //Layout.fillWidth: true
+                    color: "transparent"
+                    border.width: 2
+                    border.color: Constants.colorBlue
+
+                    Rectangle {
+                        width: Math.min(parent.width * progress/100, parent.width)
+                        height: parent.height
+                        color: Constants.colorBlue
+                        opacity: 0.3
                     }
 
                     Label {
-                        Layout.preferredWidth: 50
-                        Layout.fillHeight: true;
-                        Layout.fillWidth: true;
-                        text: model.name
-                        color: getTextColor(model.status)
+                        anchors.centerIn: parent
+                        width: parent.width
+                        height: parent.height
+                        text: Math.round(progress) + "%"
+                        color: Constants.colorBlue
                         font.pixelSize: Math.min(height * 0.6, width * 0.15)
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
-                        elide: Label.ElideRight
                     }
-
-                    Rectangle {
-                        Layout.preferredWidth: 40
-                        Layout.fillHeight: true;
-                        Layout.fillWidth: true;
-                        color: "transparent"
-
-                        Loader {
-                            id: loader
-                            width: parent.width
-                            height: parent.height * 0.6
-                            anchors.centerIn: parent
-                            sourceComponent: model.status === Constants.FileState.ANALYSING ? loadingBar : textStatus
-                            onLoaded: {
-                                if (model.status === Constants.FileState.ANALYSING)
-                                {
-                                    item.progress = model.progress
-                                }
-                                else {
-                                    item.displayText = getStatusText(model.status)
-                                    item.displayTextColor = getTextColor(model.status)
-                                }
-                            }
-                            Binding {
-                                when: model.status === Constants.FileState.ANALYSING
-                                target: loader.item
-                                property: "progress"
-                                value: model.progress
-                            }
-                            Binding {
-                                when: model.status !== Constants.FileState.ANALYSING
-                                target: loader.item
-                                property: "displayText"
-                                value: getStatusText(model.status)
-                            }
-                            Binding {
-                                when: model.status !== Constants.FileState.ANALYSING
-                                target: loader.item
-                                property: "displayTextColor"
-                                value: getTextColor(model.status)
-                            }
-                        }
-
-                    }
+                }                
 
 
-                }
             }
         }
 
     }
 
-    Component {
+    /*Component {
         id: loadingBar
+
         Rectangle {
             property real progress: 0.0
             anchors.centerIn : parent.parent
@@ -295,12 +289,14 @@ Rectangle {
             color: "transparent"
             border.width: height * 0.1
             border.color: Constants.colorBlue
+
             Rectangle {
                 width: Math.min(parent.width * progress, parent.width)
                 height: parent.height
                 color: Constants.colorBlue
                 opacity: 0.3
             }
+
             Label {
                 anchors.centerIn: parent
                 width: parent.width
@@ -312,9 +308,9 @@ Rectangle {
                 verticalAlignment: Text.AlignVCenter
             }
         }
-    }
+    }*/
 
-    Component {
+    /*Component {
         id: textStatus
         Label {
             property string displayText: ""
@@ -329,7 +325,7 @@ Rectangle {
             verticalAlignment: Text.AlignVCenter
             elide: Label.ElideRight
         }
-    }
+    }*/
 
     //Test de barre de chargement
     //property real tmpProgress: 0.5

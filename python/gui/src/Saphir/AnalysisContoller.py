@@ -16,7 +16,7 @@ class AnalysisController(QObject):
 
     state_ = AnalysisState.AnalysisStopped
     __files:dict
-    analysis_components = list()    
+    analysis_components_ = list()    
 
     # Signals
     stateChanged = Signal(AnalysisState)
@@ -125,7 +125,11 @@ class AnalysisController(QObject):
     def __handle_result(self, component:str, filepath:str, success:bool, details:str):
         file = self.__files[filepath]
         file["status"] = FileStatus.FileClean if success else FileStatus.FileInfected
-        file["progress"] = 100
+
+        # S'il y a déjà un champ progress on ajoute la valeur
+        progress = file.get("progress", 0)
+        progress += 100 / len(self.analysis_components_)
+        file["progress"] = progress
 
         self.fileUpdated.emit(filepath, ["status", "progress"])        
         self.resultsChanged.emit()        

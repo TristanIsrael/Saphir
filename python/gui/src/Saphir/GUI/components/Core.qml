@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import net.alefbet
 
 import "EntreeSortie"
 import "Analyse"
@@ -103,7 +104,7 @@ Rectangle {
                 {
                     id: fileSelection
                     anchors.fill: parent
-                    _fileList: Constants.fileList
+                    //_fileList: Constants.fileList
                 }
 
             }
@@ -130,7 +131,7 @@ Rectangle {
                 color: "transparent"
                 ListeFichier {
                     anchors.fill: parent
-                    _fileList: Constants.runningFileList
+                    //_fileList: Constants.runningFileList
                 }
             }
         }

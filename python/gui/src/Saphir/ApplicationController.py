@@ -36,7 +36,7 @@ class ApplicationController(QObject):
     analysisComponents_ = list()
     analysisController_:AnalysisController
     __files_to_enqueue = list()
-    __current_folder = "/"
+    current_folder_ = "/"    
     __is_enquing = False
     #__interfaceInputs = None
     #__main_window:QWidget
@@ -65,6 +65,8 @@ class ApplicationController(QObject):
     globalProgressChanged = Signal(int)
     taskRunningChanged = Signal(bool)    
     showMessage = Signal(str, str, bool, bool) #Title, Message, alert, modal
+    currentFolderChanged = Signal()
+    idCurrentFolderChanged = Signal()
 
     # IO
     _mouse_x = 0
@@ -76,7 +78,7 @@ class ApplicationController(QObject):
     mouseYChanged = Signal()
     clicXChanged = Signal()
     clicYChanged = Signal()
-    wheelChanged = Signal()
+    wheelChanged = Signal()    
 
 
     # Fonctions publiques
@@ -135,14 +137,16 @@ class ApplicationController(QObject):
     def go_to_folder(self, folder:str):
         self.__inputFilesList.clear()
         self.inputFilesListModel_.reset()        
-        self.inputFilesListProxyModel_.set_current_folder(folder)
-        self.__current_folder = folder
+        self.inputFilesListProxyModel_.set_current_folder(folder)  
+        self.current_folder_ = folder
+        self.currentFolderChanged.emit()
+        self.idCurrentFolderChanged.emit()
         Api().get_files_list(self.sourceName_, False, folder)        
 
 
     @Slot()
     def go_to_parent_folder(self):
-        path = Path(self.__current_folder)                
+        path = Path(self.current_folder_)                
         self.go_to_folder(path.parent.absolute().as_posix())
 
 
@@ -177,7 +181,7 @@ class ApplicationController(QObject):
 
     @Slot(str, str)
     def enqueue_file(self, filetype:str, filepath:str): 
-        #Api().info("User added {} {} to the queue".format(filetype, filepath))
+        Api().debug("User added {} {} to the queue".format(filetype, filepath))
         
         self.__is_enquing = True
         self.__is_navigating = False
@@ -210,7 +214,7 @@ class ApplicationController(QObject):
 
     @Slot(str)
     def dequeue_file(self, filepath:str):
-        #Api().info("User removed {} from to the queue".format(filepath))
+        Api().debug("User removed {} from to the queue".format(filepath))
         
         file = self.__inputFilesList.get(filepath)
         if file is not None:
@@ -252,6 +256,17 @@ class ApplicationController(QObject):
             Api().debug("User asked to stop the analysis")
             self.analysisController_.stop_analysis()
 
+    @Slot()
+    def start_analysis(self):
+        if self.analysisController_.state == AnalysisState.AnalysisStopped:
+            Api().debug("User asked to start the analysis")
+            self.analysisController_.start_analysis(self.sourceName_)            
+        
+    @Slot()
+    def stop_analysis(self):
+        if self.analysisController_.state == AnalysisState.AnalysisRunning:
+            Api().debug("User asked to stop the analysis")
+            self.analysisController_.stop_analysis()
 
     @Slot()
     def start_transfer(self):
@@ -298,6 +313,7 @@ class ApplicationController(QObject):
 
     def __on_api_ready(self):        
         self.pret_ = True
+        self.pretChanged.emit(self.pret_)
         self.analysisController_ = AnalysisController(files=self.__queuedFilesList, analysis_components= self.analysisComponents_, source_disk= self.sourceName_, parent= self)
         self.analysisController_.resultsChanged.connect(self.__on_results_changed)
         self.analysisController_.fileUpdated.connect(self.queueListModel_.on_file_updated)
@@ -392,11 +408,11 @@ class ApplicationController(QObject):
                 Api().error("The files argument is missing")
                 return
 
-            Api().debug("Files list received, count={}".format(len(files)))            
-                        
+            Api().debug("Files list received, count={}".format(len(files)))
+
             for file in files:                
                 file["disk"] = disk
-                filepath = "{}{}{}".format(file.get("path"), "/" if file.get("path") != "/" else "", file.get("name"))
+                filepath = "{}{}{}".format(file.get("path"), "/" if file.get("path") != "/" else "", file.get("name"))                
                 file["filepath"] = filepath
                 file["status"] = FileStatus.FileStatusUndefined                
                 file["selected"] = False
@@ -408,14 +424,10 @@ class ApplicationController(QObject):
                     self.fileQueued.emit(filepath)
                     self.queueSizeChanged.emit(len(self.__queuedFilesList))
                 else:
-                    # L'ID est attribué uniquement lors de la première réception de
-                    # la liste des fichiers. 
-                    # Le premier identifiant est 1
-                    file["id"] = len(self.__inputFilesList)+1
                     file["inqueue"] = False
                     self.__inputFilesList[filepath] = file
-                    self.fileAdded.emit(filepath)
-            
+                    self.fileAdded.emit(filepath)                        
+
             #if self.__is_enquing:
             #    self.__enqueue_next_file()
 
@@ -497,7 +509,9 @@ class ApplicationController(QObject):
         ready &= len(ids) >= ANTIVIRUS_NEEDED
         for id in ids:
             av = self.componentsHelper_.get_by_id(id)
-            ready &= av.get("state") == EtatComposant.READY
+            ready &= av.get("state") == EtatComposant.READY    
+            if av.get("state") == EtatComposant.READY and av not in self.analysisComponents_:
+                self.analysisComponents_.append(av)
 
         self.analysisReady_ = ready
         self.analysisReadyChanged.emit(self.analysisReady_)
@@ -564,6 +578,9 @@ class ApplicationController(QObject):
     #
     def __pret(self):
         return self.pret_
+    
+    def __current_folder(self):
+        return self.current_folder_
     
     def __set_pret(self, pret:bool):
         if self.pret_ == pret:
@@ -687,6 +704,8 @@ class ApplicationController(QObject):
     '''
     
     pret = Property(bool, __pret, __set_pret, notify=pretChanged) 
+    currentFolder = Property(str, __current_folder, notify=currentFolderChanged)
+    idCurrentFolder = Property(str, __current_folder, notify=idCurrentFolderChanged)
     sourceName = Property(str, __sourceName, notify= sourceNameChanged)
     sourceReady = Property(bool, __sourceReady, notify= sourceReadyChanged)
     targetName = Property(str, __targetName, notify= targetNameChanged)

@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQuick
+import net.alefbet
 
 QtObject {
     //Enumérations
@@ -29,8 +30,8 @@ QtObject {
     //Propriétés de l'application
     //=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
         // -- Format de l'application
-    property int width: 1024
-    property int height: 640
+    property int width: 1280
+    property int height: 800
 
         // -- Propriétés d'avancement de l'analyse
     property real globalProgress: 0.0
@@ -45,13 +46,13 @@ QtObject {
         // -- Propriétés état du système
     property int diskState: 0
     property int currentDirectoryId: 0
-    property string currentDirectory: "://"
-    property bool isAnalysePlaying: false
+    property string currentDirectory: "/"
+    property bool isAnalysePlaying: ApplicationController.systemState === Enums.SystemState.SystemAnalysisRunning
     property real batteryLevel: 1.0
-    property bool isInputUSBPlugged: false
-    property string inputUSBName: ""
-    property bool isOutputUSBPlugged: false
-    property string outputUSBName: ""
+    property bool isInputUSBPlugged: ApplicationController.sourceReady
+    property string inputUSBName: ApplicationController.sourceName
+    property bool isOutputUSBPlugged: ApplicationController.targetReady
+    property string outputUSBName: ApplicationController.targetName
     property bool isFileSelectionMode: false
     property bool isWired: false
 
@@ -71,8 +72,9 @@ QtObject {
     //1 : ListElement{type:"folder";name:"racine";selected:false;status:Constants.FileState.NOT_ANALYSED;parent: -1}
     //2 : ListElement{type:"folder";name:"main";selected:false;status:Constants.FileState.NOT_ANALYSED;parent: 0}
     //Le champ parent correspond à l'index dans la liste du dossier parent
-    property ListModel fileList:ListModel
-    /*{
+    property var fileList: ApplicationController.inputFilesListProxyModel
+    /*:ListModel
+    {
         //Le dossier racine est important pour y mettre les fichiers à la racine
         ListElement{backId:0;type:"folder";name:"racine";selected:false;status:Constants.FileState.NOT_ANALYSED;parent: -1}
         ListElement{backId:5;type:"file";name:"4";selected:false;status:Constants.FileState.INFECTED;parent: 0}
@@ -84,11 +86,12 @@ QtObject {
     }*/
     //Modèle dee données des fichiers envoyés à l'analyse
     //Exemple : ListElement{type:"file";name:"test";selected:false;status:Constants.FileState.ANALYSING;progress: 0.00;backId: 7}
-    property ListModel runningFileList : ListModel
+    //property var runningFileList: ApplicationController.queueListModel
+    /*: ListModel
     {
         ListElement{type:"file";name:"test";selected:false;status:Constants.FileState.ANALYSING;progress:0.00;backId: 7}
         ListElement{type:"file";name:"test2";selected:false;status:Constants.FileState.ANALYSING;progress:0.00;backId: 8}
-    }
+    }*/
     //Modèle de données des antivirus
     property ListModel antivirusList:ListModel
     {
@@ -118,7 +121,7 @@ QtObject {
     //Signal permettant de mettre à jour l'avancement de l'analyse
     signal updateProgress(real newProgress, real newTimeLeft)
     //Signal permettant de mettre à jour le nombre de fichiers non analysés, en cours d'analyse, sains et infectés
-    signal updateStateTracker(int toAnalyse, int analysing, int sane, int infected)
+    signal updateStateTracker()
     //Signal indiquant le changement de dossier
     signal updateCurrentPath(int idFolder, string newPath)
     //Signal mettant à jour les progrès de l'analyse sur un fichier particulier
@@ -226,22 +229,25 @@ QtObject {
     }
     //Méthode permettant d'ajouter un nouvel élément à la liste des fichiers en cours d'analyse
     function addToAnalyse(/*string*/ type,
-                          /*string*/ name,
+                          /*string*/ filanem,
                           /*bool*/ selected,
                           /*int*/ status,
                           /*real*/ progress,
-                          /*int*/ id)
+                          /*int*/ filepath)
     {
-        if(type === "file" && selected && !isInRunningFileList(id))
-        {
-            Constants.runningFileList.append({   type:"file",
-                                                 name:name,
-                                                 selected:false,
-                                                 status: status,
-                                                 progress: 0.00,
-                                                 backId: id
-                                             })
-        }
+        ApplicationController.enqueue_file(type, filepath)
+        
+    }
+    //Méthode permettant d'ajouter un nouvel élément à la liste des fichiers en cours d'analyse
+    function removeFromAnalyse(/*string*/ type,
+                          /*string*/ filename,
+                          /*bool*/ selected,
+                          /*int*/ status,
+                          /*real*/ progress,
+                          /*int*/ filepath)
+    {
+        ApplicationController.dequeue_file(filepath)
+        
     }
     //Méthode vérifiant si un fichier n'est pas déjà dans la phase d'analyse
     function isInRunningFileList(searchId)
@@ -256,17 +262,17 @@ QtObject {
         return false
     }
     //Méthode ajoutant un ensemble d'objets dans la liste de sélection
-    function addToSelection(data)
+    /*function addToSelection(data)
     {
         for (let file of data) {
-            Constants.runningFileList.append({  /*int*/ backId: file.id,
-                                                /*string*/ name: file.name,
-                                                /*string*/ type: file.type,
-                                                /*int*/ status: file.status,
-                                                /*bool*/ selected: file.selected,
-                                                /*int*/ parent: file.parent})
+            Constants.runningFileList.append({   backId: file.id,
+                                                 name: file.name,
+                                                 type: file.type,
+                                                 status: file.status,
+                                                 selected: file.selected,
+                                                 parent: file.parent})
         }
-    }
+    }*/
 
     //=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~=~
 

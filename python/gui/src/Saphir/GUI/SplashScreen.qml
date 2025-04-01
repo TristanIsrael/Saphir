@@ -55,7 +55,7 @@ Rectangle {
     }
 
     Timer { //Ce timer est à supprimer si le back gère
-        interval: 3000
+        interval: 500
         running: true
         repeat: false
         onTriggered: {

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import net.alefbet
 import "../../imports"
 
 
@@ -10,13 +11,28 @@ Item {
     function selectMode(mode)
     {
         Constants.isFileSelectionMode = mode
+
+        if(Constants.isFileSelectionMode) {
+            ApplicationController.stop_analysis()
+        } else {
+            ApplicationController.start_analysis()
+        }
     }
 
-    function togglePlay(newState)
+    /*function togglePlay(newState)
     {
         if(newState === Constants.isAnalysePlaying)
             return
         Constants.isAnalysePlaying = newState
+    }*/
+
+    function autoStartAnalysis() {
+        ApplicationController.start_analysis()
+    }
+
+    Component.onCompleted: function() {
+        if(!Constants.isFileSelectionMode)
+            autoStartAnalysis()
     }
 
     Connections {
@@ -146,23 +162,29 @@ Item {
 
             RowLayout {
                 anchors.fill: parent
+                
                 Rectangle {
                     Layout.preferredWidth: 35
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.alignment: Qt.AlignLeft
                     color: "transparent"
+
                     Image {
                         id: buttonPause
-                        source: Constants.isAnalysePlaying == false ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseActif.svg")
-                                                                        : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg")
+                        source: ApplicationController.analysisReady ? 
+                                    (Constants.isAnalysePlaying == false ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseActif.svg")
+                                                                         : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg"))
+                                    : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg")
                         fillMode: Image.PreserveAspectFit
                         anchors.fill: parent
+
                         MouseArea {
                             anchors.fill: parent
                             onClicked: {
-                                togglePlay(false)
-                                Constants.pause()
+                                //togglePlay(false)
+                                //Constants.pause()
+                                ApplicationController.stop_analysis()
                             }
                         }
                     }
@@ -180,17 +202,21 @@ Item {
                     Layout.fillHeight: true
                     Layout.alignment: Qt.AlignRight
                     color: "transparent"
+
                     Image {
                         id: buttonPlay
-                        source: Constants.isAnalysePlaying ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayActif.svg")
-                                                               : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg")
+                        source: ApplicationController.analysisReady ? 
+                                        (Constants.isAnalysePlaying ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayActif.svg")
+                                            : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg"))
+                                    : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg")
                         fillMode: Image.PreserveAspectFit
                         anchors.fill: parent
                         MouseArea {
                             anchors.fill: parent
                             onClicked: {
-                                togglePlay(true)
-                                Constants.play()
+                                //togglePlay(true)
+                                //Constants.play()
+                                ApplicationController.start_analysis()
                             }
                         }
                     }

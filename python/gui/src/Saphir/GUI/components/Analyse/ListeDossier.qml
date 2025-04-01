@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import net.alefbet
 import "../../imports"
 
 
@@ -10,6 +11,7 @@ Rectangle {
     property bool selectionMode: Constants.isFileSelectionMode
     property int itemDisplayed: 10
     property ListModel _fileList
+    property string idFolderSelected: ApplicationController.idCurrentFolder
     property int currentParentFolder
 
     Component.onCompleted: {
@@ -31,6 +33,8 @@ Rectangle {
 
     function updateParentFolder()
     {
+        return 
+
         for (let i = 0; i < Constants.fileList.count; i++)
         {
             if (Constants.fileList.get(i).backId === Constants.currentDirectoryId)
@@ -66,32 +70,97 @@ Rectangle {
 
     ColumnLayout
     {
-        anchors.fill: parent
-        anchors.topMargin: parent.height*0.01
-        anchors.bottomMargin: parent.height*0.1
-        anchors.leftMargin:parent.width*0.03
-        anchors.rightMargin: parent.width*0.03
+        anchors {
+            fill: parent
+            topMargin: parent.height*0.01
+            bottomMargin: parent.height*0.1
+            leftMargin:parent.width*0.03
+            rightMargin: parent.width*0.03
+        }
+
+        clip: true
+        spacing: 20
+
+        Item {
+            Layout.preferredHeight: 5
+        }
+
+        /* Fil d'Ariane */
         Label
         {
             color: Constants.colorText
             Layout.fillWidth: true
             Layout.preferredHeight: 5
             Layout.fillHeight: true
-            text: Constants.currentDirectory
+            text: ApplicationController.currentFolder
             font.pixelSize: height * 1.0
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
+            elide: Text.ElideLeft
         }
 
+        /** Retour au dossier parent */
+        RowLayout {
+            id: lblParentFolder
+            visible: idFolderSelected !== "/"
+
+            Layout.preferredWidth: parent.width
+            Layout.preferredHeight: 10
+            spacing: 10
+
+            Image {
+                Layout.preferredWidth: 25
+                anchors.verticalCenter: parent.verticalCenter
+                source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeRepertoireParent.svg")
+                fillMode: Image.PreserveAspectFit                    
+
+                MouseArea {
+                    anchors.fill: parent
+                    //enabled: type === "folder-parent"
+                    onClicked: {
+                        //idParentFolder = backId
+                        //ApplicationController.go_to_folder(filepath)
+                        ApplicationController.go_to_parent_folder()
+                        //Constants.enterFolder(backId)
+                    }
+                }
+            }
+            
+            Label
+            {                                        
+                clip: true
+                color: Constants.colorText
+                //Layout.preferredWidth: 90                        
+                text: "Dossier parent"
+                Layout.fillHeight: true
+                Layout.fillWidth: true
+                //font.pixelSize: height*0.6
+                font.pointSize: 24
+                verticalAlignment: Text.AlignLeft
+                elide: Label.ElideRight
+
+                MouseArea {
+                    anchors.fill: parent
+                    //enabled: type === "folder"
+                    onClicked: {
+                        ApplicationController.go_to_parent_folder()
+                    }
+                }
+            }                
+        } 
 
         ListView
         {
-            clip:true
-            id:listView
+            id: listView
+            clip: true
+
             Layout.preferredHeight: 95
             Layout.fillWidth: true
             Layout.fillHeight: true
-            model: _fileList
+
+            model: Constants.fileList
+            spacing: 20
+
             ScrollBar.vertical: ScrollBar
             {
                 policy: parent.contentHeight > parent.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
@@ -112,88 +181,110 @@ Rectangle {
 
             delegate: RowLayout
             {
-                visible: Constants.currentDirectoryId !== model.backId
-                width: parent.width*0.95
-                height: Constants.currentDirectoryId !== model.backId ? parent.parent.height*(1.0/itemDisplayed) : 0
-                Layout.minimumHeight: 30
-                Item {
-                    Layout.preferredWidth: 10
-                    Layout.fillHeight: true;
-                    Layout.fillWidth: true;
+                height: visible ? 25 : 0                    
+                width: selectionMode ? listView.width *0.92 : listView.width
+                spacing: 10
+                
+                Image {
+                    Layout.preferredWidth: parent.height 
+                    Layout.preferredHeight: parent.height                        
 
-                    Image {
-                        width:parent.width
-                        height:parent.height
-                        anchors.verticalCenter: parent.verticalCenter
-                        source: model.type === "file" ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "FichierActif.svg")
-                                                      : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeRepertoireUnitaire.svg")
-                        fillMode: Image.PreserveAspectFit
-
-                        MouseArea {
-                            anchors.fill: parent
-                            enabled: model.type === "folder"
-                            onClicked: {
-                                //Envoi du signal pour rentrer dans le dossier
-                                Constants.enterFolder(model.backId)
-                            }
+                    //anchors.verticalCenter: parent.verticalCenter
+                    /*source: type === "file" ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "FichierActif.svg")
+                                                    : type === "folder" && backId !== idParentFolder ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeRepertoireUnitaire.svg")
+                                                                                                                : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeRepertoireParent.svg")*/
+                    source: type === "file" ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "FichierActif.svg")
+                                            : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeRepertoireUnitaire.svg")                                                                           
+                    fillMode: Image.PreserveAspectFit
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: type === "folder"
+                        onClicked: {
+                            idFolderSelected = backId
+                            ApplicationController.go_to_folder(filepath)
                         }
                     }
-                }
+                }          
+
                 Label
                 {
-                    clip:true
+                    clip: true
                     color: model.selected ? Constants.colorBlue : Constants.colorText
-                    Layout.preferredWidth: 90
-                    text: currentParentFolder === model.backId ? ("Dossier parent - " + model.name) : model.name
-                    Layout.fillHeight: true;
-                    Layout.fillWidth: true;
-                    font.pixelSize: Math.min(height * 0.6, width * 0.15)
+                    text: filename                        
+                    font.pointSize: 24
                     verticalAlignment: Text.AlignVCenter
+                    horizontalAlignment: Text.AlignLeft
                     elide: Label.ElideRight
-                }
-                CheckBox
-                {
-                    id: checkBox
-                    visible: model.type === "file" && selectionMode
-                    Layout.preferredWidth: 15
-                    Layout.fillWidth: true;
-                    Layout.fillHeight: true
-                    checked: model.selected
-                    onCheckedChanged: {
-                        model.selected = checked
-                        if (checked)
-                        {
-                            Constants.analyseFile(model.type,
-                                                      model.name,
-                                                      model.selected,
-                                                      model.status,
-                                                      0.0,
-                                                      model.backId)
-                        }
+                    Layout.fillWidth: true
 
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: type === "folder"
+                        onClicked: {
+                            idFolderSelected = backId
+                            ApplicationController.go_to_folder(filepath)
+                            //updateFileList()
+                        }
                     }
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                CheckBox {
+                    id: checkBox
+                    //visible: type === "file" //&& selectionMode
+                    visible: selectionMode
+                    Layout.preferredHeight: parent.height
+                    Layout.preferredWidth: parent.height
+                    checked: selected
+
+                    background: Item {}
+
                     contentItem: Image {
-                        anchors.verticalCenter: parent.verticalCenter
                         source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherActive.svg")
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.centerIn: parent
                         fillMode: Image.PreserveAspectFit
-                        Layout.fillHeight: true
+                        anchors.fill: parent
                     }
+
                     indicator: Image {
                         visible: parent.checked
-                        anchors.verticalCenter: parent.verticalCenter
                         source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheActif.svg")
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: parent.width*0.6
+                        height: width
                         fillMode: Image.PreserveAspectFit
-                        Layout.fillHeight: true
-                        width: parent.width*0.5
+                        anchors.centerIn: parent
                     }
-                }
+
+                    onCheckedChanged: function() {
+                        if(checked) {
+                            Constants.addToAnalyse(
+                                type,
+                                filename,
+                                selected,
+                                status,
+                                0.0,
+                                backId)
+                        } else {
+                            Constants.removeFromAnalyse(
+                                type,
+                                filename,
+                                selected,
+                                status,
+                                0.0,
+                                backId)
+                        }
+                    }
+                }                    
             }
+
             Label
             {
                 id: usbKeyLabel
-                visible: parent.contentHeight === 0
+                visible: Constants.fileList.count === 0
                 color: Constants.colorText
                 anchors.fill: parent
                 horizontalAlignment: Text.AlignHCenter

@@ -7,9 +7,8 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QGuiApplication, QFont, QFontDatabase
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonType, qmlRegisterUncreatableType, qmlRegisterSingletonInstance
-from psec import Api
+from psec import Api, System
 from ApplicationController import ApplicationController
-from psec import Api
 from libsaphir import DEVMODE
 if DEVMODE:
     from DevModeHelper import DevModeHelper
@@ -18,7 +17,7 @@ if DEVMODE:
 
 api_ready = threading.Event()
 FORCE_FULLSCREEN = False
-VERSION = "1.0"
+VERSION = "2.0"
 
 def on_ready():
     print("PSEC API is ready")
@@ -61,8 +60,12 @@ if __name__ == "__main__":
     
     qml_root = engine.rootObjects()[0]        
     qml_root.setCursor(Qt.ArrowCursor)
-    if not DEVMODE or FORCE_FULLSCREEN:
-        qml_root.showFullScreen()        
+    if not DEVMODE:
+        qml_root.setWidth(System().get_screen_width())
+        qml_root.setHeight(System().get_screen_height())
+
+    if FORCE_FULLSCREEN:
+        qml_root.showFullScreen()
 
     # Integrate with PSEC core
     #if not DEVMODE:

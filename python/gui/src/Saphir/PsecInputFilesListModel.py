@@ -66,9 +66,6 @@ class PsecInputFilesListModel(QAbstractListModel):
         fichier = list(self.fichiers_.values())[row]
         #qDebug("fonction data() - filename:%s, filepath:%s" % (fichier["filename"], fichier["filepath"]))        
 
-        if role == Roles.RoleId:
-            return fichier.get("id")
-
         if role == Roles.RoleType:
             return fichier.get("type", "")
         
@@ -78,7 +75,7 @@ class PsecInputFilesListModel(QAbstractListModel):
         if role == Roles.RolePath:
             return fichier["path"]
         
-        if role == Roles.RoleFilepath:
+        if role == Roles.RoleFilepath or role == Roles.RoleId:
             return fichier["filepath"]
         
         if role == Roles.RoleStatus:
@@ -134,7 +131,8 @@ class PsecInputFilesListModel(QAbstractListModel):
             Roles.RolePartialSelection: b'partialSelection',
             Roles.RoleProgress: b'progress',
             Roles.RoleInQueue: b'inqueue',
-            Roles.RoleStatus: b'status'
+            Roles.RoleStatus: b'status',
+            Roles.RoleId: b'backId'
         }
         return roles
     

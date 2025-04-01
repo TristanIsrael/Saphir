@@ -8,8 +8,8 @@ import "imports"
 Window {
     visible: true
     visibility: Window.Maximized
-    minimumHeight: Constants.height
-    minimumWidth: Constants.width
+    height: Constants.height
+    width: Constants.width
     title: "SAPHIR"
 
     SplashScreen {
