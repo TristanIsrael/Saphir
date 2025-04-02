@@ -1,11 +1,14 @@
 from libsaphir._abstract_antivirus_controller import AbstractAntivirusController
 from psec import EtatComposant, Parametres, Cles
 from libsaphir import FileStatus
-import subprocess, threading, os
+import subprocess, threading, os, re
 
 class EeaAntivirusController(AbstractAntivirusController):
-    
-    __lxc_cmd = ["lxc-attach", "-n", "saphir-eset-container", "--"]
+
+    # lxc-attach -n saphir-container-eset -- /opt/eset/eea/bin/odscan -s --profile='@In-depth scan' /bin; echo EXIT_CODE:$?
+    # lxc-attach -n saphir-container-eset -- /opt/eset/eea/bin/odscan -s --profile='@In-depth scan' /mnt/storage/; echo EXIT_CODE:$?
+
+    __lxc_cmd = ["lxc-attach", "-n", "saphir-container-eset", "--"]
     __state = EtatComposant.UNKNOWN
 
 
@@ -34,17 +37,34 @@ class EeaAntivirusController(AbstractAntivirusController):
 
         self.update_status(filepath, FileStatus.FileAnalysing, 0)
 
-        # The command will be executed in the container        
-        eset_cmd = ["/opt/eset/eea/bin/odscan", "-s", "--profile='@In-depth scan'", storage_filepath]
+        # The command will be executed in the container
+        # Errors management:
+        #   - if lxc-attach ends with a return code > 0 then the lxc-attach failed
+        #   - if lxc-attach ends with a return code = 0 then the lxc-attach succeeded and the stdout contains the following information:
+        #        " The command stdout and stderr
+        #          EXITCODE:0
+        #        "
+        eset_cmd = ["/opt/eset/eea/bin/odscan", "-s", "--profile='@In-depth scan'; echo EXIT_CODE:$?", storage_filepath]
         proc = subprocess.run(self.__lxc_cmd + eset_cmd, capture_output=True)
         success = False
         details = ""
         if proc.returncode == 0:
-            success = True
-        else:
+            # Extract the exit code
+            match = re.split(r"EXIT_CODE:(\d+)", "{}\n{}".format(proc.stdout, proc.stderr), maxsplit=1)
+            if len(match) == 3:
+                output, exit_code = match[0].strip(), int(match[1])
+
+                details = output
+                success = exit_code == 0
+
+                if success:
+                    self.publish_result(filepath, success, details)
+                else:
+                    self.error("Une erreur s'est produite pendant l'analyse: {}".format(details))
+                    self.update_status(filepath, FileStatus.FileAnalysisError, 0)
+        else:            
             success = False
-        
-        self.publish_result(filepath, success, details)
+            self.error("Une erreur interne s'est produite : {} {}.".format(proc.stdout, proc.stderr))
         
 
     def _get_component_state(self):
