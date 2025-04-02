@@ -57,22 +57,23 @@ class EeaAntivirusController(AbstractAntivirusController):
 
                 if log_name == "":
                     self.error("Une erreur s'est produite durant l'analyse du résultat : {} (log_name est vide)".format(proc.stdout))
+                    self.update_status(filepath, FileStatus.FileAnalysisError, 100)
                     return 
 
                 completed, success, details = self.__analyse_log(filepath, log_name)
                 if completed:
                     self.publish_result(filepath, success, details)
                 else:
+                    # L'erreur sera gérée dans __analyse_log
                     return
             else:
                 # The scan did not complete
-                success = False
                 self.error("Une erreur s'est produite durant l'exécution de l'analyse : {} {}".format(proc.stdout, proc.stderr))
                 self.update_status(filepath, FileStatus.FileAnalysisError, 100)
                 return                
                             
         else:            
-            self.error("Une erreur interne s'est produite : odscan {} {}.".format(proc.stdout, proc.stderr))
+            self.error("Une erreur s'est produite : odscan {} {}.".format(proc.stdout, proc.stderr))
             self.update_status(filepath, FileStatus.FileAnalysisError, 100)
         
 
@@ -92,7 +93,6 @@ class EeaAntivirusController(AbstractAntivirusController):
 
     def __analyse_log(self, filepath, log_name) -> tuple:
         success = False
-        details = ""
 
         # Typical stdout:
         # Triggered by: root
@@ -143,7 +143,7 @@ class EeaAntivirusController(AbstractAntivirusController):
         if scanned == 1 and not_scanned == 0:
             success = detections_occurred == 0
             return completed, success, ""
-        elif scanned == 0 and not_scanned > 0:
+        elif scanned == 0: # and not_scanned > 0:
             self.error("Une erreur interne s'est produite : aucun fichier analysé {} {}.".format(proc.stdout, proc.stderr))
             self.update_status(filepath, FileStatus.FileAnalysisError, 100)
             return False, False, ""
