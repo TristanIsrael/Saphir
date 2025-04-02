@@ -1,12 +1,12 @@
 from libsaphir._abstract_antivirus_controller import AbstractAntivirusController
 from psec import EtatComposant, Parametres, Cles
 from libsaphir import FileStatus
-import subprocess, threading, os, re
+import subprocess, threading, os, json, re
 
 class EeaAntivirusController(AbstractAntivirusController):
 
     # lxc-attach -n saphir-container-eset -- /opt/eset/eea/bin/odscan -s --profile='@In-depth scan' /bin; echo EXIT_CODE:$?
-    # lxc-attach -n saphir-container-eset -- /opt/eset/eea/bin/odscan -s --profile='@In-depth scan' /mnt/storage/; echo EXIT_CODE:$?
+    # lxc-attach -n saphir-container-eset -- /opt/eset/eea/bin/odscan -s --profile='@In-depth scan' /mnt/storage/benchfile_100ko_1; echo EXIT_CODE:$?
 
     __lxc_cmd = ["lxc-attach", "-n", "saphir-container-eset", "--"]
     __state = EtatComposant.UNKNOWN
@@ -40,32 +40,116 @@ class EeaAntivirusController(AbstractAntivirusController):
         # The command will be executed in the container
         # Errors management:
         #   - if lxc-attach ends with a return code > 0 then the lxc-attach failed
-        #   - if lxc-attach ends with a return code = 0 then the lxc-attach succeeded and the stdout contains the following information:
-        #        " The command stdout and stderr
-        #          EXITCODE:0
-        #        "
-        eset_cmd = ["/opt/eset/eea/bin/odscan", "-s", "--profile='@In-depth scan'; echo EXIT_CODE:$?", storage_filepath]
+        #   - if lxc-attach ends with a return code = 0 then the lxc-attach succeeded and the stdout contains information to retrieve the log.
+        #
+        # The command lslog gives more details about the scan
+        eset_cmd = ["/opt/eset/eea/bin/odscan", "-s", "--profile=@In-depth scan", "--show-scan-info", storage_filepath]
         proc = subprocess.run(self.__lxc_cmd + eset_cmd, capture_output=True)
         success = False
         details = ""
+
+        # The return code of the command is for the execution of lxc-attach
         if proc.returncode == 0:
-            # Extract the exit code
-            match = re.split(r"EXIT_CODE:(\d+)", "{}\n{}".format(proc.stdout, proc.stderr), maxsplit=1)
-            if len(match) == 3:
-                output, exit_code = match[0].strip(), int(match[1])
+            # We extract the scan id from the scan info
+            if proc.stdout != "":
+                # The scan has completed
+                log_name = self.__extract_log_name(proc.stdout.decode().strip())
 
-                details = output
-                success = exit_code == 0
+                if log_name == "":
+                    self.error("Une erreur s'est produite durant l'analyse du résultat : {} (log_name est vide)".format(proc.stdout))
+                    return 
 
-                if success:
+                completed, success, details = self.__analyse_log(filepath, log_name)
+                if completed:
                     self.publish_result(filepath, success, details)
                 else:
-                    self.error("Une erreur s'est produite pendant l'analyse: {}".format(details))
-                    self.update_status(filepath, FileStatus.FileAnalysisError, 0)
+                    return
+            else:
+                # The scan did not complete
+                success = False
+                self.error("Une erreur s'est produite durant l'exécution de l'analyse : {} {}".format(proc.stdout, proc.stderr))
+                self.update_status(filepath, FileStatus.FileAnalysisError, 100)
+                return                
+                            
         else:            
-            success = False
-            self.error("Une erreur interne s'est produite : {} {}.".format(proc.stdout, proc.stderr))
+            self.error("Une erreur interne s'est produite : odscan {} {}.".format(proc.stdout, proc.stderr))
+            self.update_status(filepath, FileStatus.FileAnalysisError, 100)
         
+
+    def __extract_log_name(self, stdout:str) -> str:
+        # Typical stdout:
+        #        " 
+        #           {
+        #               "type":0,
+        #               "session_id":6,
+        #               "log_name":"ndlnJ78oi"
+        #           }
+        #        "
+
+        data = json.loads(stdout)
+        log_name = data.get("log_name", "")
+        return log_name
+
+    def __analyse_log(self, filepath, log_name) -> tuple:
+        success = False
+        details = ""
+
+        # Typical stdout:
+        # Triggered by: root
+        # Time started: 04/02/25 20:24:12
+        # Time of completion: 04/02/25 20:24:12
+        # Duration: 00:00:00
+        # Scanned targets: /mnt/storage/benchfile_100ko_1
+        # Detections occurred: 0
+        # Cleaned: 0
+        # Not scanned: 0
+        # Scanned: 1
+
+        # Get the log data
+        proc = subprocess.run(["/opt/eset/eea/sbin/lslog", "--ods-details={}".format(log_name)], capture_output=True)
+        if proc.returncode > 0:
+            self.error("Une erreur interne s'est produite : lslog {} {}.".format(proc.stdout, proc.stderr))
+            self.update_status(filepath, FileStatus.FileAnalysisError, 100)
+            return False, False, ""
+        
+        if proc.stdout != "":
+            completed = True
+        else:
+            self.error("Une erreur interne s'est produite : journal manquant {} {}.".format(proc.stdout, proc.stderr))
+            self.update_status(filepath, FileStatus.FileAnalysisError, 100)
+            return False, False, ""
+        
+        log_data = proc.stdout.decode().strip()
+
+        re_detections_occurred = re.search(r"Detections occurred:\s*(\d+)", log_data)
+        re_scanned = re.search(r"Scanned:\s*(\d+)", log_data)
+        re_not_scanned = re.search(r"Not scanned:\s*(\d+)", log_data)
+
+        if re_detections_occurred:
+            detections_occurred = int(re_detections_occurred.group(1))
+        else:
+            detections_occurred = 0
+
+        if re_scanned:
+            scanned = int(re_scanned.group(1))
+        else:
+            scanned = 0
+
+        if re_not_scanned:
+            not_scanned = int(re_not_scanned.group(1))
+        else:
+            not_scanned = 0
+
+        if scanned == 1 and not_scanned == 0:
+            success = detections_occurred == 0
+            return completed, success, ""
+        elif scanned == 0 and not_scanned > 0:
+            self.error("Une erreur interne s'est produite : aucun fichier analysé {} {}.".format(proc.stdout, proc.stderr))
+            self.update_status(filepath, FileStatus.FileAnalysisError, 100)
+            return False, False, ""
+        
+        return False, False, "Cas non géré"
+
 
     def _get_component_state(self):
         return self.__state
