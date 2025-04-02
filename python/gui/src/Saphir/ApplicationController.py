@@ -482,9 +482,9 @@ class ApplicationController(QObject):
             self.fileUpdated.emit(filepath, ["status"])
             self.transferProgressChanged.emit()
 
-        elif topic == Topics.ERROR:
+        elif topic == "{}/response".format(Topics.ERROR):
             if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
-                Api().error("Missing arguments in the topic {}".format(topic))
+                # On filtre pour ne pas provoquer de boucle infinie
                 return
 
             disk = payload.get("disk", "")
@@ -493,10 +493,10 @@ class ApplicationController(QObject):
 
             file = self.__queuedFilesList.get(filepath)
             if file is None:
-                Api().error("The file {} has not been found in the analysis queue".format(filepath))
+                Api().warn("The file {} has not been found in the analysis queue".format(filepath))
                 return
 
-            Api().error("The file {} could not be copied".format(filepath))            
+            Api().warn("The file {} could not be copied".format(filepath))
             file["status"] = FileStatus.FileAnalysisError
             file["progress"] = 100
             self.fileUpdated.emit(filepath, ["status", "progress"])
