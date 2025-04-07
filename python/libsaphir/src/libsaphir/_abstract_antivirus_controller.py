@@ -23,11 +23,15 @@ class AbstractAntivirusController(ABC):
     __workers = 0
     __can_run = True
 
-    def __init__(self, component_name:str, component_description:str):
+    def __init__(self, component_name:str, component_description:str, max_workers:int = -1):
         self.__component_name = component_name
         self.__component_description = component_description
-        if os.cpu_count() is not None:
-            self.__max_workers = os.cpu_count()
+
+        if max_workers == -1:
+            if os.cpu_count() is not None:
+                self.__max_workers = os.cpu_count()
+        else:
+            self.__max_workers = max_workers            
 
     def start(self):
         if not DEVMODE:

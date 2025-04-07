@@ -174,7 +174,7 @@ Rectangle {
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: { Constants.restart() }
+                        onClicked: { ApplicationController.reset() }
                     }
                 }
             }

@@ -297,11 +297,12 @@ class ApplicationController(QObject):
     @Slot()
     def reset(self):
         Api().info("User wants to reset the environment")
+        self.stop_analysis()
 
         # Reset the environment means destroying and re-creating dirty VMs:
         # - sys-usb
         # - all analysis VM
-        Api().restart_domain("sys-usb")
+        #Api().restart_domain("sys-usb")
 
         ids = self.componentsHelper_.get_ids_by_type("antivirus")
         for id in ids:
@@ -309,6 +310,13 @@ class ApplicationController(QObject):
             domain_name = component.get("domain_name", "")
             if domain_name != "":
                 Api().restart_domain(domain_name)
+
+        # Reset all models
+        self.current_folder_ = "/"
+        self.queueListModel_.reset()
+        self.inputFilesListModel_.reset()
+        self.sourceName_ = ""
+        self.targetName_ = ""        
 
 
     @Slot(str)

@@ -4,8 +4,9 @@ import sys
 import threading
 from pathlib import Path
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QGuiApplication, QFont, QFontDatabase
+from PySide6.QtCore import Qt, QEvent, QObject
+from PySide6.QtGui import QGuiApplication, QFont, QFontDatabase, QPointingDevice
+from PySide6.QtQuick import QQuickWindow
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonType, qmlRegisterUncreatableType, qmlRegisterSingletonInstance
 from psec import Api, System
 from ApplicationController import ApplicationController
@@ -28,6 +29,34 @@ def load_fonts(fonts:list):
         font_id = QFontDatabase.addApplicationFont("GUI/fonts/{}".format(font))
         if font_id == -1:
             print("Could not load font {}".format(font))
+
+class InputEventFilter(QObject):
+    def __init__(self, window: QQuickWindow, app:QGuiApplication):
+        super().__init__()
+        self.window = window
+        self.app = app
+
+    def eventFilter(self, watched, event):
+        # If the event is touch we ignore it
+        # If we move the mouse once, the cursor becomes visible
+        if hasattr(event, "device"):                        
+            if isinstance(event.device(), QPointingDevice) and event.device().pointerType() != QPointingDevice.PointerType.Finger and event.type() != QEvent.Enter:
+                self.app.restoreOverrideCursor()
+                #self.window.setCursor(Qt.ArrowCursor)
+                self.app.setOverrideCursor(Qt.ArrowCursor)
+                self.app.removeEventFilter(self)
+
+        '''if event.type() == QEvent.TouchBegin:
+            if self.last_input != "touch":
+                self.window.setCursor(Qt.BlankCursor)
+                self.last_input = "touch"
+        if event.type() == QEvent.MouseButtonPress or event.type() == QEvent.MouseMove:
+            # If we move the mouse once, the cursor becomes visible            
+            self.app.restoreOverrideCursor()
+            self.window.setCursor(Qt.ArrowCursor)            
+            self.app.removeEventFilter(self)'''
+
+        return super().eventFilter(watched, event)
 
 if __name__ == "__main__":
     app = QGuiApplication(sys.argv)
@@ -59,7 +88,11 @@ if __name__ == "__main__":
         sys.exit(-1)
     
     qml_root = engine.rootObjects()[0]        
-    qml_root.setCursor(Qt.ArrowCursor)
+    #qml_root.setCursor(Qt.BlankCursor)
+    app.setOverrideCursor(Qt.BlankCursor)
+    filter = InputEventFilter(qml_root, app)
+    app.installEventFilter(filter)
+
     if not DEVMODE:
         qml_root.setWidth(System().get_screen_width())
         qml_root.setHeight(System().get_screen_height())

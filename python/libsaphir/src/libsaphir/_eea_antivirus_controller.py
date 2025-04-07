@@ -13,7 +13,10 @@ class EeaAntivirusController(AbstractAntivirusController):
 
 
     def __init__(self):
-        super().__init__("ESET", "ESET Endpoint Antivirus controller")
+        super().__init__(
+            component_name="ESET", 
+            component_description="ESET Endpoint Antivirus controller", 
+            max_workers=1)
 
 
     def _on_api_ready(self) -> None:
