@@ -1,9 +1,8 @@
 #!/bin/sh
 
 rc-service cgroups start
+rc-service av-controller start
 
 lxc-start -n saphir-container-eset
-
-rc-service av-controller start
 
 exit 0

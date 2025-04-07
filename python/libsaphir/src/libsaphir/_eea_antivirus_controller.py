@@ -8,7 +8,7 @@ class EeaAntivirusController(AbstractAntivirusController):
     # lxc-attach -n saphir-container-eset -- /opt/eset/eea/bin/odscan -s --profile='@In-depth scan' /bin; echo EXIT_CODE:$?
     # lxc-attach -n saphir-container-eset -- /opt/eset/eea/bin/odscan -s --profile='@In-depth scan' /mnt/storage/benchfile_100ko_1; echo EXIT_CODE:$?
 
-    __lxc_cmd = ["lxc-attach", "-n", "saphir-container-eset", "--"]
+    #__lxc_cmd = ["lxc-attach", "-n", "saphir-container-eset", "--"]
     __state = EtatComposant.UNKNOWN
 
 
@@ -46,8 +46,9 @@ class EeaAntivirusController(AbstractAntivirusController):
         #   - if lxc-attach ends with a return code = 0 then the lxc-attach succeeded and the stdout contains information to retrieve the log.
         #
         # The command lslog gives more details about the scan
-        eset_cmd = ["/opt/eset/eea/bin/odscan", "-s", "--profile=@In-depth scan", "--show-scan-info", storage_filepath]
-        proc = subprocess.run(self.__lxc_cmd + eset_cmd, capture_output=True)
+        #eset_cmd = ["/opt/eset/eea/bin/odscan", "-s", "--profile=@In-depth scan", "--show-scan-info", storage_filepath]
+        #proc = subprocess.run(self.__lxc_cmd + eset_cmd, capture_output=True)
+        proc = subprocess.run(["/usr/lib/saphir/bin/scan-file.sh", storage_filepath])
         success = False
         details = ""
 
@@ -109,7 +110,9 @@ class EeaAntivirusController(AbstractAntivirusController):
         # Scanned: 1
 
         # Get the log data
-        proc = subprocess.run(["/opt/eset/eea/sbin/lslog", "--ods-details={}".format(log_name)], capture_output=True)
+        #eset_cmd = ["/opt/eset/eea/sbin/lslog", "--ods-details={}".format(log_name)]
+        #proc = subprocess.run(self.__lxc_cmd + eset_cmd, capture_output=True)
+        proc = subprocess.run(["/usr/lib/saphir/bin/get-scan-result.sh", log_name])
         if proc.returncode > 0:
             self.error("Une erreur interne s'est produite : lslog {} {}.".format(proc.stdout, proc.stderr))
             self.update_status(filepath, FileStatus.FileAnalysisError, 100)
@@ -159,8 +162,8 @@ class EeaAntivirusController(AbstractAntivirusController):
 
 
     def _stop_immediately(self):
-        cmd = ["killall", "-9", "odscan"]
-        subprocess.run(self.__lxc_cmd + cmd)
+        subprocess.run(["/usr/lib/saphir/bin/stop-all-scans.sh"])
+        #subprocess.run(self.__lxc_cmd + cmd)
 
 
     #######################
