@@ -1,5 +1,7 @@
 #!/bin/sh
 
+hostname saphir.local
+
 /usr/lib/psec/bin/post-install.sh
 
 exit 0
