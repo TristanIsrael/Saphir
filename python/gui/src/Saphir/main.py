@@ -46,16 +46,6 @@ class InputEventFilter(QObject):
                 self.app.setOverrideCursor(Qt.ArrowCursor)
                 self.app.removeEventFilter(self)
 
-        '''if event.type() == QEvent.TouchBegin:
-            if self.last_input != "touch":
-                self.window.setCursor(Qt.BlankCursor)
-                self.last_input = "touch"
-        if event.type() == QEvent.MouseButtonPress or event.type() == QEvent.MouseMove:
-            # If we move the mouse once, the cursor becomes visible            
-            self.app.restoreOverrideCursor()
-            self.window.setCursor(Qt.ArrowCursor)            
-            self.app.removeEventFilter(self)'''
-
         return super().eventFilter(watched, event)
 
 if __name__ == "__main__":
@@ -75,7 +65,7 @@ if __name__ == "__main__":
     applicationController.start(on_ready)
 
     print("Waiting for the API to be ready")
-    api_ready.wait()    
+    api_ready.wait()
 
     # Expose Types
     qmlRegisterSingletonInstance(ApplicationController, "net.alefbet", 1, 0, "ApplicationController", applicationController)

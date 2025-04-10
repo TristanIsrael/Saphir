@@ -36,10 +36,9 @@ Item {
     }
 
     Connections {
-        target: Constants
-        onUpdateProgress: {
-            Constants.globalProgress = newProgress
-            Constants.globalTimeLeft = newTimeLeft
+        target: ApplicationController
+
+        onGlobalProgressChanged: {
             loadingCircleCanvas.requestPaint()
         }
     }
@@ -55,7 +54,7 @@ Item {
             Layout.preferredHeight: 10
         }
 
-        Rectangle {
+        /*Rectangle {
             Layout.preferredHeight: 10
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -90,8 +89,7 @@ Item {
                     onClicked: { selectMode(true) }
                 }
             }
-
-        }
+        }*/
 
         Rectangle {
             Layout.preferredHeight: 40
@@ -101,9 +99,12 @@ Item {
             Rectangle
             {
                 id: loadingCircle
-                anchors.centerIn: parent
-                height: parent.height
-                width: height
+                anchors {
+                    centerIn: parent
+                    margins: 5
+                }
+                height: parent.width
+                width: parent.width
                 color: "transparent"
                 radius: width * 0.5
                 border.color: Constants.currentColorMode !== Constants.ColorMode.STEALTH ? "lightblue" : "#292929"
@@ -141,7 +142,8 @@ Item {
                     }
 
                     Text {
-                        text: "Rest. " + Constants.globalTimeLeft + " sec"
+                        //text: "Rest. " + Constants.globalTimeLeft + " sec"
+                        text: "Rest. " + formatDuration(Constants.globalTimeLeft)
                         anchors.horizontalCenter: parent.horizontalCenter
                         font.pixelSize: Math.min(loadingCircle.height * 0.1, loadingCircle.width * 0.1)
                         color: Constants.currentColorMode == Constants.ColorMode.STEALTH ? Constants.colorText : "#7E8EAC"
@@ -157,7 +159,7 @@ Item {
             id: buttonsContainer
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.preferredHeight: 10
+            Layout.preferredHeight: 20
             color: "transparent"
 
             RowLayout {
@@ -231,6 +233,25 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredHeight: 10
         }
+    }
+
+    function formatDuration(seconds) {
+        if (seconds < 60) {
+            return seconds +" sec"  // Format ss
+        } else if (seconds < 3600) {
+            let minutes = Math.floor(seconds / 60)
+            let remainingSeconds = seconds % 60
+            return minutes + " mn " + remainingSeconds +" s"  // Format mm:ss
+        } else {
+            let hours = Math.floor(seconds / 3600)
+            let remainingMinutes = Math.floor((seconds % 3600) / 60)
+            return hours + " h " + remainingMinutes +" mn"  // Format hh:mm
+        }
+    }
+
+    // Fonction pour ajouter un zéro devant les nombres inférieurs à 10
+    function padWithZero(value) {
+        return value < 10 ? "0" + value : value.toString()
     }
 
     // Timer {

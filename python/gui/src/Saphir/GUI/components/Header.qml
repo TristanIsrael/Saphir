@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../imports"
+import net.alefbet
 
 
 Rectangle
@@ -11,26 +12,16 @@ Rectangle
     id: header
     color: "transparent"
 
-    function getLoadingImage() {
-        if (Constants.batteryLevel < 0.33)
+    function getBatteryChargingImage() {
+        if (ApplicationController.batteryLevel < 0.33)
             return Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "Batterie0Barre.svg")
-        else if (Constants.batteryLevel < 0.66)
+        else if (ApplicationController.batteryLevel < 0.66)
             return Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "Batterie1Barre.svg")
-        else if (Constants.batteryLevel < 0.85)
+        else if (ApplicationController.batteryLevel < 0.85)
             return Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "Batterie2Barres.svg")
         else
             return Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "Batterie3Barres.svg")
-    }
-
-    Connections {
-        target: Constants
-        onUpdateBatteryLevel: {
-            Constants.batteryLevel = newBatteryLevel
-        }
-        onDeviceWired: {
-            Constants.isWired = isDeviceWired
-        }
-    }
+    }    
 
     /*Image {
         id: background
@@ -115,7 +106,7 @@ Rectangle
             spacing: 10
 
             Image {
-                source: Constants.isWired ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeEnCharge_Actif.svg")
+                source: ApplicationController.plugged ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeEnCharge_Actif.svg")
                                               : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeEnCharge_Inactif.svg")
                 Layout.fillHeight: true
                 Layout.fillWidth: true
@@ -129,7 +120,7 @@ Rectangle
             Label {
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-                visible: Constants.isWired
+                visible: ApplicationController.plugged
                 text: "/"
                 color: Constants.currentColorMode == Constants.ColorMode.STEALTH ? "1E1E1E" : "white"
                 horizontalAlignment: Label.AlignHCenter
@@ -177,7 +168,7 @@ Rectangle
 
                 Label {
                     anchors.fill: parent
-                    text: Math.round(Constants.batteryLevel * 100.0) + "%"
+                    text: Math.round(ApplicationController.batteryLevel) + "%"
                     color: Constants.currentColorMode == Constants.ColorMode.STEALTH ? "1E1E1E" : "white"
                     horizontalAlignment: Label.AlignHCenter
                     verticalAlignment: Label.AlignVCenter

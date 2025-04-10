@@ -4,3 +4,4 @@ humanize
 joblib
 paho.mqtt
 pyudev
+psutil

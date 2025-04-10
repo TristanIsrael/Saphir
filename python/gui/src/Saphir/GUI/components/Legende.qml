@@ -54,7 +54,7 @@ RowLayout
         verticalAlignment: Text.AlignVCenter
         Layout.rightMargin: parent.width * margin
     }
-    Image {
+    /*Image {
         source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LegendeEnCoursAnalyse.svg")
         fillMode: Image.PreserveAspectFit
         Layout.fillHeight: true
@@ -66,5 +66,5 @@ RowLayout
         color: Constants.colorText
         font.pixelSize: height * fontSize
         verticalAlignment: Text.AlignVCenter
-    }
+    }*/
 }

@@ -158,7 +158,9 @@ Rectangle {
                     anchors.fill: parent
                     onClicked: {
                         confirmRestartButton.visible = !confirmRestartButton.visible
-                        parent.isRestartButtonActive = !parent.isRestartButtonActive
+                        confirmExitButton.visible = false
+                        exitButton.isExitButtonActive = false
+                        restartButton.isRestartButtonActive = !parent.isRestartButtonActive
                     }
                 }
 
@@ -174,7 +176,9 @@ Rectangle {
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: { ApplicationController.reset() }
+                        onClicked: {                             
+                            ApplicationController.reset() 
+                        }
                     }
                 }
             }
@@ -196,6 +200,8 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
+                        confirmRestartButton.visible = false
+                        restartButton.isRestartButtonActive = false
                         confirmExitButton.visible = !confirmExitButton.visible
                         exitButton.isExitButtonActive = !exitButton.isExitButtonActive
                     }
@@ -213,7 +219,9 @@ Rectangle {
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: { Constants.quit() }
+                        onClicked: { 
+                            ApplicationController.shutdown() 
+                        }
                     }
                 }
             }
@@ -358,8 +366,7 @@ Rectangle {
 
         EtatLogs {
             id: logsState
-            visible: false
-            _logsList: Constants.logsList
+            visible: false            
             anchors.centerIn: parent
             width: parent.width * 0.9
             height: parent.height * 0.9
@@ -460,6 +467,28 @@ Rectangle {
         }
     }
 
+    PopupAnalyseIntegrale {
+        id: popupAnalyseIntegrale
+        anchors.centerIn: parent  
+        visible: false      
+
+        onAccepted: {
+            ApplicationController.start_full_analysis()
+            visible = false
+        }
+
+        onRejected: {
+            visible = false
+        }
+    }
+
+    Connections {
+        target: ApplicationController
+        onSourceReadyChanged: function() {
+            popupAnalyseIntegrale.visible = ApplicationController.sourceReady
+        }
+    }
+
     //Test de la progression de la barre de chargement de copie des fichiers sains
     // Timer {
     //     interval: 500
@@ -473,5 +502,11 @@ Rectangle {
     //     }
     // }
 
+
+    Component.onCompleted: {
+        if(ApplicationController.sourceReady) {            
+            popupAnalyseIntegrale.visible
+        }
+    }
 
 }

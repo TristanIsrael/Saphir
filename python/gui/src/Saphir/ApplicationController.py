@@ -7,13 +7,18 @@ from Enums import SystemState, AnalysisState, FileStatus
 from PsecInputFilesListModel import PsecInputFilesListModel
 from PsecInputFilesListProxyModel import PsecInputFilesListProxyModel
 from PsecOutputFilesListProxyModel import PsecOutputFilesListProxyModel
+from LogListModel import LogListModel
 #from QueueListProxyModel import QueueListProxyModel
 from QueueListModel import QueueListModel
+from QueueListProxyModel import QueueListProxyModel
 from AnalysisContoller import AnalysisController
 from DevModeHelper import DevModeHelper
 from libsaphir import ANTIVIRUS_NEEDED, DEVMODE
 from pathlib import Path
+from Enums import AnalysisMode
 import copy
+import threading
+from datetime import datetime
 
 class ApplicationController(QObject):
     "Cette classe gère l'interface entre le socle et la GUI"
@@ -31,6 +36,7 @@ class ApplicationController(QObject):
     inputFilesListProxyModel_:PsecInputFilesListProxyModel
     outputFilesListProxyModel_:PsecOutputFilesListProxyModel
     queueListModel_:QueueListModel
+    __queueListProxyModel:QueueListProxyModel
     componentsHelper_ = ComponentsHelper()
     analysisReady_ = False
     analysisComponents_ = list()
@@ -38,6 +44,10 @@ class ApplicationController(QObject):
     __files_to_enqueue = list()
     current_folder_ = "/"    
     __is_enquing = False
+    logListModel_:LogListModel
+    __analysis_mode = AnalysisMode.AnalyseSelection
+    __analysis_start_time = datetime.now()
+    
     #__interfaceInputs = None
     #__main_window:QWidget
     #__is_navigating = True
@@ -58,6 +68,7 @@ class ApplicationController(QObject):
     fileQueued = Signal(str)
     fileUnqueued = Signal(str)
     fileUpdated = Signal(str, list)
+    allFilesUpdated = Signal()
     #fileCopied = Signal(str, bool)
     totalFilesCountChanged = Signal(int)
     infectedFilesCountChanged = Signal(int)
@@ -69,6 +80,11 @@ class ApplicationController(QObject):
     currentFolderChanged = Signal()
     idCurrentFolderChanged = Signal()
     transferProgressChanged = Signal()
+    batteryLevelChanged = Signal()
+    pluggedChanged = Signal()
+    analysisModeChanged = Signal()
+    remainingTimeChanged = Signal()
+
 
     # IO
     _mouse_x = 0
@@ -80,7 +96,11 @@ class ApplicationController(QObject):
     mouseYChanged = Signal()
     clicXChanged = Signal()
     clicYChanged = Signal()
-    wheelChanged = Signal()    
+    wheelChanged = Signal()
+
+    # Energy
+    battery_level_ = 0
+    plugged_ = False
 
 
     # Fonctions publiques
@@ -96,11 +116,18 @@ class ApplicationController(QObject):
         self.inputFilesListProxyModel_ = PsecInputFilesListProxyModel(self.inputFilesListModel_, self)        
         #self.queueListModel_ = QueueListProxyModel(self.inputFilesListModel_, self)
         self.queueListModel_ = QueueListModel(self.__queuedFilesList, self.analysisComponents_, self)
+        self.__queueListProxyModel = QueueListProxyModel(self.queueListModel_, self)
         self.outputFilesListProxyModel_ = PsecOutputFilesListProxyModel(self.queueListModel_, self)
         #self.fileCopied.connect(self.queueListModel_.on_file_updated)
         self.fileQueued.connect(self.queueListModel_.on_file_added)
         self.fileUnqueued.connect(self.queueListModel_.on_file_removed)
-        self.fileUpdated.connect(self.queueListModel_.on_file_updated)                
+        self.fileUpdated.connect(self.queueListModel_.on_file_updated)    
+        self.allFilesUpdated.connect(self.queueListModel_.reset)
+        self.allFilesUpdated.connect(self.inputFilesListModel_.reset)
+        self.fileUpdated.connect(self.__queueListProxyModel.on_data_changed)
+        self.allFilesUpdated.connect(self.__queueListProxyModel.on_data_changed)
+
+        self.logListModel_ = LogListModel(self)        
 
 
     def start(self, ready_callback):
@@ -153,10 +180,23 @@ class ApplicationController(QObject):
 
 
     @Slot()
-    def enqueue_all_files(self):
-        #Api().info("User added the whole disk to the queue")
-        self.__files_to_enqueue = list(self.__inputFilesList.keys())
-        #QTimer.singleShot(1, self.__enqueue_next_file)       
+    def start_full_analysis(self):
+        Api().info("Starting full device analysis")
+        self.__analysis_mode = AnalysisMode.AnalyseWholeSource
+        self.__analysis_start_time = datetime.now()
+        self.analysisController_.start_analysis(self.sourceName_)        
+
+
+        '''Api().debug("Adding all files to the queue")
+
+        for file in .values():
+            filetype = file["type"]
+            filepath = file["filepath"]
+            self.enqueue_file(filetype, filepath)
+
+        #self.allFilesUpdated.emit()
+        Api().debug("All files added to the queue")
+        '''
 
 
     '''def __enqueue_next_file(self):
@@ -183,7 +223,8 @@ class ApplicationController(QObject):
 
     @Slot(str, str)
     def enqueue_file(self, filetype:str, filepath:str): 
-        Api().debug("User added {} {} to the queue".format(filetype, filepath))
+        #if notify_gui:
+        #    Api().debug("User added {} {} to the queue".format(filetype, filepath))
         
         self.__is_enquing = True
         self.__is_navigating = False
@@ -192,6 +233,7 @@ class ApplicationController(QObject):
             file = self.__inputFilesList[filepath]
             file["inqueue"] = True
             self.__queuedFilesList[filepath] = copy.deepcopy(file)
+
             self.fileQueued.emit(filepath)
             self.fileUpdated.emit(filepath, ["inqueue"])
             self.queueSizeChanged.emit(self.__queue_size())
@@ -200,6 +242,7 @@ class ApplicationController(QObject):
             # Enqueue the folder at first to make it disappear
             file = self.__inputFilesList[filepath]
             file["inqueue"] = True
+
             self.fileUpdated.emit(filepath, ["inqueue"])            
 
             # Get the file tree from the disk and enqueue it
@@ -253,7 +296,8 @@ class ApplicationController(QObject):
     def start_stop_analysis(self):        
         if self.analysisController_.state == AnalysisState.AnalysisStopped:
             Api().debug("User asked to start the analysis")
-            self.analysisController_.start_analysis(self.sourceName_)
+            self.__analysis_start_time = datetime.now()
+            self.analysisController_.start_analysis(self.sourceName_)                    
         elif self.analysisController_.state == AnalysisState.AnalysisRunning:
             Api().debug("User asked to stop the analysis")
             self.analysisController_.stop_analysis()
@@ -262,7 +306,8 @@ class ApplicationController(QObject):
     def start_analysis(self):
         if self.analysisController_.state == AnalysisState.AnalysisStopped:
             Api().debug("User asked to start the analysis")
-            self.analysisController_.start_analysis(self.sourceName_)            
+            self.__analysis_start_time = datetime.now()
+            self.analysisController_.start_analysis(self.sourceName_)
         
     @Slot()
     def stop_analysis(self):
@@ -338,16 +383,22 @@ class ApplicationController(QObject):
     def __on_api_ready(self):        
         self.pret_ = True
         self.pretChanged.emit(self.pret_)
-        self.analysisController_ = AnalysisController(files=self.__queuedFilesList, analysis_components= self.analysisComponents_, source_disk= self.sourceName_, parent= self)
+        self.analysisController_ = AnalysisController(files=self.__queuedFilesList, analysis_components= self.analysisComponents_, source_disk= self.sourceName_, analysis_mode_=self.__analysis_mode, parent= self)
         self.analysisController_.resultsChanged.connect(self.__on_results_changed)
         self.analysisController_.fileUpdated.connect(self.queueListModel_.on_file_updated)
         self.analysisController_.stateChanged.connect(self.__on_analysis_state_changed)
 
+        self.logListModel_.listen_to_logs()
+
         Api().notify_gui_ready()  
         Api().subscribe("{}/response".format(Topics.COPY_FILE))
+        Api().subscribe("{}/response".format(Topics.ENERGY_STATE))
 
         self.__set_system_state(SystemState.SystemReady)
-        Api().discover_components()                        
+        Api().discover_components()   
+
+        # Energy management
+        self.__request_energy_state()        
 
     def __on_message_received(self, topic:str, payload:dict):        
         #print("[ApplicationController] topic: {}".format(topic))
@@ -509,13 +560,23 @@ class ApplicationController(QObject):
             file["progress"] = 100
             self.fileUpdated.emit(filepath, ["status", "progress"])
 
+        elif topic == "{}/response".format(Topics.ENERGY_STATE):
+            if not MqttHelper.check_payload(payload, ["battery_level", "plugged"]):
+                return
+            
+            self.battery_level_ = payload.get("battery_level", 0)
+            self.batteryLevelChanged.emit()
+            self.plugged_ = bool(payload.get("plugged", 0))
+            self.pluggedChanged.emit()
+
+
 
     def __is_file_in_folder(self, filepath:str, folder:str) -> bool:
         return filepath.startswith(folder) # type: ignore
 
 
     @Slot()
-    def shutdown(self):        
+    def shutdown(self):
         Api().shutdown()
 
 
@@ -543,9 +604,11 @@ class ApplicationController(QObject):
 
 
     def __on_results_changed(self):        
-        self.cleanFilesCountChanged.emit(self.__clean_files_count())        
+        self.cleanFilesCountChanged.emit(self.__clean_files_count())
+        self.analysingCountChanged.emit(self.__analysing_count())
         self.infectedFilesCountChanged.emit(self.__infected_files_count())        
         self.globalProgressChanged.emit(self.__global_progress())
+        self.remainingTimeChanged.emit()
 
         if self.__global_progress() == 100:
             self.__set_system_state(SystemState.SystemWaitingForUserAction)
@@ -555,6 +618,11 @@ class ApplicationController(QObject):
         Api().debug("PSEC disk controller is {}".format("ready" if ready else "not ready"))
         if ready:
             Api().get_disks_list()
+
+
+    def __request_energy_state(self):
+        Api().request_energy_state()
+        threading.Timer(5.0, self.__request_energy_state).start()
 
 
     @Slot(AnalysisState)
@@ -568,6 +636,34 @@ class ApplicationController(QObject):
         else:
             Api().info("Analysis state is unknown")
             # TODO
+
+
+    def __get_remaining_time(self):
+        # Calcul de la durée
+        duration = (datetime.now() - self.__analysis_start_time).total_seconds()
+
+        # Quantité restante
+        clean = self.__clean_files_size()
+        infected = self.__infected_files_size()
+        #total = len(self.__queuedFilesList)
+        total = self.__total_files_size()
+        done = infected + clean
+        remaining = total - done
+        
+        if duration > 0:
+            rate = done / duration
+        else:
+            rate = 0
+
+        print("clean: {}, infected:{}, done:{}, total: {}, remaining: {}, rate: {} o/s".format(clean, infected, done, total, remaining, rate))
+
+
+        if rate > 0:
+            remaining_time = remaining / rate
+        else:
+            remaining_time = float('inf')
+
+        return remaining_time
 
     '''
     @Slot()
@@ -647,6 +743,12 @@ class ApplicationController(QObject):
     def __queueListModel(self):
         return self.queueListModel_
     
+    def __get_queue_list_proxy_model(self):
+        return self.__queueListProxyModel
+
+    def __logListModel(self):
+        return self.logListModel_        
+    
     def __get_system_state(self):
         print(self.__system_state)
         return self.__system_state.value
@@ -665,17 +767,23 @@ class ApplicationController(QObject):
     
     def __analysis_controller(self):
         return self.analysisController_    
-    
-    #def __total_files_count(self):
-    #    return sum(1 for item in self.__inputFilesList.values() if item.get("inqueue", False) == True and item.get("type", "") == "file")
 
     def __clean_files_count(self):
         return sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean and item.get("progress", 0) == 100)
+
+    def __clean_files_size(self):
+        return sum(item.get("size", 0) for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean and item.get("progress", 0) == 100)
 
     def __infected_files_count(self):
         return (
             sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileInfected and item.get("progress", 0) == 100)
             + sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileAnalysisError and item.get("progress", 0) == 100)            
+        )
+    
+    def __infected_files_size(self):
+        return (
+            sum(item.get("size", 0) for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileInfected and item.get("progress", 0) == 100)
+            + sum(item.get("size", 0) for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileAnalysisError and item.get("progress", 0) == 100)            
         )
     
     def __global_progress(self):
@@ -686,6 +794,12 @@ class ApplicationController(QObject):
     
     def __analysing_count(self):
         return sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileAnalysing)
+    
+    def __analysing_size(self):
+        return sum(item.get("size", 0) for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileAnalysing)
+
+    def __total_files_size(self):
+        return sum(item.get("size", 0) for item in self.__queuedFilesList.values())
 
     def __transferred_count(self):
         clean_files = sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean)
@@ -734,6 +848,19 @@ class ApplicationController(QObject):
         self._clic_y = y
         self.clicYChanged.emit()
     
+    def __battery_level(self):
+        return self.battery_level_
+    
+    def __plugged(self):
+        return self.plugged_
+    
+    def __get_analysis_mode(self):
+        return self.__analysis_mode.value
+    
+    def __set_analysis_mode(self, analysis_mode:AnalysisMode):
+        self.__analysis_mode = analysis_mode
+        self.analysisModeChanged.emit()
+
     '''def set_main_window(self, window:QWidget):
         self.__main_window = window
         self.mousePointer = MousePointer(window.contentItem())
@@ -752,6 +879,8 @@ class ApplicationController(QObject):
     inputFilesListProxyModel = Property(QObject, __inputFilesListProxyModel, constant= True)
     outputFilesListProxyModel = Property(QObject, __outputFilesListProxyModel, constant= True)
     queueListModel = Property(QObject, __queueListModel, constant= True)
+    queueListProxyModel = Property(QObject, __get_queue_list_proxy_model, constant= True)
+    logListModel = Property(QObject, __logListModel, constant=True)
     systemState = Property(int, __get_system_state, notify= systemStateChanged)
     queueSize = Property(int, __queue_size, notify= queueSizeChanged)
     analysisReady = Property(bool, __analysisReady, notify= analysisReadyChanged)
@@ -762,6 +891,7 @@ class ApplicationController(QObject):
     infectedFilesCount = Property(int, __infected_files_count, notify= infectedFilesCountChanged)
     cleanFilesCount = Property(int, __clean_files_count, notify= cleanFilesCountChanged)
     globalProgress = Property(int, __global_progress, notify= globalProgressChanged)
+    remainingTime = Property(int, __get_remaining_time, notify= remainingTimeChanged)
     analysingCount = Property(int, __analysing_count, notify= analysingCountChanged)
     transferProgress = Property(int, __transferred_count, notify= transferProgressChanged)
 
@@ -770,3 +900,7 @@ class ApplicationController(QObject):
     clicX = Property(int, __clic_x, notify=clicXChanged)
     clicY = Property(int, __clic_y, notify=clicYChanged)
     wheel = Property(int, __wheel, notify=wheelChanged)
+
+    batteryLevel = Property(int, __battery_level, notify=batteryLevelChanged)
+    plugged = Property(bool, __plugged, notify=pluggedChanged)
+    analysisMode = Property(int, __get_analysis_mode, notify= analysisModeChanged)

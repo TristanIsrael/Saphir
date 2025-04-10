@@ -11,7 +11,7 @@ Rectangle {
     color:"transparent"
 
     property int fichierNonAnalyse: fichierTotal - fichierSain - fichierInfecte - fichierAnalyse //Constants.countNotAnalysedFiles
-    property int fichierAnalyse: ApplicationController.analysingCount //Constants.countAnalysingFiles
+    property int fichierAnalyse: 0 //ApplicationController.analysingCount //Constants.countAnalysingFiles
     property int fichierSain: ApplicationController.cleanFilesCount //Constants.countSaneFiles
     property int fichierInfecte: ApplicationController.infectedFilesCount //Constants.countInfectedFiles
     property int fichierTotal: ApplicationController.queueSize //fichierNonAnalyse + fichierAnalyse + fichierSain + fichierInfecte

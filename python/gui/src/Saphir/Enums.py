@@ -12,6 +12,9 @@ class SystemState(Enum):
 class AnalysisState(Enum):
     AnalysisNotReady, AnalysisRunning, AnalysisStopped = range(3)
 
+class AnalysisMode(Enum):
+    AnalyseWholeSource, AnalyseSelection = range(2)
+
 class Roles():    
     RoleType = Qt.UserRole + 1
     RoleFilename = Qt.UserRole + 2
@@ -24,9 +27,12 @@ class Roles():
     RoleFilepath = Qt.UserRole +9
     RoleInfected = Qt.UserRole +10
     RoleId = Qt.UserRole +11    
+    RoleLogModule = Qt.UserRole +12
+    RoleLogDescription = Qt.UserRole +13
 
 @QmlElement
 class Enums(QObject):
     QEnum(SystemState)
     QEnum(AnalysisState)
     QEnum(FileStatus)
+    QEnum(AnalysisMode)

@@ -10,7 +10,7 @@ Rectangle {
     color: "transparent"
 
     property int maxItemDisplayed: 10
-    property var _fileList: ApplicationController.queueListModel
+    property var _fileList: ApplicationController.queueListProxyModel
     property bool selectSaneFiles: false
     property bool selectionMode: false
 
@@ -89,7 +89,7 @@ Rectangle {
         case Enums.FileStatus.FileCopySuccess:
             return "Copié"
         default:
-            return "";
+            return "autre ("+state +")";
         }
     }
 

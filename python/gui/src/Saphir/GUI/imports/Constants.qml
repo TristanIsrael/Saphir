@@ -34,8 +34,8 @@ QtObject {
     property int height: 800
 
         // -- Propriétés d'avancement de l'analyse
-    property real globalProgress: 0.0
-    property int globalTimeLeft: 0
+    property real globalProgress: ApplicationController.globalProgress / 100.0
+    property int globalTimeLeft: ApplicationController.remainingTime
     property int countNotAnalysedFiles: 0
     property int countAnalysingFiles: 0
     property int countSaneFiles: 0
@@ -53,7 +53,7 @@ QtObject {
     property string inputUSBName: ApplicationController.sourceName
     property bool isOutputUSBPlugged: ApplicationController.targetReady
     property string outputUSBName: ApplicationController.targetName
-    property bool isFileSelectionMode: false
+    property bool isFileSelectionMode: ApplicationController.analysisMode === Enums.AnalysisMode.AnalyseSelection
     property bool isWired: false
 
         // -- Propriétés de couleurs de l'application
