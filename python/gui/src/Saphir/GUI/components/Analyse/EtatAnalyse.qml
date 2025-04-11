@@ -19,22 +19,6 @@ Item {
         }
     }
 
-    /*function togglePlay(newState)
-    {
-        if(newState === Constants.isAnalysePlaying)
-            return
-        Constants.isAnalysePlaying = newState
-    }*/
-
-    function autoStartAnalysis() {
-        ApplicationController.start_analysis()
-    }
-
-    Component.onCompleted: function() {
-        if(!Constants.isFileSelectionMode)
-            autoStartAnalysis()
-    }
-
     Connections {
         target: ApplicationController
 

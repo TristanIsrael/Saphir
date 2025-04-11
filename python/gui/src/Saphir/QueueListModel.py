@@ -18,7 +18,7 @@ class QueueListModel(QAbstractListModel):
         self.__fichiers = files
         self.__analysisComponents = analysisComponents
 
-    def rowCount(self, parent=QModelIndex()):        
+    def rowCount(self, parent=QModelIndex()):
         #self.__last_row_count = self.__row_count
         #qDebug("{} {}".format(self.__row_count, self.__last_row_count))
         #return self.__row_count
@@ -77,10 +77,8 @@ class QueueListModel(QAbstractListModel):
         
 
     def reset(self):
-        self.beginResetModel()        
-        #self.selection_.clear()
-        #self.__last_row_count = 0
-        self.__row_count = 0
+        self.beginResetModel()
+        self.__row_count = len(self.__fichiers)
         self.endResetModel()
 
 

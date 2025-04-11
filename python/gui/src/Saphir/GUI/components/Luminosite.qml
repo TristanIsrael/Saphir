@@ -39,11 +39,11 @@ Item {
     }*/
     Rectangle {
         anchors.fill: parent
-        color: "transparent"
+        color: "transparent" //"#445060"
         radius: height
         border {            
-            width: 1.5
-            color: Constants.currentColorMode === Constants.LIGHT ? "#848484" : Constants.currentColorMode === Constants.DARK ? "#66788F" : "#272727"
+            width: 2
+            color: Constants.currentColorMode === Constants.LIGHT ? "#848484" : Constants.currentColorMode === Constants.DARK ? "#70839c" : "#272727"
         }        
     }
     RowLayout
@@ -53,7 +53,7 @@ Item {
         anchors.rightMargin: width * 0.10
         anchors.topMargin: height * 0.10
         anchors.bottomMargin: height * 0.10
-
+        spacing: height/2
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true

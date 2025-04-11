@@ -21,6 +21,11 @@ class AnalysisController(QObject):
     __analysis_components = list()
     __repository_capacity = 2
     __repository_size = 0
+    clean_files_count = 0
+    clean_files_size = 0
+    infected_files_count = 0    
+    infected_files_size = 0 
+    analysing_files_count = 0
 
     # Signals
     stateChanged = Signal(AnalysisState)
@@ -43,7 +48,7 @@ class AnalysisController(QObject):
 
 
     def start_analysis(self, source_name:str) -> None:
-        Api().info("Starting the analysis", "AnalysisController")            
+        Api().info("Starting the analysis", "AnalysisController")
 
         self.__set_state(AnalysisState.AnalysisRunning)
         Api().publish("{}/resume".format(TOPIC_ANALYSE), {})
@@ -135,8 +140,6 @@ class AnalysisController(QObject):
             file["progress"] = progress
         
         self.fileUpdated.emit(filepath, ["status", "progress"])
-        #self.__files_list_model.on_file_updated(filepath, "status")
-        #self.__files_list_model.on_file_updated(filepath, "progress")
         
 
     def __handle_result(self, component:str, filepath:str, success:bool, details:str):
@@ -162,6 +165,13 @@ class AnalysisController(QObject):
         if progress == 100:
             Api().delete_file(filepath, Constantes.REPOSITORY)
             self.__repository_size -= 1
+
+            if file["status"] == FileStatus.FileClean:
+                self.clean_files_count += 1
+                self.clean_files_size += file["size"]
+            elif file["status"] == FileStatus.FileInfected or file["status"] == FileStatus.FileAnalysisError or file["status"] == FileStatus.FileCopyError:
+                self.infected_files_count += 1
+                self.infected_files_size += file["size"]
 
     
     def __do_copy_files_into_repository(self):

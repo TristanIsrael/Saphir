@@ -57,21 +57,21 @@ Rectangle {
     ColumnLayout
     {
         anchors.fill: parent
-        anchors.leftMargin: 26
-        anchors.rightMargin: 26
-        anchors.topMargin: 18
-        anchors.bottomMargin: 26
+        anchors.leftMargin: 5
+        anchors.rightMargin: 5
+        anchors.topMargin: 5
+        anchors.bottomMargin: 5
         Header // Header bleu en haut
         {
             Layout.fillHeight: true
             Layout.fillWidth: true
-            Layout.preferredHeight: 5
+            Layout.preferredHeight: 7
         }
         RowLayout // Partie mode + Luminosite
         {
             Layout.fillHeight: true
             Layout.fillWidth: true
-            Layout.preferredHeight: 5
+            Layout.preferredHeight: 7
             Layout.leftMargin: width * coreMargin
             Layout.rightMargin: width * coreMargin
 
@@ -224,27 +224,7 @@ Rectangle {
                         }
                     }
                 }
-            }
-
-            Image {
-                id: helpButton
-                source: helper.visible  ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "AideActive.svg")
-                                        : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "AideActif.svg")
-                fillMode: Image.PreserveAspectFit
-                anchors.horizontalCenter: parent.right
-                anchors.verticalCenter: parent.top
-                anchors.verticalCenterOffset: (parent.height * 0.855)
-                anchors.horizontalCenterOffset: parent.width * 0.02
-                width: parent.width * 0.05
-                height: parent.height * 0.08
-
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: {
-                        helper.visible = !helper.visible
-                    }
-                }
-            }
+            }            
 
             Rectangle {
                 width: parent.width * 0.075
@@ -345,6 +325,33 @@ Rectangle {
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
+            }
+        }
+    }
+
+    Image {
+        id: helpButton
+        source: helper.visible  ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "AideActive.svg")
+                                : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "AideActif.svg")
+        fillMode: Image.PreserveAspectFit
+        anchors {
+            right: parent.right
+            rightMargin: 0
+            bottom: parent.bottom
+            bottomMargin: (parent.height * 0.145)
+        }
+
+        //anchors.horizontalCenter: parent.right
+        //anchors.verticalCenter: parent.top
+        //anchors.verticalCenterOffset: (parent.height * 0.855)
+        //anchors.horizontalCenterOffset: parent.width * 0.02
+        width: parent.width * 0.05
+        height: parent.height * 0.08
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                helper.visible = !helper.visible
             }
         }
     }
@@ -470,11 +477,11 @@ Rectangle {
     PopupAnalyseIntegrale {
         id: popupAnalyseIntegrale
         anchors.centerIn: parent  
-        visible: false      
+        visible: false
 
         onAccepted: {
-            ApplicationController.start_full_analysis()
             visible = false
+            ApplicationController.start_full_analysis()            
         }
 
         onRejected: {
@@ -489,23 +496,9 @@ Rectangle {
         }
     }
 
-    //Test de la progression de la barre de chargement de copie des fichiers sains
-    // Timer {
-    //     interval: 500
-    //     running: Constants.isCopyingSaneFiles
-    //     repeat: true
-
-    //     onTriggered: {
-    //         if(Constants.copyProgress >= 1.0)
-    //             Constants.copyProgress = 0.0
-    //         Constants.updateCopySaneFilesProgress(Constants.copyProgress += 0.01)
-    //     }
-    // }
-
-
     Component.onCompleted: {
-        if(ApplicationController.sourceReady) {            
-            popupAnalyseIntegrale.visible
+        if(ApplicationController.sourceReady && ApplicationController.analysisMode === Enums.AnalysisMode.Undefined) {
+            popupAnalyseIntegrale.visible = true
         }
     }
 

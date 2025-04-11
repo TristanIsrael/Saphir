@@ -19,7 +19,7 @@ Rectangle {
         width: 4
     }
 
-    color: "#606b81"
+    color: Constants.currentColorMode === Constants.LIGHT ? "#eee" : Constants.currentColorMode === Constants.DARK ? "#606b81" : "#272727"
 
     ColumnLayout {
         id: lyt

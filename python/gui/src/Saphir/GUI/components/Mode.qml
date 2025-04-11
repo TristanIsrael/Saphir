@@ -26,7 +26,7 @@ Item
         color: "transparent"
         radius: height
         border {            
-            width: 1.5
+            width: 2
             color: Constants.currentColorMode === Constants.LIGHT ? "#848484" : Constants.currentColorMode === Constants.DARK ? "#66788F" : "#272727"
         }        
     }

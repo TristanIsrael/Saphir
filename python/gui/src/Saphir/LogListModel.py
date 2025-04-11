@@ -18,6 +18,8 @@ class LogListModel(QAbstractTableModel):
 
 
     def listen_to_logs(self):
+        # Désactivé temporairement
+        return
         Api().add_message_callback(self.__on_message)
         Api().subscribe("{}/#".format(Topics.EVENTS))        
 

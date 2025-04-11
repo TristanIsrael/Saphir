@@ -13,7 +13,7 @@ class AnalysisState(Enum):
     AnalysisNotReady, AnalysisRunning, AnalysisStopped = range(3)
 
 class AnalysisMode(Enum):
-    AnalyseWholeSource, AnalyseSelection = range(2)
+    Undefined, AnalyseWholeSource, AnalyseSelection = range(3)
 
 class Roles():    
     RoleType = Qt.UserRole + 1

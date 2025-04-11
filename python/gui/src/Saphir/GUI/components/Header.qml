@@ -184,7 +184,7 @@ Rectangle
         id: appLogo
         source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LogoSAPHIR.svg")
         //width: parent.width * 0.085
-        height: parent.height * 4
+        height: parent.height * 3
         x: (parent.width * 0.5295) + (width * 0.5)
         y: parent.height * -0.05
         fillMode: Image.PreserveAspectFit
