@@ -1,8 +1,7 @@
 import QmlProject
 
 Project {
-    mainFile: "PanoptiscanContent/App.qml"
-    mainUiFile: "PanoptiscanContent/FondEcranUi.ui.qml"
+    mainFile: "GUI/App.qml"
 
     /* Include .qml, .js, and image files from current directory and subdirectories */
     QmlFiles {
@@ -94,7 +93,7 @@ Project {
     qt6Project: true
 
     /* List of plugin directories passed to QML runtime */
-    importPaths: [ "." ]
+    importPaths: [ ".", "net.alefbet" ]
 
     /* Required for deployment */
     targetDirectory: "/opt/Panoptiscan"

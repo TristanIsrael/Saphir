@@ -10,7 +10,8 @@ Rectangle {
     color: "transparent"
 
     property int maxItemDisplayed: 10
-    property var _fileList: ApplicationController.queueListProxyModel
+    //property var _fileList: ApplicationController.queueListProxyModel
+    property var _fileList: ApplicationController.queueListModel
     property bool selectSaneFiles: false
     property bool selectionMode: false
 
@@ -122,7 +123,138 @@ Rectangle {
         }
         spacing: 20
 
-        Rectangle {
+        RowLayout {
+            Layout.preferredHeight: 40
+            Layout.fillWidth: true
+
+            Label {
+                Layout.alignment: Qt.AlignLeft
+                text: "Filtre fichiers :"
+                font.pixelSize: height
+                color: Constants.colorText
+            }
+
+            CheckBox {
+                id: chkFiltreSains
+                Layout.preferredHeight: parent.height * 0.8
+                Layout.preferredWidth: height
+                checked: _fileList.filtreSains
+
+                background: Item {}
+
+                contentItem: Image {
+                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherActive.svg")
+                    //anchors.centerIn: parent
+                    fillMode: Image.PreserveAspectFit
+                    anchors.fill: parent
+                }
+
+                indicator: Image {
+                    visible: parent.checked
+                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheActif.svg")
+                    width: parent.width*0.6
+                    height: width
+                    fillMode: Image.PreserveAspectFit
+                    anchors.centerIn: parent
+                }
+
+                onCheckedChanged: {
+                    _fileList.filtreSains = checked
+                }
+            }
+
+            Label {
+                text: "Sains"
+                font.pixelSize: height
+                color: Constants.colorText
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            CheckBox {
+                id: chkFiltreInfectes
+
+                Layout.preferredHeight: parent.height * 0.8
+                Layout.preferredWidth: height
+                checked: _fileList.filtreInfectes
+
+                background: Item {}
+
+                contentItem: Image {
+                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherActive.svg")
+                    //anchors.centerIn: parent
+                    fillMode: Image.PreserveAspectFit
+                    anchors.fill: parent
+                }
+
+                indicator: Image {
+                    visible: parent.checked
+                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheActif.svg")
+                    width: parent.width*0.6
+                    height: width
+                    fillMode: Image.PreserveAspectFit
+                    anchors.centerIn: parent
+                }
+
+                onCheckedChanged: {
+                    _fileList.filtreInfectes = checked
+                }
+            }
+
+            Label {
+                text: "Infectés"
+                font.pixelSize: height
+                color: Constants.colorText
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            CheckBox {
+                id: chkFiltreAutres
+
+                Layout.preferredHeight: parent.height * 0.8
+                Layout.preferredWidth: height
+                checked: _fileList.filtreAutres
+
+                background: Item {}
+
+                contentItem: Image {
+                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherActive.svg")
+                    //anchors.centerIn: parent
+                    fillMode: Image.PreserveAspectFit
+                    anchors.fill: parent
+                }
+
+                indicator: Image {
+                    visible: parent.checked
+                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheActif.svg")
+                    width: parent.width*0.6
+                    height: width
+                    fillMode: Image.PreserveAspectFit
+                    anchors.centerIn: parent
+                }
+
+                onCheckedChanged: {
+                    _fileList.filtreAutres = checked
+                }
+            }
+
+            Label {
+                text: "Autres"
+                font.pixelSize: height
+                color: Constants.colorText
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+        }
+
+        /*Rectangle {
             Layout.preferredHeight: 40
             Layout.fillWidth: true
             color: "transparent"
@@ -176,7 +308,7 @@ Rectangle {
                 }
 
             }
-        }
+        }*/
 
         ListView {            
             id: fileListListView

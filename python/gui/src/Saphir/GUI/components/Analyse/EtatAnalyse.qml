@@ -30,6 +30,7 @@ Item {
     ColumnLayout
     {
         anchors.fill: parent
+
         Image {
             source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BarreSeparationAnalyse.svg")
             Layout.alignment: Qt.AlignHCenter
@@ -87,8 +88,8 @@ Item {
                     centerIn: parent
                     margins: 5
                 }
-                height: parent.width
-                width: parent.width
+                height: Math.min(parent.height, parent.width)
+                width: Math.min(parent.height, parent.width)
                 color: "transparent"
                 radius: width * 0.5
                 border.color: Constants.currentColorMode !== Constants.ColorMode.STEALTH ? "lightblue" : "#292929"
@@ -134,7 +135,29 @@ Item {
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
                     }
+                }                          
+
+                Rectangle {
+                    anchors {
+                        fill: parent
+                        margins: width*0.01
+                    }
+                    radius: width/2
+                    opacity: 0.7
+                    visible: ApplicationController.longProcessRunning
+
+                    BusyIndicator {
+                        id: busy
+
+                        anchors {
+                            fill: parent
+                            margins: width*0.3
+                        }
+
+                    }
                 }
+
+
             }
         }
 
@@ -158,10 +181,11 @@ Item {
 
                     Image {
                         id: buttonPause
-                        source: ApplicationController.analysisReady ? 
+                        /*source: ApplicationController.analysisReady ?
                                     (Constants.isAnalysePlaying == false ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseActif.svg")
                                                                          : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg"))
-                                    : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg")
+                                    : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg")*/
+                        source: ApplicationController.analysisReady ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseActif.svg") : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg")
                         fillMode: Image.PreserveAspectFit
                         anchors.fill: parent
 
@@ -172,6 +196,19 @@ Item {
                                 //Constants.pause()
                                 ApplicationController.stop_analysis()
                             }
+                        }
+                    }
+
+                    Rectangle {
+                        width: Math.min(buttonPause.width, buttonPause.height)
+                        height: width
+                        color: "transparent"
+                        radius: width/2
+                        anchors.centerIn: buttonPause
+                        visible: !Constants.isAnalysePlaying
+                        border {
+                            width: buttonPause.width/10
+                            color: Constants.colorBlue
                         }
                     }
                 }
@@ -191,10 +228,11 @@ Item {
 
                     Image {
                         id: buttonPlay
-                        source: ApplicationController.analysisReady ? 
+                        /*source: ApplicationController.analysisReady ?
                                         (Constants.isAnalysePlaying ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayActif.svg")
                                             : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg"))
-                                    : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg")
+                                    : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg")*/
+                        source: ApplicationController.analysisReady ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayActif.svg") : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg")
                         fillMode: Image.PreserveAspectFit
                         anchors.fill: parent
                         MouseArea {
@@ -204,6 +242,19 @@ Item {
                                 //Constants.play()
                                 ApplicationController.start_analysis()
                             }
+                        }
+                    }
+
+                    Rectangle {
+                        width: Math.min(buttonPlay.width, buttonPlay.height)
+                        height: width
+                        color: "transparent"
+                        radius: width/2
+                        anchors.centerIn: buttonPlay
+                        visible: Constants.isAnalysePlaying
+                        border {
+                            width: buttonPlay.width/10
+                            color: Constants.colorBlue
                         }
                     }
                 }

@@ -12,7 +12,7 @@ Rectangle {
     property int itemDisplayed: 10
     property ListModel _fileList
     property string idFolderSelected: ApplicationController.idCurrentFolder
-    property int currentParentFolder
+    property int currentParentFolder    
 
     Component.onCompleted: {
         updateParentFolder()
@@ -293,6 +293,19 @@ Rectangle {
                 text: "Veuillez insérer une clé USB"
                 font.pixelSize: width * 0.07
             }
+        }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        color: "#70839c"
+        visible: ApplicationController.analysisMode !== Enums.AnalysisMode.AnalyseSelection
+
+        Label {
+            anchors.centerIn: parent
+            text: "Analyse complète en cours..."
+            color: "#eee"
+            font.pixelSize: 24
         }
     }
 }

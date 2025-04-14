@@ -166,7 +166,7 @@ class PsecInputFilesListModel(QAbstractListModel):
         self.beginResetModel()
         self.selection_.clear()
         self.__lastRowCount = 0
-        self.__rowCount = 0
+        self.__rowCount = len(self.fichiers_)
         self.endResetModel()
 
     #def on_files_updated(self):

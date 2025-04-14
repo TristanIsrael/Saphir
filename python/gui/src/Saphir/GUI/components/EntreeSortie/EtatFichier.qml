@@ -37,9 +37,11 @@ Rectangle {
         }
 
     Rectangle {
-        anchors.fill: parent
+        id: roue
         anchors.centerIn: parent
-        color: "transparent"
+        width: Math.min(parent.width, parent.height)
+        height: Math.min(parent.width, parent.height)
+        color: "transparent"        
 
         //Cercle fichiers analyse
         Rectangle {
@@ -275,7 +277,8 @@ Rectangle {
                 verticalAlignment: Text.AlignVCenter
             }
         }
-    }
+    }    
+
     // Test roue état fichier
     // Timer {
     //     interval: 1000

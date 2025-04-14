@@ -48,17 +48,21 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 25
                 color: "transparent"
+                visible: ApplicationController.analysisMode === Enums.AnalysisMode.AnalyseSelection
+
                 Entree {
                     id: entreeUSB
                     anchors.centerIn: parent
                     height: parent.height
                     width: parent.width * 0.9
                 }
+
                 Connections {
                     target: entreeUSB
                     onSelectedSignal: if (entreeUSB.selected) sortieUSB.selected=false;
                 }
             }
+
             Rectangle {
                 Layout.column: 1
                 Layout.row: 0
@@ -66,6 +70,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 25
                 color: "transparent"
+
                 EtatFichier {
                     id: filesState
                     anchors.fill: parent
@@ -79,11 +84,32 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 25
                 color: "transparent"
-                Sortie {
-                    id: sortieUSB
-                    anchors.right: parent.right
-                    height: parent.height
-                    width: parent.width * 0.7
+
+                RowLayout {
+                    anchors.fill: parent
+
+                    Entree {
+                        id: entreeUSB2
+                        Layout.alignment: Qt.AlignLeft
+                        Layout.preferredHeight: parent.height
+                        Layout.preferredWidth: parent.width/2
+                        visible: ApplicationController.analysisMode !== Enums.AnalysisMode.AnalyseSelection
+                    }
+
+                    Connections {
+                        target: entreeUSB2
+                        onSelectedSignal: if (entreeUSB2.selected) sortieUSB.selected=false;
+                    }
+
+                    Sortie {
+                        id: sortieUSB
+                        Layout.alignment: Qt.AlignRight
+                        Layout.preferredHeight: parent.height
+                        Layout.fillWidth: true
+                        Layout.leftMargin: ApplicationController.analysisMode === Enums.AnalysisMode.AnalyseSelection ? parent.width*0.3 : 0
+                        //Layout.preferredWidth: parent.width/2
+
+                    }
                 }
                 // Connections {
                 //     target: sortieUSB
@@ -91,6 +117,7 @@ Rectangle {
                 // }
 
             }
+
             //ROW 2
             Rectangle {
                 Layout.column: 0
@@ -100,11 +127,12 @@ Rectangle {
                 Layout.preferredHeight: 75
                 Layout.preferredWidth: 35
                 color: "transparent"
+                visible: ApplicationController.analysisMode === Enums.AnalysisMode.AnalyseSelection
+
                 ListeDossier
                 {
                     id: fileSelection
                     anchors.fill: parent
-                    //_fileList: Constants.fileList
                 }
 
             }
@@ -116,6 +144,7 @@ Rectangle {
                 Layout.preferredHeight: 75
                 Layout.preferredWidth: 15
                 color: "transparent"
+
                 EtatAnalyse {
                     id: etatAnalyse
                     anchors.fill: parent
@@ -129,6 +158,7 @@ Rectangle {
                 Layout.preferredHeight: 75
                 Layout.preferredWidth: 45
                 color: "transparent"
+
                 ListeFichier {
                     anchors.fill: parent
                     //_fileList: Constants.runningFileList

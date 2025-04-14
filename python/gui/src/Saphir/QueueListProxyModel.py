@@ -1,34 +1,25 @@
-from PySide6.QtCore import QSortFilterProxyModel, QModelIndex, QPersistentModelIndex
+from PySide6.QtCore import QSortFilterProxyModel, QModelIndex, QPersistentModelIndex, Property, Signal
 from QueueListModel import QueueListModel
 from Enums import Roles, FileStatus
 
-class QueueListProxyModel(QSortFilterProxyModel):
+class QueueListProxyModel(QSortFilterProxyModel):    
 
-    __max_rows = 100
+    filtreSainsChanged = Signal()
+    filtreInfectesChanged = Signal()
+    filtreAutresChanged = Signal()
+
 
     def __init__(self, source_model:QueueListModel, parent=None):
         super().__init__(parent)   
-        self.setSourceModel(source_model)
-        self.sort(0)
+        self.setSourceModel(source_model)        
 
-        #source_model.dataChanged.connect(self.__on_data_changed)
 
-    def filterAcceptsRow(self, source_row:int, source_parent:QModelIndex|QPersistentModelIndex):        
-        if source_row > self.__max_rows:            
-            return False
-        
-        # On filtre sur le type pour n'afficher que les erreurs si la quantité d'enregistrements dépasse la limite
-        if self.sourceModel().rowCount() > self.__max_rows:
-            idx = self.sourceModel().index(source_row, 0)
-            status = self.sourceModel().data(idx, Roles.RoleStatus)
-            return status == FileStatus.FileInfected.value
-
-        return True
+    def filterAcceptsRow(self, source_row:int, source_parent:QModelIndex|QPersistentModelIndex):
+        return True       
     
-    def lessThan(self, source_left: QModelIndex | QPersistentModelIndex, source_right: QModelIndex | QPersistentModelIndex) -> bool:
-        if self.sourceModel().rowCount() > self.__max_rows:
-            return True
-        
+
+    def lessThan(self, source_left: QModelIndex | QPersistentModelIndex, source_right: QModelIndex | QPersistentModelIndex) -> bool:      
+        return True  
         leftStatus = self.sourceModel().data(source_left, Roles.RoleStatus)
         rightStatus = self.sourceModel().data(source_right, Roles.RoleStatus)
         
@@ -44,8 +35,54 @@ class QueueListProxyModel(QSortFilterProxyModel):
         
         return False
     
+
     def on_data_changed(self):
-        if self.sourceModel().rowCount() > self.__max_rows:
-            return
-        
-        self.sort(0)
+        pass
+        #self.__set_regle_filtrage_auto()
+
+        #if self.sourceModel().rowCount() < self.__max_rows:
+            # Si la quantité d'enregistrement est inférieur au maximum
+            # on trie les lignes
+        #    self.sort(0)    
+
+
+    ## Getters et setters
+    def __get_filtre_sains(self):
+        return self.sourceModel().get_filtre_sains()
+        #return self.__filtreSains
+
+
+    def __set_filtre_sains(self, filtre:bool):
+        self.sourceModel().set_filtre_sains(filtre)
+        #self.__filtreSains = filtre
+        self.filtreSainsChanged.emit()
+        #self.invalidateFilter()
+
+
+    def __get_filtre_infectes(self):
+        return self.sourceModel().get_filtre_infectes()
+        #return self.__filtreInfectes
+
+
+    def __set_filtre_infectes(self, filtre:bool):
+        self.sourceModel().set_filtre_infectes(filtre)
+        #self.__filtreInfectes = filtre
+        self.filtreInfectesChanged.emit()
+        #self.invalidateFilter()
+
+
+    def __get_filtre_autres(self):
+        return self.sourceModel().get_filtre_autres()
+        #return self.__filtreAutres
+
+
+    def __set_filtre_autres(self, filtre:bool):
+        self.sourceModel().set_filtre_autres(filtre)
+        #self.__filtreAutres = filtre
+        self.filtreAutresChanged.emit()
+        #self.invalidateFilter()
+
+
+    filtreSains = Property(bool, __get_filtre_sains, __set_filtre_sains, notify=filtreSainsChanged)
+    filtreInfectes = Property(bool, __get_filtre_infectes, __set_filtre_infectes, notify=filtreInfectesChanged)
+    filtreAutres = Property(bool, __get_filtre_autres, __set_filtre_autres, notify=filtreAutresChanged)

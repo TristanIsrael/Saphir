@@ -1,4 +1,4 @@
-from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer, QThread, QPoint
+from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer, QThread, QPoint, QCoreApplication
 from PySide6.QtWidgets import QWidget
 from psec import Api, MqttFactory, Topics, MqttHelper, ComponentsHelper, Constantes, EtatComposant, MouseWheel
 from Enums import SystemState, AnalysisState, FileStatus
@@ -18,6 +18,7 @@ from pathlib import Path
 from Enums import AnalysisMode
 import copy
 import threading
+import time
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
@@ -49,8 +50,10 @@ class ApplicationController(QObject):
     __analysis_mode = AnalysisMode.Undefined
     __analysis_start_time = datetime.now()
     __queue_files_list_lock = threading.Lock()
-    __folders_to_query = 0
+    __folders_to_query = 1
     __queue_files_size = 0
+    __disk_controller_ready = False
+    __long_process_running = False
     
     #__interfaceInputs = None
     #__main_window:QWidget
@@ -68,11 +71,12 @@ class ApplicationController(QObject):
     systemStateChanged = Signal(int)
     queueSizeChanged = Signal(int)
     analysisReadyChanged = Signal(bool)
-    fileAdded = Signal(str)
-    fileQueued = Signal(str)
-    fileUnqueued = Signal(str)
+    #fileAdded = Signal(str)
+    #fileQueued = Signal(str)
+    #fileUnqueued = Signal(str)
     fileUpdated = Signal(str, list)
     allFilesUpdated = Signal()
+    queueUpdated = Signal()
     #fileCopied = Signal(str, bool)
     totalFilesCountChanged = Signal(int)
     infectedFilesCountChanged = Signal(int)
@@ -88,7 +92,7 @@ class ApplicationController(QObject):
     pluggedChanged = Signal()
     analysisModeChanged = Signal()
     remainingTimeChanged = Signal()
-
+    longProcessRunningChanged = Signal()
 
     # IO
     _mouse_x = 0
@@ -113,21 +117,19 @@ class ApplicationController(QObject):
 
         self.inputFilesListModel_ = PsecInputFilesListModel(self.__inputFilesList, self)
         self.inputFilesListModel_.updateFilesList.connect(self.update_source_files_list)          
-        self.fileAdded.connect(self.inputFilesListModel_.on_file_added) 
-        self.fileUpdated.connect(self.inputFilesListModel_.on_file_updated) 
+        #self.fileAdded.connect(self.inputFilesListModel_.on_file_added)
+        self.fileUpdated.connect(self.inputFilesListModel_.on_file_updated)
         self.sourceNameChanged.connect(self.inputFilesListModel_.onSourceChanged)
 
         self.inputFilesListProxyModel_ = PsecInputFilesListProxyModel(self.inputFilesListModel_, self)
         self.queueListModel_ = QueueListModel(self.__queuedFilesList, self.analysisComponents_, self)
         self.__queueListProxyModel = QueueListProxyModel(self.queueListModel_, self)
-        #self.outputFilesListProxyModel_ = PsecOutputFilesListProxyModel(self.queueListModel_, self)
-        self.fileQueued.connect(self.queueListModel_.on_file_added)
-        self.fileUnqueued.connect(self.queueListModel_.on_file_removed)
+        #self.fileQueued.connect(self.queueListModel_.on_file_added)
+        #self.fileUnqueued.connect(self.queueListModel_.on_file_removed)
         self.fileUpdated.connect(self.queueListModel_.on_file_updated)    
-        self.allFilesUpdated.connect(self.queueListModel_.reset)
+        self.queueUpdated.connect(self.queueListModel_.reset)
         self.allFilesUpdated.connect(self.inputFilesListModel_.reset)
         self.fileUpdated.connect(self.__queueListProxyModel.on_data_changed)
-        #self.allFilesUpdated.connect(self.__queueListProxyModel.on_data_changed)
 
         self.logListModel_ = LogListModel(self)        
         self.__thread_pool = ThreadPoolExecutor(max_workers=1)
@@ -160,6 +162,7 @@ class ApplicationController(QObject):
         QTimer.singleShot(1, self.interfaceInputs.demarre_surveillance)
     '''
 
+    @Slot()
     def update_source_files_list(self):
         # Ask for the list of files
         if self.__analysis_mode == AnalysisMode.AnalyseSelection:
@@ -195,8 +198,11 @@ class ApplicationController(QObject):
         # tous les fichiers du répertoire racine, puis demander la liste des
         # fichiers du premier répertoire, et à chaque réponse on recommencera
         # avec le répertoire suivant
-        self.__is_enquing = True        
-        Api().get_files_list(self.sourceName_, False, "/")
+        self.__is_enquing = True   
+        self.set_long_process_running(True)
+
+        #QCoreApplication.processEvents()
+        Api().get_files_list(self.sourceName_, False, "/",)
         '''for file in self.__inputFilesList.values():
             if file["type"] == "file":
                 self.enqueue_file("file", file["filepath"])
@@ -248,7 +254,9 @@ class ApplicationController(QObject):
         #    Api().debug("User added {} {} to the queue".format(filetype, filepath))
         
         self.__is_enquing = True
-        self.__is_navigating = False
+        self.__is_navigating = False        
+
+        self.set_long_process_running(True)
 
         if filetype == "file":
             file = self.__inputFilesList[filepath]
@@ -256,16 +264,18 @@ class ApplicationController(QObject):
             with self.__queue_files_list_lock:
                 self.__queuedFilesList[filepath] = copy.deepcopy(file)
 
-            self.fileQueued.emit(filepath)
+            #self.fileQueued.emit(filepath)
+            self.queueListModel_.reset()
             self.fileUpdated.emit(filepath, ["inqueue"])
             self.queueSizeChanged.emit(self.__queue_size())
-            #self.totalFilesCountChanged.emit(self.__total_files_count())
+            self.set_long_process_running(False)
         else:
-            # Enqueue the folder at first to make it disappear
+            # Enqueue the folder at first to make it disappear     
+            self.__folders_to_query = 1            
             file = self.__inputFilesList[filepath]
             file["inqueue"] = True
 
-            self.fileUpdated.emit(filepath, ["inqueue"])            
+            self.fileUpdated.emit(filepath, ["inqueue"])
 
             # Get the file tree from the disk and enqueue it
             self.__is_enquing = True
@@ -281,39 +291,32 @@ class ApplicationController(QObject):
 
     @Slot(str)
     def dequeue_file(self, filepath:str):
-        Api().debug("User removed {} from to the queue".format(filepath))
+        #Api().debug("User removed {} from to the queue".format(filepath))
         
-        file = self.__inputFilesList.get(filepath)
-        if file is not None:
-            file["inqueue"] = False
-            self.fileUpdated.emit(filepath, ["inqueue"])
+        # La plupart du temps l'utilisateur déselectionnera un répertoire
+        # il faut donc retrouver tous les fichiers de ce répertoire        
+        file = self.__inputFilesList.get(filepath)                
+        if file is None:
+            return
+        
+        self.set_long_process_running(True)        
 
-        # We have to put the folder back in the list if it is not
-        '''
-        parent = Path(filepath).parent
-        if parent not in self.__inputFilesList:
-            path = {
-                "type": "folder",
-                "filepath": parent.as_posix(),
-                "path": parent.parent.as_posix(),
-                "status": FileStatus.FileStatusUndefined,
-                "name": parent.name
-            }
-            self.__inputFilesList[parent.as_posix()] = path
-            self.fileUpdated.emit(parent.as_posix(), ["inqueue"])
+        file["inqueue"] = False
+        self.fileUpdated.emit(filepath, ["inqueue"])
+        
+        if file["type"] == "file":
+            # Si c'est un fichier on le met en queue        
+            with self.__queue_files_list_lock:            
+                self.__queuedFilesList.pop(filepath)
+                self.queueSizeChanged.emit(len(self.__queuedFilesList))
+                #self.fileUnqueued.emit(filepath)
+                #self.queueListModel_.reset()
+                self.queueUpdated.emit()
+                self.set_long_process_running(False)
         else:
-            file = self.__inputFilesList[parent]
-            file["inqueue"] = False
-            self.fileUpdated.emit(parent.as_posix(), ["inqueue"])
-        '''
-
-        with self.__queue_files_list_lock:
-            self.__queuedFilesList.pop(filepath)
-            self.queueSizeChanged.emit(self.__queue_size())
-            self.fileUnqueued.emit(filepath)
-
-        #self.totalFilesCountChanged.emit(self.__total_files_count())         
-
+            # C'est un dossier
+            # ... il faut parcourir toutes les entrées de la liste et retirer chaque fichier 
+            threading.Thread(target=self.__dequeue_folder, args=(filepath,)).start()
 
     @Slot()
     def start_stop_analysis(self):        
@@ -386,6 +389,10 @@ class ApplicationController(QObject):
         self.sourceName_ = ""
         self.targetName_ = ""        
 
+    @Slot()
+    def set_long_process_running(self, running:bool):
+        self.__long_process_running = running
+        self.longProcessRunningChanged.emit()        
 
     @Slot(str)
     def debug(self, message:str):
@@ -402,6 +409,7 @@ class ApplicationController(QObject):
     @Slot(str)
     def error(self, message:str):
         Api().error(message, "Saphir")
+    
 
     def __on_api_ready(self):        
         self.pret_ = True
@@ -496,7 +504,8 @@ class ApplicationController(QObject):
 
         elif topic == "{}/response".format(Topics.LIST_FILES):
             #threading.Thread(target= self.__handle_list_files, args=(payload,)).start()
-            self.__thread_pool.submit(self.__handle_list_files, payload)
+            self.__handle_list_files(payload)
+            #self.__thread_pool.submit(self.__handle_list_files, payload)
 
         elif topic == "{}/response".format(Topics.DISCOVER_COMPONENTS):
             if not MqttHelper.check_payload(payload, ["components"]):
@@ -555,8 +564,7 @@ class ApplicationController(QObject):
             self.battery_level_ = payload.get("battery_level", 0)
             self.batteryLevelChanged.emit()
             self.plugged_ = bool(payload.get("plugged", 0))
-            self.pluggedChanged.emit()
-
+            self.pluggedChanged.emit()        
 
 
     def __is_file_in_folder(self, filepath:str, folder:str) -> bool:
@@ -576,7 +584,9 @@ class ApplicationController(QObject):
         # Verify PSEC availability
         if states.get(Constantes.PSEC_DISK_CONTROLLER):
             ready &= states.get(Constantes.PSEC_DISK_CONTROLLER) == EtatComposant.READY
-            self.__on_disk_controller_state_changed(ready)
+            if ready and not self.__disk_controller_ready:
+                self.__disk_controller_ready = True
+                self.__on_disk_controller_state_changed(ready)
 
         # Verify antiviruses availability
         ids = self.componentsHelper_.get_ids_by_type("antivirus")
@@ -589,6 +599,7 @@ class ApplicationController(QObject):
 
         self.analysisReady_ = ready
         self.analysisReadyChanged.emit(self.analysisReady_)
+
 
     def __handle_list_files(self, payload:dict) -> None:
         with self.__queue_files_list_lock:
@@ -618,33 +629,43 @@ class ApplicationController(QObject):
                     file["inqueue"] = True
                     self.__queue_files_size += file["size"]
                     self.__queuedFilesList[filepath] = file                        
-                    self.queueSizeChanged.emit(len(self.__queuedFilesList))                        
+                    #self.queueSizeChanged.emit(len(self.__queuedFilesList))                        
 
-                    if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                        self.fileQueued.emit(filepath)                        
+                    '''if self.__analysis_mode == AnalysisMode.AnalyseSelection:
+                        self.fileQueued.emit(filepath)'''
                 else:
                     if self.__analysis_mode == AnalysisMode.AnalyseSelection:
                         # Si on est en mode de sélection de fichiers
                         file["inqueue"] = False
-                        self.__inputFilesList[filepath] = file
-                        self.fileAdded.emit(filepath)
+                        if not self.__is_enquing:
+                            self.__inputFilesList[filepath] = file                        
+                            #self.fileAdded.emit(filepath)
                     else:
                         # Sinon on automatise tout le processus et on demande la liste des sous répertoires
                         #Api().get_files_list(self.sourceName_, False, file["filepath"])
                         #threading.Timer(0.5, Api().get_files_list, args=(self.sourceName_, False, file["filepath"],)).start()
                         self.__folders_to_query += 1
                         self.__thread_pool.submit(Api().get_files_list, self.sourceName_, False, filepath)
+            
+            # On met à jour le compteur car cette opération est peu couteuse
+            # et permet à l'utilisateur de voir qu'il se passe quelque chose
+            if self.__is_enquing:
+                self.queueSizeChanged.emit(len(self.__queuedFilesList))
 
             #print(self.__folders_to_query)
+            if self.__folders_to_query == 0:
+                self.set_long_process_running(False)
 
-            if self.__analysis_mode == AnalysisMode.AnalyseWholeSource and self.__folders_to_query == 0:
                 # Après avoir récupéré la liste de tous les fichiers on met à jour les modèles                
-                #self.__queueListProxyModel.setDynamicSortFilter(False)
-                #self.__queueListProxyModel.sort(-1)
-                self.queueListModel_.reset()
+                if self.__is_enquing:
+                    self.queueSizeChanged.emit(len(self.__queuedFilesList))
+                    self.queueUpdated.emit()
+                    #self.queueListModel_.reset()
+                else:
+                    self.inputFilesListModel_.reset()            
 
-            if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                self.__set_system_state(SystemState.SystemWaitingForUserAction)
+                if self.__analysis_mode == AnalysisMode.AnalyseSelection:
+                    self.__set_system_state(SystemState.SystemWaitingForUserAction)
 
 
     def __on_results_changed(self):        
@@ -667,6 +688,17 @@ class ApplicationController(QObject):
     def __request_energy_state(self):
         Api().request_energy_state()
         threading.Timer(5.0, self.__request_energy_state).start()
+
+
+    def __dequeue_folder(self, filepath:str):
+        with self.__queue_files_list_lock:
+            nouveau = {k: v for k, v in self.__queuedFilesList.items() if not k.startswith(filepath)}            
+            self.__queuedFilesList.clear()
+            self.__queuedFilesList.update(nouveau)
+            self.queueSizeChanged.emit(len(self.__queuedFilesList))
+            #self.queueListModel_.reset()
+            self.queueUpdated.emit()
+            self.set_long_process_running(False)
 
 
     @Slot(AnalysisState)
@@ -941,9 +973,15 @@ class ApplicationController(QObject):
     def __get_analysis_mode(self):
         return self.__analysis_mode.value
     
-    def __set_analysis_mode(self, analysis_mode:AnalysisMode):
-        self.__analysis_mode = analysis_mode
-        self.analysisModeChanged.emit()
+    def __set_analysis_mode(self, analysis_mode:int):
+        try:
+            self.__analysis_mode = AnalysisMode(analysis_mode)
+            self.analysisModeChanged.emit()
+        except ValueError:
+            print(f"Valeur invalide pour AnalysisMode: {analysis_mode}")
+
+    def __is_long_process_running(self):
+        return self.__long_process_running
 
     '''def set_main_window(self, window:QWidget):
         self.__main_window = window
@@ -987,4 +1025,5 @@ class ApplicationController(QObject):
 
     batteryLevel = Property(int, __battery_level, notify=batteryLevelChanged)
     plugged = Property(bool, __plugged, notify=pluggedChanged)
-    analysisMode = Property(int, __get_analysis_mode, notify= analysisModeChanged)
+    analysisMode = Property(int, fget= __get_analysis_mode, fset= __set_analysis_mode, notify= analysisModeChanged)
+    longProcessRunning = Property(bool, __is_long_process_running, notify=longProcessRunningChanged)

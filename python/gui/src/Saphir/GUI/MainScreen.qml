@@ -486,6 +486,8 @@ Rectangle {
 
         onRejected: {
             visible = false
+            ApplicationController.analysisMode = Enums.AnalysisMode.AnalyseSelection
+            ApplicationController.update_source_files_list()
         }
     }
 

@@ -11,25 +11,37 @@ class QueueListModel(QAbstractListModel):
     # Variables
     #__last_row_count = 0
     __row_count = 0
+    __max_rows = 999999
     __fichiers:dict
+    __filtreSains = True
+    __filtreInfectes = True
+    __filtreAutres = True
+    __cache = []
+
+    filtreSainsChanged = Signal()
+    filtreInfectesChanged = Signal()
+    filtreAutresChanged = Signal()
     
     def __init__(self, files:dict, analysisComponents:list, parent=None):
         super().__init__(parent)
         self.__fichiers = files
         self.__analysisComponents = analysisComponents
+        self.__set_regle_filtrage_auto()
+        self.__make_cache()
+
 
     def rowCount(self, parent=QModelIndex()):
-        #self.__last_row_count = self.__row_count
-        #qDebug("{} {}".format(self.__row_count, self.__last_row_count))
-        #return self.__row_count
-        return len(self.__fichiers)
+        #return len(self.__fichiers)
+        return len(self.__cache)
+    
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
             return None
 
         row = index.row()
-        fichier = list(self.__fichiers.values())[row]
+        #fichier = list(self.__fichiers.values())[row]
+        fichier = self.__cache[row]
         #qDebug("fonction data() - filename:%s, filepath:%s" % (fichier["name"], fichier["filepath"]))        
 
         if role == Roles.RoleType:
@@ -78,12 +90,34 @@ class QueueListModel(QAbstractListModel):
 
     def reset(self):
         self.beginResetModel()
-        self.__row_count = len(self.__fichiers)
+        self.__set_regle_filtrage_auto()
+        self.__make_cache()
         self.endResetModel()
+
+
+    def __make_cache(self):
+        self.__cache.clear()
+
+        if len(self.__fichiers) == 0:
+            return
+
+        if self.__filtreSains:
+            self.__cache.extend([v for _,v in self.__fichiers.items() if v.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean])
+
+        if self.__filtreInfectes:
+            self.__cache.extend([v for _,v in self.__fichiers.items() if v.get("status", FileStatus.FileStatusUndefined) in (FileStatus.FileAnalysisError, FileStatus.FileCopyError, FileStatus.FileInfected)])
+        
+        if self.__filtreAutres:
+            self.__cache.extend([v for _,v in self.__fichiers.items() if v.get("status", FileStatus.FileStatusUndefined) in (FileStatus.FileAnalysing, FileStatus.FileAvailableInRepository, FileStatus.FileStatusUndefined)])
 
 
     @Slot(str, list)
     def on_file_updated(self, filepath:str, fields:list):
+        self.beginResetModel()
+        self.__make_cache()
+        self.endResetModel()
+
+        return
         if filepath not in self.__fichiers:
             return
         
@@ -123,6 +157,7 @@ class QueueListModel(QAbstractListModel):
 
     @Slot()
     def on_file_added(self):
+        pass
         ''' Cette fonction peut être appelée plusieurs fois alors que les données
         sont déjà dans la liste des fichiers.
         '''
@@ -134,17 +169,56 @@ class QueueListModel(QAbstractListModel):
         #qDebug("Add {} {}".format(self.__row_count, nbFichiers-1))
         self.beginInsertRows(QModelIndex(), self.__row_count, nbFichiers-1)
         self.__row_count = nbFichiers
-        self.endInsertRows()
-        '''self.__row_count = len(self.__fichiers)
-        if self.__last_row_count == self.__row_count:
-            return
-        
-        self.beginInsertRows(QModelIndex(), self.__last_row_count, self.__row_count)
-        self.endInsertRows()
-        '''
+        self.endInsertRows()        
         
     @Slot(str)
     def on_file_removed(self, filepath:str):
+        pass
         self.beginResetModel()
         self.__row_count -= 1
         self.endResetModel()
+
+    def get_filtre_sains(self):
+        return self.__filtreSains
+
+    def set_filtre_sains(self, filtre:bool):
+        self.__filtreSains = filtre
+        self.beginResetModel()
+        self.__make_cache()
+        self.endResetModel()
+        #self.filtreSainsChanged.emit()
+
+    def get_filtre_infectes(self):
+        return self.__filtreInfectes
+
+    def set_filtre_infectes(self, filtre:bool):
+        self.beginResetModel()
+        self.__filtreInfectes = filtre
+        self.__make_cache()
+        self.endResetModel()
+        #self.filtreInfectesChanged.emit()
+
+    def get_filtre_autres(self):
+        return self.__filtreAutres
+
+    def set_filtre_autres(self, filtre:bool):
+        self.__filtreAutres = filtre
+        self.beginResetModel()
+        self.__make_cache()
+        self.endResetModel()
+        #self.filtreAutresChanged.emit()
+
+    def __set_regle_filtrage_auto(self):
+        # On filtre sur le type pour n'afficher que les erreurs si la quantité d'enregistrements dépasse la limite
+        if len(self.__fichiers) > self.__max_rows:
+            self.__filtreSains = False
+            self.filtreSainsChanged.emit()
+            self.__filtreInfectes = True
+            self.filtreInfectesChanged.emit()
+            self.__filtreAutres = False
+            self.filtreAutresChanged.emit()
+
+
+    filtreSains = Property(bool, get_filtre_sains, set_filtre_sains, notify=filtreSainsChanged)
+    filtreInfectes = Property(bool, get_filtre_infectes, set_filtre_infectes, notify=filtreInfectesChanged)
+    filtreAutres = Property(bool, get_filtre_autres, set_filtre_autres, notify=filtreAutresChanged)
