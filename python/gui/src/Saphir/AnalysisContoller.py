@@ -31,6 +31,7 @@ class AnalysisController(QObject):
     stateChanged = Signal(AnalysisState)
     resultsChanged = Signal()
     fileUpdated = Signal(str, list)
+    systemUsed = Signal()
 
     def __init__(self, files:dict, analysis_components:list, source_disk:str, analysis_mode_:AnalysisMode, parent:QObject|None=None) -> None:
         QObject.__init__(self, parent)
@@ -73,6 +74,12 @@ class AnalysisController(QObject):
         Api().publish("{}/stop".format(TOPIC_ANALYSE), {})
         self.__set_state(AnalysisState.AnalysisStopped)
 
+    def reset(self):
+        self.clean_files_count = 0
+        self.clean_files_size = 0
+        self.infected_files_count = 0    
+        self.infected_files_size = 0 
+        self.analysing_files_count = 0
 
     ######
     ## Private functions
@@ -94,8 +101,7 @@ class AnalysisController(QObject):
 
             filepath = payload.get("filepath", "")
             
-            self.__on_file_available(filepath)
-
+            self.__on_file_available(filepath)            
 
         elif topic == "{}/response".format(TOPIC_ANALYSE):
             if not MqttHelper.check_payload(payload, ["component", "filepath", "success", "details"]):
@@ -161,7 +167,7 @@ class AnalysisController(QObject):
         self.fileUpdated.emit(filepath, ["status", "progress"])
         self.resultsChanged.emit() 
 
-        # Si l'analyse est terminée on supprime le fichier du dépôt
+        # Si l'analyse du fichier est terminée on supprime le fichier du dépôt
         if progress == 100:
             Api().delete_file(filepath, Constantes.REPOSITORY)
             self.__repository_size -= 1
@@ -172,6 +178,10 @@ class AnalysisController(QObject):
             elif file["status"] == FileStatus.FileInfected or file["status"] == FileStatus.FileAnalysisError or file["status"] == FileStatus.FileCopyError:
                 self.infected_files_count += 1
                 self.infected_files_size += file["size"]
+
+        # Enfin on vérifie s'il reste des fichiers à analyser
+        if self.analysing_files_count == 0:
+            self.systemUsed.emit()
 
     
     def __do_copy_files_into_repository(self):

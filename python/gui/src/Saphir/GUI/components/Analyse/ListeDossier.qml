@@ -290,7 +290,7 @@ Rectangle {
                 anchors.fill: parent
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
-                text: "Veuillez insérer une clé USB"
+                text: "Veuillez connecter un support de stockage"
                 font.pixelSize: width * 0.07
             }
         }

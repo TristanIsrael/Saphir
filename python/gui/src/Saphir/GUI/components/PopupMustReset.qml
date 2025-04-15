@@ -6,7 +6,7 @@ import "../imports"
 
 Item {
     id: root
-    property string libelle: "Voulez-vous analyser l'intégralité du support ?"
+    property string libelle: "Le système doit être réinitialisé avant\nune nouvelle analyse."
 
     signal accepted()
     signal rejected()
@@ -23,8 +23,8 @@ Item {
 
     DropShadow {
         anchors.fill: bkg
-        radius: 6
-        color: "#333" //Constants.colorText
+        radius: 10
+        color: Constants.colorRed
         source: bkg
     }
 
@@ -75,7 +75,7 @@ Item {
 
                 Rectangle {
                     color: "transparent"
-                    Layout.preferredWidth: 70
+                    Layout.preferredWidth: 100
                     Layout.preferredHeight: parent.height
 
                     border {
@@ -86,7 +86,7 @@ Item {
                     Label {
                         id: lblOui
                         anchors.fill: parent
-                        text: "Oui"
+                        text: "Fermer"
                         font.pixelSize: 20
 
                         horizontalAlignment: Text.AlignHCenter
@@ -96,33 +96,6 @@ Item {
                         MouseArea {
                             anchors.fill: parent
                             onClicked: root.accepted()
-                        }
-                    }
-                }
-
-                Rectangle {
-                    color: "transparent" //Constants.colorBlue
-                    Layout.preferredWidth: 70
-                    Layout.preferredHeight: parent.height
-
-                    border {
-                        width: 3
-                        color: "#505a6d"
-                    }
-
-                    Label {
-                        id: lblNon
-                        anchors.fill: parent
-                        text: "Non"
-                        font.pixelSize: 20
-
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        color: Constants.colorBlue
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: root.rejected()
                         }
                     }
                 }

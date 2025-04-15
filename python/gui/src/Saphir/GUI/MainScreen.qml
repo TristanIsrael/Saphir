@@ -10,6 +10,7 @@ import "components"
 import "components/Analyse"
 import QtQuick.Controls
 import QtQuick.Layouts
+import Qt5Compat.GraphicalEffects
 import net.alefbet
 import "imports"
 
@@ -38,19 +39,33 @@ Rectangle {
         fillMode: Image.PreserveAspectCrop
         anchors.fill: parent
     }
+
     Rectangle {
         id: patternOverlay
         width: parent.width
         height: parent.height
         color: "transparent"
         anchors.centerIn: parent
+
         Image {
             id: pattern
             source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "MotifHexagonal.svg")
             width: parent.width
             height: parent.height
             fillMode: Image.PreserveAspectCrop
-            anchors.fill: parent
+            anchors.fill: parent            
+        }
+
+        Colorize {
+            id: masqueCouleur
+            anchors.fill: pattern
+            source: pattern
+            visible: ApplicationController.infectedFilesCount > 0
+
+            hue: Constants.colorSystemUsed.hslHue
+            saturation: Constants.colorSystemUsed.hslSaturation
+            lightness: Constants.colorSystemUsed.hslLightness
+            opacity: ApplicationController.systemUsed ? 0.5 : 1.0
         }
     }
 
@@ -181,6 +196,14 @@ Rectangle {
                         }
                     }
                 }
+
+                DropShadow {
+                    anchors.fill: confirmRestartButton
+                    source: confirmRestartButton
+                    radius: 20
+                    color: "#333"
+                    visible: confirmRestartButton.visible
+                }
             }
 
             Image {
@@ -224,6 +247,14 @@ Rectangle {
                         }
                     }
                 }
+
+                DropShadow {
+                    anchors.fill: confirmExitButton
+                    source: confirmExitButton
+                    radius: 20
+                    color: "#333"
+                    visible: confirmExitButton.visible
+                }
             }            
 
             Rectangle {
@@ -251,23 +282,25 @@ Rectangle {
 
             RowLayout {
                 id: copySaneFilesComponent
-                visible: Constants.isOutputUSBPlugged //&& ApplicationController.cleanFilesCount > 0
+                visible: Constants.isOutputUSBPlugged && ApplicationController.systemState === Enums.SystemState.AnalysisCompleted
                 width: parent.width * 0.2
-                height: parent.height * 0.05
+                height: parent.height * 0.1
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.rightMargin: parent.width * 0.12 + (width * 0.5)
-                anchors.topMargin: parent.height * 0.26 + (height * 0.5)
+                anchors.topMargin: parent.height * 0.2 + (height * 0.5)
                 spacing: 10
 
                 Rectangle {
-                    Layout.preferredWidth: 20
+                    Layout.preferredWidth: 40
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     color: "transparent"
+
                     Image {
                         id: copySaneFilesButton
                         anchors.fill: parent
+                        Layout.alignment: Qt.AlignTop
                         source: Constants.isCopyingSaneFiles ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CopierFichiersActive.svg")
                                                                  : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CopierFichiersActif.svg")
                         fillMode: Image.PreserveAspectFit
@@ -285,6 +318,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     color: "transparent"
+
                     Label {
                         anchors.fill: parent
                         color: Constants.colorText
@@ -312,7 +346,7 @@ Rectangle {
                 Rectangle {
                     width: Math.min(parent.width * ApplicationController.transferProgress, parent.width)
                     height: parent.height
-                    color: Constants.colorText
+                    color: Constants.colorBlue
                     opacity: 0.3
                 }
                 Label {
@@ -364,8 +398,6 @@ Rectangle {
         EtatSysteme {
             id: systemState
             visible: false
-            _antivirusList: Constants.antivirusList
-            _diskState: Constants.diskState
             anchors.centerIn: parent
             width: parent.width * 0.9
             height: parent.height * 0.9
@@ -491,16 +523,55 @@ Rectangle {
         }
     }
 
+    PopupMustReset {
+        id: popupMustReset 
+        anchors.centerIn: parent
+        visible: false
+
+        onAccepted: {
+            visible = false      
+        }
+    }
+
+    PopupAnalysisFinished {
+        id: popupAnalysisFinished
+        anchors.centerIn: parent
+        visible: false
+
+        onAccepted: {
+            visible = false
+        }
+    }
+
     Connections {
         target: ApplicationController
+        
         onSourceReadyChanged: function() {
             popupAnalyseIntegrale.visible = ApplicationController.sourceReady
+        }
+
+        onSystemMustBeReset: function() {
+            popupMustReset.visible = true
+        }        
+
+        onSystemStateChanged: function() {
+            if(ApplicationController.systemState === Enums.SystemState.AnalysisCompleted) {
+                popupAnalysisFinished.visible = true
+            }
         }
     }
 
     Component.onCompleted: {
         if(ApplicationController.sourceReady && ApplicationController.analysisMode === Enums.AnalysisMode.Undefined) {
             popupAnalyseIntegrale.visible = true
+        }
+
+        if(ApplicationController.systemState === Enums.SystemState.onSystemMustBeReset) {
+            popupMustReset.visible = true
+        }
+
+        if(ApplicationController.systemState === Enums.SystemState.AnalysisCompleted) {
+            popupAnalysisFinished.visible = true
         }
     }
 

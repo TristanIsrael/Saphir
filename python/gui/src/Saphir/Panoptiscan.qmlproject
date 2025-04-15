@@ -118,4 +118,6 @@ Project {
     supportedLanguages: ["en"]
     primaryLanguage: "en"
 
+
+    mainUiFile: "GUI/components/PopupMustReset.qml"
 }

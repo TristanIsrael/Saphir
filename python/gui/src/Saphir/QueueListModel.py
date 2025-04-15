@@ -113,16 +113,19 @@ class QueueListModel(QAbstractListModel):
 
     @Slot(str, list)
     def on_file_updated(self, filepath:str, fields:list):
-        self.beginResetModel()
+        '''self.beginResetModel()
         self.__make_cache()
-        self.endResetModel()
+        self.endResetModel()'''
 
-        return
         if filepath not in self.__fichiers:
             return
         
-        row = list(self.__fichiers.keys()).index(filepath)
+        #row = list(self.__cache).index(filepath)
         #print(filepath)
+        row = next((i for i, item in enumerate(self.__cache) if item["filepath"] == filepath), None)
+        if row is None:
+            return
+        
         idx = self.index(row, 0)
 
         if not idx.isValid():

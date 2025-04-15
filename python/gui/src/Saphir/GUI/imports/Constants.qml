@@ -62,9 +62,10 @@ QtObject {
     property string colorModePath: Qt.resolvedUrl("../images/dark_mode/")
     property string colorModePrefix: "Sombre_"
     property string colorText: "#FFFFFF"
-    property string colorRed: "#B0283A"
+    property color colorRed: "#B0283A"
     property string colorGreen: "#8BC34A"
     property string colorBlue: "#87CEEB"
+    property color colorSystemUsed: "#B0283A"
 
         // -- Modèles de données
     //Modèle de données de parcours de fichiers
@@ -205,6 +206,7 @@ QtObject {
             Constants.colorGreen = "#0B0F14"
             Constants.colorBlue = "#171717"
             Constants.colorText = /*"#1E1E1E"*/"#3B3B3B"
+            Constants.colorSystemUsed = "#2F0A35"
             break;
         case Constants.ColorMode.DARK:
             Constants.colorModePath = Qt.resolvedUrl("../images/dark_mode/")
@@ -214,6 +216,7 @@ QtObject {
             Constants.colorGreen = "#8BC34A"
             Constants.colorBlue = "#87CEEB"
             Constants.colorText = "#FFFFFF"
+            Constants.colorSystemUsed = "#926c6d"
             break;
         default:
             Constants.colorModePath = Qt.resolvedUrl("../images/light_mode/")
@@ -223,6 +226,7 @@ QtObject {
             Constants.colorGreen = "#32CD32"
             Constants.colorBlue = "#087BF8"
             Constants.colorText = "#525051"
+            Constants.colorSystemUsed = "#B0283A"
             break;
         }
         Constants.reloadRequested()

@@ -1,69 +1,50 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Qt5Compat.GraphicalEffects
+import net.alefbet
 import "../../imports"
 
 
 Rectangle {
     id: coreEtatSysteme
     color: "transparent"
-    property ListModel _antivirusList
-    property int maxItemDisplayed: 4
-    property int _diskState
-
-    Connections {
-        target: Constants
-        onAddAntivirus: {
-            for (let i = 0; i < Constants.antivirusList.count; i++)
-            {
-                if (Constants.antivirusList.get(i).backId === newId)
-                    return
-            }
-            Constants.antivirusList.append({backId: newId, name: newName, state: newState})
-        }
-        onUpdateAntivirusSate: {
-            for (let i = 0; i < Constants.antivirusList.count; i++) {
-                if (Constants.antivirusList.get(i).backId === aBackId)
-                {
-                    Constants.antivirusList.get(i).state = newState
-                }
-            }
-        }
-        onClearAntivirusList: {
-            Constants.antivirusList.clear()
-        }
-        onUpdateDiskState: {
-            Constants.diskState = newState
-        }
-    }
+    
+    property int maxItemDisplayed: 4 
 
     function getStateText(state)
     {
-        switch(state)
-        {
-        case 0:
-            return "Démarrage";
-        case 1:
-            return "Normal";
-        case 2:
-            return "Erreur";
-        default:
+        if(state === "starting") {
+            return "Démarrage"
+        } else if(state === "unknown") {
             return "Inconnu";
+        } else if(state === "error") {
+            return "Erreur";
+        } else if(state === "ready") {
+            return "Prêt";
         }
+
+        return "#err"
     }
 
     function getStateColor(state) {
         //RGB
-        switch(state)
-        {
-        case 0:
-            return Constants.colorBlue;
-        case 1:
-            return Constants.colorGreen;
-        case 2:
-            return Constants.colorRed;
-        default:
-            return Constants.colorText;
+        if(state === "starting") {
+            return Constants.colorBlue
+        } else if(state === "error") {
+            return Constants.colorRed
+        } else if(state === "ready") {
+            return Constants.colorGreen
+        }
+
+        return Constants.colorText
+    }
+
+    function getTypeIcone(type) {
+        if(type === "antivirus") {
+            return "ModaleEtatSystemeIconeAntivirus.svg"
+        } else {
+            return "ModaleEtatSystemeIconeAccesDisque.svg"
         }
     }
 
@@ -74,6 +55,13 @@ Rectangle {
         height: parent.height
         fillMode: Image.Stretch
         anchors.fill: parent
+    }
+
+    DropShadow {
+        anchors.fill: background
+        source: background
+        radius: 20
+        color: "#333"
     }
 
     Image {
@@ -101,168 +89,110 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: modalContentContainer
+
         Rectangle {
-            Layout.preferredHeight: 25
-            Layout.fillHeight: true
+            id: modalTitleHolder
+            Layout.preferredHeight: parent.height/7
             Layout.fillWidth: true
+            Layout.margins: height/10
             color: "transparent"
-            Rectangle {
-                id: modalTitleHolder
-                anchors.left: parent.left
-                height: parent.height
-                width: parent.width * 0.5
-                color: "transparent"
-                border.width: width * 0.01
-                border.color: Constants.colorText
-                radius: width * 0.05
-                Label {
-                    id: modalTitleText
-                    anchors.centerIn: parent
-                    width: parent.width - (parent.border.width * 3)
-                    height: parent.height - (parent.border.width * 3)
-                    text: "Etat du système"
-                    color: Constants.colorText
-                    font.pixelSize: width * 0.1
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
+            border {
+                width: width * 0.005
+                color: Constants.colorText
             }
-        }
+            radius: height/5
 
-        Item {
-            //Spacer
-            Layout.preferredHeight: 5
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-        }
-
-        Rectangle {
-            Layout.preferredHeight: 50
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            color: "transparent"
-            ListView {
-                clip: true
-                id: antivirusListView
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width
-                height: parent.height
-                model: _antivirusList
-
-                ScrollBar.vertical: ScrollBar
-                {
-                    policy: parent.contentHeight > parent.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
-                    width:parent.width*0.03
-                    background: Rectangle {
-                        implicitWidth: parent.parent.width*0.01
-                        color: "#00000000"  // Couleur du fond de la scrollbar
-                        radius: 6
-                        border.color: Constants.colorText
-                    }
-
-                    contentItem: Rectangle {
-                        implicitWidth: parent.parent.width*0.01
-                        color: Constants.colorText  // Couleur de la barre de défilement
-                        radius: 6
-                    }
-                }
-
-                delegate : Row {
-                    width: parent.width*0.95
-                    height: parent.parent.height * (1.0/maxItemDisplayed)
-                    spacing: 0
-
-                    Item {
-                        height: parent.height
-                        width: parent.width * 0.1
-                        Image {
-                            source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "ModaleEtatSystemeIconeAntivirus.svg")
-                            width:parent.width
-                            height:parent.height
-                            fillMode: Image.PreserveAspectFit
-                            anchors.right: parent.right
-                        }
-                    }
-                    Label {
-                        // Layout.preferredWidth: 45
-                        // Layout.fillHeight: true
-                        // Layout.fillWidth: true
-                        height: parent.height
-                        width: parent.width * 0.2
-
-                        text: model.name + " : "
-                        color: Constants.colorText
-                        font.pixelSize: Math.min(height * 0.6, width * 0.15)
-                        horizontalAlignment: Text.AlignRight
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                    Label {
-                        // Layout.preferredWidth: 35
-                        // Layout.fillHeight: true
-                        // Layout.fillWidth: true
-                        height: parent.height
-                        width: parent.width * 0.2
-
-                        text: getStateText(model.state)
-                        color: getStateColor(model.state)
-                        font.pixelSize: Math.min(height * 0.6, width * 0.15)
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-                }
-            }
-        }
-        Rectangle {
-            Layout.preferredHeight: 20
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            color: "transparent"
-            Row {
-                anchors.fill: parent
+            RowLayout {
+                anchors.centerIn: parent
+                width: parent.width - (parent.border.width * 3)
+                height: parent.height- (parent.border.width * 3)
 
                 Item {
-                    // Layout.preferredWidth: 10
-                    // Layout.fillHeight: true
-                    // Layout.fillWidth: true
-                    height: parent.height
-                    width: parent.width * 0.1
-                    Image {
-                        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "ModaleEtatSystemeIconeAccesDisque.svg")
-                        anchors.fill: parent
-                        fillMode: Image.PreserveAspectFit
-                    }
-
+                    Layout.fillWidth: true
                 }
-                Label {
-                    // Layout.preferredWidth: 40
-                    // Layout.fillHeight: true
-                    // Layout.fillWidth: true
-                    height: parent.height
-                    width: parent.width * 0.2
 
-                    text: "Accès disque :"
+                Image {
+                    Layout.fillHeight: true
+                    Layout.margins: height/10
+                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeRepertoireUnitaire.svg")
+                    fillMode: Image.PreserveAspectFit
+                }
+
+                Item {
+                    Layout.preferredWidth: parent.height/2
+                }
+
+                Label {
+                    id: modalTitleText
+                    //width: parent.width
+                    Layout.preferredHeight: parent.height
+                    text: "Etat du système"
                     color: Constants.colorText
-                    font.pixelSize:  Math.min(height * 0.6, width * 0.15)
-                    horizontalAlignment: Text.AlignRight
+                    font.pixelSize: height*0.7
+                    //horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
-                Label {
-                    // Layout.preferredWidth: 40
-                    // Layout.fillHeight: true
-                    // Layout.fillWidth: true
-                    height: parent.height
-                    width: parent.width * 0.2
 
-                    text: getStateText(_diskState)
-                    color: getStateColor(_diskState)
-                    font.pixelSize:  Math.min(height * 0.6, width * 0.15)
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
+                Item {
+                    Layout.fillWidth: true
                 }
             }
         }
+
+        TableView {
+            id: componentsListView
+
+            clip: true
+            Layout.fillHeight: true
+            Layout.fillWidth: true
+            Layout.margins: 40
+            columnSpacing: 40
+            rowSpacing: 20
+
+            model: ApplicationController.componentsModel
+
+            ScrollBar.vertical: ScrollBar
+            {
+                policy: parent.contentHeight > parent.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+                width: parent.width*0.03
+                background: Rectangle {
+                    implicitWidth: parent.parent.width*0.01
+                    color: "#00000000"  // Couleur du fond de la scrollbar
+                    radius: 6
+                    border.color: Constants.colorText
+                }
+
+                contentItem: Rectangle {
+                    implicitWidth: parent.parent.width*0.01
+                    color: Constants.colorText  // Couleur de la barre de défilement
+                    radius: 6
+                }
+            }
+
+            delegate : Item {
+                implicitHeight: 80
+                implicitWidth: column === 0 ? icn.width : lbl.width
+
+                Image {
+                    id: icn
+                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + coreEtatSysteme.getTypeIcone(display))
+                    height: parent.height*0.8
+                    fillMode: Image.PreserveAspectFit
+                    visible: column === 0
+                    anchors.centerIn: parent
+                }
+
+                Label {            
+                    id: lbl    
+                    clip: true
+                    text: column === 2 ? getStateText(display) : column > 0 ? display : ""
+                    color: column === 2 ? getStateColor(display) : column > 0 ? Constants.colorText : ""
+                    font.pixelSize: parent.height
+                    elide: Label.ElideRight
+                }
+            }
+        }
+
     }
 
     // //Test ajout de antivirus et clear

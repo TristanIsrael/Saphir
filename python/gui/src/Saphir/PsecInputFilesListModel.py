@@ -94,10 +94,9 @@ class PsecInputFilesListModel(QAbstractListModel):
             elif (
                 fichier["type"] == "folder"
                 and fichier["name"] != self.LibelleDossierPrecedent
-                and False
             ):                
                 #qDebug("--non-sélectionné")
-                return True
+                return fichier["selected"] or fichier["inqueue"]
             
             return False        
         

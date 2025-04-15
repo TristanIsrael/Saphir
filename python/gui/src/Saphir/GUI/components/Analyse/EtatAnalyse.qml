@@ -185,16 +185,16 @@ Item {
                                     (Constants.isAnalysePlaying == false ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseActif.svg")
                                                                          : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg"))
                                     : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg")*/
-                        source: ApplicationController.analysisReady ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseActif.svg") : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg")
+                        source: ApplicationController.analysisReady && ApplicationController.systemState !== Enums.SystemState.AnalysisCompleted ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseActif.svg") : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg")
                         fillMode: Image.PreserveAspectFit
                         anchors.fill: parent
 
                         MouseArea {
                             anchors.fill: parent
                             onClicked: {
-                                //togglePlay(false)
-                                //Constants.pause()
-                                ApplicationController.stop_analysis()
+                                if(ApplicationController.systemState !== Enums.SystemState.AnalysisCompleted) {
+                                    ApplicationController.stop_analysis()
+                                }
                             }
                         }
                     }
@@ -205,7 +205,7 @@ Item {
                         color: "transparent"
                         radius: width/2
                         anchors.centerIn: buttonPause
-                        visible: !Constants.isAnalysePlaying
+                        visible: !Constants.isAnalysePlaying && ApplicationController.systemState !== Enums.SystemState.AnalysisCompleted
                         border {
                             width: buttonPause.width/10
                             color: Constants.colorBlue
@@ -232,15 +232,15 @@ Item {
                                         (Constants.isAnalysePlaying ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayActif.svg")
                                             : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg"))
                                     : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg")*/
-                        source: ApplicationController.analysisReady ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayActif.svg") : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg")
+                        source: ApplicationController.analysisReady && ApplicationController.systemState !== Enums.SystemState.AnalysisCompleted ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayActif.svg") : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg")
                         fillMode: Image.PreserveAspectFit
                         anchors.fill: parent
                         MouseArea {
                             anchors.fill: parent
                             onClicked: {
-                                //togglePlay(true)
-                                //Constants.play()
-                                ApplicationController.start_analysis()
+                                if(ApplicationController.systemState !== Enums.SystemState.AnalysisCompleted) {
+                                    ApplicationController.start_analysis()
+                                }
                             }
                         }
                     }
@@ -251,7 +251,7 @@ Item {
                         color: "transparent"
                         radius: width/2
                         anchors.centerIn: buttonPlay
-                        visible: Constants.isAnalysePlaying
+                        visible: Constants.isAnalysePlaying && ApplicationController.systemState !== Enums.SystemState.AnalysisCompleted
                         border {
                             width: buttonPlay.width/10
                             color: Constants.colorBlue

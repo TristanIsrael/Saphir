@@ -1,4 +1,4 @@
-from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer, QThread, QPoint, QCoreApplication
+from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer, QThread, QPoint, QCoreApplication, QMetaObject
 from PySide6.QtWidgets import QWidget
 from psec import Api, MqttFactory, Topics, MqttHelper, ComponentsHelper, Constantes, EtatComposant, MouseWheel
 from Enums import SystemState, AnalysisState, FileStatus
@@ -13,6 +13,7 @@ from QueueListModel import QueueListModel
 from QueueListProxyModel import QueueListProxyModel
 from AnalysisContoller import AnalysisController
 from DevModeHelper import DevModeHelper
+from ComponentsModel import ComponentsModel
 from libsaphir import ANTIVIRUS_NEEDED, DEVMODE
 from pathlib import Path
 from Enums import AnalysisMode
@@ -54,6 +55,7 @@ class ApplicationController(QObject):
     __queue_files_size = 0
     __disk_controller_ready = False
     __long_process_running = False
+    __system_used = False
     
     #__interfaceInputs = None
     #__main_window:QWidget
@@ -93,6 +95,9 @@ class ApplicationController(QObject):
     analysisModeChanged = Signal()
     remainingTimeChanged = Signal()
     longProcessRunningChanged = Signal()
+    systemUsedChanged = Signal()
+    systemMustBeReset = Signal()
+    doResetSystem = Signal()
 
     # IO
     _mouse_x = 0
@@ -114,6 +119,8 @@ class ApplicationController(QObject):
     # Fonctions publiques
     def __init__(self, parent=None):
         QObject.__init__(self, parent)
+
+        self.__components_model = ComponentsModel(self.componentsHelper_, self)
 
         self.inputFilesListModel_ = PsecInputFilesListModel(self.__inputFilesList, self)
         self.inputFilesListModel_.updateFilesList.connect(self.update_source_files_list)          
@@ -367,7 +374,6 @@ class ApplicationController(QObject):
 
     @Slot()
     def reset(self):
-        Api().info("User wants to reset the environment")
         self.stop_analysis()
 
         # Reset the environment means destroying and re-creating dirty VMs:
@@ -384,10 +390,26 @@ class ApplicationController(QObject):
 
         # Reset all models
         self.current_folder_ = "/"
+        self.__inputFilesList.clear()
+        self.__queuedFilesList.clear()
+        self.__queue_files_size = 0
+        self.__folders_to_query = 0
+        self.current_folder_ = "/"
+        self.currentFolderChanged.emit()
+        self.analysisController_.reset()
         self.queueListModel_.reset()
         self.inputFilesListModel_.reset()
         self.sourceName_ = ""
-        self.targetName_ = ""        
+        self.targetName_ = ""   
+        self.totalFilesCountChanged.emit(0)
+        self.cleanFilesCountChanged.emit(0)
+        self.infectedFilesCountChanged.emit(0)
+        self.analysingCountChanged.emit(0)  
+        self.queueSizeChanged.emit(0)  
+        self.globalProgressChanged.emit(0)
+        self.remainingTimeChanged.emit()
+        self.__long_process_running = False
+        self.longProcessRunningChanged.emit()
 
     @Slot()
     def set_long_process_running(self, running:bool):
@@ -418,6 +440,7 @@ class ApplicationController(QObject):
         self.analysisController_.resultsChanged.connect(self.__on_results_changed)
         self.analysisController_.fileUpdated.connect(self.queueListModel_.on_file_updated)
         self.analysisController_.stateChanged.connect(self.__on_analysis_state_changed)
+        self.analysisController_.systemUsed.connect(self.__on_system_used)
 
         self.logListModel_.listen_to_logs()
 
@@ -431,7 +454,10 @@ class ApplicationController(QObject):
         # Energy management
         self.__request_energy_state()        
 
-    def __on_message_received(self, topic:str, payload:dict):        
+    def __on_message_received(self, topic:str, payload:dict):      
+        # ATTENTION : cette fonction est appelée depuis un autre thread
+        # il faut envoyer des signaux pour communiquer avec les autres
+        # objets du système  
         #print("[ApplicationController] topic: {}".format(topic))
         #print("payload: {}".format(payload))
         
@@ -448,22 +474,32 @@ class ApplicationController(QObject):
             
             # Is it a source or a destination disk?
             if self.sourceName_ == "" and state == "connected":
-                # This a new source
-                self.sourceReady_ = True
-                self.sourceReadyChanged.emit(self.sourceReady_)
-                self.sourceName_ = disk
-                self.sourceNameChanged.emit(self.sourceName_)
+                # Une nouvelle source est connectée
+                # ce qui n'est pas autorisé si le système a été utilisé  
+                if self.__system_used:
+                    self.__system_state = SystemState.SystemMustBeReset
+                    self.systemMustBeReset.emit()
+                else:              
+                    self.sourceReady_ = True
+                    self.sourceReadyChanged.emit(self.sourceReady_)
+                    self.sourceName_ = disk
+                    self.sourceNameChanged.emit(self.sourceName_)
             elif self.sourceName_ != "" and self.sourceName_ == disk and state == "disconnected":
+                # La source a été déconnectée
                 self.sourceReady_ = False
                 self.sourceReadyChanged.emit(self.sourceReady_)
                 self.sourceName_ = ""
                 self.sourceNameChanged.emit(self.sourceName_)
+                QMetaObject.invokeMethod(self, "reset")
+                #self.reset()
             elif self.sourceName_ != "" and self.sourceName_ != disk and state == "connected":
+                # Une nouvelle source a été connectée                
                 self.targetReady_ = True
                 self.targetReadyChanged.emit(self.targetReady_)
                 self.targetName_ = disk
                 self.targetNameChanged.emit(disk)
             elif self.targetName_ != "" and self.targetName_ == disk and state == "disconnected":
+                # La destination a été déconnectée
                 self.targetReady_ = False
                 self.targetReadyChanged.emit(self.targetReady_)
                 self.targetName_ = ""
@@ -516,7 +552,8 @@ class ApplicationController(QObject):
             if len(components) > 0:
                 self.componentsHelper_.update(components)
                 self.__check_components_availability()     
-                self.__set_system_state(SystemState.SystemReady)        
+                self.__set_system_state(SystemState.SystemReady)  
+                self.__components_model.components_updated()
 
         elif topic == "{}/response".format(Topics.COPY_FILE):
             if not MqttHelper.check_payload(payload, ["filepath", "status", "footprint"]):
@@ -676,7 +713,7 @@ class ApplicationController(QObject):
         self.remainingTimeChanged.emit()
 
         if self.__global_progress() == 100:
-            self.__set_system_state(SystemState.SystemWaitingForUserAction)
+            self.__set_system_state(SystemState.AnalysisCompleted)
 
 
     def __on_disk_controller_state_changed(self, ready:bool):
@@ -735,7 +772,7 @@ class ApplicationController(QObject):
 
 
         if rate > 0:
-            remaining_time = remaining / rate
+            remaining_time = round(remaining / rate, 0)
         else:
             remaining_time = float('inf')
 
@@ -769,6 +806,11 @@ class ApplicationController(QObject):
         else:
             self.showMessage.emit("Shutdown", "The system refuses to shut down", True, False)
 
+    def __on_system_used(self):
+        self.__system_used = True
+        self.__inputFilesList.clear()
+        self.inputFilesListModel_.reset()
+        self.systemUsedChanged.emit()
 
     def __enqueue_all_files_recursively(self, path = "/"):
         # On met en queue le répertoire courant, puis tous les sous-répertoires récursivement
@@ -843,7 +885,6 @@ class ApplicationController(QObject):
         return self.logListModel_        
     
     def __get_system_state(self):
-        print(self.__system_state)
         return self.__system_state.value
     
     def __set_system_state(self, state:SystemState):
@@ -983,6 +1024,12 @@ class ApplicationController(QObject):
     def __is_long_process_running(self):
         return self.__long_process_running
 
+    def __is_system_used(self):
+        return self.__system_used
+
+    def __get_components_model(self):
+        return self.__components_model
+
     '''def set_main_window(self, window:QWidget):
         self.__main_window = window
         self.mousePointer = MousePointer(window.contentItem())
@@ -1027,3 +1074,6 @@ class ApplicationController(QObject):
     plugged = Property(bool, __plugged, notify=pluggedChanged)
     analysisMode = Property(int, fget= __get_analysis_mode, fset= __set_analysis_mode, notify= analysisModeChanged)
     longProcessRunning = Property(bool, __is_long_process_running, notify=longProcessRunningChanged)
+    systemUsed = Property(bool, __is_system_used, notify=systemUsedChanged)
+    componentsModel = Property(QObject, __get_components_model, constant=True)
+    

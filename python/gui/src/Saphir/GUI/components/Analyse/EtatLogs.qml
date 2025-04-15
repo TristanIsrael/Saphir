@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Qt5Compat.GraphicalEffects
 import net.alefbet
 import "../../imports"
 
@@ -18,6 +19,13 @@ Rectangle {
         source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "Modale.svg")
         fillMode: Image.Stretch
         anchors.fill: parent
+    }
+
+    DropShadow {
+        anchors.fill: background
+        source: background
+        radius: 20
+        color: "#333"
     }
 
     Image {
@@ -45,7 +53,6 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: modalContentContainer
-
 
         Rectangle {
             id: modalTitleHolder

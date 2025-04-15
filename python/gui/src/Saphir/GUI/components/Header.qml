@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Qt5Compat.GraphicalEffects
 import "../imports"
 import net.alefbet
 
@@ -80,23 +81,29 @@ Rectangle
 
         Label
         {
-            color: Constants.currentColorMode == Constants.ColorMode.STEALTH ? "1E1E1E" : "red"
+            id: lblClassification
+            color: Constants.currentColorMode == Constants.ColorMode.STEALTH ? "1E1E1E" : Constants.colorRed
             text: "Diffusion Restreinte"
-            style: Text.Outline
-            styleColor: "#999"
+            font.pixelSize: height *0.5
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 60
-            Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft
-            font.pixelSize: height * fontSize
-            font.bold: true
+            Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft            
             font.capitalization: Font.AllUppercase
             verticalAlignment: Text.AlignVCenter
+            font.styleName: "Semibold"
+            font.weight: Font.ExtraBold
             horizontalAlignment: Text.AlignLeft
         }
 
-        RowLayout {
+        DropShadow {
+            anchors.fill: lblClassification
+            samples: 30
+            color: "white" //Constants.colorRed
+            source: lblClassification
+        }
 
+        RowLayout {
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 10
