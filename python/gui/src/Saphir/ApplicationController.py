@@ -56,6 +56,7 @@ class ApplicationController(QObject):
     __disk_controller_ready = False
     __long_process_running = False
     __system_used = False
+    __system_information = dict()
     
     #__interfaceInputs = None
     #__main_window:QWidget
@@ -98,6 +99,7 @@ class ApplicationController(QObject):
     systemUsedChanged = Signal()
     systemMustBeReset = Signal()
     doResetSystem = Signal()
+    systemInformationChanged = Signal()
 
     # IO
     _mouse_x = 0
@@ -445,11 +447,13 @@ class ApplicationController(QObject):
         self.logListModel_.listen_to_logs()
 
         Api().notify_gui_ready()  
-        Api().subscribe("{}/response".format(Topics.COPY_FILE))
-        Api().subscribe("{}/response".format(Topics.ENERGY_STATE))
+        Api().subscribe(f"{Topics.COPY_FILE}/response")
+        Api().subscribe(f"{Topics.ENERGY_STATE}/response")
+        Api().subscribe(f"{Topics.SYSTEM_INFO}/response")
 
         self.__set_system_state(SystemState.SystemReady)
         Api().discover_components()   
+        Api().request_system_info()
 
         # Energy management
         self.__request_energy_state()        
@@ -601,7 +605,14 @@ class ApplicationController(QObject):
             self.battery_level_ = payload.get("battery_level", 0)
             self.batteryLevelChanged.emit()
             self.plugged_ = bool(payload.get("plugged", 0))
-            self.pluggedChanged.emit()        
+            self.pluggedChanged.emit()      
+
+        elif topic == f"{Topics.SYSTEM_INFO}/response":
+            if not MqttHelper.check_payload(payload, ["core", "system"]):
+                return
+            
+            self.__system_information = payload
+            self.systemInformationChanged.emit()
 
 
     def __is_file_in_folder(self, filepath:str, folder:str) -> bool:
@@ -1030,6 +1041,9 @@ class ApplicationController(QObject):
     def __get_components_model(self):
         return self.__components_model
 
+    def __get_system_information(self):
+        return self.__system_information
+
     '''def set_main_window(self, window:QWidget):
         self.__main_window = window
         self.mousePointer = MousePointer(window.contentItem())
@@ -1076,4 +1090,4 @@ class ApplicationController(QObject):
     longProcessRunning = Property(bool, __is_long_process_running, notify=longProcessRunningChanged)
     systemUsed = Property(bool, __is_system_used, notify=systemUsedChanged)
     componentsModel = Property(QObject, __get_components_model, constant=True)
-    
+    systemInformation = Property(dict, __get_system_information, notify=systemInformationChanged)

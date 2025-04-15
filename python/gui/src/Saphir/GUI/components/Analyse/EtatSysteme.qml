@@ -193,6 +193,34 @@ Rectangle {
             }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 20
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            Label {
+                id: lblAppInfo
+                color: Constants.colorText
+                font.pixelSize: 24
+                text: "Saphir version " +Application.version
+            }
+
+            Label {
+                id: lblSystemInfo
+                color: Constants.colorText
+                font.pixelSize: 24
+                text: "PSEC version " +ApplicationController.systemInformation["core"]["version"]
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+        }
+
     }
 
     // //Test ajout de antivirus et clear
