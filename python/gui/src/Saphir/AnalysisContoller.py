@@ -48,6 +48,9 @@ class AnalysisController(QObject):
         Api().subscribe("{}/status".format(TOPIC_ANALYSE))
 
 
+    def set_source_disk(self, source_disk:str):
+        self.__source_disk = source_disk
+
     def start_analysis(self, source_name:str) -> None:
         Api().info("Starting the analysis", "AnalysisController")
 

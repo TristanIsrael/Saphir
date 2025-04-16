@@ -9,7 +9,7 @@ Rectangle {
 
     Image {
         id: background
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "Modale.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "Modale.svg")
         width: parent.width
         height: parent.height
         fillMode: Image.Stretch
@@ -18,7 +18,7 @@ Rectangle {
 
     Image {
         id: returnButton
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "FermerModale.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "FermerModale.svg")
         height: parent.height * 0.12
         width: parent.width * 0.075
         anchors.bottom: parent.bottom
@@ -89,7 +89,7 @@ Rectangle {
                     height: parent.height
                     width: parent.width * 0.2
                     Image {
-                        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayActif.svg")
+                        source: Qt.resolvedUrl(Constants.colorModePath  + "PlayActif.svg")
                         width:parent.width
                         height:parent.height
                         fillMode: Image.PreserveAspectFit
@@ -121,7 +121,7 @@ Rectangle {
                     height: parent.height
                     width: parent.width * 0.2
                     Image {
-                        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayActif.svg")
+                        source: Qt.resolvedUrl(Constants.colorModePath  + "PlayActif.svg")
                         width:parent.width
                         height:parent.height
                         fillMode: Image.PreserveAspectFit
@@ -153,7 +153,7 @@ Rectangle {
                     height: parent.height
                     width: parent.width * 0.2
                     Image {
-                        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayActif.svg")
+                        source: Qt.resolvedUrl(Constants.colorModePath  + "PlayActif.svg")
                         width:parent.width
                         height:parent.height
                         fillMode: Image.PreserveAspectFit
@@ -185,7 +185,7 @@ Rectangle {
                     height: parent.height
                     width: parent.width * 0.2
                     Image {
-                        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayActif.svg")
+                        source: Qt.resolvedUrl(Constants.colorModePath  + "PlayActif.svg")
                         width: parent.width
                         height: parent.height
                         fillMode: Image.PreserveAspectFit

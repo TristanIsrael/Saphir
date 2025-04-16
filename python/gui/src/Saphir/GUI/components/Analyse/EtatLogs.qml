@@ -16,7 +16,7 @@ Rectangle {
         id: background
         width: parent.width
         height: parent.height
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "Modale.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "Modale.svg")
         fillMode: Image.Stretch
         anchors.fill: parent
     }
@@ -30,7 +30,7 @@ Rectangle {
 
     Image {
         id: returnButton
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "FermerModale.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "FermerModale.svg")
         height: parent.height * 0.12
         width: parent.width * 0.075
         anchors.bottom: parent.bottom
@@ -78,7 +78,7 @@ Rectangle {
                 Image {
                     Layout.fillHeight: true
                     Layout.margins: height/10
-                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeRepertoireUnitaire.svg")
+                    source: Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireUnitaire.svg")
                     fillMode: Image.PreserveAspectFit
                 }
 

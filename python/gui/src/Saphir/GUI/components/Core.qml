@@ -14,7 +14,7 @@ Rectangle {
 
     Image {
         anchors.fill: parent
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LigneContour.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "LigneContour.svg")
         //fillMode: Image.PreserveAspectCrop
     }
 

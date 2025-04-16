@@ -32,7 +32,7 @@ Item {
         anchors.fill: parent
 
         Image {
-            source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BarreSeparationAnalyse.svg")
+            source: Qt.resolvedUrl(Constants.colorModePath  + "BarreSeparationAnalyse.svg")
             Layout.alignment: Qt.AlignHCenter
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -46,8 +46,8 @@ Item {
             color: "transparent"
             Image {
                 anchors.fill: parent
-                source: !modeSelected ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BoutonScanAutoActive.svg")
-                                      : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BoutonScanAutoDesactive.svg")
+                source: !modeSelected ? Qt.resolvedUrl(Constants.colorModePath  + "BoutonScanAutoActive.svg")
+                                      : Qt.resolvedUrl(Constants.colorModePath  + "BoutonScanAutoDesactive.svg")
                 fillMode: Image.PreserveAspectFit
                 MouseArea {
                     anchors.fill: parent
@@ -64,8 +64,8 @@ Item {
             color: "transparent"
             Image {
                 anchors.fill: parent
-                source: modeSelected ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BoutonScanSelectActive.svg")
-                                     : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BoutonScanSelectDesactive.svg")
+                source: modeSelected ? Qt.resolvedUrl(Constants.colorModePath  + "BoutonScanSelectActive.svg")
+                                     : Qt.resolvedUrl(Constants.colorModePath  + "BoutonScanSelectDesactive.svg")
                 fillMode: Image.PreserveAspectFit
 
                 //Layout.alignment: Qt.AlignCenter
@@ -182,10 +182,10 @@ Item {
                     Image {
                         id: buttonPause
                         /*source: ApplicationController.analysisReady ?
-                                    (Constants.isAnalysePlaying == false ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseActif.svg")
-                                                                         : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg"))
-                                    : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg")*/
-                        source: ApplicationController.analysisReady && ApplicationController.systemState !== Enums.SystemState.AnalysisCompleted ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseActif.svg") : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PauseInactif.svg")
+                                    (Constants.isAnalysePlaying == false ? Qt.resolvedUrl(Constants.colorModePath  + "PauseActif.svg")
+                                                                         : Qt.resolvedUrl(Constants.colorModePath  + "PauseInactif.svg"))
+                                    : Qt.resolvedUrl(Constants.colorModePath  + "PauseInactif.svg")*/
+                        source: ApplicationController.analysisReady && ApplicationController.systemState !== Enums.SystemState.AnalysisCompleted ? Qt.resolvedUrl(Constants.colorModePath  + "PauseActif.svg") : Qt.resolvedUrl(Constants.colorModePath  + "PauseInactif.svg")
                         fillMode: Image.PreserveAspectFit
                         anchors.fill: parent
 
@@ -229,10 +229,10 @@ Item {
                     Image {
                         id: buttonPlay
                         /*source: ApplicationController.analysisReady ?
-                                        (Constants.isAnalysePlaying ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayActif.svg")
-                                            : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg"))
-                                    : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg")*/
-                        source: ApplicationController.analysisReady && ApplicationController.systemState !== Enums.SystemState.AnalysisCompleted ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayActif.svg") : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "PlayInactif.svg")
+                                        (Constants.isAnalysePlaying ? Qt.resolvedUrl(Constants.colorModePath  + "PlayActif.svg")
+                                            : Qt.resolvedUrl(Constants.colorModePath  + "PlayInactif.svg"))
+                                    : Qt.resolvedUrl(Constants.colorModePath  + "PlayInactif.svg")*/
+                        source: ApplicationController.analysisReady && ApplicationController.systemState !== Enums.SystemState.AnalysisCompleted ? Qt.resolvedUrl(Constants.colorModePath  + "PlayActif.svg") : Qt.resolvedUrl(Constants.colorModePath  + "PlayInactif.svg")
                         fillMode: Image.PreserveAspectFit
                         anchors.fill: parent
                         MouseArea {
@@ -262,7 +262,7 @@ Item {
         }
 
         Image {
-            source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "BarreSeparationProgression.svg")
+            source: Qt.resolvedUrl(Constants.colorModePath  + "BarreSeparationProgression.svg")
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.alignment: Qt.AlignHCenter

@@ -421,6 +421,7 @@ class ApplicationController(QObject):
         self.queueListModel_.reset()
         self.inputFilesListModel_.reset()
         self.sourceName_ = ""
+        self.analysisController_.set_source_disk("")
         self.targetName_ = ""   
         self.totalFilesCountChanged.emit(0)
         self.cleanFilesCountChanged.emit(0)
@@ -506,12 +507,14 @@ class ApplicationController(QObject):
                     self.sourceReady_ = True
                     self.sourceReadyChanged.emit(self.sourceReady_)
                     self.sourceName_ = disk
+                    self.analysisController_.set_source_disk(disk)
                     self.sourceNameChanged.emit(self.sourceName_)
             elif self.sourceName_ != "" and self.sourceName_ == disk and state == "disconnected":
                 # La source a été déconnectée
                 self.sourceReady_ = False
                 self.sourceReadyChanged.emit(self.sourceReady_)
                 self.sourceName_ = ""
+                self.analysisController_.set_source_disk("")
                 self.sourceNameChanged.emit(self.sourceName_)
                 QMetaObject.invokeMethod(self, "reset")
                 #self.reset()
@@ -530,6 +533,7 @@ class ApplicationController(QObject):
             if self.targetReady_ == True and self.sourceReady_ == False:
                 # If there is only one disk connected it becomes the source
                 self.sourceName_ = self.targetName_
+                self.analysisController_.set_source_disk(self.targetName_)
                 self.targetName_ = ""
                 self.sourceReady_ = True
                 self.targetReady_ = False
@@ -557,6 +561,7 @@ class ApplicationController(QObject):
                 self.sourceReady_ = True
                 self.sourceReadyChanged.emit(self.sourceReady_)
                 self.sourceName_ = disk
+                self.analysisController_.set_source_disk(disk)
                 self.sourceNameChanged.emit(self.sourceName_)            
                 Api().info("The source disk name is {}".format(self.sourceName_))
                 self.__set_system_state(SystemState.SystemGettingFilesList)

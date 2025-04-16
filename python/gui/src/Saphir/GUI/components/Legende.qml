@@ -13,7 +13,7 @@ RowLayout
     //anchors.horizontalCenter: parent.horizontalCenter
     Image
     {
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LegendeSain.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "LegendeSain.svg")
         fillMode: Image.PreserveAspectFit
         Layout.fillHeight: true
     }
@@ -27,7 +27,7 @@ RowLayout
         Layout.rightMargin: parent.width * margin
     }
     Image {
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LegendeNonTraite.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "LegendeNonTraite.svg")
         fillMode: Image.PreserveAspectFit
         Layout.fillHeight: true
     }
@@ -41,7 +41,7 @@ RowLayout
         Layout.rightMargin: parent.width * margin
     }
     Image {
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LegendeInfecte.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "LegendeInfecte.svg")
         fillMode: Image.PreserveAspectFit
         Layout.fillHeight: true
     }
@@ -55,7 +55,7 @@ RowLayout
         Layout.rightMargin: parent.width * margin
     }
     /*Image {
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LegendeEnCoursAnalyse.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "LegendeEnCoursAnalyse.svg")
         fillMode: Image.PreserveAspectFit
         Layout.fillHeight: true
     }

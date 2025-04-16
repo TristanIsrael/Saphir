@@ -18,7 +18,7 @@ Item
     }
 
     /*Image {
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "EncartSelectionLuminosite.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "EncartSelectionLuminosite.svg")
         anchors.fill: parent
     }*/
     Rectangle {
@@ -42,8 +42,8 @@ Item
             Layout.fillHeight: true
             Layout.fillWidth: true
             Image {
-                source : selectedMode == 0 ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "ModeEcranPCActif.svg")
-                                           : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "ModeEcranPCInactif.svg")
+                source : selectedMode == 0 ? Qt.resolvedUrl(Constants.colorModePath  + "ModeEcranPCActif.svg")
+                                           : Qt.resolvedUrl(Constants.colorModePath  + "ModeEcranPCInactif.svg")
                 anchors.horizontalCenter: parent.horizontalCenter
                 fillMode: Image.PreserveAspectFit
                 height:parent.height
@@ -59,8 +59,8 @@ Item
             Layout.fillHeight: true
             Layout.fillWidth: true
             Image {
-                source: selectedMode == 1 ?  Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "ModePCPortableActif.svg")
-                                          :  Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "ModePCPortableInactif.svg")
+                source: selectedMode == 1 ?  Qt.resolvedUrl(Constants.colorModePath  + "ModePCPortableActif.svg")
+                                          :  Qt.resolvedUrl(Constants.colorModePath  + "ModePCPortableInactif.svg")
                 fillMode: Image.PreserveAspectFit
                 height:parent.height
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -78,8 +78,8 @@ Item
             Image {
                 //source: selectedMode == 2 ? "../images/Icone Mode Mobile-UP.svg"
                 //                          : "../images/Icone Mode Mobile.svg"
-                source: selectedMode == 2 ?  Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "ModeVehiculeActif.svg")
-                                          :  Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "ModeVehiculeInactif.svg")
+                source: selectedMode == 2 ?  Qt.resolvedUrl(Constants.colorModePath  + "ModeVehiculeActif.svg")
+                                          :  Qt.resolvedUrl(Constants.colorModePath  + "ModeVehiculeInactif.svg")
                 fillMode: Image.PreserveAspectFit
                 height:parent.height
                 anchors.horizontalCenter: parent.horizontalCenter

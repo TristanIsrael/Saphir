@@ -33,7 +33,7 @@ Rectangle {
 
     Image {
         id: background
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "FondEcran.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "FondEcran.svg")
         width: parent.width
         height: parent.height
         fillMode: Image.PreserveAspectCrop
@@ -49,7 +49,7 @@ Rectangle {
 
         Image {
             id: pattern
-            source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "MotifHexagonal.svg")
+            source: Qt.resolvedUrl(Constants.colorModePath  + "MotifHexagonal.svg")
             width: parent.width
             height: parent.height
             fillMode: Image.PreserveAspectCrop
@@ -123,8 +123,8 @@ Rectangle {
 
             Image {
                 id: activeSystemButton
-                source: systemState.visible ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "EtatSystemeActive.svg")
-                                            : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "EtatSystemeActif.svg")
+                source: systemState.visible ? Qt.resolvedUrl(Constants.colorModePath  + "EtatSystemeActive.svg")
+                                            : Qt.resolvedUrl(Constants.colorModePath  + "EtatSystemeActif.svg")
                 fillMode: Image.PreserveAspectFit
                 anchors.horizontalCenter: parent.left
                 anchors.verticalCenter: parent.top
@@ -140,8 +140,8 @@ Rectangle {
 
             Image {
                 id: activeJournalButton
-                source: logsState.visible ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "JournalActive.svg")
-                                          : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "JournalActif.svg")
+                source: logsState.visible ? Qt.resolvedUrl(Constants.colorModePath  + "JournalActive.svg")
+                                          : Qt.resolvedUrl(Constants.colorModePath  + "JournalActif.svg")
                 fillMode: Image.PreserveAspectFit
                 anchors.horizontalCenter: parent.left
                 anchors.verticalCenter: parent.top
@@ -160,8 +160,8 @@ Rectangle {
                 property bool isRestartButtonActive: false
 
                 id: restartButton
-                source: isRestartButtonActive ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "RedemarrerActive.svg")
-                                              : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "RedemarrerActif.svg")
+                source: isRestartButtonActive ? Qt.resolvedUrl(Constants.colorModePath  + "RedemarrerActive.svg")
+                                              : Qt.resolvedUrl(Constants.colorModePath  + "RedemarrerActif.svg")
                 fillMode: Image.PreserveAspectFit
                 anchors.horizontalCenter: parent.left
                 anchors.verticalCenter: parent.top
@@ -182,7 +182,7 @@ Rectangle {
                 Image {
                     id: confirmRestartButton
                     visible: false
-                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "ConfirmerRedemarrer.svg")
+                    source: Qt.resolvedUrl(Constants.colorModePath  + "ConfirmerRedemarrer.svg")
                     fillMode: Image.PreserveAspectFit
                     horizontalAlignment: Image.AlignLeft
                     anchors.left: parent.right
@@ -211,8 +211,8 @@ Rectangle {
                 property bool isExitButtonActive: false
 
                 id: exitButton
-                source: isExitButtonActive ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "QuitterActive.svg")
-                                           : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "QuitterActif.svg")
+                source: isExitButtonActive ? Qt.resolvedUrl(Constants.colorModePath  + "QuitterActive.svg")
+                                           : Qt.resolvedUrl(Constants.colorModePath  + "QuitterActif.svg")
                 fillMode: Image.PreserveAspectFit
                 anchors.horizontalCenter: parent.left
                 anchors.verticalCenter: parent.top
@@ -232,7 +232,7 @@ Rectangle {
 
                 Image {
                     id: confirmExitButton
-                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "ConfirmerQuitter.svg")
+                    source: Qt.resolvedUrl(Constants.colorModePath  + "ConfirmerQuitter.svg")
                     visible: false
                     fillMode: Image.PreserveAspectFit
                     horizontalAlignment: Image.AlignLeft
@@ -268,8 +268,8 @@ Rectangle {
 
                 Image {
                     id: bigFileListButton
-                    source: bigFileList.visible ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "EtirerConteneurGaucheActive.svg")
-                                                : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "EtirerConteneurGaucheActif.svg")
+                    source: bigFileList.visible ? Qt.resolvedUrl(Constants.colorModePath  + "EtirerConteneurGaucheActive.svg")
+                                                : Qt.resolvedUrl(Constants.colorModePath  + "EtirerConteneurGaucheActif.svg")
                     fillMode: Image.PreserveAspectFit
                     anchors.fill: parent
 
@@ -301,8 +301,8 @@ Rectangle {
                         id: copySaneFilesButton
                         anchors.fill: parent
                         Layout.alignment: Qt.AlignTop
-                        source: Constants.isCopyingSaneFiles ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CopierFichiersActive.svg")
-                                                                 : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CopierFichiersActif.svg")
+                        source: Constants.isCopyingSaneFiles ? Qt.resolvedUrl(Constants.colorModePath  + "CopierFichiersActive.svg")
+                                                                 : Qt.resolvedUrl(Constants.colorModePath  + "CopierFichiersActif.svg")
                         fillMode: Image.PreserveAspectFit
 
                         MouseArea {
@@ -373,8 +373,8 @@ Rectangle {
 
     Image {
         id: helpButton
-        source: helper.visible  ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "AideActive.svg")
-                                : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "AideActif.svg")
+        source: helper.visible  ? Qt.resolvedUrl(Constants.colorModePath  + "AideActive.svg")
+                                : Qt.resolvedUrl(Constants.colorModePath  + "AideActif.svg")
         fillMode: Image.PreserveAspectFit
         anchors {
             right: parent.right
@@ -453,7 +453,7 @@ Rectangle {
             color: "transparent"
             Image {
                 anchors.fill: parent
-                source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "ContainerSupportSortie.svg")
+                source: Qt.resolvedUrl(Constants.colorModePath  + "ContainerSupportSortie.svg")
                 fillMode: Image.Stretch
             }
             Label {
@@ -476,7 +476,7 @@ Rectangle {
             color: "transparent"
             Image {
                 anchors.fill: parent
-                source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "ContainerSupportSortie.svg")
+                source: Qt.resolvedUrl(Constants.colorModePath  + "ContainerSupportSortie.svg")
                 fillMode: Image.Stretch
             }
             Label {
@@ -499,7 +499,7 @@ Rectangle {
             color: "transparent"
             Image {
                 anchors.fill: parent
-                source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "ContainerSupportSortie.svg")
+                source: Qt.resolvedUrl(Constants.colorModePath  + "ContainerSupportSortie.svg")
                 fillMode: Image.Stretch
             }
             Label {

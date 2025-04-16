@@ -21,8 +21,8 @@ Rectangle {
     }
 
     Image {
-        source: selected ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "SupportSortieConnecte.svg")
-                         : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "SupportSortieNonConnecte.svg")
+        source: selected ? Qt.resolvedUrl(Constants.colorModePath  + "SupportSortieConnecte.svg")
+                         : Qt.resolvedUrl(Constants.colorModePath  + "SupportSortieNonConnecte.svg")
         fillMode: Image.PreserveAspectFit
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.verticalCenter: parent.verticalCenter

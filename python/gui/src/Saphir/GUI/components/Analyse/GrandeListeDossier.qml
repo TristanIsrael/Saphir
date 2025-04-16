@@ -74,7 +74,7 @@ Rectangle {
 
     Image {
         id: background
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "Modale.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "Modale.svg")
         width: parent.width
         height: parent.height
         fillMode: Image.Stretch
@@ -83,7 +83,7 @@ Rectangle {
 
     Image {
         id: returnButton
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "FermerModale.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "FermerModale.svg")
         height: parent.height * 0.12
         width: parent.width * 0.075
         anchors.bottom: parent.bottom
@@ -156,8 +156,8 @@ Rectangle {
                     //color: "transparent"
 
                     Image {
-                        source: idFolderSelected === backId ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeRepertoireUnitaireActive.svg")
-                                                                  : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeRepertoireUnitaireActif.svg")
+                        source: idFolderSelected === backId ? Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireUnitaireActive.svg")
+                                                                  : Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireUnitaireActif.svg")
                         width:height
                         height:parent.height
                         //anchors.centerIn: parent
@@ -210,7 +210,7 @@ Rectangle {
                 Image {
                     Layout.preferredWidth: 50
                     anchors.verticalCenter: parent.verticalCenter
-                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeRepertoireParent.svg")
+                    source: Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireParent.svg")
                     fillMode: Image.PreserveAspectFit                    
 
                     MouseArea {
@@ -292,11 +292,11 @@ Rectangle {
                         Layout.preferredHeight: parent.height                        
 
                         //anchors.verticalCenter: parent.verticalCenter
-                        /*source: type === "file" ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "FichierActif.svg")
-                                                        : type === "folder" && backId !== idParentFolder ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeRepertoireUnitaire.svg")
-                                                                                                                    : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeRepertoireParent.svg")*/
-                        source: type === "file" ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "FichierActif.svg")
-                                                : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeRepertoireUnitaire.svg")                                                                           
+                        /*source: type === "file" ? Qt.resolvedUrl(Constants.colorModePath  + "FichierActif.svg")
+                                                        : type === "folder" && backId !== idParentFolder ? Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireUnitaire.svg")
+                                                                                                                    : Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireParent.svg")*/
+                        source: type === "file" ? Qt.resolvedUrl(Constants.colorModePath  + "FichierActif.svg")
+                                                : Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireUnitaire.svg")                                                                           
                         fillMode: Image.PreserveAspectFit
                         
                         MouseArea {
@@ -344,7 +344,7 @@ Rectangle {
                         background: Item {}
 
                         contentItem: Image {
-                            source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherActive.svg")
+                            source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherActive.svg")
                             anchors.centerIn: parent
                             fillMode: Image.PreserveAspectFit
                             anchors.fill: parent
@@ -352,7 +352,7 @@ Rectangle {
 
                         indicator: Image {
                             visible: parent.checked
-                            source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheActif.svg")
+                            source: Qt.resolvedUrl(Constants.colorModePath  + "CocheActif.svg")
                             width: parent.width*0.6
                             height: width
                             fillMode: Image.PreserveAspectFit

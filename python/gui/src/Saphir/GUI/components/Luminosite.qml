@@ -34,7 +34,7 @@ Item {
     }
 
     /*Image {
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "EncartSelectionLuminosite.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "EncartSelectionLuminosite.svg")
         anchors.fill: parent
     }*/
     Rectangle {
@@ -59,8 +59,8 @@ Item {
             Layout.fillHeight: true
             Image {
                 id: iconeClair
-                source: selectedMode == 0 ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LuminositeClairActif.svg")
-                                          : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LuminositeClairInactif.svg")
+                source: selectedMode == 0 ? Qt.resolvedUrl(Constants.colorModePath  + "LuminositeClairActif.svg")
+                                          : Qt.resolvedUrl(Constants.colorModePath  + "LuminositeClairInactif.svg")
                 anchors.horizontalCenter: parent.horizontalCenter
                 fillMode: Image.PreserveAspectFit
                 height:parent.height
@@ -75,8 +75,8 @@ Item {
             Layout.fillHeight: true
             Image {
                 id: iconeSombre
-                source: selectedMode == 1 ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LuminositeSombreActif.svg")
-                                          : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LuminositeSombreInactif.svg")
+                source: selectedMode == 1 ? Qt.resolvedUrl(Constants.colorModePath  + "LuminositeSombreActif.svg")
+                                          : Qt.resolvedUrl(Constants.colorModePath  + "LuminositeSombreInactif.svg")
                 anchors.horizontalCenter: parent.horizontalCenter
                 fillMode: Image.PreserveAspectFit
                 height:parent.height
@@ -91,8 +91,8 @@ Item {
             Layout.fillHeight: true
             Image {
                 id: iconeFurtif
-                source: selectedMode == 2 ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LuminositeFurtifActif.svg")
-                                          : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LuminositeFurtifInactif.svg")
+                source: selectedMode == 2 ? Qt.resolvedUrl(Constants.colorModePath  + "LuminositeFurtifActif.svg")
+                                          : Qt.resolvedUrl(Constants.colorModePath  + "LuminositeFurtifInactif.svg")
                 anchors.horizontalCenter: parent.horizontalCenter
                 fillMode: Image.PreserveAspectFit
                 height:parent.height
@@ -107,8 +107,8 @@ Item {
             Layout.fillHeight: true
             Image {
                 id: iconeAuto
-                source: selectedMode == 3 ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LuminositeAutoActif.svg")
-                                          : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "LuminositeAutoInactif.svg")
+                source: selectedMode == 3 ? Qt.resolvedUrl(Constants.colorModePath  + "LuminositeAutoActif.svg")
+                                          : Qt.resolvedUrl(Constants.colorModePath  + "LuminositeAutoInactif.svg")
                 anchors.horizontalCenter: parent.horizontalCenter
                 fillMode: Image.PreserveAspectFit
                 height:parent.height

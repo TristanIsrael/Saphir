@@ -85,7 +85,7 @@ Rectangle {
                     ctx.fillStyle = Constants.currentColorMode !== Constants.ColorMode.STEALTH ? Constants.currentColorMode === Constants.ColorMode.DARK ? "#A1C9F2"
                                                                                                                                                                          : "#1677E6"
                                                                                                        : Constants.colorBlue
-                    ctx.font = "bold " + textPixelSize + "px Arial"
+                    ctx.font = "bold " + textPixelSize + "px sans-serif"
                     ctx.textAlign = "center"
                     ctx.textBaseline = "middle"
                     ctx.fillText(fichierAnalyse > 0 ? fichierAnalyse : "",
@@ -135,7 +135,7 @@ Rectangle {
                     var textY = height * 0.5 + textRadius * Math.sin(middleAngle)
                     //Dessiner le texte
                     ctx.fillStyle = Constants.currentColorMode !== Constants.ColorMode.STEALTH ? "#00D400" : Constants.colorGreen
-                    ctx.font = "bold " + textPixelSize + "px Arial"
+                    ctx.font = "bold " + textPixelSize + "px sans-serif"
                     ctx.textAlign = "center"
                     ctx.textBaseline = "middle"
                     ctx.fillText(fichierSain > 0 ? fichierSain : "",
@@ -187,7 +187,7 @@ Rectangle {
                     var textY = height * 0.5 + textRadius * Math.sin(middleAngle)
                     //Dessiner le texte
                     ctx.fillStyle = Constants.currentColorMode !== Constants.ColorMode.STEALTH ? "#A61317" : Constants.colorRed
-                    ctx.font = "bold " + textPixelSize + "px Arial"
+                    ctx.font = "bold " + textPixelSize + "px sans-serif"
                     ctx.textAlign = "center"
                     ctx.textBaseline = "middle"
                     ctx.fillText(fichierInfecte > 0 ? fichierInfecte : "",
@@ -239,7 +239,7 @@ Rectangle {
                     var textY = height * 0.5 + textRadius * Math.sin(middleAngle)
                     //Dessiner le texte
                     ctx.fillStyle = Constants.currentColorMode !== Constants.ColorMode.STEALTH ? "#58687D" : Constants.colorText
-                    ctx.font = "bold " + textPixelSize + "px Arial"
+                    ctx.font = "bold " + textPixelSize + "px sans-serif"
                     ctx.textAlign = "center"
                     ctx.textBaseline = "middle"
                     ctx.fillText(fichierNonAnalyse > 0 ? fichierNonAnalyse : "",

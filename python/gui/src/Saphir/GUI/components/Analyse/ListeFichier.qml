@@ -57,7 +57,7 @@ Rectangle {
 
     Image {
         anchors.fill: parent
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "ContainerSupportEntree.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "ContainerSupportEntree.svg")
     }
 
     function getTextColor(state)
@@ -143,7 +143,7 @@ Rectangle {
                 background: Item {}
 
                 contentItem: Image {
-                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherActive.svg")
+                    source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherActive.svg")
                     //anchors.centerIn: parent
                     fillMode: Image.PreserveAspectFit
                     anchors.fill: parent
@@ -151,7 +151,7 @@ Rectangle {
 
                 indicator: Image {
                     visible: parent.checked
-                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheActif.svg")
+                    source: Qt.resolvedUrl(Constants.colorModePath  + "CocheActif.svg")
                     width: parent.width*0.6
                     height: width
                     fillMode: Image.PreserveAspectFit
@@ -183,7 +183,7 @@ Rectangle {
                 background: Item {}
 
                 contentItem: Image {
-                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherActive.svg")
+                    source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherActive.svg")
                     //anchors.centerIn: parent
                     fillMode: Image.PreserveAspectFit
                     anchors.fill: parent
@@ -191,7 +191,7 @@ Rectangle {
 
                 indicator: Image {
                     visible: parent.checked
-                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheActif.svg")
+                    source: Qt.resolvedUrl(Constants.colorModePath  + "CocheActif.svg")
                     width: parent.width*0.6
                     height: width
                     fillMode: Image.PreserveAspectFit
@@ -223,7 +223,7 @@ Rectangle {
                 background: Item {}
 
                 contentItem: Image {
-                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherActive.svg")
+                    source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherActive.svg")
                     //anchors.centerIn: parent
                     fillMode: Image.PreserveAspectFit
                     anchors.fill: parent
@@ -231,7 +231,7 @@ Rectangle {
 
                 indicator: Image {
                     visible: parent.checked
-                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheActif.svg")
+                    source: Qt.resolvedUrl(Constants.colorModePath  + "CocheActif.svg")
                     width: parent.width*0.6
                     height: width
                     fillMode: Image.PreserveAspectFit
@@ -271,7 +271,7 @@ Rectangle {
 
                     contentItem: Image {
                         anchors.verticalCenter: parent.verticalCenter
-                        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherActive.svg")
+                        source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherActive.svg")
                         anchors.horizontalCenter: parent.horizontalCenter
                         fillMode: Image.PreserveAspectFit
                         Layout.fillHeight: true
@@ -280,7 +280,7 @@ Rectangle {
                     indicator: Image {
                         visible: parent.checked
                         anchors.verticalCenter: parent.verticalCenter
-                        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheActif.svg")
+                        source: Qt.resolvedUrl(Constants.colorModePath  + "CocheActif.svg")
                         anchors.horizontalCenter: parent.horizontalCenter
                         fillMode: Image.PreserveAspectFit
                         width: height
@@ -353,14 +353,14 @@ Rectangle {
                     checked: selected
 
                     contentItem: Image {
-                        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CaseACocherVerte.svg")
+                        source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherVerte.svg")
                         anchors.fill: parent                 
                         fillMode: Image.PreserveAspectFit
                     }
 
                     indicator: Image {
                         visible: parent.checked                        
-                        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CocheSain.svg")                        
+                        source: Qt.resolvedUrl(Constants.colorModePath  + "CocheSain.svg")                        
                         fillMode: Image.PreserveAspectFit
                         width: parent.width*0.6
                         height: width

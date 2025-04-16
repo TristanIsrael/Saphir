@@ -48,14 +48,14 @@ class EeaAntivirusController(AbstractAntivirusController):
         # The command lslog gives more details about the scan
         #eset_cmd = ["/opt/eset/eea/bin/odscan", "-s", "--profile=@In-depth scan", "--show-scan-info", storage_filepath]
         #proc = subprocess.run(self.__lxc_cmd + eset_cmd, capture_output=True)
-        proc = subprocess.run(["/usr/lib/saphir/bin/scan-file.sh", storage_filepath])
+        proc = subprocess.run(["/usr/lib/saphir/bin/scan-file.sh", storage_filepath], capture_output=True)
         success = False
         details = ""
 
         # The return code of the command is for the execution of lxc-attach
         if proc.returncode == 0:
             # We extract the scan id from the scan info
-            if proc.stdout != "":
+            if proc.stdout != "" and proc.stdout is not None:
                 # The scan has completed
                 log_name = self.__extract_log_name(proc.stdout.decode().strip())
 
@@ -112,7 +112,7 @@ class EeaAntivirusController(AbstractAntivirusController):
         # Get the log data
         #eset_cmd = ["/opt/eset/eea/sbin/lslog", "--ods-details={}".format(log_name)]
         #proc = subprocess.run(self.__lxc_cmd + eset_cmd, capture_output=True)
-        proc = subprocess.run(["/usr/lib/saphir/bin/get-scan-result.sh", log_name])
+        proc = subprocess.run(["/usr/lib/saphir/bin/get-scan-result.sh", log_name], capture_output=True)
         if proc.returncode > 0:
             self.error("Une erreur interne s'est produite : lslog {} {}.".format(proc.stdout, proc.stderr))
             self.update_status(filepath, FileStatus.FileAnalysisError, 100)
@@ -167,19 +167,21 @@ class EeaAntivirusController(AbstractAntivirusController):
 
 
     def _get_component_version(self) -> str:
-        proc = subprocess.run(["/usr/lib/saphir/bin/get-eea-version.sh"])
+        proc = subprocess.run(["/usr/lib/saphir/bin/get-eea-version.sh"], capture_output=True)
         if proc.returncode == 0:
-            return proc.stdout.decode().strip()
-        else:
-            return "#err"
+            if proc.stdout is not None:
+                return proc.stdout.decode().strip()
+        
+        return "#err"
 
 
     def _get_component_description(self) -> str:
-        proc = subprocess.run(["/usr/lib/saphir/bin/get-eea-description.sh"])
+        proc = subprocess.run(["/usr/lib/saphir/bin/get-eea-description.sh"], capture_output=True)
         if proc.returncode == 0:
-            return proc.stdout.decode().strip()
-        else:
-            return "#err"
+            if proc.stdout is not None:
+                return proc.stdout.decode().strip()
+        
+        return "#err"
         
     #######################
     ## Private functions

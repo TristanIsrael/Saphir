@@ -21,7 +21,7 @@ Rectangle {
         Image {
             anchors.fill: parent
             anchors.centerIn: parent
-            source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "SplashScreen.png")
+            source: Qt.resolvedUrl(Constants.colorModePath  + "SplashScreen.png")
             fillMode: Image.Stretch
         }
 

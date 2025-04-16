@@ -50,9 +50,9 @@ Rectangle {
 
     Image {
         id: background
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "Modale.svg")
         width: parent.width
         height: parent.height
+        source: Qt.resolvedUrl(Constants.colorModePath  + "Modale.svg")
         fillMode: Image.Stretch
         anchors.fill: parent
     }
@@ -66,7 +66,7 @@ Rectangle {
 
     Image {
         id: returnButton
-        source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "FermerModale.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "FermerModale.svg")
         height: parent.height * 0.12
         width: parent.width * 0.075
         anchors.bottom: parent.bottom
@@ -114,7 +114,7 @@ Rectangle {
                 Image {
                     Layout.fillHeight: true
                     Layout.margins: height/10
-                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "IconeRepertoireUnitaire.svg")
+                    source: Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireUnitaire.svg")
                     fillMode: Image.PreserveAspectFit
                 }
 
@@ -170,12 +170,12 @@ Rectangle {
             }
 
             delegate : Item {
-                implicitHeight: 80
+                implicitHeight: 40
                 implicitWidth: column === 0 ? icn.width : lbl.width
 
                 Image {
                     id: icn
-                    source: Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + coreEtatSysteme.getTypeIcone(display))
+                    source: Qt.resolvedUrl(Constants.colorModePath  + coreEtatSysteme.getTypeIcone(display))
                     height: parent.height*0.8
                     fillMode: Image.PreserveAspectFit
                     visible: column === 0

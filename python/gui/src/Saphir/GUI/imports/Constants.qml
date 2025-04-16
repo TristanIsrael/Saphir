@@ -59,7 +59,7 @@ QtObject {
         // -- Propriétés de couleurs de l'application
     property int currentDisplayMode: 0
     property int currentColorMode: 1
-    property string colorModePath: Qt.resolvedUrl("../images/dark_mode/")
+    property string colorModePath: Qt.resolvedUrl("../images/dark_mode/") +"Sombre_"
     property string colorModePrefix: "Sombre_"
     property string colorText: "#FFFFFF"
     property color colorRed: "#B0283A"
@@ -199,17 +199,17 @@ QtObject {
         switch (mode)
         {
         case Constants.ColorMode.STEALTH:
-            Constants.colorModePath = Qt.resolvedUrl("../images/stealth_mode/")
-            Constants.colorModePrefix = "Furtif_"
+            Constants.colorModePath = Qt.resolvedUrl("../images/stealth_mode/") +"Furtif_"
+            Constants.colorModePrefix = "Furtif_"            
             Constants.currentColorMode = Constants.ColorMode.STEALTH
             Constants.colorRed = "#2F0A35"
             Constants.colorGreen = "#0B0F14"
             Constants.colorBlue = "#171717"
             Constants.colorText = /*"#1E1E1E"*/"#3B3B3B"
-            Constants.colorSystemUsed = "#2F0A35"
+            Constants.colorSystemUsed = "#2F0A35"            
             break;
         case Constants.ColorMode.DARK:
-            Constants.colorModePath = Qt.resolvedUrl("../images/dark_mode/")
+            Constants.colorModePath = Qt.resolvedUrl("../images/dark_mode/") +"Sombre_"
             Constants.colorModePrefix = "Sombre_"
             Constants.currentColorMode = Constants.ColorMode.DARK
             Constants.colorRed = "#B0283A"
@@ -219,7 +219,7 @@ QtObject {
             Constants.colorSystemUsed = "#926c6d"
             break;
         default:
-            Constants.colorModePath = Qt.resolvedUrl("../images/light_mode/")
+            Constants.colorModePath = Qt.resolvedUrl("../images/light_mode/") +"Clair_"
             Constants.colorModePrefix = "Clair_"
             Constants.currentColorMode = Constants.ColorMode.LIGHT
             Constants.colorRed = "#B0283A"
