@@ -1,0 +1,147 @@
+<html>
+    <head>
+        <style type="text/css">
+            .tableau {
+                border: solid 1px gray;
+                width: 100%;
+                margin-top: 1cm;
+            }
+
+            .tableau th {
+                background-color: #333;
+                color: white;
+                height: 1cm;
+                text-align: center;
+            }
+
+            .tableau td {                
+                padding-left: 2mm;
+                padding-right: 2mm;
+                overflow-wrap: break-word; 
+                word-break: break-all;
+            }
+
+            .tableau p {
+                line-height: 0.2cm;
+                overflow-wrap: break-word;
+            }
+
+            .tableau p.details {
+                line-height: initial;
+                overflow-wrap: break-word;
+            }
+
+            .tableau p.indent {
+                padding-left: 0.5cm;
+            }
+
+            .tableau_resultat {
+                border: solid 1px gray;
+                width: 100%;
+                margin-top: 1cm;
+            }
+
+            .tableau_resultat.succes th {
+                background-color: green;
+                color: white;
+                height: 1cm;
+                text-align: center;
+            }
+
+            .tableau_resultat.erreur th {
+                background-color: red;
+                color: white;
+                height: 1cm; 
+                text-align: center;               
+            }
+
+            .tableau_resultat td {
+                padding: 2mm;
+                text-align: center;
+            }            
+
+        </style>
+    </head>
+    <body>
+        <table style="width: 100%;">
+            <tr>
+                <td><image src="logo_minarm.svg" style="height:3cm"></image></td>
+                <td style="text-align: right"><image src="logo_saphir.svg" style="height:3cm"></td>
+            </tr>
+        </table>
+
+        <h1 style="text-align: center;">Rapport d'inocuité</h1>
+                
+        <table class="tableau_resultat {{ resultat_analyse }}">
+            <tr>
+                <th>Résultat</th>
+            </tr>
+            <tr>
+                <td>{{ resultat_analyse_libelle }}</td>
+            </tr>
+        </table>
+
+        <table class="tableau">
+            <tr>
+                <th>Résumé</th>
+            </tr>
+            <tr>
+                <td>
+                    <p>Analyse débutée le : {{ date_heure_debut_analyse }}</p>
+                    <p>Analyse terminée le : {{ date_heure_fin_analyse }}</p>
+                    <p>Identifiant de l'équipement : {{ identifiant_equipement }}</p>
+                    <p>Nom du support analysé : {{ nom_support }}</p>
+                    <p>Partitions : {{ partitions }}</p>
+            </tr>
+        </table>
+
+        <table class="tableau">
+            <tr>
+                <th>Résultat de l'analyse</th>
+            </tr>
+            <tr>
+                <td>                    
+                    <p>Fichiers analysés : {{ nb_fichiers_analyses }}</p>
+                    <p>Fichiers sains : {{ nb_fichiers_sains }}</p>
+                    <p>Fichiers infectés : {{ nb_fichiers_infectes }}</p>
+                    <p>Fichiers copiés : {{ nb_fichiers_copies }}</p>
+                </td>
+            </tr>
+        </table>
+
+        <table class="tableau">
+            <tr>
+                <th>Outils</th>
+            </tr>            
+            <tr>
+                <td>                    
+                    <p>PSEC version : {{ psec_version }}</p>
+                    <p>SAPHIR version : {{ saphir_version }}</p>
+                    {% for key, value in antiviruses.items() %}
+                    <p>{{ key }} version : {{ value.version }}</p>
+                    <p class="indent details">{{ value.description }}</p>                    
+                    {% endfor %}
+                </td>
+            </tr>
+        </table>
+
+        <table class="tableau">
+            <tr>
+                <th>Détails de l'analyse</th>
+            </tr>
+            {% for entry in details_analyse %}
+            <tr>
+                <td>
+                    Chemin : {{ entry.filepath }}<br/>
+                    Empreinte : {{ entry.footprint }}<br/>
+                    <ul>
+                    {% for key, value in entry.results.items() %}
+                    <li>Résultat {{ key }} : {{ value.result }} - {{ value.details }}</li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            {% endfor %}
+        </table>
+
+    </body>
+</html>

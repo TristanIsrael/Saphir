@@ -100,8 +100,9 @@ class AnalysisController(QObject):
                 return
 
             filepath = payload.get("filepath", "")
+            footprint = payload.get("source_footprint", "")
             
-            self.__on_file_available(filepath)            
+            self.__on_file_available(filepath, footprint)            
 
         elif topic == "{}/response".format(TOPIC_ANALYSE):
             if not MqttHelper.check_payload(payload, ["component", "filepath", "success", "details"]):
@@ -118,13 +119,14 @@ class AnalysisController(QObject):
             self.__handle_status(payload.get("filepath", ""), FileStatus(payload.get("status", 0)), payload.get("progress", 0))
 
 
-    def __on_file_available(self, filepath:str) -> None:
+    def __on_file_available(self, filepath:str, footprint:str) -> None:
         #fileInfo = self.__get_file_by_filepath(filepath)
         self.__repository_size += 1
 
         try:
             file = self.__files[filepath]
             file["status"] = FileStatus.FileAvailableInRepository
+            file["footprint"] = footprint
             #self.__files_list_model.on_files_updated()
             self.fileUpdated.emit(filepath, ["status"])
 
@@ -155,6 +157,12 @@ class AnalysisController(QObject):
         progress = file.get("progress", 0)
         progress += 100 / len(self.__analysis_components)
         file["progress"] = progress
+        results = file.get("results", dict())
+        av = results.get(component, dict())
+        av["result"] = "Sain" if success else "Infecté"
+        av["details"] = details
+        results[component] = av
+        file["results"] = results
 
         # Si le fichier est déjà identifié comme infecté ou en erreur on le laisse en l'état
         # on ne passe le fichier à l'état clean que si le progrès est à 100%

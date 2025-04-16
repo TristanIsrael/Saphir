@@ -166,6 +166,21 @@ class EeaAntivirusController(AbstractAntivirusController):
         #subprocess.run(self.__lxc_cmd + cmd)
 
 
+    def _get_component_version(self) -> str:
+        proc = subprocess.run(["/usr/lib/saphir/bin/get-eea-version.sh"])
+        if proc.returncode == 0:
+            return proc.stdout.decode().strip()
+        else:
+            return "#err"
+
+
+    def _get_component_description(self) -> str:
+        proc = subprocess.run(["/usr/lib/saphir/bin/get-eea-description.sh"])
+        if proc.returncode == 0:
+            return proc.stdout.decode().strip()
+        else:
+            return "#err"
+        
     #######################
     ## Private functions
     #

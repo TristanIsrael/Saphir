@@ -6,7 +6,6 @@ import "../imports"
 
 Item {
     id: root
-    property string libelle: "Le système doit être réinitialisé avant\nune nouvelle analyse."
 
     signal accepted()
     signal rejected()

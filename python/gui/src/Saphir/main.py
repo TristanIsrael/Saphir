@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, QEvent, QObject
 from PySide6.QtGui import QGuiApplication, QFont, QFontDatabase, QPointingDevice
 from PySide6.QtQuick import QQuickWindow
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonType, qmlRegisterUncreatableType, qmlRegisterSingletonInstance
-from psec import Api, System
+from psec import Api
 from ApplicationController import ApplicationController
 from libsaphir import DEVMODE
 if DEVMODE:

@@ -73,7 +73,9 @@ class AbstractAntivirusController(ABC):
             "domain_name": platform.node(),
             "label": self.__component_description,
             "type": "antivirus",
-            "state": self._get_component_state()
+            "state": self._get_component_state(),
+            "version": self._get_component_version(),
+            "description": self._get_component_description()
         }]
         
         Api().publish_components(components)
@@ -165,3 +167,10 @@ class AbstractAntivirusController(ABC):
     def _stop_immediately(self):        
         pass
     
+    @abstractmethod
+    def _get_component_version(self) -> str:
+        pass
+
+    @abstractmethod
+    def _get_component_description(self) -> str:
+        pass

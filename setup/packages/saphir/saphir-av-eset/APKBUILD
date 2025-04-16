@@ -20,6 +20,8 @@ av-controller.initd
 av-controller.py
 scan-file.sh
 get-scan-result.sh
+get-eea-version.sh
+get-eea-description.sh
 stop-all-scans.sh
 "
 
@@ -29,5 +31,7 @@ package() {
 
     install -D -m755 "$srcdir"/scan-file.sh "$pkgdir"/usr/lib/saphir/bin/scan-file.sh
     install -D -m755 "$srcdir"/get-scan-result.sh "$pkgdir"/usr/lib/saphir/bin/get-scan-result.sh
+    install -D -m755 "$srcdir"/get-eea-version.sh "$pkgdir"/usr/lib/saphir/bin/get-eea-version.sh
+    install -D -m755 "$srcdir"/get-eea-description.sh "$pkgdir"/usr/lib/saphir/bin/get-eea-description.sh
     install -D -m755 "$srcdir"/stop-all-scans.sh "$pkgdir"/usr/lib/saphir/bin/stop-all-scans.sh
 }

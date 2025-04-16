@@ -14,12 +14,15 @@ from QueueListProxyModel import QueueListProxyModel
 from AnalysisContoller import AnalysisController
 from DevModeHelper import DevModeHelper
 from ComponentsModel import ComponentsModel
+from ReportController import ReportController
 from libsaphir import ANTIVIRUS_NEEDED, DEVMODE
 from pathlib import Path
 from Enums import AnalysisMode
 import copy
 import threading
-import time
+import os
+import tempfile
+import base64
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
@@ -57,6 +60,7 @@ class ApplicationController(QObject):
     __long_process_running = False
     __system_used = False
     __system_information = dict()
+    __copied_files_count = 0
     
     #__interfaceInputs = None
     #__main_window:QWidget
@@ -150,11 +154,13 @@ class ApplicationController(QObject):
         else:
             self.mqtt_client = MqttFactory.create_mqtt_client_domu("Saphir")
 
+        self.__logfile = os.path.join(tempfile.gettempdir(), "journal.log")
+
         Api().add_message_callback(self.__on_message_received)
         Api().add_ready_callback(ready_callback)
         Api().add_ready_callback(self.__on_api_ready)
         Api().add_shutdown_callback(self.__on_shutdown)
-        Api().start(self.mqtt_client)        
+        Api().start(self.mqtt_client, True, self.__logfile)
 
 
     '''
@@ -354,11 +360,24 @@ class ApplicationController(QObject):
     def start_transfer(self):
         Api().info("Start transfer of clean files to target disk")
 
+        self.__copied_files_count = 0        
         self.analysisController_.stop_analysis()        
+
+        # Copie les fichiers analysés comme sains
         for filepath_, file_ in self.__queuedFilesList.items():
             if file_.get("status") == FileStatus.FileClean:
                 Api().copy_file(self.sourceName_, filepath_, self.targetName_)
 
+        # Puis le rapport
+        report_filepath = ReportController.get_report_filepath()
+        with open(report_filepath, 'rb') as f:
+            reportData = f.read()
+            Api().create_file(ReportController.get_report_filename(), self.targetName_, reportData, True)
+
+        # Et le journal
+        with open(self.__logfile, 'rb') as f:
+            logData = f.read()
+            Api().create_file("journal.log", self.targetName_, logData)
 
     @Slot()
     def select_all_clean_files_for_copy(self):
@@ -574,6 +593,9 @@ class ApplicationController(QObject):
                 return
             
             success = status == "ok"
+            if success:
+                self.__copied_files_count += 1
+
             file["status"] = FileStatus.FileCopySuccess if success else FileStatus.FileCopyError            
             Api().info("The file {} has been copied to {}. The footprint is {}".format(filepath, self.__targetName(), footprint))
             self.fileUpdated.emit(filepath, ["status"])
@@ -722,9 +744,12 @@ class ApplicationController(QObject):
         self.infectedFilesCountChanged.emit(self.__infected_files_count())        
         self.globalProgressChanged.emit(self.__global_progress())
         self.remainingTimeChanged.emit()
-
-        if self.__global_progress() == 100:
+        
+        if self.__infected_files_count() + self.__clean_files_count() == self.__queue_size():
             self.__set_system_state(SystemState.AnalysisCompleted)
+            self.analysisController_.stop_analysis()
+            self.__analysis_end_time = datetime.now()
+            self.__make_analysis_report()
 
 
     def __on_disk_controller_state_changed(self, ready:bool):
@@ -754,12 +779,12 @@ class ApplicationController(QObject):
         if state == AnalysisState.AnalysisRunning:
             Api().info("Analysis is running")
             self.__set_system_state(SystemState.SystemAnalysisRunning)
-        elif state == AnalysisState.AnalysisStopped:
+        '''elif state == AnalysisState.AnalysisStopped:
             Api().info("Analysis is stopped")
             self.__set_system_state(SystemState.SystemWaitingForUserAction)
         else:
             Api().info("Analysis state is unknown")
-            # TODO
+            # TODO'''
 
 
     def __get_remaining_time(self):
@@ -839,6 +864,35 @@ class ApplicationController(QObject):
         for file in self.__inputFilesList.values():
             self.enqueue_file(file["type"], file["filepath"])
 
+    def __make_analysis_report(self):
+        Api().info("Generate the analysis report")
+
+        # On prépare la structure pour les détails des antivirus
+        antiviruses = dict()
+
+        for component in self.componentsHelper_.get_components():
+            if component.get("type") == "antivirus":
+                av_id = component.get("id", "unknown")
+                av = antiviruses.get(av_id, dict())
+                av["version"] = component.get("version")
+                description = component.get("description", "")
+                av["description"] = description.replace("\n", "<br/>")
+                antiviruses[av_id] = av
+
+        ReportController.make_report(
+            fichiers= self.__queuedFilesList,
+            clean_files_count= self.__clean_files_count(),
+            infected_files_count= self.__infected_files_count(),
+            analyzed_files_count= len(self.__queuedFilesList),
+            copied_files_count= self.__copied_files_count,
+            date_heure_debut_analyse= self.__analysis_start_time,
+            date_heure_fin_analyse= self.__analysis_end_time,
+            identifiant_equipement= self.__system_information.get("uuid", "inconnu"),
+            nom_support= self.sourceName_,
+            psec_version= self.__system_information.get("core", dict()).get("version", "inconnue"),
+            saphir_version= QCoreApplication.applicationVersion(),
+            antiviruses=antiviruses
+        )
 
     ###
     # Getters and setters
@@ -900,7 +954,7 @@ class ApplicationController(QObject):
     
     def __set_system_state(self, state:SystemState):
         self.__system_state = state
-        #Api().debug("System state : {}".format(self.__system_state))
+        print(f"System state: {self.__system_state}")
         self.systemStateChanged.emit(self.__system_state.value)
 
     def __queue_size(self):

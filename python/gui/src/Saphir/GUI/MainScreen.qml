@@ -304,6 +304,7 @@ Rectangle {
                         source: Constants.isCopyingSaneFiles ? Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CopierFichiersActive.svg")
                                                                  : Qt.resolvedUrl(Constants.colorModePath + Constants.colorModePrefix + "CopierFichiersActif.svg")
                         fillMode: Image.PreserveAspectFit
+
                         MouseArea {
                             anchors.fill: parent
                             onClicked: {
@@ -326,6 +327,13 @@ Rectangle {
                         font.pixelSize: Math.min(height * 0.6, width * 0.15)
                         horizontalAlignment: Text.AlignLeft
                         verticalAlignment: Text.AlignVCenter
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                ApplicationController.start_transfer()
+                            }
+                        }
                     }
                 }
             }

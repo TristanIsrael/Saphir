@@ -41,6 +41,12 @@ class MockEeaAntivirusController(AbstractAntivirusController):
     def _stop_immediately(self):
         pass
 
+    def _get_component_version(self) -> str:
+        return "1.0.0-mock"
+
+    def _get_component_description(self) -> str:
+        return "Version mock"
+
 if __name__ == "__main__":
     mock = MockEeaAntivirusController()
     mock.start()

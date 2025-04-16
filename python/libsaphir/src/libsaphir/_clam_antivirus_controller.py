@@ -64,6 +64,20 @@ class ClamAntivirusController(AbstractAntivirusController):
         subprocess.run(["killall", "-9", "clamdscan"])
 
 
+    def _get_component_version(self) -> str:
+        proc = subprocess.run(["clamscan", "--version"], capture_output=True)
+        if proc.returncode == 0:
+            return proc.stdout.decode().strip()
+        else:
+            return "#err"
+
+    def _get_component_description(self) -> str:
+        proc = subprocess.run("clamconf | sed -n '/Software settings/,$p'", capture_output=True, shell=True)
+        if proc.returncode == 0:
+            return proc.stdout.decode().strip()
+        else:
+            return "#err"
+
     #######################
     ## Private functions
     #

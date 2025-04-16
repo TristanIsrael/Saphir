@@ -5,3 +5,5 @@ joblib
 paho.mqtt
 pyudev
 psutil
+jinja2
+weasyprint
