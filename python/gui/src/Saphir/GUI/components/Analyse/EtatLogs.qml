@@ -5,37 +5,37 @@ import Qt5Compat.GraphicalEffects
 import net.alefbet
 import "../../imports"
 
-Rectangle {
-    id: coreEtatLogs
-    color: "transparent"
+Item {
+    id: coreEtatLogs        
 
-    property int maxItemDisplayed: 20
-
-
-    Image {
-        id: background
-        width: parent.width
-        height: parent.height
-        source: Qt.resolvedUrl(Constants.colorModePath  + "Modale.svg")
-        fillMode: Image.Stretch
+    Item {
         anchors.fill: parent
-    }
+        
+        Image {
+            id: background            
+            source: Qt.resolvedUrl(Constants.colorModePath  + "Modale.png")
+            fillMode: Image.Stretch
+            anchors.fill: parent
+        }
 
-    DropShadow {
-        anchors.fill: background
-        source: background
-        radius: 20
-        color: "#333"
+        DropShadow {
+            anchors.fill: background
+            source: background
+            radius: 20
+            color: "#333"
+            cached: true
+        }
     }
 
     Image {
         id: returnButton
-        source: Qt.resolvedUrl(Constants.colorModePath  + "FermerModale.svg")
+        source: Qt.resolvedUrl(Constants.colorModePath  + "FermerModale.png")
         height: parent.height * 0.12
         width: parent.width * 0.075
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.leftMargin: (parent.width * 0.02) + (width * 0.5)
+        
         MouseArea {
             anchors.fill: parent
             onClicked: coreEtatLogs.visible = !coreEtatLogs.visible
@@ -60,6 +60,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.margins: height/10
             color: "transparent"
+
             border {
                 width: width * 0.005
                 color: Constants.colorText
@@ -78,7 +79,7 @@ Rectangle {
                 Image {
                     Layout.fillHeight: true
                     Layout.margins: height/10
-                    source: Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireUnitaire.svg")
+                    source: Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireUnitaire.png")
                     fillMode: Image.PreserveAspectFit
                 }
 
@@ -106,15 +107,51 @@ Rectangle {
         TableView {
             id: logsListView
 
+            property int rowHeight: 40
+
             clip: true
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.margins: 10
             columnSpacing: 20
             rowSpacing: 20
+                        
+            //rowHeightProvider: function(row) { return logsListView.rowHeight }
+
+            Component.onCompleted: {
+                logsListView.flickEnded.connect(snapToRow)
+            }
+
+            onContentYChanged: {
+                if(!logsListView.flicking && !logsListView.moving) {
+                    snapToRow()
+                }
+            }
+
+            function snapToRow() {
+                var totalRowHeight = logsListView.rowHeight + logsListView.rowSpacing
+                var targetRow = Math.round(contentY / totalRowHeight)
+                var targetY = targetRow * totalRowHeight
+                if(contentY !== targetY) {
+                    contentY = targetY
+                }
+            }
+
+            WheelHandler {
+                //property: "contentY"
+                onWheel: (event)=> {
+                    var totalRowHeight = logsListView.rowHeight + logsListView.rowSpacing
+                    var delta = event.angleDelta.y > 0 ? -1 : 1
+                    let targetRow = Math.round(logsListView.contentY / totalRowHeight) + delta
+                    targetRow = Math.max(0, Math.min(targetRow, logsListView.rows - 1))
+
+                    logsListView.contentY = targetRow * totalRowHeight
+                }
+            }
 
             model: ApplicationController.logListModel
 
+            flickableDirection: Flickable.VerticalFlick
             ScrollBar.vertical: ScrollBar
             {
                 policy: parent.contentHeight > parent.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
@@ -134,11 +171,11 @@ Rectangle {
             }
 
             delegate : Item {
-                implicitHeight: 40
+                implicitHeight: logsListView.rowHeight
                 implicitWidth: lbl.width
 
-                Label {            
-                    id: lbl    
+                Label {
+                    id: lbl                    
                     clip: true
                     text: display
                     color: Constants.colorText
@@ -148,19 +185,4 @@ Rectangle {
             }
         }
     }
-
-    // //Test ajout de log et clear
-    // Timer {
-    //     interval: 2000
-    //     running: true
-    //     repeat: true
-
-    //     onTriggered: {
-    //         if(Constants.logsList.count >= 40)
-    //             Constants.clearLogs()
-    //         Constants.addLog("Hello world!")
-
-    //     }
-    // }
-
 }

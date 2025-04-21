@@ -17,17 +17,12 @@ class LogListModel(QAbstractTableModel):
         super().__init__(parent)        
 
 
-    def listen_to_logs(self):
-        # Désactivé temporairement
-        #return
+    def listen_to_logs(self):        
         Api().add_message_callback(self.__on_message)
         Api().subscribe("{}/#".format(Topics.EVENTS))        
 
 
-    def rowCount(self, parent=QModelIndex()):        
-        #self.__last_row_count = self.__row_count
-        #qDebug("{} {}".format(self.__row_count, self.__last_row_count))
-        #return self.__row_count
+    def rowCount(self, parent=QModelIndex()):
         return len(self.__logs)
     
     
@@ -38,7 +33,7 @@ class LogListModel(QAbstractTableModel):
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
             return None
-
+        
         row = index.row()
         log = self.__logs[row]
 

@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import net.alefbet
 import "../../imports"
-
+import "../../components"
 
 Item {
     property bool modeSelected: Constants.isFileSelectionMode
@@ -22,7 +22,7 @@ Item {
     Connections {
         target: ApplicationController
 
-        onGlobalProgressChanged: {
+        function onGlobalProgressChanged() {
             loadingCircleCanvas.requestPaint()
         }
     }
@@ -76,13 +76,12 @@ Item {
             }
         }*/
 
-        Rectangle {
+        Item {
             Layout.preferredHeight: 40
             Layout.fillHeight: true
             Layout.fillWidth: true
-            color: "transparent"
-            Rectangle
-            {
+
+            Rectangle {
                 id: loadingCircle
                 anchors {
                     centerIn: parent
@@ -155,6 +154,11 @@ Item {
                         }
 
                     }
+
+                    HelpTip {
+                        anchors.centerIn: parent
+                        libelle: "Progression globale"
+                    }
                 }
 
 
@@ -162,29 +166,23 @@ Item {
         }
 
 
-        Rectangle {
+        Item {
             id: buttonsContainer
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.preferredHeight: 20
-            color: "transparent"
 
             RowLayout {
                 anchors.fill: parent
                 
-                Rectangle {
+                Item {
                     Layout.preferredWidth: 35
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.alignment: Qt.AlignLeft
-                    color: "transparent"
 
                     Image {
                         id: buttonPause
-                        /*source: ApplicationController.analysisReady ?
-                                    (Constants.isAnalysePlaying == false ? Qt.resolvedUrl(Constants.colorModePath  + "PauseActif.svg")
-                                                                         : Qt.resolvedUrl(Constants.colorModePath  + "PauseInactif.svg"))
-                                    : Qt.resolvedUrl(Constants.colorModePath  + "PauseInactif.svg")*/
                         source: ApplicationController.analysisReady && ApplicationController.systemState !== Enums.SystemState.AnalysisCompleted ? Qt.resolvedUrl(Constants.colorModePath  + "PauseActif.svg") : Qt.resolvedUrl(Constants.colorModePath  + "PauseInactif.svg")
                         fillMode: Image.PreserveAspectFit
                         anchors.fill: parent
@@ -219,19 +217,14 @@ Item {
                     Layout.fillWidth: true
                 }
 
-                Rectangle {
+                Item {
                     Layout.preferredWidth: 35
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.alignment: Qt.AlignRight
-                    color: "transparent"
 
                     Image {
                         id: buttonPlay
-                        /*source: ApplicationController.analysisReady ?
-                                        (Constants.isAnalysePlaying ? Qt.resolvedUrl(Constants.colorModePath  + "PlayActif.svg")
-                                            : Qt.resolvedUrl(Constants.colorModePath  + "PlayInactif.svg"))
-                                    : Qt.resolvedUrl(Constants.colorModePath  + "PlayInactif.svg")*/
                         source: ApplicationController.analysisReady && ApplicationController.systemState !== Enums.SystemState.AnalysisCompleted ? Qt.resolvedUrl(Constants.colorModePath  + "PlayActif.svg") : Qt.resolvedUrl(Constants.colorModePath  + "PlayInactif.svg")
                         fillMode: Image.PreserveAspectFit
                         anchors.fill: parent

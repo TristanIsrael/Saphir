@@ -13,6 +13,10 @@ Project {
     }
 
     QmlFiles {
+        directory: "net"
+    }
+
+    QmlFiles {
         directory: "Generated"
     }
 
@@ -93,7 +97,7 @@ Project {
     qt6Project: true
 
     /* List of plugin directories passed to QML runtime */
-    importPaths: [ ".", "net.alefbet" ]
+    importPaths: [ ".", "./net" ]
 
     /* Required for deployment */
     targetDirectory: "/opt/Panoptiscan"

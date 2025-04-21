@@ -6,11 +6,8 @@ import net.alefbet
 import "../../imports"
 
 
-Rectangle {
-    id: coreEtatSysteme
-    color: "transparent"
-    
-    property int maxItemDisplayed: 4 
+Item {
+    id: coreEtatSysteme    
 
     function getStateText(state)
     {
@@ -24,7 +21,7 @@ Rectangle {
             return "Prêt";
         }
 
-        return "#err"
+        return "Inconnu"
     }
 
     function getStateColor(state) {
@@ -48,20 +45,23 @@ Rectangle {
         }
     }
 
-    Image {
-        id: background
-        width: parent.width
-        height: parent.height
-        source: Qt.resolvedUrl(Constants.colorModePath  + "Modale.svg")
-        fillMode: Image.Stretch
+    Item {
         anchors.fill: parent
-    }
 
-    DropShadow {
-        anchors.fill: background
-        source: background
-        radius: 20
-        color: "#333"
+        Image {
+            id: background
+            source: Qt.resolvedUrl(Constants.colorModePath  + "Modale.svg")
+            fillMode: Image.Stretch
+            anchors.fill: parent
+        }
+
+        DropShadow {
+            anchors.fill: background
+            source: background
+            radius: 20
+            color: "#333"
+            cached: true
+        }
     }
 
     Image {
@@ -78,13 +78,12 @@ Rectangle {
         }
     }
 
-    Rectangle {
+    Item {
         id: modalContentContainer
         anchors.centerIn: parent
         width: parent.width * 0.96
         height: parent.height * 0.85
-        anchors.verticalCenterOffset: parent.height * -0.05
-        color: "transparent"
+        anchors.verticalCenterOffset: parent.height * -0.05        
     }
 
     ColumnLayout {
@@ -96,6 +95,7 @@ Rectangle {
             Layout.fillWidth: true
             Layout.margins: height/10
             color: "transparent"
+            
             border {
                 width: width * 0.005
                 color: Constants.colorText
@@ -212,7 +212,7 @@ Rectangle {
                 id: lblSystemInfo
                 color: Constants.colorText
                 font.pixelSize: 24
-                text: "PSEC version " +ApplicationController.systemInformation["core"]["version"]
+                text: "PSEC version " +(ApplicationController.systemInformation["core"] !== undefined ? ApplicationController.systemInformation["core"]["version"] : "non identifiée")
             }
 
             Item {

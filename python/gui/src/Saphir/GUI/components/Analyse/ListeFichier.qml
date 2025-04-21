@@ -5,9 +5,8 @@ import net.alefbet
 import "../../imports"
 
 
-Rectangle {
+Item {
     id: coreFileList
-    color: "transparent"
 
     property int maxItemDisplayed: 10
     //property var _fileList: ApplicationController.queueListProxyModel
@@ -94,31 +93,17 @@ Rectangle {
         }
     }
 
-    /*function toggleSaneFiles()
-    {
-        coreFileList.selectSaneFiles = !coreFileList.selectSaneFiles
-        for (let i = 0; i < _fileList.count; i++) {
-            if (_fileList.get(i).status === Constants.FileState.SANE)
-            {
-                _fileList.setProperty(i, "selected", coreFileList.selectSaneFiles)
-            }
-        }
-
-    }*/
-
-    Rectangle {
+    Item {
         id: container
         width: parent.width * 0.92
         height: parent.height * 0.96
         anchors.centerIn: parent
         anchors.horizontalCenterOffset: parent.width * 0.02
-        color: "transparent"
     }
 
     ColumnLayout {
         anchors {
             fill: container
-            //topMargin: parent.height*0.01
             bottomMargin: parent.height*0.1
         }
         spacing: 20
@@ -138,13 +123,12 @@ Rectangle {
                 id: chkFiltreSains
                 Layout.preferredHeight: parent.height * 0.8
                 Layout.preferredWidth: height
-                checked: _fileList.filtreSains
+                checked: _fileList !== null ? _fileList.filtreSains : false
 
                 background: Item {}
 
                 contentItem: Image {
                     source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherActive.svg")
-                    //anchors.centerIn: parent
                     fillMode: Image.PreserveAspectFit
                     anchors.fill: parent
                 }
@@ -159,7 +143,8 @@ Rectangle {
                 }
 
                 onCheckedChanged: {
-                    _fileList.filtreSains = checked
+                    if(_fileList != null)
+                        _fileList.filtreSains = checked
                 }
             }
 
@@ -178,13 +163,12 @@ Rectangle {
 
                 Layout.preferredHeight: parent.height * 0.8
                 Layout.preferredWidth: height
-                checked: _fileList.filtreInfectes
+                checked: _fileList !== null ? _fileList.filtreInfectes : false
 
                 background: Item {}
 
                 contentItem: Image {
                     source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherActive.svg")
-                    //anchors.centerIn: parent
                     fillMode: Image.PreserveAspectFit
                     anchors.fill: parent
                 }
@@ -199,7 +183,8 @@ Rectangle {
                 }
 
                 onCheckedChanged: {
-                    _fileList.filtreInfectes = checked
+                    if(_fileList != null)
+                        _fileList.filtreInfectes = checked
                 }
             }
 
@@ -218,13 +203,12 @@ Rectangle {
 
                 Layout.preferredHeight: parent.height * 0.8
                 Layout.preferredWidth: height
-                checked: _fileList.filtreAutres
+                checked: _fileList !== null ? _fileList.filtreAutres : false
 
                 background: Item {}
 
                 contentItem: Image {
                     source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherActive.svg")
-                    //anchors.centerIn: parent
                     fillMode: Image.PreserveAspectFit
                     anchors.fill: parent
                 }
@@ -239,7 +223,8 @@ Rectangle {
                 }
 
                 onCheckedChanged: {
-                    _fileList.filtreAutres = checked
+                    if(_fileList != null)
+                        _fileList.filtreAutres = checked
                 }
             }
 
@@ -254,72 +239,47 @@ Rectangle {
             }
         }
 
-        /*Rectangle {
-            Layout.preferredHeight: 40
-            Layout.fillWidth: true
-            color: "transparent"
-
-            Row {
-                width: parent.width
-                height: parent.height
-
-                CheckBox
-                {
-                    width: parent.width * 0.1
-                    height: parent.height
-                    id: checkBox
-
-                    contentItem: Image {
-                        anchors.verticalCenter: parent.verticalCenter
-                        source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherActive.svg")
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        fillMode: Image.PreserveAspectFit
-                        Layout.fillHeight: true
-                    }
-
-                    indicator: Image {
-                        visible: parent.checked
-                        anchors.verticalCenter: parent.verticalCenter
-                        source: Qt.resolvedUrl(Constants.colorModePath  + "CocheActif.svg")
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        fillMode: Image.PreserveAspectFit
-                        width: height
-                        height: parent.height * 0.6
-                    }
-
-                    onCheckedChanged: function() {
-                        if(checked) {
-                            ApplicationController.select_all_clean_files_for_copy()
-                        } else {
-                            ApplicationController.deselect_all_clean_files_for_copy()
-                        }
-                    }
-                }
-
-                Label {
-                    height: parent.height
-                    width: parent.width * 0.9
-
-                    text: "Sélectionner tous les fichiers sains"
-                    color: Constants.colorText
-                    font.pixelSize:  Math.min(height * 0.6, width * 0.15)
-                    horizontalAlignment: Text.AlignLeft
-                    verticalAlignment: Text.AlignVCenter
-                }
-
-            }
-        }*/
-
         ListView {            
             id: fileListListView
             clip: true
             Layout.alignment: Qt.AlignCenter
-            //Layout.preferredHeight: 90
             Layout.fillHeight: true
             Layout.fillWidth: true
             model: _fileList
             spacing: 10
+            property int rowHeight: 25
 
+            Component.onCompleted: {
+                fileListListView.flickEnded.connect(snapToRow)
+            }
+
+            onContentYChanged: {
+                if(!fileListListView.flicking && !fileListListView.moving) {
+                    snapToRow()
+                }
+            }
+
+            function snapToRow() {
+                var totalRowHeight = fileListListView.rowHeight + fileListListView.spacing
+                var targetRow = Math.round(contentY / totalRowHeight)
+                var targetY = targetRow * totalRowHeight
+                if(contentY !== targetY) {
+                    contentY = targetY
+                }
+            }
+
+            WheelHandler {
+                //property: "contentY"
+                onWheel: (event)=> {
+                    var totalRowHeight = fileListListView.rowHeight + fileListListView.spacing
+                    var delta = event.angleDelta.y > 0 ? -1 : 1
+                    let targetRow = Math.round(fileListListView.contentY / totalRowHeight) + delta
+                    targetRow = Math.max(0, Math.min(targetRow, fileListListView.count - 1))
+                    fileListListView.contentY = targetRow * totalRowHeight
+                }
+            }
+
+            flickableDirection: Flickable.VerticalFlick
             ScrollBar.vertical: ScrollBar
             {
                 policy: parent.contentHeight > parent.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
@@ -340,9 +300,7 @@ Rectangle {
 
             delegate : RowLayout {
                 width: fileListListView.width *0.95
-                //width: parent.width*0.95
-                //height: parent.parent.height * (1.0/maxItemDisplayed)
-                height: 25
+                height: fileListListView.rowHeight
                 spacing: 10
 
                 CheckBox
@@ -386,14 +344,8 @@ Rectangle {
                 }
 
                 Rectangle {
-                    //property real progress: 0.0
-                    //anchors.centerIn : parent.parent
-
-                    //width: parent.parent.width
-                    //height: parent.parent.parent.height
                     Layout.preferredHeight: parent.height
                     Layout.preferredWidth: fileListListView.width / 3
-                    //Layout.fillWidth: true
                     color: "transparent"
                     border.width: 2
                     border.color: Constants.colorBlue
@@ -433,68 +385,5 @@ Rectangle {
         }
 
     }
-
-    /*Component {
-        id: loadingBar
-
-        Rectangle {
-            property real progress: 0.0
-            anchors.centerIn : parent.parent
-            width: parent.parent.width
-            height: parent.parent.parent.height
-            color: "transparent"
-            border.width: height * 0.1
-            border.color: Constants.colorBlue
-
-            Rectangle {
-                width: Math.min(parent.width * progress, parent.width)
-                height: parent.height
-                color: Constants.colorBlue
-                opacity: 0.3
-            }
-
-            Label {
-                anchors.centerIn: parent
-                width: parent.width
-                height: parent.height
-                text: Math.round(progress * 100.0) + "%"
-                color:  Constants.colorBlue
-                font.pixelSize: Math.min(height * 0.6, width * 0.15)
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-            }
-        }
-    }*/
-
-    /*Component {
-        id: textStatus
-        
-    }*/
-
-    //Test de barre de chargement
-    //property real tmpProgress: 0.5
-    // property real tmp2Progress: 0.2
-    // Timer {
-    //     interval: 1000
-    //     running: true
-    //     repeat: true
-
-    //     onTriggered: {
-    //         //Constants.updateFileProgress(7, tmpProgress+= 0.01)
-    //         Constants.updateFileProgress(8, tmp2Progress+= 0.01)
-    //     }
-    // }
-
-    // //Test de changement de status
-    // property int tmpStatus: 0
-    // Timer {
-    //     interval: 2000
-    //     running: true
-    //     repeat: true
-
-    //     onTriggered: {
-    //         Constants.updateFileStatus(7, tmpStatus = (tmpStatus + 1) % 4)
-    //     }
-    // }
 
 }

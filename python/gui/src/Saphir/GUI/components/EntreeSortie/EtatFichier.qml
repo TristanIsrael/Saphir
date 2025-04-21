@@ -4,24 +4,23 @@ import QtQuick.Shapes
 import QtQuick.Layouts
 import net.alefbet
 import "../../imports"
+import "../../components"
 
+Item {
+    id: etatFichier    
 
-Rectangle {
-    id: etatFichier
-    color:"transparent"
-
-    property int fichierNonAnalyse: fichierTotal - fichierSain - fichierInfecte - fichierAnalyse //Constants.countNotAnalysedFiles
-    property int fichierAnalyse: 0 //ApplicationController.analysingCount //Constants.countAnalysingFiles
-    property int fichierSain: ApplicationController.cleanFilesCount //Constants.countSaneFiles
-    property int fichierInfecte: ApplicationController.infectedFilesCount //Constants.countInfectedFiles
-    property int fichierTotal: ApplicationController.queueSize //fichierNonAnalyse + fichierAnalyse + fichierSain + fichierInfecte
+    property int fichierNonAnalyse: fichierTotal - fichierSain - fichierInfecte - fichierAnalyse
+    property int fichierAnalyse: 0
+    property int fichierSain: ApplicationController.cleanFilesCount
+    property int fichierInfecte: ApplicationController.infectedFilesCount
+    property int fichierTotal: ApplicationController.queueSize
 
     Connections {
         target: ApplicationController
 
         function onQueueSizeChanged() { updateStateTracker() }
         function onInfectedFilesCountChanged() { updateStateTracker() }
-        function onCleanFilesCount() { updateStateTracker() }
+        function onCleanFilesCountChanged() { updateStateTracker() }
         
     }
 
@@ -36,12 +35,11 @@ Rectangle {
             circleNotAnalysed.requestPaint()
         }
 
-    Rectangle {
+    Item {
         id: roue
         anchors.centerIn: parent
         width: Math.min(parent.width, parent.height)
         height: Math.min(parent.width, parent.height)
-        color: "transparent"        
 
         //Cercle fichiers analyse
         Rectangle {
@@ -53,6 +51,7 @@ Rectangle {
             radius: width * 0.5
             border.color: Constants.currentColorMode !== Constants.ColorMode.STEALTH ? "#1677E6" : "#292929"
             border.width: parent.width * 0.01
+
             Canvas {
                 id: circleAnalyse
                 anchors.fill: parent
@@ -62,9 +61,7 @@ Rectangle {
                     var ctx = getContext("2d")
                     ctx.reset()
                     ctx.beginPath()
-                    ctx.strokeStyle = Constants.currentColorMode !== Constants.ColorMode.STEALTH ? Constants.currentColorMode === Constants.ColorMode.DARK ? "#A1C9F2"
-                                                                                                                                                                           : "#1677E6"
-                                                                                                         : Constants.colorBlue
+                    ctx.strokeStyle = Constants.currentColorMode !== Constants.ColorMode.STEALTH ? Constants.currentColorMode === Constants.ColorMode.DARK ? "#A1C9F2" : "#1677E6" : Constants.colorBlue
                     ctx.globalAlpha = 0.3
                     ctx.lineWidth = parent.width * 0.15
                     ctx.arc(width * 0.5,
@@ -78,7 +75,7 @@ Rectangle {
                     ctx.globalAlpha = 1.0 //Reset de l'alpha avant affichage du texte
                     var textPixelSize = Math.min(parent.height * 0.1, parent.width * 0.1)
                     var middleAngle = (startAngle + endAngle) * 0.5
-                    var textRadius = (width * 0.25) + (ctx.lineWidth * 0.70) + (textPixelSize * 0.5)
+                    var textRadius = (width * 0.22) + (ctx.lineWidth * 0.70) + (textPixelSize * 0.5)
                     var textX = width * 0.5 + textRadius * Math.cos(middleAngle)
                     var textY = height * 0.5 + textRadius * Math.sin(middleAngle)
                     //Dessiner le texte
@@ -88,9 +85,7 @@ Rectangle {
                     ctx.font = "bold " + textPixelSize + "px sans-serif"
                     ctx.textAlign = "center"
                     ctx.textBaseline = "middle"
-                    ctx.fillText(fichierAnalyse > 0 ? fichierAnalyse : "",
-                                 textX,
-                                 textY)
+                    ctx.fillText(fichierAnalyse > 0 ? fichierAnalyse : "", textX, textY)
 
                 }
             }
@@ -130,7 +125,7 @@ Rectangle {
                     ctx.globalAlpha = 1.0 //Reset de l'alpha avant affichage du texte
                     var textPixelSize = Math.min(parent.height * 0.1, parent.width * 0.1)
                     var middleAngle = (startAngle + endAngle) * 0.5
-                    var textRadius = (width * 0.25) + (ctx.lineWidth * 0.70) + (textPixelSize * 0.5)
+                    var textRadius = (width * 0.22) + (ctx.lineWidth * 0.70) + (textPixelSize * 0.5)
                     var textX = width * 0.5 + textRadius * Math.cos(middleAngle)
                     var textY = height * 0.5 + textRadius * Math.sin(middleAngle)
                     //Dessiner le texte
@@ -182,17 +177,15 @@ Rectangle {
                     ctx.globalAlpha = 1.0 //Reset de l'alpha avant affichage du texte
                     var textPixelSize = Math.min(parent.height * 0.1, parent.width * 0.1)
                     var middleAngle = (startAngle + endAngle) * 0.5
-                    var textRadius = (width * 0.25) + (ctx.lineWidth * 0.70) + (textPixelSize * 0.5)
+                    var textRadius = (width * 0.23) + (ctx.lineWidth * 0.70) + (textPixelSize * 0.5)
                     var textX = width * 0.5 + textRadius * Math.cos(middleAngle)
                     var textY = height * 0.5 + textRadius * Math.sin(middleAngle)
                     //Dessiner le texte
-                    ctx.fillStyle = Constants.currentColorMode !== Constants.ColorMode.STEALTH ? "#A61317" : Constants.colorRed
+                    ctx.fillStyle = Constants.currentColorMode === Constants.ColorMode.LIGHT ? "#A61317" : Constants.currentColorMode === Constants.DARK ? "#D18287" : Constants.colorRed
                     ctx.font = "bold " + textPixelSize + "px sans-serif"
                     ctx.textAlign = "center"
                     ctx.textBaseline = "middle"
-                    ctx.fillText(fichierInfecte > 0 ? fichierInfecte : "",
-                                 textX,
-                                 textY)
+                    ctx.fillText(fichierInfecte > 0 ? fichierInfecte : "", textX, textY)
                 }
             }
         }
@@ -220,7 +213,7 @@ Rectangle {
 
                     //Arc transparent
                     ctx.beginPath()
-                    ctx.strokeStyle = Constants.currentColorMode !== Constants.ColorMode.STEALTH ? "#515151" : "#3B3B3B"
+                    ctx.strokeStyle = Constants.currentColorMode === Constants.ColorMode.LIGHT ? "#515151" : Constants.currentColorMode === Constants.ColorMode.DARK ? "#888" : "#3B3B3B"
                     ctx.globalAlpha = 0.5
                     ctx.lineWidth = arcWidth
                     ctx.arc(width * 0.5,
@@ -234,11 +227,11 @@ Rectangle {
                     ctx.globalAlpha = 1.0 //Reset de l'alpha avant affichage du texte
                     var textPixelSize = Math.min(parent.height * 0.1, parent.width * 0.1)
                     var middleAngle = (startAngle + endAngle) * 0.5
-                    var textRadius = (width * 0.25) + (ctx.lineWidth * 0.70) + (textPixelSize * 0.5)
+                    var textRadius = (width * 0.23) + (ctx.lineWidth * 0.70) + (textPixelSize * 0.5)
                     var textX = width * 0.5 + textRadius * Math.cos(middleAngle)
                     var textY = height * 0.5 + textRadius * Math.sin(middleAngle)
                     //Dessiner le texte
-                    ctx.fillStyle = Constants.currentColorMode !== Constants.ColorMode.STEALTH ? "#58687D" : Constants.colorText
+                    ctx.fillStyle = Constants.currentColorMode === Constants.LIGHT ? "#58687D" : Constants.currentColorMode === Constants.DARK ? "#eee" : Constants.colorText
                     ctx.font = "bold " + textPixelSize + "px sans-serif"
                     ctx.textAlign = "center"
                     ctx.textBaseline = "middle"
@@ -249,33 +242,48 @@ Rectangle {
             }
         }
 
-        Column {
+        ColumnLayout {
             anchors.centerIn: parent
             width: parent.width
             height: parent.height
             spacing: 3
+
+            Item {
+                Layout.fillHeight: true
+            }
+
             Text {
                 text: fichierTotal
-                anchors.centerIn: parent
-                anchors.verticalCenterOffset: -parent.height * 0.1
+                Layout.alignment: Qt.AlignHCenter                
+                /*anchors.centerIn: parent
+                anchors.verticalCenterOffset: -parent.height * 0.1*/
                 font.pixelSize: Math.min(parent.height * 0.2, parent.width * 0.2)
                 font.bold: true
                 color: Constants.colorText
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
-
             }
 
             Text {
                 text: "fichiers"
-                anchors.centerIn: parent
-                anchors.verticalCenterOffset: parent.height * 0.1
+                Layout.alignment: Qt.AlignHCenter
+                /*anchors.centerIn: parent
+                anchors.verticalCenterOffset: parent.height * 0.1*/
                 font.pixelSize: Math.min(parent.height * 0.1, parent.width * 0.1)
                 color: Constants.colorText
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
             }
+
+            Item {
+                Layout.fillHeight: true
+            }
+        }
+
+        HelpTip {
+            anchors.centerIn: parent
+            libelle: "Progression de l'analyse"
         }
     }    
 

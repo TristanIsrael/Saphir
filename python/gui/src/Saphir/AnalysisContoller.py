@@ -206,7 +206,7 @@ class AnalysisController(QObject):
                 file = self.__get_next_file_waiting()
                 if file.get("inqueue") or self.__analysis_mode == AnalysisMode.AnalyseWholeSource:
                     file["status"] = FileStatus.FileAnalysing
-                    self.fileUpdated.emit(file["filepath"], (file["status"]))
+                    self.fileUpdated.emit(file["filepath"], [file["status"]])
                     Api().read_file(self.__source_disk, file.get("filepath", ""))
         
         if self.__analysis_state == AnalysisState.AnalysisRunning:

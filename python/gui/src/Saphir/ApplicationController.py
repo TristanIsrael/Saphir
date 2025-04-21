@@ -60,7 +60,7 @@ class ApplicationController(QObject):
     __long_process_running = False
     __system_used = False
     __system_information = dict()
-    __copied_files_count = 0
+    __copied_files_count = 0    
     
     #__interfaceInputs = None
     #__main_window:QWidget
@@ -192,6 +192,7 @@ class ApplicationController(QObject):
         self.current_folder_ = folder
         self.currentFolderChanged.emit()
         self.idCurrentFolderChanged.emit()
+        self.__folders_to_query = 1
         Api().get_files_list(self.sourceName_, False, folder)        
 
 
@@ -345,7 +346,7 @@ class ApplicationController(QObject):
 
     @Slot()
     def start_analysis(self):
-        if self.analysisController_.state == AnalysisState.AnalysisStopped:
+        if self.analysisController_.state == AnalysisState.AnalysisStopped and self.analysisReady_:
             Api().debug("User asked to start the analysis")
             self.__analysis_start_time = datetime.now()
             self.analysisController_.start_analysis(self.sourceName_)
@@ -395,6 +396,8 @@ class ApplicationController(QObject):
 
     @Slot()
     def reset(self):
+        self.__system_state = SystemState.SystemResetting
+        self.systemStateChanged.emit(self.__system_state)
         self.stop_analysis()
 
         # Reset the environment means destroying and re-creating dirty VMs:
@@ -567,9 +570,7 @@ class ApplicationController(QObject):
                 self.__set_system_state(SystemState.SystemGettingFilesList)
 
         elif topic == "{}/response".format(Topics.LIST_FILES):
-            #threading.Thread(target= self.__handle_list_files, args=(payload,)).start()
             self.__handle_list_files(payload)
-            #self.__thread_pool.submit(self.__handle_list_files, payload)
 
         elif topic == "{}/response".format(Topics.DISCOVER_COMPONENTS):
             if not MqttHelper.check_payload(payload, ["components"]):
@@ -580,7 +581,7 @@ class ApplicationController(QObject):
             if len(components) > 0:
                 self.componentsHelper_.update(components)
                 self.__check_components_availability()     
-                self.__set_system_state(SystemState.SystemReady)  
+                #self.__set_system_state(SystemState.SystemReady)
                 self.__components_model.components_updated()
 
         elif topic == "{}/response".format(Topics.COPY_FILE):
@@ -671,6 +672,9 @@ class ApplicationController(QObject):
             ready &= av.get("state") == EtatComposant.READY    
             if av.get("state") == EtatComposant.READY and av not in self.analysisComponents_:
                 self.analysisComponents_.append(av)
+
+        # The system is ready when all necessary components are ready
+        # and the number of antiviruses needed is reached        
 
         self.analysisReady_ = ready
         self.analysisReadyChanged.emit(self.analysisReady_)
@@ -815,7 +819,7 @@ class ApplicationController(QObject):
         if rate > 0:
             remaining_time = round(remaining / rate, 0)
         else:
-            remaining_time = float('inf')
+            remaining_time = 0
 
         return remaining_time
 
@@ -974,17 +978,17 @@ class ApplicationController(QObject):
         return self.analysisController_    
 
     def __clean_files_count(self):
-        return self.analysisController_.clean_files_count
+        return self.analysisController_.clean_files_count if self.analysisController_ != None else 0
         #with self.__queue_files_list_lock:
         #    return sum(1 for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean and item.get("progress", 0) == 100)
 
     def __clean_files_size(self):
-        return self.analysisController_.clean_files_size
+        return self.analysisController_.clean_files_size if self.analysisController_ != None else 0
         #with self.__queue_files_list_lock:
         #    return sum(item.get("size", 0) for item in self.__queuedFilesList.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean and item.get("progress", 0) == 100)
 
     def __infected_files_count(self):
-        return self.analysisController_.infected_files_count
+        return self.analysisController_.infected_files_count if self.analysisController_ != None else 0
     
         '''with self.__queue_files_list_lock:
             return (
@@ -994,7 +998,7 @@ class ApplicationController(QObject):
         '''
     
     def __infected_files_size(self):
-        return self.analysisController_.infected_files_size
+        return self.analysisController_.infected_files_size if self.analysisController_ != None else 0
     
         '''with self.__queue_files_list_lock:
             return (

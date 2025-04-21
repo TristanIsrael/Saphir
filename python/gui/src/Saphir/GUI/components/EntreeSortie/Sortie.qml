@@ -1,14 +1,14 @@
 import QtQuick
 import QtQuick.Controls
 import "../../imports"
+import "../../components"
 
+Item {
 
-Rectangle {
-    color:"transparent"
     property string label: Constants.outputUSBName
     property bool selected: Constants.isOutputUSBPlugged
 
-    Connections {
+    /*Connections {
         target: Constants
         onOutputSUBPlugged: {
             Constants.isOutputUSBPlugged = true
@@ -18,7 +18,7 @@ Rectangle {
             Constants.isOutputUSBPlugged = false
             Constants.outputUSBName = ""
         }
-    }
+    }*/
 
     Image {
         source: selected ? Qt.resolvedUrl(Constants.colorModePath  + "SupportSortieConnecte.svg")
@@ -29,14 +29,14 @@ Rectangle {
         width: parent.width
         height:parent.height
 
-        Rectangle {
-            color: "transparent"
+        Item {
             anchors.right: parent.right
             anchors.rightMargin: parent.width * 0.04
             anchors.topMargin: parent.height
             width: parent.width * 0.75
             height: parent.height * 0.20
             y: parent.height * 0.42
+
             Label
             {
                 color: Constants.colorText
@@ -52,6 +52,11 @@ Rectangle {
                 elide: Text.ElideRight
             }
         }
+    }
+
+    HelpTip {
+        anchors.centerIn: parent
+        libelle: "Nom du support cible"
     }
 
     // //Test de changement de status

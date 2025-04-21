@@ -5,6 +5,7 @@ import QtQuick
 import QtQuick.Controls.Basic
 import "components"
 import "imports"
+import "components/Analyse"
 
 Window {
     visible: true
@@ -18,10 +19,10 @@ Window {
         anchors.fill: parent
     }
 
-    Connections {
+    /*Connections {
         target: Constants
         onHideSplashScreen: splashScreen.visible = false
-    }
+    }*/
 
     Loader {
         id: mainWindowLoader
@@ -36,7 +37,7 @@ Window {
             mainWindowLoader.source = Qt.resolvedUrl("MainScreen.qml");
         }
     }
-
+    
     Connections {
         target: Constants
         function onReloadRequested() {

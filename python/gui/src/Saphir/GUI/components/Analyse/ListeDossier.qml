@@ -5,9 +5,7 @@ import net.alefbet
 import "../../imports"
 
 
-Rectangle {
-    color: "transparent"
-
+Item {
     property bool selectionMode: Constants.isFileSelectionMode
     property int itemDisplayed: 10
     property ListModel _fileList
@@ -16,19 +14,6 @@ Rectangle {
 
     Component.onCompleted: {
         updateParentFolder()
-    }
-
-    Connections {
-        target: Constants
-        onUpdateCurrentPath: {
-            Constants.currentDirectory = newPath
-            Constants.currentDirectoryId = idFolder
-            updateParentFolder()
-        }
-
-        onClearFileList: {
-            Constants.fileList.clear()
-        }
     }
 
     function updateParentFolder()
@@ -106,11 +91,12 @@ Rectangle {
 
             Layout.preferredWidth: parent.width
             Layout.preferredHeight: 10
-            spacing: 10
+            spacing: 10            
 
             Image {
                 Layout.preferredWidth: 25
-                anchors.verticalCenter: parent.verticalCenter
+                //anchors.verticalCenter: parent.verticalCenter
+                Layout.alignment: Qt.AlignVCenter
                 source: Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireParent.svg")
                 fillMode: Image.PreserveAspectFit                    
 
@@ -154,7 +140,7 @@ Rectangle {
         {
             id: listView
             clip: true
-
+            property int rowHeight: 25
             Layout.preferredHeight: 95
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -162,6 +148,34 @@ Rectangle {
             model: Constants.fileList
             spacing: 20
 
+            Component.onCompleted: {
+                listView.flickEnded.connect(snapToRow)
+            }
+
+            onContentYChanged: {                
+                snapToRow()
+            }
+
+            function snapToRow() {
+                var totalRowHeight = listView.rowHeight + listView.spacing
+                var targetRow = Math.round(contentY / totalRowHeight)
+                var targetY = targetRow * totalRowHeight
+                if(contentY !== targetY) {
+                    contentY = targetY
+                }
+            }        
+
+            WheelHandler {
+                onWheel: (event)=> {                    
+                    var totalRowHeight = listView.rowHeight + listView.spacing
+                    var delta = event.angleDelta.y > 0 ? -1 : 1
+                    let targetRow = Math.round(listView.contentY / totalRowHeight) + delta
+                    targetRow = Math.max(0, Math.min(targetRow, listView.count - 1))
+                    listView.contentY = targetRow * totalRowHeight
+                }
+            }         
+
+            flickableDirection: Flickable.VerticalFlick
             ScrollBar.vertical: ScrollBar
             {
                 policy: parent.contentHeight > parent.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
@@ -178,11 +192,11 @@ Rectangle {
                     color: Constants.colorText  // Couleur de la barre de défilement
                     radius: 6
                 }
-            }
+            }              
 
             delegate: RowLayout
             {
-                height: visible ? 25 : 0                    
+                height: visible ? listView.rowHeight : 0                    
                 width: selectionMode ? listView.width *0.92 : listView.width
                 spacing: 10
                 
@@ -201,10 +215,11 @@ Rectangle {
                     MouseArea {
                         anchors.fill: parent
                         enabled: type === "folder"
-                        onClicked: {
+                        onClicked: (mouse) => {
                             idFolderSelected = backId
                             ApplicationController.go_to_folder(filepath)
                         }
+                        //onWheel: event => event.accepted = false;
                     }
                 }          
 
@@ -213,7 +228,7 @@ Rectangle {
                     clip: true
                     color: model.selected ? Constants.colorBlue : Constants.colorText
                     text: filename                        
-                    font.pointSize: 24
+                    font.pointSize: listView.rowHeight
                     verticalAlignment: Text.AlignVCenter
                     horizontalAlignment: Text.AlignLeft
                     elide: Label.ElideRight
@@ -222,11 +237,12 @@ Rectangle {
                     MouseArea {
                         anchors.fill: parent
                         enabled: type === "folder"
-                        onClicked: {
+                        onClicked: (mouse) => {
                             idFolderSelected = backId
                             ApplicationController.go_to_folder(filepath)
                             //updateFileList()
                         }
+                        //onWheel: event => event.accepted = false;
                     }
                 }
 
@@ -279,13 +295,14 @@ Rectangle {
                                 backId)
                         }
                     }
-                }                    
+                }
+                             
             }
 
             Label
             {
                 id: usbKeyLabel
-                visible: Constants.fileList.count === 0
+                visible: Constants.fileList !== null ? Constants.fileList.count === 0 : 0
                 color: Constants.colorText
                 anchors.fill: parent
                 horizontalAlignment: Text.AlignHCenter

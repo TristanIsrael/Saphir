@@ -30,13 +30,14 @@ Item
             color: Constants.currentColorMode === Constants.LIGHT ? "#848484" : Constants.currentColorMode === Constants.DARK ? "#66788F" : "#272727"
         }        
     }
+
     RowLayout
     {
-        anchors.fill: parent
-        anchors.leftMargin: width * 0.10
-        anchors.rightMargin: width * 0.10
-        anchors.topMargin: height * 0.10
-        anchors.bottomMargin: height * 0.10
+        anchors {
+            fill: parent
+            margins: parent.height/10
+        }
+
         Item
         {
             Layout.fillHeight: true
@@ -90,6 +91,10 @@ Item
                 onClicked: { chooseMode(2) }
             }
         }
+    }
+
+    HelpTip {
+        libelle: "Inutilisé"
     }
 }
 

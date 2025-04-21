@@ -5,13 +5,13 @@ import Qt5Compat.GraphicalEffects
 import "../imports"
 import net.alefbet
 
-
-Rectangle
-{    
+Item{    
     property double fontSize: 0.5
     property bool timeFormatZulu: true
+    property alias lblClassification: lblClassification
+    property alias timeLabel: timeLabel
+
     id: header
-    color: "transparent"
 
     function getBatteryChargingImage() {
         if (ApplicationController.batteryLevel < 0.33)
@@ -34,12 +34,11 @@ Rectangle
     }*/
     Rectangle {
         id: background
-        width: parent.width
-        height: parent.height
         //source: Qt.resolvedUrl(Constants.colorModePath  + "BarreEtat.svg")
         color: Constants.colorModePrefix === Constants.STEALTH ? "#292929" : "#3975F6"        
         anchors.fill: parent
     }
+
     RowLayout
     {
         anchors.fill: parent
@@ -68,6 +67,10 @@ Rectangle
                     header.updateTime()
                 }
             }
+
+            HelpTip {
+                libelle: "Toucher pour basculer entre\nheure locale et Zulu"
+            }
         }
 
         Timer
@@ -76,31 +79,43 @@ Rectangle
             interval: 1000 // Mise à jour toutes les secondes
             running: true
             repeat: true
-            onTriggered: header.updateTime()
+            onTriggered: header.updateTime()            
         }
 
-        Label
-        {
-            id: lblClassification
-            color: Constants.currentColorMode == Constants.ColorMode.STEALTH ? "1E1E1E" : Constants.colorRed
-            text: "Diffusion Restreinte"
-            font.pixelSize: height *0.5
+        Item {
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredWidth: 60
             Layout.alignment: Qt.AlignVCenter | Qt.AlignLeft            
-            font.capitalization: Font.AllUppercase
-            verticalAlignment: Text.AlignVCenter
-            font.styleName: "Semibold"
-            font.weight: Font.ExtraBold
-            horizontalAlignment: Text.AlignLeft
-        }
 
-        DropShadow {
-            anchors.fill: lblClassification
-            samples: 30
-            color: "white" //Constants.colorRed
-            source: lblClassification
+            Item {
+                anchors.fill: parent
+
+                Label {
+                    id: lblClassification
+                    color: Constants.currentColorMode == Constants.ColorMode.STEALTH ? "1E1E1E" : Constants.colorRed
+                    text: "Diffusion Restreinte"
+                    font.pixelSize: height *0.5                
+                    font.capitalization: Font.AllUppercase
+                    verticalAlignment: Text.AlignVCenter
+                    font.styleName: "Semibold"
+                    font.weight: Font.ExtraBold
+                    horizontalAlignment: Text.AlignLeft
+                    anchors.fill: parent
+
+                    HelpTip {
+                        libelle: "Niveau de classification maximum"
+                    }
+                }        
+
+                DropShadow {
+                    anchors.fill: parent
+                    samples: 30
+                    color: "white" //Constants.colorRed
+                    source: lblClassification
+                    cached: true
+                }
+            }
         }
 
         RowLayout {

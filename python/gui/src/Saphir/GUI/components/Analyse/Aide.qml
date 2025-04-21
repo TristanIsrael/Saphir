@@ -3,9 +3,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "../../imports"
 
-Rectangle {
-    id: coreHelper
-    color: "transparent"
+Item {
+    id: coreHelper    
 
     Image {
         id: background

@@ -1,6 +1,7 @@
 """ This is Saphir """
 
 import sys
+import signal
 import threading
 from pathlib import Path
 
@@ -14,7 +15,6 @@ from libsaphir import DEVMODE
 if DEVMODE:
     from DevModeHelper import DevModeHelper
     DevModeHelper.set_qt_plugins_path()
-    
 
 api_ready = threading.Event()
 FORCE_FULLSCREEN = False
@@ -48,8 +48,14 @@ class InputEventFilter(QObject):
 
         return super().eventFilter(watched, event)
 
-if __name__ == "__main__":
-    app = QGuiApplication(sys.argv)
+app = QGuiApplication(sys.argv)
+
+def handle_sigint(signum, frame):    
+    app.quit()  # Quitte la boucle Qt
+
+signal.signal(signal.SIGINT, handle_sigint)
+
+if __name__ == "__main__":    
     app.setQuitOnLastWindowClosed(True)   
     app.setApplicationName("Saphir")
     app.setApplicationVersion(VERSION)    
@@ -58,9 +64,6 @@ if __name__ == "__main__":
     font = QFont("Roboto", 12)
     app.setFont(font)
 
-    # Load special fonts
-    #load_fonts(["MaterialIconsOutlined-Regular.otf", "FRESHBOT.TTF", "Alien-Encounters-Regular.ttf"])
-    
     applicationController = ApplicationController()
     applicationController.start(on_ready)
 
@@ -78,7 +81,6 @@ if __name__ == "__main__":
         sys.exit(-1)
     
     qml_root = engine.rootObjects()[0]        
-    #qml_root.setCursor(Qt.BlankCursor)
     app.setOverrideCursor(Qt.BlankCursor)
     filter = InputEventFilter(qml_root, app)
     app.installEventFilter(filter)
@@ -89,10 +91,6 @@ if __name__ == "__main__":
 
     if FORCE_FULLSCREEN:
         qml_root.showFullScreen()
-
-    # Integrate with PSEC core
-    #if not DEVMODE:
-    #    applicationController.set_main_window(qml_root)
 
     Api().info("Saphir is ready")
     Api().notify_gui_ready()

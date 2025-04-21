@@ -1,6 +1,9 @@
 #!/bin/sh
 
+rc-update add cgroups 
 rc-service cgroups start
+
+rc-update add av-controller
 rc-service av-controller start
 
 lxc-start -n saphir-container-eset

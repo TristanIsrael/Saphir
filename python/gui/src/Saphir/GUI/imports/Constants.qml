@@ -55,10 +55,11 @@ QtObject {
     property string outputUSBName: ApplicationController.targetName
     property bool isFileSelectionMode: ApplicationController.analysisMode === Enums.AnalysisMode.AnalyseSelection
     property bool isWired: false
+    property bool afficherAide: false
 
         // -- Propriétés de couleurs de l'application
     property int currentDisplayMode: 0
-    property int currentColorMode: 1
+    property int currentColorMode: Constants.DARK
     property string colorModePath: Qt.resolvedUrl("../images/dark_mode/") +"Sombre_"
     property string colorModePrefix: "Sombre_"
     property string colorText: "#FFFFFF"

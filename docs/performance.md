@@ -33,3 +33,24 @@ Le système est conçu pour être en capacité de travailler avec les matériels
 Si le matériel comporte peu de mémoire et/ou un faible processeur, le kanban aura une taille de 1 fichier. Sur un matériel très puissant, il pourra monter entre 2 et 4 fichiers.
 
 De plus, la taille du *kanban* pourra être ajustée automatiquement pendant le fonctionnement afin de maximiser l'utilisateur des ressources matérielles et réduire la durée du traitement. Cette optimisation est rendue possible par le calcul d'un débit de traitement de bout-en-bout (lecture du fichier -> analyse -> copie) et sa comparaison avec l'utilisation des ressources matérielles (charge système et RAM).
+
+## Optimisation de la mémoire
+
+Les fichiers suivants peuvent être supprimés après le démarrage (si OpenGL n'est pas utilisé):
+- /usr/lib/gallium-pipe/pipe_iris.so
+- /usr/lib/gallium-pipe/pipe_crocus.so
+- /usr/lib/gallium-pipe/pipe_radeonsi.so
+- /usr/lib/gallium-pipe/pipe_nouveau.so
+- /usr/lib/gallium-pipe/pipe_r300.so
+- /usr/lib/gallium-pipe/pipe_vmgfx.so
+- /usr/lib/gallium-pipe/pipe_r600.so
+- /usr/lib/gallium-pipe/pipe_i915.so
+
+Les fichiers suivants peuvent être supprimés après le démarrage (si OpenGL est utilisé):
+- /usr/lib/gallium-pipe/pipe_swrast.so
+- tous les drivers qui ne correspondent pas au GPU de l'hôte
+
+Les paquets suivants peuvent être supprimés après le démarrage :
+- qt6-qtwebengine
+
+Commande de suppression des fichiers d'un paquet : `apk info -L <nom_du_paquet> | xargs -I {} rm -rf {}`

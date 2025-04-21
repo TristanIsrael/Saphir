@@ -113,20 +113,45 @@ class QueueListModel(QAbstractListModel):
 
     @Slot(str, list)
     def on_file_updated(self, filepath:str, fields:list):
-        '''self.beginResetModel()
-        self.__make_cache()
-        self.endResetModel()'''
-
         if filepath not in self.__fichiers:
             return
-        
-        #row = list(self.__cache).index(filepath)
-        #print(filepath)
-        row = next((i for i, item in enumerate(self.__cache) if item["filepath"] == filepath), None)
+
+        # On cherche le fichier dans le cache
+        row = next(( (i, item) for i, item in enumerate(self.__cache) if item["filepath"] == filepath), None)        
+
+        # On calcule la liste des status à filtrer
+        filtres = self.__calcule_filtres()
+
+        # Si le fichier n'est pas dans le cache parce que son status précédent l'avait exclu
+        # du cache, il faut l'ajouter dans le cache.
         if row is None:
+            # On le récupère dans le dictionnaire global
+            orig = self.__fichiers[filepath]
+            if orig is None:
+                print(f"Le fichier {filepath} n'a pas été trouvé dans le dictionnaire global")
+                return
+            
+            if orig["status"] in filtres:
+                len_cache = len(self.__cache)
+                self.beginInsertRows(QModelIndex(), len_cache, len_cache+1)
+                self.__cache.append(orig)
+                row = len(self.__cache)-1
+                self.endInsertRows()
+            
             return
-        
-        idx = self.index(row, 0)
+            
+        i, fichier = row
+
+        # On retire le fichier du cache si son status est incompatible avec les filtres        
+        if "status" in fields and fichier["status"] not in filtres:
+            print(f"retrait du fichier {fichier["filepath"]} à l'index {i}")
+            self.beginRemoveRows(QModelIndex(), i, i)
+            del self.__cache[i]
+            self.endRemoveRows()
+            return
+
+        # Si le fichier était déjà dans le cache
+        idx = self.index(i, 0)
 
         if not idx.isValid():
             return
@@ -145,34 +170,24 @@ class QueueListModel(QAbstractListModel):
             self.dataChanged.emit(idx, idx, roles)
         except Exception as e:
             print(e)
-        
-        # If the file has been unqueued remove it from the list
-        '''
-        file = self.fichiers_.get(filepath)
-        if file is not None and file["inqueue"]: # inqueue is the state before it was changed otherwise
-            row = list(self.fichiers_.keys()).index(filepath)
-            self.beginRemoveRows(QModelIndex(), row, row)
-            self.fichiers_.pop(filepath)
-            self.endRemoveRows()
-        else:                
-            self.dataChanged.emit(idx, idx, roles)
-        '''
+       
 
+    '''
     @Slot()
-    def on_file_added(self):
-        pass
-        ''' Cette fonction peut être appelée plusieurs fois alors que les données
-        sont déjà dans la liste des fichiers.
-        '''
+    def on_file_added(self):        
+        # Cette fonction peut être appelée plusieurs fois alors que les données
+        #sont déjà dans la liste des fichiers.       
         nbFichiers = len(self.__fichiers)
         if nbFichiers == self.__row_count:
             # La liste des fichiers est déjà complètement affichée
             return
         
-        #qDebug("Add {} {}".format(self.__row_count, nbFichiers-1))
+        # On n'ajoute l'élément que s'il est compatible avec le filtrage
+        filtres = self.__calculeFiltres()
+
         self.beginInsertRows(QModelIndex(), self.__row_count, nbFichiers-1)
         self.__row_count = nbFichiers
-        self.endInsertRows()        
+        self.endInsertRows()       
         
     @Slot(str)
     def on_file_removed(self, filepath:str):
@@ -180,6 +195,7 @@ class QueueListModel(QAbstractListModel):
         self.beginResetModel()
         self.__row_count -= 1
         self.endResetModel()
+    '''
 
     def get_filtre_sains(self):
         return self.__filtreSains
@@ -220,6 +236,18 @@ class QueueListModel(QAbstractListModel):
             self.filtreInfectesChanged.emit()
             self.__filtreAutres = False
             self.filtreAutresChanged.emit()
+
+    def __calcule_filtres(self):
+        filtres = []
+
+        if self.__filtreSains:
+            filtres.append(FileStatus.FileClean)
+        if self.__filtreInfectes:
+            filtres.extend( (FileStatus.FileAnalysisError, FileStatus.FileCopyError, FileStatus.FileInfected) )
+        if self.__filtreAutres:
+            filtres.extend( (FileStatus.FileAnalysing, FileStatus.FileAvailableInRepository, FileStatus.FileStatusUndefined) )
+
+        return filtres
 
 
     filtreSains = Property(bool, get_filtre_sains, set_filtre_sains, notify=filtreSainsChanged)

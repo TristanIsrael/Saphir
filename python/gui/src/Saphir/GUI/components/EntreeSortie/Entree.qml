@@ -1,15 +1,16 @@
 import QtQuick
 import QtQuick.Controls
 import "../../imports"
+import "../../components"
+import net.alefbet
 
-
-Rectangle {
-    color: "transparent"
+Item {    
     property string label: Constants.inputUSBName
     property bool selected: Constants.isInputUSBPlugged
 
-    Connections {
+    /*Connections {
         target: Constants
+
         onInputUSBPlugged: {
             Constants.isInputUSBPlugged = true
             Constants.inputUSBName = usbName
@@ -18,7 +19,7 @@ Rectangle {
             Constants.isInputUSBPlugged = false
             Constants.inputUSBName = ""
         }
-    }
+    }*/
 
     Image {
         id: image
@@ -30,14 +31,14 @@ Rectangle {
         horizontalAlignment: Image.AlignLeft
         verticalAlignment: Image.AlignVCenter
 
-        Rectangle {
-            color: "transparent"
+        Item {
             anchors.left: parent.left
             anchors.leftMargin: parent.width * 0.025
             anchors.topMargin: parent.height
             width: parent.width * 0.7
             height: parent.height * 0.20
             y: parent.height * 0.42
+
             Label
             {
                 color: Constants.colorText
@@ -53,6 +54,12 @@ Rectangle {
                 elide: Text.ElideRight
             }
         }
+    }
+
+    HelpTip {
+        anchors.centerIn: parent
+        libelle: "Nom du support source"
+        visible: Constants.afficherAide && ApplicationController.analysisMode === Enums.AnalysisMode.AnalyseSelection
     }
 
     // //Test de changement de status

@@ -3,21 +3,22 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "imports"
 
-Rectangle {
+Item {
     id: coreSplashScreen
 
     property string progressText: "Chargement..."
 
-    Connections {
+    /*Connections {
         target: Constants
         onUpdateSplashScreenText: {
             progressText: newText
         }
-    }
+    }*/
 
-    Rectangle {
+    Item {
         anchors.fill: parent
         anchors.centerIn: parent
+
         Image {
             anchors.fill: parent
             anchors.centerIn: parent
@@ -32,12 +33,12 @@ Rectangle {
             anchors.verticalCenterOffset: parent.height * 0.35
             running: true
 
-            Rectangle {
+            Item {
                 anchors.top: parent.bottom
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: parent.width * 5
-                height: parent.height
-                color: "transparent"
+                height: parent.height                
+
                 Label {
                     id: textHolder
                     anchors.centerIn: parent

@@ -13,18 +13,23 @@ Item {
     implicitWidth: 500
     implicitHeight: 300
 
-    Rectangle {
-        id: bkg
+    Item {
         anchors.fill: parent
 
-        radius: 10
-    }
+        Rectangle {
+            id: bkg
+            anchors.fill: parent
 
-    DropShadow {
-        anchors.fill: bkg
-        radius: 10
-        color: "#333"
-        source: bkg
+            radius: 10
+        }
+
+        DropShadow {
+            anchors.fill: bkg
+            radius: 10
+            color: "#333"
+            source: bkg
+            cached: true
+        }
     }
 
     Rectangle {

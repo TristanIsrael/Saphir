@@ -7,10 +7,8 @@ import "EntreeSortie"
 import "Analyse"
 import "../imports"
 
-Rectangle {
-    id: rootCore
-    color: "transparent"
-
+Item {
+    id: rootCore    
 
     Image {
         anchors.fill: parent
@@ -18,14 +16,12 @@ Rectangle {
         //fillMode: Image.PreserveAspectCrop
     }
 
-    Rectangle {
+    Item {
         id: coreContainer
         anchors.centerIn: parent
         anchors.verticalCenterOffset: parent.width * 0.03
         height: parent.height * 0.85
         width: parent.width * 0.9
-        color: "transparent"
-
     }
 
     ColumnLayout {
@@ -41,13 +37,12 @@ Rectangle {
             rows: 2
 
             //ROW 1
-            Rectangle {
+            Item {
                 Layout.column: 0
                 Layout.row: 0
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 Layout.preferredHeight: 25
-                color: "transparent"
                 visible: ApplicationController.analysisMode === Enums.AnalysisMode.AnalyseSelection
 
                 Entree {
@@ -57,19 +52,18 @@ Rectangle {
                     width: parent.width * 0.9
                 }
 
-                Connections {
+                /*Connections {
                     target: entreeUSB
                     onSelectedSignal: if (entreeUSB.selected) sortieUSB.selected=false;
-                }
+                }*/
             }
 
-            Rectangle {
+            Item {
                 Layout.column: 1
                 Layout.row: 0
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 Layout.preferredHeight: 25
-                color: "transparent"
 
                 EtatFichier {
                     id: filesState
@@ -77,13 +71,12 @@ Rectangle {
                 }
 
             }
-            Rectangle {
+            Item {
                 Layout.column: 2
                 Layout.row: 0
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 Layout.preferredHeight: 25
-                color: "transparent"
 
                 RowLayout {
                     anchors.fill: parent
@@ -96,10 +89,10 @@ Rectangle {
                         visible: ApplicationController.analysisMode !== Enums.AnalysisMode.AnalyseSelection
                     }
 
-                    Connections {
+                    /*Connections {
                         target: entreeUSB2
                         onSelectedSignal: if (entreeUSB2.selected) sortieUSB.selected=false;
-                    }
+                    }*/
 
                     Sortie {
                         id: sortieUSB
@@ -119,58 +112,65 @@ Rectangle {
             }
 
             //ROW 2
-            Rectangle {
+            Item {
                 Layout.column: 0
                 Layout.row: 1
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 Layout.preferredHeight: 75
                 Layout.preferredWidth: 35
-                color: "transparent"
                 visible: ApplicationController.analysisMode === Enums.AnalysisMode.AnalyseSelection
 
                 ListeDossier
                 {
                     id: fileSelection
                     anchors.fill: parent
+
+                    HelpTip {
+                        anchors.centerIn: parent
+                        libelle: "Sélection des fichiers"
+                    }
                 }
 
             }
-            Rectangle {
+            Item {
                 Layout.column: 1
                 Layout.row: 1
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 Layout.preferredHeight: 75
                 Layout.preferredWidth: 15
-                color: "transparent"
 
                 EtatAnalyse {
                     id: etatAnalyse
                     anchors.fill: parent
                 }
             }
-            Rectangle {
+            Item {
                 Layout.column: 2
                 Layout.row: 1
                 Layout.fillHeight: true
                 Layout.fillWidth: true
                 Layout.preferredHeight: 75
                 Layout.preferredWidth: 45
-                color: "transparent"
 
                 ListeFichier {
                     anchors.fill: parent
                     //_fileList: Constants.runningFileList
+
+                    HelpTip {
+                        anchors.centerIn: parent
+                        libelle: "Etat et progression des fichiers"
+                    }
                 }
             }
         }
 
-        Rectangle {
+        Item {
             Layout.preferredHeight: 5
             Layout.fillHeight: true
             Layout.fillWidth: true
-            color: "transparent"
+
             Legende {
                 anchors.centerIn: parent
                 height: parent.height

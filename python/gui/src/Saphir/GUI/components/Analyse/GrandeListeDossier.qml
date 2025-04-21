@@ -6,56 +6,13 @@ import net.alefbet
 import "../../imports"
 
 
-Rectangle {
+Item {
     id: rootModalFileList
-    color: "transparent"
 
     property int maxFoldersDisplayed: 6
     property int maxFilesDisplayed: 10
     property string idFolderSelected: ApplicationController.idCurrentFolder
-    //property string idParentFolder: "/"
     property bool selectionMode: Constants.isFileSelectionMode
-
-    /*function findItem(searchId)
-    {
-        for (let i = 0; i < Constants.fileList.count; i++)
-        {
-            if (Constants.fileList.get(i).backId === searchId)
-                return Constants.fileList.get(i)
-        }
-        return undefined
-    }
-
-    function updateFileList() {        
-        fileListView.clear()
-
-        //Recherche du parent
-        var currentFolder = findItem(idFolderSelected)
-        idParentFolder = currentFolder.parent
-        if (currentFolder.parent >= 0)
-        {
-            var parentFolder = findItem(currentFolder.parent)
-            if(parentFolder !== undefined)
-            {
-                fileListView.append({type: parentFolder.type, name: parentFolder.name, selected: parentFolder.selected,  backId: idParentFolder})
-            }
-            else
-            {
-                fileListView.append({type: "folder-parent", name: "parent", selected: false,  backId: currentFolder.parent})
-            }
-        }
-
-        //fileListView.append({id: i, type: item.type, name: item.name, selected: item.selected})
-        for (let i = 0; i < Constants.fileList.count; i++)
-        {
-            var item = Constants.fileList.get(i)
-            if (item.parent === idFolderSelected)
-            {
-                //Tester de voir si on append direct item ?
-                fileListView.append({id: i, type: item.type, name: item.name, selected: item.selected, backId: item.backId})
-            }
-        }
-    }*/
 
     function getFolderTextColor()
     {
@@ -96,13 +53,12 @@ Rectangle {
         }
     }
 
-    Rectangle {
+    Item {
         id: modalContentContainer
         anchors.centerIn: parent
         width: parent.width * 0.96
         height: parent.height * 0.85
         anchors.verticalCenterOffset: parent.height * -0.05
-        color: "transparent"
     }    
 
     /** Fil d'Ariane */
@@ -133,68 +89,10 @@ Rectangle {
             margins: 10
         }        
 
-        /* Liste des dossiers */
-        /*Rectangle {
-            Layout.preferredWidth: parent.width/2
-            Layout.fillHeight: true
-            //Layout.fillWidth: true
-            color: 'transparent'
-            visible: false
-
-            ListView {
-                clip: true
-                id: folderListView
-                Layout.alignment: Qt.AlignCenter
-                anchors.fill: parent
-                model: Constants.fileList
-
-                delegate : RowLayout {
-                    //width: parent.width
-                    Layout.fillWidth: true
-                    height: type === "folder" ? parent.parent.height * (1.0/maxFoldersDisplayed) : 0
-                    visible: type === "folder"
-                    //color: "transparent"
-
-                    Image {
-                        source: idFolderSelected === backId ? Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireUnitaireActive.svg")
-                                                                  : Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireUnitaireActif.svg")
-                        width:height
-                        height:parent.height
-                        //anchors.centerIn: parent
-                        //fillMode: Image.PreserveAspectFit
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: {
-                                idFolderSelected = backId
-                                ApplicationController.go_to_folder(filepath)
-                                //updateFileList()
-                            }
-                        }
-                    }
-                    
-                    Label {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        text: filename
-                        color: getFolderTextColor()
-                        //font.pixelSize: Math.min(height * 0.6, width * 0.15)
-                        font.pointSize: 24
-                        font.bold: true
-                        horizontalAlignment: Text.AlignLeft
-                        verticalAlignment: Text.AlignVCenter
-                        elide: Label.ElideRight
-                    }
-                }
-            }
-
-        }*/
-
         /** Liste des fichiers */
-        Rectangle {
-            //Layout.preferredWidth: 70
+        Item {
             Layout.fillHeight: true
-            Layout.fillWidth: true
-            color: "transparent"          
+            Layout.fillWidth: true    
 
             /** Retour au dossier parent */
             RowLayout {
@@ -204,23 +102,18 @@ Rectangle {
                 anchors {
                     top: parent.top
                     left: parent.left
-                    //right: parent.right
                 }        
 
                 Image {
                     Layout.preferredWidth: 50
-                    anchors.verticalCenter: parent.verticalCenter
+                    Layout.alignment: Qt.AlignVCenter
                     source: Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireParent.svg")
                     fillMode: Image.PreserveAspectFit                    
 
                     MouseArea {
                         anchors.fill: parent
-                        //enabled: type === "folder-parent"
                         onClicked: {
-                            //idParentFolder = backId
-                            //ApplicationController.go_to_folder(filepath)
-                            ApplicationController.go_to_parent_folder()
-                            //Constants.enterFolder(backId)
+                            ApplicationController.go_to_parent_folder()                            
                         }
                     }
                 }
@@ -228,19 +121,16 @@ Rectangle {
                 Label
                 {                                        
                     clip: true
-                    color: Constants.colorText
-                    //Layout.preferredWidth: 90                        
+                    color: Constants.colorText                    
                     text: "Dossier parent"
                     Layout.fillHeight: true
-                    Layout.fillWidth: true
-                    //font.pixelSize: height*0.6
+                    Layout.fillWidth: true                    
                     font.pointSize: 24
                     verticalAlignment: Text.AlignVCenter
                     elide: Label.ElideRight
 
                     MouseArea {
                         anchors.fill: parent
-                        //enabled: type === "folder"
                         onClicked: {
                             ApplicationController.go_to_parent_folder()
                         }
@@ -258,11 +148,40 @@ Rectangle {
                     right: parent.right
                     bottom: parent.bottom
                 }
-                clip:true
+                clip: true
+                property int rowHeight: 50
                 model: Constants.fileList
                 spacing: 20
-                //model: ListModel { id: fileListView }
 
+                Component.onCompleted: {
+                    listView.flickEnded.connect(snapToRow)
+                }
+
+                onContentYChanged: {
+                    snapToRow()
+                }
+
+                function snapToRow() {
+                    var totalRowHeight = listView.rowHeight + listView.spacing
+                    var targetRow = Math.round(contentY / totalRowHeight)
+                    var targetY = targetRow * totalRowHeight
+                    if(contentY !== targetY) {
+                        contentY = targetY
+                    }
+                }
+
+                WheelHandler {
+                    //property: "contentY"
+                    onWheel: (event)=> {
+                        var totalRowHeight = listView.rowHeight + listView.spacing
+                        var delta = event.angleDelta.y > 0 ? -1 : 1
+                        let targetRow = Math.round(listView.contentY / totalRowHeight) + delta
+                        targetRow = Math.max(0, Math.min(targetRow, listView.count - 1))
+                        listView.contentY = targetRow * totalRowHeight
+                    }
+                }
+
+                flickableDirection: Flickable.VerticalFlick
                 ScrollBar.vertical: ScrollBar
                 {
                     policy: parent.contentHeight > parent.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
@@ -283,18 +202,14 @@ Rectangle {
 
                 delegate: RowLayout
                 {
-                    height: visible ? 50 : 0                    
+                    height: visible ? listView.rowHeight : 0                    
                     width: listView.width *0.95
                     spacing: 10
                     
                     Image {
                         Layout.preferredWidth: parent.height 
-                        Layout.preferredHeight: parent.height                        
+                        Layout.preferredHeight: parent.height
 
-                        //anchors.verticalCenter: parent.verticalCenter
-                        /*source: type === "file" ? Qt.resolvedUrl(Constants.colorModePath  + "FichierActif.svg")
-                                                        : type === "folder" && backId !== idParentFolder ? Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireUnitaire.svg")
-                                                                                                                    : Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireParent.svg")*/
                         source: type === "file" ? Qt.resolvedUrl(Constants.colorModePath  + "FichierActif.svg")
                                                 : Qt.resolvedUrl(Constants.colorModePath  + "IconeRepertoireUnitaire.svg")                                                                           
                         fillMode: Image.PreserveAspectFit
@@ -384,7 +299,7 @@ Rectangle {
                 Label
                 {
                     id: usbKeyLabel
-                    visible: Constants.fileList.count === 0
+                    visible: Constants.fileList !== null ? Constants.fileList.count === 0 : false
                     color: Constants.colorText
                     anchors.fill: parent
                     horizontalAlignment: Text.AlignHCenter

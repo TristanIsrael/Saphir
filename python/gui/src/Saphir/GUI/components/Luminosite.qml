@@ -5,7 +5,6 @@ import "../imports"
 
 
 Item {
-
     property int selectedMode: Constants.currentColorMode
 
     function chooseMode(mode)
@@ -41,22 +40,25 @@ Item {
         anchors.fill: parent
         color: "transparent" //"#445060"
         radius: height
+
         border {            
             width: 2
             color: Constants.currentColorMode === Constants.LIGHT ? "#848484" : Constants.currentColorMode === Constants.DARK ? "#70839c" : "#272727"
         }        
     }
+
     RowLayout
     {
-        anchors.fill: parent
-        anchors.leftMargin: width * 0.10
-        anchors.rightMargin: width * 0.10
-        anchors.topMargin: height * 0.10
-        anchors.bottomMargin: height * 0.10
+        anchors {
+            fill: parent
+            margins: parent.height/10
+        }
         spacing: height/2
+
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
+
             Image {
                 id: iconeClair
                 source: selectedMode == 0 ? Qt.resolvedUrl(Constants.colorModePath  + "LuminositeClairActif.svg")
@@ -65,14 +67,17 @@ Item {
                 fillMode: Image.PreserveAspectFit
                 height:parent.height
             }
+
             MouseArea {
                 anchors.fill: parent
                 onClicked: { chooseMode(0) }
             }
         }
+
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
+
             Image {
                 id: iconeSombre
                 source: selectedMode == 1 ? Qt.resolvedUrl(Constants.colorModePath  + "LuminositeSombreActif.svg")
@@ -81,6 +86,7 @@ Item {
                 fillMode: Image.PreserveAspectFit
                 height:parent.height
             }
+
             MouseArea {
                 anchors.fill: parent
                 onClicked: { chooseMode(1) }
@@ -89,6 +95,7 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
+
             Image {
                 id: iconeFurtif
                 source: selectedMode == 2 ? Qt.resolvedUrl(Constants.colorModePath  + "LuminositeFurtifActif.svg")
@@ -97,6 +104,7 @@ Item {
                 fillMode: Image.PreserveAspectFit
                 height:parent.height
             }
+
             MouseArea {
                 anchors.fill: parent
                 onClicked: { chooseMode(2) }
@@ -105,6 +113,7 @@ Item {
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
+
             Image {
                 id: iconeAuto
                 source: selectedMode == 3 ? Qt.resolvedUrl(Constants.colorModePath  + "LuminositeAutoActif.svg")
@@ -113,10 +122,15 @@ Item {
                 fillMode: Image.PreserveAspectFit
                 height:parent.height
             }
+
             MouseArea {
                 anchors.fill: parent
                 onClicked: { chooseMode(3) }
             }
         }
+    }
+
+    HelpTip {
+        libelle: "Basculer entre les thèmes d'affichages"
     }
 }

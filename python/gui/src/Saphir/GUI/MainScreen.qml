@@ -14,9 +14,8 @@ import Qt5Compat.GraphicalEffects
 import net.alefbet
 import "imports"
 
-Rectangle {
+Item {
     property double coreMargin : 0.03
-    color: "transparent"
 
     /*Connections {
         target: Constants
@@ -40,11 +39,10 @@ Rectangle {
         anchors.fill: parent
     }
 
-    Rectangle {
+    Item {
         id: patternOverlay
         width: parent.width
         height: parent.height
-        color: "transparent"
         anchors.centerIn: parent
 
         Image {
@@ -78,6 +76,7 @@ Rectangle {
         anchors.bottomMargin: 5
         Header // Header bleu en haut
         {
+            id: header
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.preferredHeight: 7
@@ -98,7 +97,7 @@ Rectangle {
             }
 
             Item {
-                Layout.preferredWidth: 65
+                Layout.preferredWidth: 60
                 Layout.fillHeight: true
                 Layout.fillWidth: true
             }
@@ -106,7 +105,7 @@ Rectangle {
             Luminosite
             {
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                Layout.preferredWidth: 15
+                Layout.preferredWidth: 20
                 Layout.fillHeight: true
                 Layout.fillWidth: true
             }
@@ -136,6 +135,10 @@ Rectangle {
                     anchors.fill: parent
                     onClicked: systemState.visible = !systemState.visible
                 }
+
+                HelpTip {
+                    libelle: "Afficher l'état du système"
+                }
             }
 
             Image {
@@ -152,6 +155,10 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     onClicked: logsState.visible = !logsState.visible
+                }
+
+                HelpTip {
+                    libelle: "Afficher le journal du système"
                 }
             }
 
@@ -191,7 +198,8 @@ Rectangle {
 
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {                             
+                        onClicked: {  
+                            restartButton.visible = false                           
                             ApplicationController.reset() 
                         }
                     }
@@ -203,6 +211,10 @@ Rectangle {
                     radius: 20
                     color: "#333"
                     visible: confirmRestartButton.visible
+                }
+
+                HelpTip {
+                    libelle: "Réinitialiser le système"
                 }
             }
 
@@ -243,6 +255,7 @@ Rectangle {
                     MouseArea {
                         anchors.fill: parent
                         onClicked: { 
+                            exitButton.visible = false
                             ApplicationController.shutdown() 
                         }
                     }
@@ -255,16 +268,19 @@ Rectangle {
                     color: "#333"
                     visible: confirmExitButton.visible
                 }
+
+                HelpTip {
+                    libelle: "Eteindre le système"
+                }
             }            
 
-            Rectangle {
+            Item {
                 width: parent.width * 0.075
                 height: parent.height * 0.1
                 anchors.left: parent.left
                 anchors.bottom: parent.bottom
                 anchors.leftMargin: (width * 0.5) - parent.width * 0.01
-                anchors.bottomMargin: (height * 0.5) - parent.height * 0.01
-                color: "transparent"
+                anchors.bottomMargin: (height * 0.5) - parent.height * 0.01                
 
                 Image {
                     id: bigFileListButton
@@ -277,6 +293,12 @@ Rectangle {
                         anchors.fill: parent
                         onClicked: bigFileList.visible = !bigFileList.visible
                     }
+                }
+
+                HelpTip {
+                    libelle: "Afficher le navigateur en grand"
+                    y: parent.height/2
+                    visible: Constants.afficherAide && ApplicationController.analysisMode === Enums.AnalysisMode.AnalyseSelection
                 }
             }
 
@@ -291,11 +313,10 @@ Rectangle {
                 anchors.topMargin: parent.height * 0.2 + (height * 0.5)
                 spacing: 10
 
-                Rectangle {
+                Item {
                     Layout.preferredWidth: 40
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    color: "transparent"
 
                     Image {
                         id: copySaneFilesButton
@@ -314,11 +335,10 @@ Rectangle {
                     }
                 }
 
-                Rectangle {
+                Item {
                     Layout.preferredWidth: 80
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    color: "transparent"
 
                     Label {
                         anchors.fill: parent
@@ -335,7 +355,7 @@ Rectangle {
                             }
                         }
                     }
-                }
+                }                
             }
 
             Rectangle {
@@ -393,16 +413,15 @@ Rectangle {
         MouseArea {
             anchors.fill: parent
             onClicked: {
-                helper.visible = !helper.visible
+                Constants.afficherAide = !Constants.afficherAide
             }
         }
     }
 
     //Modales
-    Rectangle {
+    Item {
         //Modals holder
         anchors.fill: parent
-        color: "transparent"
         EtatSysteme {
             id: systemState
             visible: false
@@ -428,52 +447,47 @@ Rectangle {
         }
     }
 
-    Rectangle {
+    Item {
         id: helper
-        visible: false
-        width: parent.width
-        height: parent.height
-        color: "transparent"
-        anchors.centerIn: parent
+        visible: Constants.afficherAide
+        anchors.fill: parent
 
         Rectangle {
             id: helperBackground
             anchors.fill: parent
             color: Constants.colorText
-            opacity: 0.5
+            opacity: 0.2
         }
 
-        Rectangle {
-            width: parent.width * 0.2
-            height: parent.height * 0.05
-            anchors.top: parent.top
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.topMargin: parent.height * 0.05
-            anchors.horizontalCenterOffset: -parent.width * 0.12
-            color: "transparent"
+        /*Item {
+            x: header.lblClassification.mapToGlobal(0, 0).x
+            y: header.lblClassification.mapToGlobal(0, header.lblClassification.height).y           
+
             Image {
-                anchors.fill: parent
+                //anchors.fill: parent
+                anchors.fill: lblClassification
                 source: Qt.resolvedUrl(Constants.colorModePath  + "ContainerSupportSortie.svg")
                 fillMode: Image.Stretch
             }
             Label {
-                anchors.fill: parent
-                text: "Classification"
+                id: lblClassification
+                //anchors.fill: parent
+                text: "Ne pas utiliser sur un\nsupport de niveau supérieur"
                 color: Constants.colorText
-                font.pixelSize: Math.min(height * 0.6, width * 0.15)
+                font.pixelSize: 24
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
                 layer.enabled: true
             }
         }
 
-        Rectangle {
+        Item {
             width: parent.width * 0.2
             height: parent.height * 0.05
             anchors.centerIn: parent
             anchors.horizontalCenterOffset: -parent.width * 0.25
             anchors.verticalCenterOffset: parent.height * 0.1
-            color: "transparent"
+
             Image {
                 anchors.fill: parent
                 source: Qt.resolvedUrl(Constants.colorModePath  + "ContainerSupportSortie.svg")
@@ -490,13 +504,13 @@ Rectangle {
             }
         }
 
-        Rectangle {
+        Item {
             width: parent.width * 0.2
             height: parent.height * 0.05
             anchors.centerIn: parent
             anchors.horizontalCenterOffset: parent.width * 0.225
             anchors.verticalCenterOffset: parent.height * 0.1
-            color: "transparent"
+            
             Image {
                 anchors.fill: parent
                 source: Qt.resolvedUrl(Constants.colorModePath  + "ContainerSupportSortie.svg")
@@ -511,7 +525,7 @@ Rectangle {
                 verticalAlignment: Text.AlignVCenter
                 layer.enabled: true
             }
-        }
+        }*/
     }
 
     PopupAnalyseIntegrale {
@@ -551,20 +565,36 @@ Rectangle {
         }
     }
 
+    PopupReinitialisation {
+        id: popupReinitialisation
+        anchors.centerIn: parent
+        visible: false
+    }
+
     Connections {
         target: ApplicationController
         
-        onSourceReadyChanged: function() {
+        function onSourceReadyChanged() {
             popupAnalyseIntegrale.visible = ApplicationController.sourceReady
         }
 
-        onSystemMustBeReset: function() {
+        function onSystemMustBeReset() {
             popupMustReset.visible = true
         }        
 
-        onSystemStateChanged: function() {
+        function onSystemStateChanged() {
             if(ApplicationController.systemState === Enums.SystemState.AnalysisCompleted) {
                 popupAnalysisFinished.visible = true
+            } else if(ApplicationController.systemState === Enums.SystemState.SystemResetting) {
+                popupAnalysisFinished.visible = false
+                popupReinitialisation.visible = true
+                popupMustReset.visible = false
+            } 
+        }
+
+        function onAnalysisReadyChanged() {
+            if(popupReinitialisation.visible && ApplicationController.analysisReady) {
+                popupReinitialisation.visible = false
             }
         }
     }
