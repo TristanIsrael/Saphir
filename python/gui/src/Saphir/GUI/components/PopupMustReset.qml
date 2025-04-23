@@ -64,7 +64,7 @@ Item {
                 id: lblLibelle
                 color: Constants.colorText
                 text: root.libelle
-                font.pixelSize: 20
+                font.pixelSize: 24
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
             }

@@ -163,20 +163,6 @@ class ApplicationController(QObject):
         Api().start(self.mqtt_client, True, self.__logfile)
 
 
-    '''
-    @Slot() 
-    def start_io_monitoring(self):
-        Api().debug("Démarrage de la surveillance des entrées", "AppController")
-        self.interfaceInputs = InterfaceInputs(fenetre_app=self.__main_window)  
-        self.workerThread = QThread()        
-        self.interfaceInputs.moveToThread(self.workerThread)  
-        self.workerThread.start()
-        self.interfaceInputs.nouvellePosition.connect(self.__on_pointer_moved)
-        self.interfaceInputs.clicked.connect(self.on_clicked)
-        self.interfaceInputs.wheel.connect(self.__on_wheel)
-        QTimer.singleShot(1, self.interfaceInputs.demarre_surveillance)
-    '''
-
     @Slot()
     def update_source_files_list(self):
         # Ask for the list of files
@@ -470,9 +456,7 @@ class ApplicationController(QObject):
         self.logListModel_.listen_to_logs()
 
         Api().notify_gui_ready()  
-        Api().subscribe(f"{Topics.COPY_FILE}/response")
-        Api().subscribe(f"{Topics.ENERGY_STATE}/response")
-        Api().subscribe(f"{Topics.SYSTEM_INFO}/response")
+        Api().subscribe(f"{Topics.COPY_FILE}/response")                
 
         self.__set_system_state(SystemState.SystemReady)
         Api().discover_components()   
@@ -626,13 +610,13 @@ class ApplicationController(QObject):
             file["progress"] = 100
             self.fileUpdated.emit(filepath, ["status", "progress"])
 
-        elif topic == "{}/response".format(Topics.ENERGY_STATE):
+        elif topic == f"{Topics.ENERGY_STATE}/response":
             if not MqttHelper.check_payload(payload, ["battery_level", "plugged"]):
                 return
             
             self.battery_level_ = payload.get("battery_level", 0)
             self.batteryLevelChanged.emit()
-            self.plugged_ = bool(payload.get("plugged", 0))
+            self.plugged_ = bool(payload.get("plugged", False))
             self.pluggedChanged.emit()      
 
         elif topic == f"{Topics.SYSTEM_INFO}/response":
@@ -649,6 +633,7 @@ class ApplicationController(QObject):
 
     @Slot()
     def shutdown(self):
+        self.__set_system_state(SystemState.SystemShuttingDown)
         Api().shutdown()
 
 
@@ -669,8 +654,8 @@ class ApplicationController(QObject):
         ready &= len(ids) >= ANTIVIRUS_NEEDED
         for id in ids:
             av = self.componentsHelper_.get_by_id(id)
-            ready &= av.get("state") == EtatComposant.READY    
-            if av.get("state") == EtatComposant.READY and av not in self.analysisComponents_:
+            ready &= av.get("state", EtatComposant.UNKNOWN) == EtatComposant.READY    
+            if av.get("state", EtatComposant.UNKNOWN) == EtatComposant.READY and av not in self.analysisComponents_:
                 self.analysisComponents_.append(av)
 
         # The system is ready when all necessary components are ready

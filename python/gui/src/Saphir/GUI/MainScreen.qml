@@ -403,10 +403,6 @@ Item {
             bottomMargin: (parent.height * 0.145)
         }
 
-        //anchors.horizontalCenter: parent.right
-        //anchors.verticalCenter: parent.top
-        //anchors.verticalCenterOffset: (parent.height * 0.855)
-        //anchors.horizontalCenterOffset: parent.width * 0.02
         width: parent.width * 0.05
         height: parent.height * 0.08
 
@@ -458,74 +454,6 @@ Item {
             color: Constants.colorText
             opacity: 0.2
         }
-
-        /*Item {
-            x: header.lblClassification.mapToGlobal(0, 0).x
-            y: header.lblClassification.mapToGlobal(0, header.lblClassification.height).y           
-
-            Image {
-                //anchors.fill: parent
-                anchors.fill: lblClassification
-                source: Qt.resolvedUrl(Constants.colorModePath  + "ContainerSupportSortie.svg")
-                fillMode: Image.Stretch
-            }
-            Label {
-                id: lblClassification
-                //anchors.fill: parent
-                text: "Ne pas utiliser sur un\nsupport de niveau supérieur"
-                color: Constants.colorText
-                font.pixelSize: 24
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                layer.enabled: true
-            }
-        }
-
-        Item {
-            width: parent.width * 0.2
-            height: parent.height * 0.05
-            anchors.centerIn: parent
-            anchors.horizontalCenterOffset: -parent.width * 0.25
-            anchors.verticalCenterOffset: parent.height * 0.1
-
-            Image {
-                anchors.fill: parent
-                source: Qt.resolvedUrl(Constants.colorModePath  + "ContainerSupportSortie.svg")
-                fillMode: Image.Stretch
-            }
-            Label {
-                anchors.fill: parent
-                text: "Contenu support d'entrée"
-                color: Constants.colorText
-                font.pixelSize: Math.min(height * 0.6, width * 0.15)
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                layer.enabled: true
-            }
-        }
-
-        Item {
-            width: parent.width * 0.2
-            height: parent.height * 0.05
-            anchors.centerIn: parent
-            anchors.horizontalCenterOffset: parent.width * 0.225
-            anchors.verticalCenterOffset: parent.height * 0.1
-            
-            Image {
-                anchors.fill: parent
-                source: Qt.resolvedUrl(Constants.colorModePath  + "ContainerSupportSortie.svg")
-                fillMode: Image.Stretch
-            }
-            Label {
-                anchors.fill: parent
-                text: "Avancement analyse"
-                color: Constants.colorText
-                font.pixelSize: Math.min(height * 0.6, width * 0.15)
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                layer.enabled: true
-            }
-        }*/
     }
 
     PopupAnalyseIntegrale {
@@ -571,6 +499,11 @@ Item {
         visible: false
     }
 
+    PopupShuttingDown {
+        id: popupShuttingDown
+        anchors.centerIn: parent 
+    }
+
     Connections {
         target: ApplicationController
         
@@ -589,7 +522,12 @@ Item {
                 popupAnalysisFinished.visible = false
                 popupReinitialisation.visible = true
                 popupMustReset.visible = false
-            } 
+            } else if(ApplicationController.systemState === Enums.SystemState.SystemShuttingDown) {
+                popupAnalysisFinished.visible = false
+                popupReinitialisation.visible = false
+                popupMustReset.visible = false
+                popupShuttingDown.visible = true
+            }
         }
 
         function onAnalysisReadyChanged() {

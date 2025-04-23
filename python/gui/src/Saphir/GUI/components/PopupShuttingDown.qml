@@ -6,7 +6,7 @@ import "../imports"
 
 Item {
     id: root
-    property string libelle: "Réinitialisation du système en cours,\nveuillez patienter."
+    property string libelle: "Le système est en cours d'extinction."
 
     implicitWidth: 500
     implicitHeight: 300
