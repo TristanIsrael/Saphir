@@ -193,10 +193,10 @@ Sign local Alpine repository####################################################
 ###
 
 total 942744 -> 921 Mo
--rw-r--r--    1 root     root     271520956 Mar 28 22:17 saphir-container-eset-2.0-r1.apk
--rw-r--r--    1 root     root     235213131 Dec 30 22:05 saphir-av-clamav-1.0-r1.apk
--rw-r--r--    1 root     root     112711752 Nov 29 19:21 qt6-qtwebengine-6.8.0-r0.apk
--rw-r--r--    1 root     root      58613139 Mar 27 07:56 llvm19-libs-19.1.4-r1.apk
+-rw-r--r--    1 root     root     271520956 Mar 28 22:17 saphir-container-eset-2.0-r1.apk   -> 29,5%
+-rw-r--r--    1 root     root     235213131 Dec 30 22:05 saphir-av-clamav-1.0-r1.apk        -> 25,5%
+-rw-r--r--    1 root     root     112711752 Nov 29 19:21 qt6-qtwebengine-6.8.0-r0.apk       -> 12,2%
+-rw-r--r--    1 root     root      58613139 Mar 27 07:56 llvm19-libs-19.1.4-r1.apk          -> 
 -rw-r--r--    1 root     root      32420803 Dec  2 09:50 mesa-24.2.8-r0.apk
 -rw-r--r--    1 root     root      21686544 Nov 20 14:47 clang19-libclang-19.1.4-r0.apk
 -rw-r--r--    1 root     root      15900880 Nov 29 19:21 py3-pyside6-6.8.0.2-r0.apk
