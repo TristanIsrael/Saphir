@@ -502,6 +502,7 @@ Item {
     PopupShuttingDown {
         id: popupShuttingDown
         anchors.centerIn: parent 
+        visible: false
     }
 
     Connections {

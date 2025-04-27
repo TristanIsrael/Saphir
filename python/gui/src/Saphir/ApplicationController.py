@@ -379,7 +379,7 @@ class ApplicationController(QObject):
             if file_["status"] == FileStatus.FileClean:
                 file_["select_for_copy"] = False
                 self.fileUpdated.emit(filepath_, ["select_for_copy"])
-
+   
     @Slot()
     def reset(self):
         self.__system_state = SystemState.SystemResetting
@@ -503,8 +503,7 @@ class ApplicationController(QObject):
                 self.sourceName_ = ""
                 self.analysisController_.set_source_disk("")
                 self.sourceNameChanged.emit(self.sourceName_)
-                QMetaObject.invokeMethod(self, "reset")
-                #self.reset()
+                #QMetaObject.invokeMethod(self, "reset")
             elif self.sourceName_ != "" and self.sourceName_ != disk and state == "connected":
                 # Une nouvelle source a été connectée                
                 self.targetReady_ = True
