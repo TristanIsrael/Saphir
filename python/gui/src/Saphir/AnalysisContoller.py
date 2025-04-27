@@ -62,15 +62,6 @@ class AnalysisController(QObject):
         # à concurrence de la place disponible dans le dépôt
         threading.Timer(0.5, self.__do_copy_files_into_repository).start()
 
-        '''
-        for file in self.__files.values():
-            # First step is to copy the file into the repository
-            if file.get("inqueue"):
-                file["status"] = FileStatus.FileAnalysing
-                self.fileUpdated.emit(file["filepath"], (file["status"]))
-                Api().read_file(source_name, file.get("filepath", ""))
-        '''
-
 
     def stop_analysis(self) -> None:
         Api().info("Stopping the analysis", "AnalysisController")        
@@ -123,14 +114,12 @@ class AnalysisController(QObject):
 
 
     def __on_file_available(self, filepath:str, footprint:str) -> None:
-        #fileInfo = self.__get_file_by_filepath(filepath)
         self.__repository_size += 1
 
         try:
             file = self.__files[filepath]
             file["status"] = FileStatus.FileAvailableInRepository
             file["footprint"] = footprint
-            #self.__files_list_model.on_files_updated()
             self.fileUpdated.emit(filepath, ["status"])
 
             # Next step is to analyse the file
