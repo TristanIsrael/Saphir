@@ -104,7 +104,7 @@ Item {
             }
         }
 
-        TableView {
+        ListView {
             id: logsListView
 
             property int rowHeight: 40
@@ -113,8 +113,8 @@ Item {
             Layout.fillHeight: true
             Layout.fillWidth: true
             Layout.margins: 10
-            columnSpacing: 20
-            rowSpacing: 20
+            //columnSpacing: 20
+            spacing: 20
                         
             //rowHeightProvider: function(row) { return logsListView.rowHeight }
 
@@ -170,14 +170,32 @@ Item {
                 }
             }
 
-            delegate : Item {
-                implicitHeight: logsListView.rowHeight
-                implicitWidth: lbl.width
+            delegate : RowLayout {
+                height: logsListView.rowHeight    
+                spacing: 20            
 
                 Label {
-                    id: lbl                    
+                    id: lblDateTime
                     clip: true
-                    text: display
+                    text: datetime
+                    color: Constants.colorText
+                    font.pixelSize: parent.height
+                    elide: Label.ElideRight
+                }
+
+                Label {
+                    id: lblModule
+                    clip: true
+                    text: module
+                    color: Constants.colorText
+                    font.pixelSize: parent.height
+                    elide: Label.ElideRight
+                }
+
+                Label {
+                    id: lblDescription
+                    clip: true
+                    text: description
                     color: Constants.colorText
                     font.pixelSize: parent.height
                     elide: Label.ElideRight

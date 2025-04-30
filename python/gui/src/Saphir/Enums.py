@@ -29,6 +29,7 @@ class Roles():
     RoleId = Qt.UserRole +11    
     RoleLogModule = Qt.UserRole +12
     RoleLogDescription = Qt.UserRole +13
+    RoleDateTime = Qt.UserRole +14
 
 @QmlElement
 class Enums(QObject):

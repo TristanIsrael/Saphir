@@ -1,4 +1,4 @@
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal, Slot
+from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Signal, Slot
 from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray, qDebug
 from Enums import Roles, FileStatus
 from psec import Api, Topics, Logger
@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 
 
-class LogListModel(QAbstractTableModel):
+class LogListModel(QAbstractItemModel):
     
     # Variables
     __logs = list()
@@ -21,14 +21,12 @@ class LogListModel(QAbstractTableModel):
         Api().add_message_callback(self.__on_message)
         Api().subscribe("{}/#".format(Topics.EVENTS))        
 
+    def index(self, row:int, column:int, parent=QModelIndex()) -> QModelIndex:
+        return self.createIndex(row, column, parent)
 
     def rowCount(self, parent=QModelIndex()):
         return len(self.__logs)
-    
-    
-    def columnCount(self, parent=QModelIndex()):
-        return 3
-
+        
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
@@ -39,11 +37,11 @@ class LogListModel(QAbstractTableModel):
 
         txt = None
 
-        if index.column() == 0:
+        if role == Roles.RoleDateTime:
             txt = log.get("datetime", "inconnue")
-        elif index.column() == 1:
+        elif role == Roles.RoleLogModule:
             txt = log.get("module", "inconnu")
-        elif index.column() == 2:
+        elif role == Roles.RoleLogDescription:
             txt = log.get("description", "inconnu")
 
         return txt
@@ -51,7 +49,9 @@ class LogListModel(QAbstractTableModel):
     
     def roleNames(self) -> dict:
         roles = {
-            Qt.DisplayRole: b'display'
+            Roles.RoleDateTime: b'datetime',
+            Roles.RoleLogModule: b'module',
+            Roles.RoleLogDescription: b'description'
         }
 
         return roles
