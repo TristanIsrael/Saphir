@@ -772,12 +772,12 @@ class ApplicationController(QObject):
         if state == AnalysisState.AnalysisRunning:
             Api().info("Analysis is running")
             self.__set_system_state(SystemState.SystemAnalysisRunning)
-        '''elif state == AnalysisState.AnalysisStopped:
+        elif state == AnalysisState.AnalysisStopped:
             Api().info("Analysis is stopped")
             self.__set_system_state(SystemState.SystemWaitingForUserAction)
         else:
             Api().info("Analysis state is unknown")
-            # TODO'''
+            # TODO
 
 
     def __get_remaining_time(self):

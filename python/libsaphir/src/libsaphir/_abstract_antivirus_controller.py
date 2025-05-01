@@ -31,7 +31,7 @@ class AbstractAntivirusController(ABC):
             if os.cpu_count() is not None:
                 self.__max_workers = os.cpu_count()
         else:
-            self.__max_workers = max_workers            
+            self.__max_workers = max_workers
 
     def start(self):
         if not DEVMODE:
@@ -124,8 +124,8 @@ class AbstractAntivirusController(ABC):
 
     def __commands_loop(self):
         while True:
-            if self.__can_run:                
-                if not self.__files_queue.empty() and self.__workers < self.__max_workers: # type: ignore
+            if self.__can_run:
+                if not self.__files_queue.empty() and self.__workers < self.__max_workers: # type: ignore                    
                     filepath = self.__files_queue.get()
                     threading.Thread(target=self.__analyse_file, args=(filepath,)).start()
 
