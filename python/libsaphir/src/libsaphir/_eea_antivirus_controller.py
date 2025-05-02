@@ -62,9 +62,7 @@ class EeaAntivirusController(AbstractAntivirusController):
             # We extract the scan id from the scan info
             if proc.stdout != "" and proc.stdout is not None:
                 # The scan has completed
-                print(proc.stdout)
                 log_name = self.__extract_log_name(proc.stdout.decode().strip())
-                print(log_name)
 
                 if log_name == "":
                     self.error("Une erreur s'est produite durant l'analyse du résultat : {} (log_name est vide)".format(proc.stdout))
