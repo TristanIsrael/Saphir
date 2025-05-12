@@ -213,6 +213,7 @@ Item {
                 color: Constants.colorText
                 font.pixelSize: 24
                 text: "PSEC version " +(ApplicationController.systemInformation["core"] !== undefined ? ApplicationController.systemInformation["core"]["version"] : "non identifiée")
+                        +(ApplicationController.systemInformation["core"]["debug_on"] ? " débogage actif" : "")
             }
 
             Item {
