@@ -85,18 +85,18 @@ class AbstractAntivirusController(ABC):
 
     def __on_api_ready(self):
         self.debug("Current CPU count is {}. Using {} workers.".format(os.cpu_count(), self.__max_workers))
-        Api().subscribe("{}/request".format(Topics.DISCOVER_COMPONENTS))
-        Api().subscribe("{}/request".format(TOPIC_ANALYSE))
-        Api().subscribe("{}/stop".format(TOPIC_ANALYSE))
-        Api().subscribe("{}/resume".format(TOPIC_ANALYSE))
-        Api().subscribe("{}/reset".format(TOPIC_ANALYSE))
+        Api().subscribe(f"{Topics.DISCOVER_COMPONENTS}/request")
+        Api().subscribe(f"{TOPIC_ANALYSE}/request")
+        Api().subscribe(f"{TOPIC_ANALYSE}/stop")
+        Api().subscribe(f"{TOPIC_ANALYSE}/resume")
+        Api().subscribe(f"{TOPIC_ANALYSE}/reset")
         self._on_api_ready()
 
     def __on_message_received(self, topic:str, payload:dict):
-        if topic == "{}/request".format(Topics.DISCOVER_COMPONENTS):
+        if topic == f"{Topics.DISCOVER_COMPONENTS}/request":
             self.component_state_changed()            
 
-        elif topic == "{}/request".format(TOPIC_ANALYSE):
+        elif topic == f"{TOPIC_ANALYSE}/request":
             if not MqttHelper.check_payload(payload, ["filepath"]):
                 self.error("Missing required argument filepath")
                 return
@@ -104,13 +104,13 @@ class AbstractAntivirusController(ABC):
             filepath = payload.get("filepath")
             self.__files_queue.put(filepath)
 
-        elif topic == "{}/stop".format(TOPIC_ANALYSE):
+        elif topic == f"{TOPIC_ANALYSE}/stop":
             self.__can_run = False
 
-        elif topic == "{}/resume".format(TOPIC_ANALYSE):
+        elif topic == f"{TOPIC_ANALYSE}/resume":
             self.__can_run = True
             
-        elif topic == "{}/reset".format(TOPIC_ANALYSE):
+        elif topic == f"{TOPIC_ANALYSE}/reset":
             self.__can_run = False
 
             time.sleep(0.2)
@@ -126,11 +126,10 @@ class AbstractAntivirusController(ABC):
             self.__can_run = True
 
     def __commands_loop(self):
-        while True:
-            if self.__can_run:
-                if not self.__files_queue.empty() and self.__workers < self.__max_workers: # type: ignore                    
-                    filepath = self.__files_queue.get()
-                    threading.Thread(target=self.__analyse_file, args=(filepath,)).start()
+        while self.__can_run:
+            if not self.__files_queue.empty() and self.__workers < self.__max_workers: # type: ignore                    
+                filepath = self.__files_queue.get()
+                threading.Thread(target=self.__analyse_file, args=(filepath,)).start()
 
             time.sleep(0.1)
 
