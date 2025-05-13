@@ -44,8 +44,8 @@ class AnalysisController(QObject):
 
         Api().add_message_callback(self.__on_api_message)
         Api().subscribe(Topics.NEW_FILE)
-        Api().subscribe("{}/response".format(TOPIC_ANALYSE))
-        Api().subscribe("{}/status".format(TOPIC_ANALYSE))
+        Api().subscribe(f"{TOPIC_ANALYSE}/response")
+        Api().subscribe(f"{TOPIC_ANALYSE}/status")
 
 
     def set_source_disk(self, source_disk:str):
@@ -55,7 +55,7 @@ class AnalysisController(QObject):
         Api().info("Starting the analysis", "AnalysisController")
 
         self.__set_state(AnalysisState.AnalysisRunning)
-        Api().publish("{}/resume".format(TOPIC_ANALYSE), {})
+        Api().publish(f"{TOPIC_ANALYSE}/resume", {})
 
         # Itération sur la liste des fichiers de façon asynchrone
         # pour copier les fichiers dans le dépôt au fur et à mesure
@@ -65,7 +65,7 @@ class AnalysisController(QObject):
 
     def stop_analysis(self) -> None:
         Api().info("Stopping the analysis", "AnalysisController")        
-        Api().publish("{}/stop".format(TOPIC_ANALYSE), {})
+        Api().publish(f"{TOPIC_ANALYSE}/stop", {})
         self.__set_state(AnalysisState.AnalysisStopped)
 
     def reset(self):
