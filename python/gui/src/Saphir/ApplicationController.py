@@ -147,6 +147,9 @@ class ApplicationController(QObject):
         self.logListModel_ = LogListModel(self)        
         self.__thread_pool = ThreadPoolExecutor(max_workers=1)
 
+        self.__report_controller = ReportController(self)
+        self.__report_controller.reportGenerated.connect(self.__on_report_generated)
+
 
     def start(self, ready_callback):
         if DEVMODE:
@@ -355,11 +358,14 @@ class ApplicationController(QObject):
             if file_.get("status") == FileStatus.FileClean:
                 Api().copy_file(self.sourceName_, filepath_, self.targetName_)
 
+        # Génère le rapport
+        self.__make_analysis_report()
+
         # Puis le rapport
-        report_filepath = ReportController.get_report_filepath()
+        report_filepath = self.__report_controller.get_report_filepath()
         with open(report_filepath, 'rb') as f:
             reportData = f.read()
-            Api().create_file(ReportController.get_report_filename(), self.targetName_, reportData, True)
+            Api().create_file(self.__report_controller.get_report_filename(), self.targetName_, reportData, True)
 
         # Et le journal
         with open(self.__logfile, 'rb') as f:
@@ -456,7 +462,14 @@ class ApplicationController(QObject):
         self.logListModel_.listen_to_logs()
 
         Api().notify_gui_ready()  
-        Api().subscribe(f"{Topics.COPY_FILE}/response")                
+        Api().subscribe(f"{Topics.COPY_FILE}/response")
+        Api().subscribe(Topics.DISK_STATE)
+        Api().subscribe(f"{Topics.LIST_DISKS}/response")
+        Api().subscribe(f"{Topics.LIST_FILES}/response")
+        Api().subscribe(f"{Topics.DISCOVER_COMPONENTS}/response")
+        Api().subscribe(f"{Topics.COPY_FILE}/response")
+        Api().subscribe(f"{Topics.ENERGY_STATE}/response")
+        Api().subscribe(f"{Topics.SYSTEM_INFO}/response")
 
         self.__set_system_state(SystemState.SystemReady)
         Api().discover_components()   
@@ -590,25 +603,6 @@ class ApplicationController(QObject):
             self.fileUpdated.emit(filepath, ["status"])
             self.transferProgressChanged.emit()
 
-        elif topic == "{}/response".format(Topics.ERROR):
-            if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
-                # On filtre pour ne pas provoquer de boucle infinie
-                return
-
-            disk = payload.get("disk", "")
-            filepath = payload.get("filepath", "")
-            error = payload.get("error", "")
-
-            file = self.__queuedFilesList.get(filepath)
-            if file is None:
-                Api().warn("The file {} has not been found in the analysis queue".format(filepath))
-                return
-
-            Api().warn("The file {} could not be copied".format(filepath))
-            file["status"] = FileStatus.FileAnalysisError
-            file["progress"] = 100
-            self.fileUpdated.emit(filepath, ["status", "progress"])
-
         elif topic == f"{Topics.ENERGY_STATE}/response":
             if not MqttHelper.check_payload(payload, ["battery_level", "plugged"]):
                 return
@@ -738,11 +732,11 @@ class ApplicationController(QObject):
         self.globalProgressChanged.emit(self.__global_progress())
         self.remainingTimeChanged.emit()
         
-        if self.__infected_files_count() + self.__clean_files_count() == self.__queue_size():
-            self.__set_system_state(SystemState.AnalysisCompleted)
+        if self.__infected_files_count() + self.__clean_files_count() == self.__queue_size():            
             self.analysisController_.stop_analysis()
             self.__analysis_end_time = datetime.now()
-            self.__make_analysis_report()
+            self.__set_system_state(SystemState.AnalysisCompleted)
+            #self.__make_analysis_report()
 
 
     def __on_disk_controller_state_changed(self, ready:bool):
@@ -872,7 +866,8 @@ class ApplicationController(QObject):
                 av["description"] = description.replace("\n", "<br/>")
                 antiviruses[av_id] = av
 
-        ReportController.make_report(
+        # On exécute la génération du rapport dans un thread
+        self.__report_controller.make_report(
             fichiers= self.__queuedFilesList,
             clean_files_count= self.__clean_files_count(),
             infected_files_count= self.__infected_files_count(),
@@ -886,6 +881,10 @@ class ApplicationController(QObject):
             saphir_version= QCoreApplication.applicationVersion(),
             antiviruses=antiviruses
         )
+
+    def __on_report_generated(self):
+        pass
+        #self.__set_system_state(SystemState.AnalysisCompleted)
 
     ###
     # Getters and setters

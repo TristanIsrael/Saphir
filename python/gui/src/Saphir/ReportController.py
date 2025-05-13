@@ -1,23 +1,27 @@
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 from datetime import datetime
+from PySide6.QtCore import QObject, Signal
 import os
 import tempfile
 
-class ReportController:
+class ReportController(QObject):
 
-    @staticmethod
-    def get_report_filename():
+    reportGenerated = Signal()
+
+    def __init__(self, parent:QObject | None = None):
+        super().__init__(parent)
+
+    def get_report_filename(self):
         return "Rapport d'inocuité.pdf"
 
-    @staticmethod
-    def get_report_filepath():
+    def get_report_filepath(self):
         out_dir = tempfile.gettempdir()
-        out_path = os.path.join(out_dir, ReportController.get_report_filename())
+        out_path = os.path.join(out_dir, self.get_report_filename())
         return out_path
 
-    @staticmethod
     def make_report(
+            self,
             fichiers:dict,
             clean_files_count:int, 
             infected_files_count:int, 
@@ -29,7 +33,7 @@ class ReportController:
             nom_support:str,
             psec_version:str,
             saphir_version:str,
-            antiviruses:dict            
+            antiviruses:dict
         ):
 
         details_analyse = []
@@ -64,7 +68,8 @@ class ReportController:
 
         html_content = template.render(data)
 
-        out_filepath = ReportController.get_report_filepath()
+        out_filepath = self.get_report_filepath()
         HTML(string=html_content).write_pdf(out_filepath)
         
         print("Rapport généré dans le fichier", out_filepath)
+        self.reportGenerated.emit()

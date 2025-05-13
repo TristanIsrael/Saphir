@@ -44,6 +44,7 @@ class AnalysisController(QObject):
 
         Api().add_message_callback(self.__on_api_message)
         Api().subscribe(Topics.NEW_FILE)
+        Api().subscribe(Topics.ERROR)
         Api().subscribe(f"{TOPIC_ANALYSE}/response")
         Api().subscribe(f"{TOPIC_ANALYSE}/status")
 
@@ -112,6 +113,12 @@ class AnalysisController(QObject):
             
             self.__handle_status(payload.get("filepath", ""), FileStatus(payload.get("status", 0)), payload.get("progress", 0))
 
+        elif topic == Topics.ERROR:
+            if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
+                # On filtre pour ne pas provoquer de boucle infinie
+                return
+            
+            self.__handle_error(payload)
 
     def __on_file_available(self, filepath:str, footprint:str) -> None:
         self.__repository_size += 1
@@ -182,6 +189,17 @@ class AnalysisController(QObject):
         # Enfin on vérifie s'il reste des fichiers à analyser
         if self.analysing_files_count == 0:
             self.systemUsed.emit()
+
+    def __handle_error(self, payload):        
+        filepath = payload.get("filepath", "")
+        #error = payload.get("error", "")
+
+        file = self.__files[filepath]
+        
+        #Api().warn(f"There was an error with the file {filepath}: {error}")
+        file["status"] = FileStatus.FileAnalysisError
+        file["progress"] = 100
+        self.fileUpdated.emit(filepath, ["status", "progress"])
 
     
     def __do_copy_files_into_repository(self):

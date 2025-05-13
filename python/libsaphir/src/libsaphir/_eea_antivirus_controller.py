@@ -188,7 +188,7 @@ class EeaAntivirusController(AbstractAntivirusController):
             not_scanned = 0
 
         # A file can contain multiple files so scanned can be > 1
-        if scanned > 1:
+        if scanned >= 1:
             success = detections_occurred == 0
             return True, success, f"Scanned files: {scanned}, Not scanned: {not_scanned}, Detections: {detections_occurred}"
         elif scanned == 0: 
