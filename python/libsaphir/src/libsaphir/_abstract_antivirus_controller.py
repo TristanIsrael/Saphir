@@ -31,7 +31,7 @@ class AbstractAntivirusController(ABC):
             if os.cpu_count() is not None:
                 self.__max_workers = os.cpu_count()
         else:
-            self.__max_workers = max_workers
+            self.__max_workers = max_workers    
 
     def start(self):
         if not DEVMODE:
@@ -46,6 +46,9 @@ class AbstractAntivirusController(ABC):
         # Start the commands thread
         self.__commands_thread = threading.Thread(target= self.__commands_loop)
         self.__commands_thread.start()
+
+    def stop(self):
+        Api().stop()
 
     def publish_result(self, filepath:str, success:bool, details:str):
         payload = {
@@ -174,3 +177,4 @@ class AbstractAntivirusController(ABC):
     @abstractmethod
     def _get_component_description(self) -> str:
         pass
+

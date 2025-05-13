@@ -4,7 +4,7 @@ name="av-controller"
 command_background="yes"
 
 depend() {    
-    after syslog
+    after *
 }
 
 start() {
