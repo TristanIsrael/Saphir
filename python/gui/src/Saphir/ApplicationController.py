@@ -121,6 +121,7 @@ class ApplicationController(QObject):
     battery_level_ = 0
     plugged_ = False
 
+    __subscriptions = []
 
     # Fonctions publiques
     def __init__(self, parent=None):
@@ -130,15 +131,12 @@ class ApplicationController(QObject):
 
         self.inputFilesListModel_ = PsecInputFilesListModel(self.__inputFilesList, self)
         self.inputFilesListModel_.updateFilesList.connect(self.update_source_files_list)          
-        #self.fileAdded.connect(self.inputFilesListModel_.on_file_added)
         self.fileUpdated.connect(self.inputFilesListModel_.on_file_updated)
         self.sourceNameChanged.connect(self.inputFilesListModel_.onSourceChanged)
 
         self.inputFilesListProxyModel_ = PsecInputFilesListProxyModel(self.inputFilesListModel_, self)
         self.queueListModel_ = QueueListModel(self.__queuedFilesList, self.analysisComponents_, self)
         self.__queueListProxyModel = QueueListProxyModel(self.queueListModel_, self)
-        #self.fileQueued.connect(self.queueListModel_.on_file_added)
-        #self.fileUnqueued.connect(self.queueListModel_.on_file_removed)
         self.fileUpdated.connect(self.queueListModel_.on_file_updated)    
         self.queueUpdated.connect(self.queueListModel_.reset)
         self.allFilesUpdated.connect(self.inputFilesListModel_.reset)
@@ -158,11 +156,9 @@ class ApplicationController(QObject):
             self.mqtt_client = MqttFactory.create_mqtt_client_domu("Saphir")
 
         self.__logfile = os.path.join(tempfile.gettempdir(), "journal.log")
+        self.__ready_callback = ready_callback
 
-        Api().add_message_callback(self.__on_message_received)
-        Api().add_ready_callback(ready_callback)
-        Api().add_ready_callback(self.__on_api_ready)
-        Api().add_shutdown_callback(self.__on_shutdown)
+        Api().add_ready_callback(self.__on_api_ready)        
         Api().start(self.mqtt_client, True, self.__logfile)
 
 
@@ -461,22 +457,56 @@ class ApplicationController(QObject):
 
         self.logListModel_.listen_to_logs()
 
-        Api().notify_gui_ready()  
-        Api().subscribe(f"{Topics.COPY_FILE}/response")
-        Api().subscribe(Topics.DISK_STATE)
-        Api().subscribe(f"{Topics.LIST_DISKS}/response")
-        Api().subscribe(f"{Topics.LIST_FILES}/response")
-        Api().subscribe(f"{Topics.DISCOVER_COMPONENTS}/response")
-        Api().subscribe(f"{Topics.COPY_FILE}/response")
-        Api().subscribe(f"{Topics.ENERGY_STATE}/response")
-        Api().subscribe(f"{Topics.SYSTEM_INFO}/response")
+        Api().add_message_callback(self.__on_message_received)        
+        Api().add_subscription_callback(self.__on_subscribed)
+        Api().add_shutdown_callback(self.__on_shutdown)
+        
+        # Handle the subscriptions
+        result, mid = Api().subscribe(f"{Topics.COPY_FILE}/response")
+        if result:
+            self.__subscriptions.append(mid)
 
-        self.__set_system_state(SystemState.SystemReady)
-        Api().discover_components()   
-        Api().request_system_info()
+        result, mid = Api().subscribe(Topics.DISK_STATE)
+        if result:
+            self.__subscriptions.append(mid)
 
-        # Energy management
-        self.__request_energy_state()        
+        result, mid = Api().subscribe(f"{Topics.LIST_DISKS}/response")
+        if result:
+            self.__subscriptions.append(mid)
+            
+        result, mid = Api().subscribe(f"{Topics.LIST_FILES}/response")
+        if result:
+            self.__subscriptions.append(mid)
+            
+        result, mid = Api().subscribe(f"{Topics.DISCOVER_COMPONENTS}/response")
+        if result:
+            self.__subscriptions.append(mid)
+            
+        result, mid = Api().subscribe(f"{Topics.COPY_FILE}/response")
+        if result:
+            self.__subscriptions.append(mid)
+            
+        result, mid = Api().subscribe(f"{Topics.ENERGY_STATE}/response")
+        if result:
+            self.__subscriptions.append(mid)
+            
+        result, mid = Api().subscribe(f"{Topics.SYSTEM_INFO}/response")
+        if result:
+            self.__subscriptions.append(mid)            
+
+        
+    def __on_subscribed(self, mid):
+        if len(self.__subscriptions) == 8:
+            Api().notify_gui_ready()
+            if self.__ready_callback is not None:
+                self.__ready_callback()
+
+            self.__set_system_state(SystemState.SystemReady)
+            Api().discover_components()   
+            Api().request_system_info()
+
+            # Energy management
+            self.__request_energy_state()        
 
     def __on_message_received(self, topic:str, payload:dict):      
         # ATTENTION : cette fonction est appelée depuis un autre thread
