@@ -15,7 +15,7 @@ subpackages=""
 replaces=""
 builddir="$srcdir/"
 options="!check"  # no tests provided
-giturl="https://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@github.com/tibsys/saphir"
+giturl="https://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@github.com/TristanIsrael/saphir"
 source=""
 
 prepare() {
