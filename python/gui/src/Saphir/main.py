@@ -90,10 +90,7 @@ if __name__ == "__main__":
         qml_root.setHeight(System().get_screen_height())
 
     if FORCE_FULLSCREEN:
-        qml_root.showFullScreen()
-
-    Api().info("Saphir is ready")
-    Api().notify_gui_ready()
+        qml_root.showFullScreen()    
 
     res = app.exec()
     Api().info("Saphir is terminating with exit code {}".format(res))

@@ -122,6 +122,7 @@ class ApplicationController(QObject):
     plugged_ = False
 
     __subscriptions = []
+    __subscribed_count = 0
 
     # Fonctions publiques
     def __init__(self, parent=None):
@@ -446,17 +447,7 @@ class ApplicationController(QObject):
         Api().error(message, "Saphir")
     
 
-    def __on_api_ready(self):        
-        self.pret_ = True
-        self.pretChanged.emit(self.pret_)
-        self.analysisController_ = AnalysisController(files=self.__queuedFilesList, analysis_components= self.analysisComponents_, source_disk= self.sourceName_, analysis_mode_=self.__analysis_mode, parent= self)
-        self.analysisController_.resultsChanged.connect(self.__on_results_changed)
-        self.analysisController_.fileUpdated.connect(self.queueListModel_.on_file_updated)
-        self.analysisController_.stateChanged.connect(self.__on_analysis_state_changed)
-        self.analysisController_.systemUsed.connect(self.__on_system_used)
-
-        self.logListModel_.listen_to_logs()
-
+    def __on_api_ready(self):                
         Api().add_message_callback(self.__on_message_received)        
         Api().add_subscription_callback(self.__on_subscribed)
         Api().add_shutdown_callback(self.__on_shutdown)
@@ -496,17 +487,36 @@ class ApplicationController(QObject):
 
         
     def __on_subscribed(self, mid):
-        if len(self.__subscriptions) == 8:
-            Api().notify_gui_ready()
-            if self.__ready_callback is not None:
-                self.__ready_callback()
+        if mid in self.__subscriptions:
+            self.__subscribed_count += 1
 
-            self.__set_system_state(SystemState.SystemReady)
-            Api().discover_components()   
-            Api().request_system_info()
+            if self.__subscribed_count == len(self.__subscriptions):
+                self.__app_ready()       
 
-            # Energy management
-            self.__request_energy_state()        
+    def __app_ready(self):
+        Api().info("Saphir is ready")
+        Api().notify_gui_ready()
+
+        if self.__ready_callback is not None:
+            self.__ready_callback()
+
+        self.__set_system_state(SystemState.SystemReady)
+        Api().discover_components()   
+        Api().request_system_info()
+
+        # Energy management
+        self.__request_energy_state() 
+        
+        self.analysisController_ = AnalysisController(files=self.__queuedFilesList, analysis_components= self.analysisComponents_, source_disk= self.sourceName_, analysis_mode_=self.__analysis_mode, parent= self)
+        self.analysisController_.resultsChanged.connect(self.__on_results_changed)
+        self.analysisController_.fileUpdated.connect(self.queueListModel_.on_file_updated)
+        self.analysisController_.stateChanged.connect(self.__on_analysis_state_changed)
+        self.analysisController_.systemUsed.connect(self.__on_system_used)
+
+        self.logListModel_.listen_to_logs()
+
+        self.pret_ = True
+        self.pretChanged.emit(self.pret_)
 
     def __on_message_received(self, topic:str, payload:dict):      
         # ATTENTION : cette fonction est appelée depuis un autre thread
