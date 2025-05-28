@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "saphir-gui"
-version = "0.1"
+version = "1.0"
 authors = [ 
     { name="Tristan Israël", email="tristan.israel@alefbet.net" }, 
 ]
