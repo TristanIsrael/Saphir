@@ -19,7 +19,7 @@ class AnalysisController(QObject):
     __analysis_state = AnalysisState.AnalysisStopped
     __files:dict
     __analysis_components = list()
-    __repository_capacity = 2
+    __repository_capacity = 4
     __repository_size = 0
     clean_files_count = 0
     clean_files_size = 0
@@ -38,7 +38,6 @@ class AnalysisController(QObject):
 
         self.__files = files
         self.__source_disk = source_disk
-        #self.__files_list_model = files_list_model
         self.__analysis_components = analysis_components
         self.__analysis_mode = analysis_mode_
 
@@ -47,10 +46,16 @@ class AnalysisController(QObject):
         Api().subscribe(Topics.ERROR)
         Api().subscribe(f"{TOPIC_ANALYSE}/response")
         Api().subscribe(f"{TOPIC_ANALYSE}/status")
+        Api().subscribe(f"{Topics.SYSTEM_INFO}/response")
+
+        # On demande les infos sur le système parce qu'on veut affiner le nombre
+        # de fichiers analysés en même temps
+        Api().request_system_info()
 
 
     def set_source_disk(self, source_disk:str):
         self.__source_disk = source_disk
+
 
     def start_analysis(self, source_name:str) -> None:
         Api().info("Starting the analysis", "AnalysisController")
@@ -69,12 +74,14 @@ class AnalysisController(QObject):
         Api().publish(f"{TOPIC_ANALYSE}/stop", {})
         self.__set_state(AnalysisState.AnalysisStopped)
 
+
     def reset(self):
         self.clean_files_count = 0
         self.clean_files_size = 0
         self.infected_files_count = 0    
         self.infected_files_size = 0 
         self.analysing_files_count = 0
+
 
     ######
     ## Private functions
@@ -99,14 +106,14 @@ class AnalysisController(QObject):
             
             self.__on_file_available(filepath, footprint)            
 
-        elif topic == "{}/response".format(TOPIC_ANALYSE):
+        elif topic == f"{TOPIC_ANALYSE}/response":
             if not MqttHelper.check_payload(payload, ["component", "filepath", "success", "details"]):
                 Api().error("Malformed message for topic {}".format(topic))
                 return
                         
             self.__handle_result(payload.get("component", ""), payload.get("filepath", ""), payload.get("success", False), payload.get("details", ""))
 
-        elif topic == "{}/status".format(TOPIC_ANALYSE):
+        elif topic == f"{TOPIC_ANALYSE}/status":
             if not MqttHelper.check_payload(payload, ["filepath", "status", "progress"]):
                 Api().error("Malformed message for topic {}".format(topic))
                 return
@@ -119,6 +126,14 @@ class AnalysisController(QObject):
                 return
             
             self.__handle_error(payload)
+
+        elif topic == f"{Topics.SYSTEM_INFO}/response":
+            if not MqttHelper.check_payload(payload, ["system"]):
+                Api().warn(f"Wrong response format for system info response. Using {self.__repository_capacity} scans in parallel.")
+                return 
+            
+            self.__handle_sysinfo(payload)
+                
 
     def __on_file_available(self, filepath:str, footprint:str) -> None:
         self.__repository_size += 1
@@ -137,6 +152,22 @@ class AnalysisController(QObject):
         except Exception as e:
             print("EXCEPTION")
             print(e)
+
+
+    def __handle_sysinfo(self, payload:dict):
+        # L'information est dans system.machine.cpu.count
+        system_info = payload.get("system", {})
+        machine_info = system_info.get("machine", {})
+        cpu_info = machine_info.get("cpu", {})
+        cpu_count = cpu_info.get("count", self.__repository_capacity)
+
+        # TODO: en théorie il faudrait que la quantité de fichiers analysés en parallèle
+        # corresponde à la quantité de coeurs divisée par la quantité d'antivirus utilisés.
+        # Pour l'instant, nous sommes en phase d'obervation et l'algorithme sera ajusté
+        # en fonction des performances observées.
+        self.__repository_capacity = cpu_count
+
+        Api().info(f"Repository capacity is set to {self.__repository_capacity} files")
 
 
     def __handle_status(self, filepath:str, status:FileStatus, progress:int):
@@ -204,14 +235,15 @@ class AnalysisController(QObject):
     
     def __do_copy_files_into_repository(self):
         # On copie des fichiers dans le dépôt à concurrence de la place disponible
+        # et de la capacité du dépôt.
         # On gère localement le compteur de fichiers du dépôt pour ne pas avoir
-        # à envoyer une requête à PSEC
+        # à envoyer une requête à PSEC.
         if self.__repository_capacity > self.__repository_size and len(self.__files) > 0:
 
             for i in range(self.__repository_capacity - self.__repository_size):
                 # First step is to copy the file into the repository
                 file = self.__get_next_file_waiting()
-                if file.get("inqueue") or self.__analysis_mode == AnalysisMode.AnalyseWholeSource:
+                if file.get("inqueue", False) or self.__analysis_mode == AnalysisMode.AnalyseWholeSource:
                     file["status"] = FileStatus.FileAnalysing
                     self.fileUpdated.emit(file["filepath"], [file["status"]])
                     Api().read_file(self.__source_disk, file.get("filepath", ""))
