@@ -4,7 +4,7 @@ Ce document recense les configurations mises en oeuvre pour les tests et la prod
 
 ## Equipements
 
-| Type | Numéro | Usage | Utilisateur | Version Saphir |
-|--|--|--|--|--|
-| Tablette | 1 | Tests dev | Tristan Israël | 1.1 |
-| Tablette | 2 | Tests dev | Tristan Israël | 1.1 |
+| Type | Numéro | Usage | Utilisateur | Version Saphir | Version BIOS | Version Firmware |
+|--|--|--|--|--|--|--|
+| Tablette | 1 | Tests dev | Tristan Israël | 1.1 | BIOS 1.04 | UEFI 2.8 |
+| Tablette | 2 | Tests dev | Tristan Israël | en cours d'installation | BIOS 1.05 | UEFI 2.8 |
