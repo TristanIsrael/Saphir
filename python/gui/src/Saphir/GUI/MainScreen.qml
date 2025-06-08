@@ -194,7 +194,7 @@ Item {
                     horizontalAlignment: Image.AlignLeft
                     anchors.left: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    height: parent.height
+                    height: parent.height*2
 
                     MouseArea {
                         anchors.fill: parent
@@ -250,7 +250,7 @@ Item {
                     horizontalAlignment: Image.AlignLeft
                     anchors.left: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    height: parent.height
+                    height: parent.height*2
 
                     MouseArea {
                         anchors.fill: parent
