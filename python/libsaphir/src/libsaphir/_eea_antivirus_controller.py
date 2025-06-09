@@ -65,20 +65,24 @@ class EeaAntivirusController(AbstractAntivirusController):
                 log_name = self.__extract_log_name(proc.stdout.decode().strip())
 
                 if log_name == "":
-                    self.error("Une erreur s'est produite durant l'analyse du résultat : {} (log_name est vide)".format(proc.stdout))
+                    msg = f"Une erreur est survenur lors de l'analyse du fichier {filepath}"
+                    self.debug(f"Une erreur s'est produite durant l'analyse du résultat : {proc.stdout} (log_name est vide)")
                     self.update_status(filepath, FileStatus.FileAnalysisError, 100)
+                    self.publish_result(filepath, False, msg)
                     return
 
                 self.__analysis_running.append({"log_name": log_name, "filepath": filepath})                
             else:
-                # The scan did not complete
-                self.error("Une erreur s'est produite durant l'exécution de l'analyse : {} {}".format(proc.stdout, proc.stderr))
+                # The scan did not complete                
+                self.debug(f"Une erreur s'est produite durant l'exécution de l'analyse du fichier {filepath} : stdout={proc.stdout}, stderr={proc.stderr}")
                 self.update_status(filepath, FileStatus.FileAnalysisError, 100)
+                self.publish_result(filepath, False, "Une erreur s'est produite durant l'exécution de l'analyse")
                 return                
                             
         else:            
-            self.error("Une erreur s'est produite : odscan {} {}.".format(proc.stdout, proc.stderr))
+            msg = f"Une erreur s'est produite : {self.__traduit_retour_odscan(proc.returncode)} ({proc.returncode})."
             self.update_status(filepath, FileStatus.FileAnalysisError, 100)
+            self.publish_result(filepath, False, msg)
         
 
     def __monitor_analysis(self) -> None:
@@ -146,13 +150,15 @@ class EeaAntivirusController(AbstractAntivirusController):
         #proc = subprocess.run(self.__lxc_cmd + eset_cmd, capture_output=True)
         proc = subprocess.run(["/usr/lib/saphir/bin/get-scan-result.sh", log_name], capture_output=True)
         if proc.returncode > 0:
-            self.error("Une erreur interne s'est produite : lslog {} {}.".format(proc.stdout, proc.stderr))
+            self.debug("Une erreur interne s'est produite : lslog {} {}.".format(proc.stdout, proc.stderr))
             self.update_status(filepath, FileStatus.FileAnalysisError, 100)
+            self.publish_result(filepath, False, "Une erreur interne s'est produite")
             return True, False, "Internal error"
         
         if proc.stdout == "":            
-            self.error("Une erreur interne s'est produite : journal manquant {} {}.".format(proc.stdout, proc.stderr))
+            self.debug("Une erreur interne s'est produite : journal manquant {} {}.".format(proc.stdout, proc.stderr))
             self.update_status(filepath, FileStatus.FileAnalysisError, 100)
+            self.publish_result(filepath, False, "Une erreur interne s'est produite.")
             return True, False, "Missing log file"
         
         log_data = proc.stdout.decode().strip()
@@ -192,8 +198,9 @@ class EeaAntivirusController(AbstractAntivirusController):
             success = detections_occurred == 0
             return True, success, f"Scanned files: {scanned}, Not scanned: {not_scanned}, Detections: {detections_occurred}"
         elif scanned == 0: 
-            self.error("Une erreur interne s'est produite : aucun fichier analysé {} {}.".format(proc.stdout, proc.stderr))
+            self.debug("Une erreur interne s'est produite : aucun fichier analysé {} {}.".format(proc.stdout, proc.stderr))
             self.update_status(filepath, FileStatus.FileAnalysisError, 100)
+            self.publish_result(filepath, False, "Une erreur interne s'est produite.")
             return True, False, "Internal error"
         
         return True, False, "Unhandled case"
@@ -240,3 +247,17 @@ class EeaAntivirusController(AbstractAntivirusController):
                 self.__state = EtatComposant.READY
                 self.debug("Antivirus is ready. The storage path is {}".format(Parametres().parametre(Cles.STORAGE_PATH_DOMU)))
                 self.component_state_changed()
+
+    def __traduit_retour_odscan(self, returncode:int) -> str:
+        if returncode == 0:
+            return "aucune erreur"
+        elif returncode == 1:
+            return "malware trouvé"
+        elif returncode == 10:
+            return "analyse incomplète"
+        elif returncode == 50:
+            return "malware détecté"
+        elif returncode == 100:
+            return "erreur générale"
+        
+        return "erreur inconnue"
