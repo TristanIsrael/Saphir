@@ -172,38 +172,53 @@ class AnalysisController(QObject):
 
     def __handle_status(self, filepath:str, status:FileStatus, progress:int):
         file = self.__files[filepath]
-        file["status"] = status
+        #file["status"] = status
 
         if progress > file.get("progress", 0):
             file["progress"] = progress
         
-        self.fileUpdated.emit(filepath, ["status", "progress"])
+        self.fileUpdated.emit(filepath, ["progress"])
         
 
     def __handle_result(self, component:str, filepath:str, success:bool, details:str):
         file = self.__files[filepath]
 
-        # S'il y a déjà un champ progress on ajoute la valeur
-        progress = file.get("progress", 0)
-        progress += 100 / len(self.__analysis_components)
-        file["progress"] = progress
         results = file.get("results", dict())
-        av = results.get(component, dict())
-        av["result"] = "Sain" if success else "Infecté"
+        av = results.get(component, dict())        
+
+        # Premier passage : pas d'état pour le fichier, on prend le nouvel état
+        # Deuxième passage : si le fichier était clean et qu'il ne l'est plus alors il passe à infecté
+        #                    si le fichier n'était pas clean, on ne tient pas compte de son nouvel état
+        if file.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileStatusUndefined:
+            # Premier passage
+            av["result"] = "Sain" if success else "Infecté"
+            file["status"] = FileStatus.FileClean if success else FileStatus.FileInfected
+        elif file.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean and not success:
+            # S'il était clean et qu'il ne l'est plus
+            av["result"] = "Infecté"
+            file["status"] = FileStatus.FileInfected
+        elif file.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean and not success:
+            # S'il était clean et qu'il l'est toujours... on ne fait rien
+            av["result"] = "Sain"
+            file["status"] = FileStatus.FileClean
+        elif file.get("status", FileStatus.FileStatusUndefined) != FileStatus.FileClean:
+            # S'il n'était pas clean il reste dans cet état
+            av["result"] = "Infecté"
+            file["status"] = FileStatus.FileInfected
+        
         av["details"] = details
         results[component] = av
         file["results"] = results
 
-        # Si le fichier est déjà identifié comme infecté ou en erreur on le laisse en l'état
-        # on ne passe le fichier à l'état clean que si le progrès est à 100%
-        if not success:
-            file["status"] = FileStatus.FileInfected
-        else:
-            if file.get("status", FileStatus.FileStatusUndefined) not in (FileStatus.FileAnalysisError, FileStatus.FileCopyError, FileStatus.FileInfected) and progress == 100:
-                file["status"] = FileStatus.FileClean
+        # Le progrès écrase les précédentes valeurs car il s'agit
+        # ici du résultat de l'analyse et plus de la progression        
+        progress = 0 if len(self.__analysis_components) == 0 else 100 * len(results) / len(self.__analysis_components)
+        file["progress"] = progress        
 
         self.fileUpdated.emit(filepath, ["status", "progress"])
         self.resultsChanged.emit() 
+
+        print(f"Fichier {filepath}, status={file["status"]}, progress={file["progress"]}, progress={progress}, success={success}, component={component}")
 
         # Si l'analyse du fichier est terminée on supprime le fichier du dépôt
         if progress == 100:
