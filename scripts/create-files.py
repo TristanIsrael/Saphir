@@ -8,8 +8,8 @@ import subprocess
 import tempfile
 
 # Constants
-MIN_FILE_SIZE = 1 * 1024          # 1 KiB
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MiB
+min_file_size_in_kb = 1           # 1 KB
+max_file_size_in_kb = 50 * 1024   # 50 MiB
 ARCHIVE_RATIO = 0.1               # 10%
 ARCHIVE_DEPTH = 10
 MAX_ARCHIVE_FILE_SIZE = 2 * 1024 * 1024  # 2 MiB
@@ -32,7 +32,7 @@ def create_nested_tree(base_dir, max_size, files_per_level=2):
         os.makedirs(next_dir, exist_ok=True)
         for _ in range(files_per_level):
             fpath = os.path.join(next_dir, random_filename())
-            fsize = random.randint(MIN_FILE_SIZE, min(max_size, MAX_ARCHIVE_FILE_SIZE))
+            fsize = random.randint(min_file_size_in_kb*1024, min(max_size, MAX_ARCHIVE_FILE_SIZE))
             random_file(fpath, fsize)
         current_dir = next_dir
 
@@ -78,7 +78,7 @@ def create_archive(archive_path, format_name):
             else:
                 print(f"LZ4 creation failed: {result.stderr.decode()}")
 
-def main(target_dir):
+def main(target_dir, min_size_in_kb, max_size_in_kb):
     if not os.path.isdir(target_dir):
         print(f"Error: Target directory '{target_dir}' does not exist.")
         sys.exit(1)
@@ -94,7 +94,7 @@ def main(target_dir):
                 print(f"\nGenerating archive #{count + 1}: {fname} ({ext})")
                 create_archive(archive_path, ext)
             else:
-                size = random.randint(MIN_FILE_SIZE, MAX_FILE_SIZE)
+                size = random.randint(min_file_size_in_kb*1024, max_file_size_in_kb*1024)
                 fname = random_filename("bin")
                 fpath = os.path.join(target_dir, fname)
                 random_file(fpath, size)
@@ -105,7 +105,8 @@ def main(target_dir):
         print(f"\n[Stopped] Disk full or write error after {count} files: {e}")
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python3 generate_files.py <target_directory>")
+    if len(sys.argv) != 4:
+        print("Creates files until the disk is saturated (run it on an USB drive)")
+        print("Usage: python3 generate_files.py <target_directory> <min_size_in_kb> <max_size_in_kb>")
         sys.exit(1)
-    main(sys.argv[1])
+    main(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]))

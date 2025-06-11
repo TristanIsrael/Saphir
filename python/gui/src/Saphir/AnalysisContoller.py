@@ -7,6 +7,7 @@ from psec import Api, Parametres, Topics, Constantes
 from psec import Cles, MqttHelper
 from queue import Queue
 import threading
+import os
 
 class AnalysisController(QObject):
     ''' Cette classe contrôle la façon dont se déroule l'analyse des fichiers
@@ -19,8 +20,9 @@ class AnalysisController(QObject):
     __analysis_state = AnalysisState.AnalysisStopped
     __files:dict
     __analysis_components = list()
-    __repository_capacity = 4
+    __repository_capacity = 1
     __repository_size = 0
+    __files_copy_queue = 0
     clean_files_count = 0
     clean_files_size = 0
     infected_files_count = 0    
@@ -61,6 +63,7 @@ class AnalysisController(QObject):
         Api().info("Starting the analysis", "AnalysisController")
 
         self.__set_state(AnalysisState.AnalysisRunning)
+        self.__files_copy_queue = 0
         Api().publish(f"{TOPIC_ANALYSE}/resume", {})
 
         # Itération sur la liste des fichiers de façon asynchrone
@@ -81,6 +84,7 @@ class AnalysisController(QObject):
         self.infected_files_count = 0    
         self.infected_files_size = 0 
         self.analysing_files_count = 0
+        self.__files_copy_queue = 0
 
 
     ######
@@ -137,6 +141,7 @@ class AnalysisController(QObject):
 
     def __on_file_available(self, filepath:str, footprint:str) -> None:
         self.__repository_size += 1
+        self.__files_copy_queue -= 1
 
         try:
             file = self.__files[filepath]
@@ -159,7 +164,9 @@ class AnalysisController(QObject):
         system_info = payload.get("system", {})
         machine_info = system_info.get("machine", {})
         cpu_info = machine_info.get("cpu", {})
-        cpu_count = cpu_info.get("count", self.__repository_capacity)
+        #cpu_count = cpu_info.get("count", self.__repository_capacity)
+        #because of bug PSEC#54
+        cpu_count = 8
 
         # TODO: en théorie il faudrait que la quantité de fichiers analysés en parallèle
         # corresponde à la quantité de coeurs divisée par la quantité d'antivirus utilisés.
@@ -171,8 +178,8 @@ class AnalysisController(QObject):
 
 
     def __handle_status(self, filepath:str, status:FileStatus, progress:int):
-        file = self.__files[filepath]
-        #file["status"] = status
+        file = self.__files[filepath]        
+        file["status"] = status
 
         if progress > file.get("progress", 0):
             file["progress"] = progress
@@ -182,17 +189,17 @@ class AnalysisController(QObject):
 
     def __handle_result(self, component:str, filepath:str, success:bool, details:str):
         file = self.__files[filepath]
-
         results = file.get("results", dict())
         av = results.get(component, dict())        
 
         # Premier passage : pas d'état pour le fichier, on prend le nouvel état
         # Deuxième passage : si le fichier était clean et qu'il ne l'est plus alors il passe à infecté
         #                    si le fichier n'était pas clean, on ne tient pas compte de son nouvel état
-        if file.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileStatusUndefined:
+        '''if not av: 
             # Premier passage
             av["result"] = "Sain" if success else "Infecté"
-            file["status"] = FileStatus.FileClean if success else FileStatus.FileInfected
+            # Normalement l'état est FileAnalyzing
+            #file["status"] = FileStatus.FileInfected if not success else FileStatus.FileClean
         elif file.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean and not success:
             # S'il était clean et qu'il ne l'est plus
             av["result"] = "Infecté"
@@ -204,8 +211,9 @@ class AnalysisController(QObject):
         elif file.get("status", FileStatus.FileStatusUndefined) != FileStatus.FileClean:
             # S'il n'était pas clean il reste dans cet état
             av["result"] = "Infecté"
-            file["status"] = FileStatus.FileInfected
+            file["status"] = FileStatus.FileInfected'''
         
+        av["result"] = "Sain" if success else "Infecté"
         av["details"] = details
         results[component] = av
         file["results"] = results
@@ -222,13 +230,18 @@ class AnalysisController(QObject):
 
         # Si l'analyse du fichier est terminée on supprime le fichier du dépôt
         if progress == 100:
+            # On calcule l'état du fichier
+            sain = self.__calcule_consensus_resultats(filepath)
+
             Api().delete_file(filepath, Constantes.REPOSITORY)
             self.__repository_size -= 1
 
-            if file["status"] == FileStatus.FileClean:
+            if sain:
+                file["status"] = FileStatus.FileClean
                 self.clean_files_count += 1
                 self.clean_files_size += file["size"]
-            elif file["status"] == FileStatus.FileInfected or file["status"] == FileStatus.FileAnalysisError or file["status"] == FileStatus.FileCopyError:
+            else: #if file["status"] == FileStatus.FileInfected or file["status"] == FileStatus.FileAnalysisError or file["status"] == FileStatus.FileCopyError:
+                file["status"] = FileStatus.FileInfected
                 self.infected_files_count += 1
                 self.infected_files_size += file["size"]
 
@@ -255,16 +268,18 @@ class AnalysisController(QObject):
         # à envoyer une requête à PSEC.
         if self.__repository_capacity > self.__repository_size and len(self.__files) > 0:
 
-            for i in range(self.__repository_capacity - self.__repository_size):
+            for i in range(self.__repository_capacity - self.__repository_size - self.__files_copy_queue):
                 # First step is to copy the file into the repository
                 file = self.__get_next_file_waiting()
                 if file.get("inqueue", False) or self.__analysis_mode == AnalysisMode.AnalyseWholeSource:
                     file["status"] = FileStatus.FileAnalysing
                     self.fileUpdated.emit(file["filepath"], [file["status"]])
                     Api().read_file(self.__source_disk, file.get("filepath", ""))
+                    self.__files_copy_queue += 1
+                    print("Demande un fichier supplémentaire")
         
         if self.__analysis_state == AnalysisState.AnalysisRunning:
-            threading.Timer(0.5, self.__do_copy_files_into_repository).start()
+            threading.Timer(0.1, self.__do_copy_files_into_repository).start()
 
 
     def __get_next_file_waiting(self) -> dict:
@@ -273,6 +288,16 @@ class AnalysisController(QObject):
                 return f
             
         return dict()
+    
+    def __calcule_consensus_resultats(self, filepath:str) -> bool:
+        file = self.__files[filepath]
+        results = file.get("results", {})
+    
+        for entry in results.values():
+            if entry.get("result") == "Infecté":
+                return False
+            
+        return True
 
     ######
     ## Getters and setters
