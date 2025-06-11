@@ -13,6 +13,12 @@
             "rotation": 90
         }
     },
+    "vcpu": {
+        "groups": {
+            "sys-gui": 0.2,
+            "antivirus": 0.8
+        }
+    },
     "network": {
         "repository": "http://psec-depots/depots/saphir"
     },
@@ -21,12 +27,14 @@
             {
                 "name": "saphir-av-clamav",
                 "app-package": "saphir-av-clamav",
-                "memory": 3000
+                "memory": 3000,
+                "vcpu_group": "antivirus"
             },
             {
                 "name": "saphir-av-eset",
                 "app-package": "saphir-av-eset",
-                "memory": 1500
+                "memory": 1500,
+                "vcpu_group": "antivirus"
             }
         ]
     }
