@@ -107,7 +107,7 @@ class ApplicationController(QObject):
         Api().add_ready_callback(ready_callback)
         Api().add_ready_callback(self.__on_api_ready)
         Api().add_shutdown_callback(self.__on_shutdown)
-        Api().start(self.mqtt_client)        
+        Api().start(mqtt_client=self.mqtt_client)        
 
 
     '''

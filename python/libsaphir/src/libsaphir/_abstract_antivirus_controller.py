@@ -41,7 +41,7 @@ class AbstractAntivirusController(ABC):
 
         Api().add_message_callback(self.__on_message_received)
         Api().add_ready_callback(self.__on_api_ready)
-        Api().start(self.__mqtt_client)
+        Api().start(mqtt_client=self.__mqtt_client)
         
         # Start the commands thread
         self.__commands_thread = threading.Thread(target= self.__commands_loop)

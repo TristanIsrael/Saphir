@@ -75,6 +75,7 @@ class AnalysisController(QObject):
     def stop_analysis(self) -> None:
         Api().info("Stopping the analysis", "AnalysisController")        
         Api().publish(f"{TOPIC_ANALYSE}/stop", {})
+        Api().clear_sys_usb_queues()        
         self.__set_state(AnalysisState.AnalysisStopped)
 
 
