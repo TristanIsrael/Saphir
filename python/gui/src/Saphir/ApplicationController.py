@@ -167,7 +167,7 @@ class ApplicationController(QObject):
     def update_source_files_list(self):
         # Ask for the list of files
         if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-            Api().get_files_list(self.sourceName_, False)
+            Api().get_files_list(self.sourceName_, False) 
 
 
     @Slot(str)

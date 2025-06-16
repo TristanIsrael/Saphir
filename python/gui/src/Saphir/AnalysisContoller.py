@@ -185,7 +185,7 @@ class AnalysisController(QObject):
         if progress > file.get("progress", 0):
             file["progress"] = progress
         
-        self.fileUpdated.emit(filepath, ["progress"])
+        self.fileUpdated.emit(filepath, ["progress"]) 
         
 
     def __handle_result(self, component:str, filepath:str, success:bool, details:str):
@@ -245,6 +245,8 @@ class AnalysisController(QObject):
                 file["status"] = FileStatus.FileInfected
                 self.infected_files_count += 1
                 self.infected_files_size += file["size"]
+
+            self.fileUpdated.emit(filepath, ["status"]) 
 
         # Enfin on vérifie s'il reste des fichiers à analyser
         if self.analysing_files_count == 0:
