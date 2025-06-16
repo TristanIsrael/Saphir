@@ -382,6 +382,15 @@ Item {
                     visible: progress === 100
                 }
             }
+
+            add: Transition {
+                NumberAnimation {
+                    properties: "x"
+                    from: -width
+                    to: 0
+                    duration: 200
+                }
+            }
         }
 
     }

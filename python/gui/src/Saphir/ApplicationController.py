@@ -267,7 +267,7 @@ class ApplicationController(QObject):
                 self.__queuedFilesList[filepath] = copy.deepcopy(file)
 
             #self.fileQueued.emit(filepath)
-            self.queueListModel_.reset()
+            #self.queueListModel_.reset()
             self.fileUpdated.emit(filepath, ["inqueue"])
             self.queueSizeChanged.emit(self.__queue_size())
             self.set_long_process_running(False)

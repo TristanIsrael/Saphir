@@ -295,7 +295,7 @@ Item {
                                 backId)
                         }
                     }
-                }
+                }                
                              
             }
 
@@ -309,6 +309,21 @@ Item {
                 verticalAlignment: Text.AlignVCenter
                 text: "Veuillez connecter un support de stockage"
                 font.pixelSize: width * 0.07
+            }
+            
+            remove: Transition {
+                NumberAnimation {
+                    properties: "x"
+                    to: parent.width
+                    duration: 200
+                }
+            }
+
+            removeDisplaced: Transition {
+                NumberAnimation {
+                    properties: "y"
+                    duration: 150
+                }
             }
         }
     }
