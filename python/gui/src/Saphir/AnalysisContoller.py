@@ -27,7 +27,6 @@ class AnalysisController(QObject):
     clean_files_size = 0
     infected_files_count = 0    
     infected_files_size = 0 
-    analysing_files_count = 0
 
     # Signals
     stateChanged = Signal(AnalysisState)
@@ -84,7 +83,6 @@ class AnalysisController(QObject):
         self.clean_files_size = 0
         self.infected_files_count = 0    
         self.infected_files_size = 0 
-        self.analysing_files_count = 0
         self.__files_copy_queue = 0
 
 
@@ -145,6 +143,8 @@ class AnalysisController(QObject):
         self.__files_copy_queue -= 1
 
         try:
+            self.systemUsed.emit()
+
             file = self.__files[filepath]
             file["status"] = FileStatus.FileAvailableInRepository
             file["footprint"] = footprint
@@ -196,24 +196,6 @@ class AnalysisController(QObject):
         # Premier passage : pas d'état pour le fichier, on prend le nouvel état
         # Deuxième passage : si le fichier était clean et qu'il ne l'est plus alors il passe à infecté
         #                    si le fichier n'était pas clean, on ne tient pas compte de son nouvel état
-        '''if not av: 
-            # Premier passage
-            av["result"] = "Sain" if success else "Infecté"
-            # Normalement l'état est FileAnalyzing
-            #file["status"] = FileStatus.FileInfected if not success else FileStatus.FileClean
-        elif file.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean and not success:
-            # S'il était clean et qu'il ne l'est plus
-            av["result"] = "Infecté"
-            file["status"] = FileStatus.FileInfected
-        elif file.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean and not success:
-            # S'il était clean et qu'il l'est toujours... on ne fait rien
-            av["result"] = "Sain"
-            file["status"] = FileStatus.FileClean
-        elif file.get("status", FileStatus.FileStatusUndefined) != FileStatus.FileClean:
-            # S'il n'était pas clean il reste dans cet état
-            av["result"] = "Infecté"
-            file["status"] = FileStatus.FileInfected'''
-        
         av["result"] = "Sain" if success else "Infecté"
         av["details"] = details
         results[component] = av
@@ -222,20 +204,15 @@ class AnalysisController(QObject):
         # Le progrès écrase les précédentes valeurs car il s'agit
         # ici du résultat de l'analyse et plus de la progression        
         progress = 0 if len(self.__analysis_components) == 0 else 100 * len(results) / len(self.__analysis_components)
-        file["progress"] = progress        
-
-        self.fileUpdated.emit(filepath, ["status", "progress"])
-        self.resultsChanged.emit() 
-
-        print(f"Fichier {filepath}, status={file["status"]}, progress={file["progress"]}, progress={progress}, success={success}, component={component}")
+        file["progress"] = progress                        
 
         # Si l'analyse du fichier est terminée on supprime le fichier du dépôt
-        if progress == 100:
+        if progress == 100.0:
             # On calcule l'état du fichier
             sain = self.__calcule_consensus_resultats(filepath)
 
             Api().delete_file(filepath, Constantes.REPOSITORY)
-            self.__repository_size -= 1
+            self.__repository_size -= 1 # A faire en asynchrone après confirmation de suppression
 
             if sain:
                 file["status"] = FileStatus.FileClean
@@ -244,13 +221,12 @@ class AnalysisController(QObject):
             else: #if file["status"] == FileStatus.FileInfected or file["status"] == FileStatus.FileAnalysisError or file["status"] == FileStatus.FileCopyError:
                 file["status"] = FileStatus.FileInfected
                 self.infected_files_count += 1
-                self.infected_files_size += file["size"]
+                self.infected_files_size += file["size"]            
+        
+        self.fileUpdated.emit(filepath, ["status", "progress"])
+        self.resultsChanged.emit()
+        print(f"Fichier {filepath}, status={file["status"]}, progress={file["progress"]}, progress={progress}, success={success}, component={component}")
 
-            self.fileUpdated.emit(filepath, ["status"]) 
-
-        # Enfin on vérifie s'il reste des fichiers à analyser
-        if self.analysing_files_count == 0:
-            self.systemUsed.emit()
 
     def __handle_error(self, payload):        
         filepath = payload.get("filepath", "")
@@ -261,7 +237,13 @@ class AnalysisController(QObject):
         #Api().warn(f"There was an error with the file {filepath}: {error}")
         file["status"] = FileStatus.FileAnalysisError
         file["progress"] = 100
+        self.infected_files_count += 1
+        self.infected_files_size += file["size"]
         self.fileUpdated.emit(filepath, ["status", "progress"])
+        self.resultsChanged.emit() 
+
+        Api().delete_file(filepath, Constantes.REPOSITORY)
+        self.__repository_size -= 1
 
     
     def __do_copy_files_into_repository(self):
