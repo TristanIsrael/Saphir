@@ -167,6 +167,7 @@ class ApplicationController(QObject):
     def update_source_files_list(self):
         # Ask for the list of files
         if self.__analysis_mode == AnalysisMode.AnalyseSelection:
+            self.__folders_to_query = 1
             Api().get_files_list(self.sourceName_, False) 
 
 
@@ -205,50 +206,6 @@ class ApplicationController(QObject):
 
         #QCoreApplication.processEvents()
         Api().get_files_list(self.sourceName_, False, "/",)
-        '''for file in self.__inputFilesList.values():
-            if file["type"] == "file":
-                self.enqueue_file("file", file["filepath"])
-            else:
-                Api().get_files_list(self.sourceName_, False, file["filepath"])
-                '''
-
-        # L'analyse démarre maintenant
-        #self.analysisController_.start_analysis(self.sourceName_)        
-
-
-        '''Api().debug("Adding all files to the queue")
-
-        for file in .values():
-            filetype = file["type"]
-            filepath = file["filepath"]
-            self.enqueue_file(filetype, filepath)
-
-        #self.allFilesUpdated.emit()
-        Api().debug("All files added to the queue")
-        '''
-
-
-    '''def __enqueue_next_file(self):
-        #for filepath, file in self.__inputFilesList.items():
-        if len(self.__files_to_enqueue) == 0:
-            self.__is_enquing = False
-            self.__set_system_state(SystemState.SystemWaitingForUserAction)
-            return
-        
-        filepath = self.__files_to_enqueue.pop()
-        file = self.__inputFilesList[filepath]
-        file["inqueue"] = True
-    
-        #self.inputFilesListModel_.on_files_updated()
-        filepath = file["filepath"]
-        self.__queuedFilesList[filepath] = file
-        self.fileUpdated.emit(filepath, ["inqueue"])
-        self.fileQueued.emit(filepath)
-        self.queueSizeChanged.emit(len(self.__inputFilesList))
-        self.totalFilesCountChanged.emit(self.__total_files_count())
-
-        QTimer.singleShot(1, self.__enqueue_next_file)           
-    '''
 
     @Slot(str, str)
     def enqueue_file(self, filetype:str, filepath:str): 
@@ -283,12 +240,6 @@ class ApplicationController(QObject):
             self.__is_enquing = True
             self.__set_system_state(SystemState.SystemGettingFilesList)
             Api().get_files_list(self.sourceName_, True, filepath)
-
-            '''for filepath_ in self.__inputFilesList.keys():
-                if self.__is_file_in_folder(filepath_, filepath):
-                    self.__files_to_enqueue.append(filepath_)
-
-            QTimer.singleShot(1, self.__enqueue_next_file)'''
 
 
     @Slot(str)
@@ -526,139 +477,25 @@ class ApplicationController(QObject):
         #print("payload: {}".format(payload))
         
         if topic == Topics.DISK_STATE:
-            disk = payload.get("disk")
-            if disk is None:
-                Api().error("The disk value is missing")
-                return
-            
-            state = payload.get("state")
-            if state is None:
-                Api().error("The state value is missing")
-                return
-            
-            # Is it a source or a destination disk?
-            if self.sourceName_ == "" and state == "connected":
-                # Une nouvelle source est connectée
-                # ce qui n'est pas autorisé si le système a été utilisé  
-                if self.__system_used:
-                    self.__system_state = SystemState.SystemMustBeReset
-                    self.systemMustBeReset.emit()
-                else:              
-                    self.sourceReady_ = True
-                    self.sourceReadyChanged.emit(self.sourceReady_)
-                    self.sourceName_ = disk
-                    self.analysisController_.set_source_disk(disk)
-                    self.sourceNameChanged.emit(self.sourceName_)
-            elif self.sourceName_ != "" and self.sourceName_ == disk and state == "disconnected":
-                # La source a été déconnectée
-                self.sourceReady_ = False
-                self.sourceReadyChanged.emit(self.sourceReady_)
-                self.sourceName_ = ""
-                self.analysisController_.set_source_disk("")
-                self.sourceNameChanged.emit(self.sourceName_)
-                #QMetaObject.invokeMethod(self, "reset")
-            elif self.sourceName_ != "" and self.sourceName_ != disk and state == "connected":
-                # Une nouvelle source a été connectée                
-                self.targetReady_ = True
-                self.targetReadyChanged.emit(self.targetReady_)
-                self.targetName_ = disk
-                self.targetNameChanged.emit(disk)
-            elif self.targetName_ != "" and self.targetName_ == disk and state == "disconnected":
-                # La destination a été déconnectée
-                self.targetReady_ = False
-                self.targetReadyChanged.emit(self.targetReady_)
-                self.targetName_ = ""
-                self.targetNameChanged.emit(disk)
-            if self.targetReady_ == True and self.sourceReady_ == False:
-                # If there is only one disk connected it becomes the source
-                self.sourceName_ = self.targetName_
-                self.analysisController_.set_source_disk(self.targetName_)
-                self.targetName_ = ""
-                self.sourceReady_ = True
-                self.targetReady_ = False
-                self.sourceNameChanged.emit(self.sourceName_)
-                self.sourceReadyChanged.emit(self.sourceReady_)
-                self.targetNameChanged.emit(self.targetName_)
-                self.targetReadyChanged.emit(self.targetReady_)
-                self.__inputFilesList.clear()
-                self.inputFilesListModel_.reset()
+            self.__handle_disk_state(payload)
             
         elif topic == "{}/response".format(Topics.LIST_DISKS):
-            disks:list = payload.get("disks", list())
-            if not MqttHelper.check_payload(payload, ["disks"]):
-                Api().error("Message is malformed")
-                return
-            
-            if len(disks) == 0:
-                Api().info("The list of disks is empty.")
-                return
-                        
-            Api().debug("Disks list received : {}".format(disks))
-            if len(disks) > 0:
-                # We keep only the first
-                disk = disks[0]
-                self.sourceReady_ = True
-                self.sourceReadyChanged.emit(self.sourceReady_)
-                self.sourceName_ = disk
-                self.analysisController_.set_source_disk(disk)
-                self.sourceNameChanged.emit(self.sourceName_)            
-                Api().info("The source disk name is {}".format(self.sourceName_))
-                self.__set_system_state(SystemState.SystemGettingFilesList)
+            self.__handle_list_disks(payload)
 
         elif topic == "{}/response".format(Topics.LIST_FILES):
             self.__handle_list_files(payload)
 
         elif topic == "{}/response".format(Topics.DISCOVER_COMPONENTS):
-            if not MqttHelper.check_payload(payload, ["components"]):
-                Api().error("The response is malformed")
-                return
-            
-            components = payload.get("components", list())
-            if len(components) > 0:
-                self.componentsHelper_.update(components)
-                self.__check_components_availability()     
-                #self.__set_system_state(SystemState.SystemReady)
-                self.__components_model.components_updated()
+            self.__handle_discover_components(payload)
 
         elif topic == "{}/response".format(Topics.COPY_FILE):
-            if not MqttHelper.check_payload(payload, ["filepath", "status", "footprint"]):
-                Api().error("Missing arguments in the topic {}".format(topic))
-                return
-            
-            filepath = payload.get("filepath")
-            status = payload.get("status")
-            footprint = payload.get("footprint")
-
-            file = self.__queuedFilesList.get(filepath)
-            if file is None:
-                Api().error("The file {} has not been found in the analysis queue".format(filepath))
-                return
-            
-            success = status == "ok"
-            if success:
-                self.__copied_files_count += 1
-
-            file["status"] = FileStatus.FileCopySuccess if success else FileStatus.FileCopyError            
-            Api().info("The file {} has been copied to {}. The footprint is {}".format(filepath, self.__targetName(), footprint))
-            self.fileUpdated.emit(filepath, ["status"])
-            self.transferProgressChanged.emit()
+            self.__handle_copy_file(payload)
 
         elif topic == f"{Topics.ENERGY_STATE}/response":
-            if not MqttHelper.check_payload(payload, ["battery_level", "plugged"]):
-                return
-            
-            self.battery_level_ = payload.get("battery_level", 0)
-            self.batteryLevelChanged.emit()
-            self.plugged_ = bool(payload.get("plugged", False))
-            self.pluggedChanged.emit()      
+            self.__handle_energy_state(payload)      
 
         elif topic == f"{Topics.SYSTEM_INFO}/response":
-            if not MqttHelper.check_payload(payload, ["core", "system"]):
-                return
-            
-            self.__system_information = payload
-            self.systemInformationChanged.emit()
-
+            self.__handle_system_info(payload)
 
     def __is_file_in_folder(self, filepath:str, folder:str) -> bool:
         return filepath.startswith(folder) # type: ignore
@@ -697,6 +534,86 @@ class ApplicationController(QObject):
         self.analysisReady_ = ready
         self.analysisReadyChanged.emit(self.analysisReady_)
 
+    def __handle_disk_state(self, payload:dict):
+        disk = payload.get("disk")
+        if disk is None:
+            Api().error("The disk value is missing")
+            return
+        
+        state = payload.get("state")
+        if state is None:
+            Api().error("The state value is missing")
+            return
+        
+        # Is it a source or a destination disk?
+        if self.sourceName_ == "" and state == "connected":            
+            if self.__system_used:
+                # Une nouvelle source est connectée
+                # ce qui n'est pas autorisé si le système a été utilisé  
+                self.__system_state = SystemState.SystemMustBeReset
+                self.systemMustBeReset.emit()
+            else:              
+                self.sourceReady_ = True
+                self.sourceReadyChanged.emit(self.sourceReady_)
+                self.sourceName_ = disk
+                self.analysisController_.set_source_disk(disk)
+                self.sourceNameChanged.emit(self.sourceName_)
+        elif self.sourceName_ != "" and self.sourceName_ == disk and state == "disconnected":
+            # La source a été déconnectée
+            self.sourceReady_ = False
+            self.sourceReadyChanged.emit(self.sourceReady_)
+            self.sourceName_ = ""
+            self.analysisController_.set_source_disk("")
+            self.__inputFilesList.clear()
+            self.inputFilesListModel_.reset()
+            self.sourceNameChanged.emit(self.sourceName_)
+        elif self.sourceName_ != "" and self.sourceName_ != disk and state == "connected":
+            # Une nouvelle source a été connectée                
+            self.targetReady_ = True
+            self.targetReadyChanged.emit(self.targetReady_)
+            self.targetName_ = disk
+            self.targetNameChanged.emit(disk)
+        elif self.targetName_ != "" and self.targetName_ == disk and state == "disconnected":
+            # La destination a été déconnectée
+            self.targetReady_ = False
+            self.targetReadyChanged.emit(self.targetReady_)
+            self.targetName_ = ""
+            self.targetNameChanged.emit(disk)
+        if self.targetReady_ == True and self.sourceReady_ == False:
+            # If there is only one disk connected it becomes the source
+            self.sourceName_ = self.targetName_
+            self.analysisController_.set_source_disk(self.targetName_)
+            self.targetName_ = ""
+            self.sourceReady_ = True
+            self.targetReady_ = False
+            self.sourceNameChanged.emit(self.sourceName_)
+            self.sourceReadyChanged.emit(self.sourceReady_)
+            self.targetNameChanged.emit(self.targetName_)
+            self.targetReadyChanged.emit(self.targetReady_)
+            self.__inputFilesList.clear()
+            self.inputFilesListModel_.reset()
+
+    def __handle_list_disks(self, payload:dict):
+        disks:list = payload.get("disks", list())
+        if not MqttHelper.check_payload(payload, ["disks"]):
+            Api().error("Message is malformed")
+            return
+        
+        if len(disks) == 0:
+            Api().info("The list of disks is empty.")
+            return
+                    
+        Api().debug("Disks list received : {}".format(disks))
+        if len(disks) > 0:
+            # We keep only the first
+            disk = disks[0]
+            self.sourceReady_ = True
+            self.sourceReadyChanged.emit(self.sourceReady_)
+            self.sourceName_ = disk
+            self.analysisController_.set_source_disk(disk)
+            self.sourceNameChanged.emit(self.sourceName_)            
+            Api().info("The source disk name is {}".format(self.sourceName_))
+            self.__set_system_state(SystemState.SystemGettingFilesList)
 
     def __handle_list_files(self, payload:dict) -> None:
         with self.__queue_files_list_lock:
@@ -714,7 +631,7 @@ class ApplicationController(QObject):
             #Api().debug("Files list received, count={}".format(len(files)))
             self.__folders_to_query -= 1
 
-            for file in files:                
+            for file in files:
                 file["disk"] = disk
                 filepath = "{}{}{}".format(file.get("path"), "/" if file.get("path") != "/" else "", file.get("name"))                
                 file["filepath"] = filepath
@@ -764,6 +681,56 @@ class ApplicationController(QObject):
                 if self.__analysis_mode == AnalysisMode.AnalyseSelection:
                     self.__set_system_state(SystemState.SystemWaitingForUserAction)
 
+    def __handle_discover_components(self, payload:dict):
+        if not MqttHelper.check_payload(payload, ["components"]):
+            Api().error("The response is malformed")
+            return
+        
+        components = payload.get("components", list())
+        if len(components) > 0:
+            self.componentsHelper_.update(components)
+            self.__check_components_availability()     
+            #self.__set_system_state(SystemState.SystemReady)
+            self.__components_model.components_updated()
+
+    def __handle_copy_file(self, payload:dict):
+        if not MqttHelper.check_payload(payload, ["filepath", "status", "footprint"]):
+            Api().error("Missing arguments in copy file")
+            return
+        
+        filepath = payload.get("filepath")
+        status = payload.get("status")
+        footprint = payload.get("footprint")
+
+        file = self.__queuedFilesList.get(filepath)
+        if file is None:
+            Api().error("The file {} has not been found in the analysis queue".format(filepath))
+            return
+        
+        success = status == "ok"
+        if success:
+            self.__copied_files_count += 1
+
+        file["status"] = FileStatus.FileCopySuccess if success else FileStatus.FileCopyError            
+        Api().info("The file {} has been copied to {}. The footprint is {}".format(filepath, self.__targetName(), footprint))
+        self.fileUpdated.emit(filepath, ["status"])
+        self.transferProgressChanged.emit()
+
+    def __handle_energy_state(self, payload:dict):
+        if not MqttHelper.check_payload(payload, ["battery_level", "plugged"]):
+            return
+        
+        self.battery_level_ = payload.get("battery_level", 0)
+        self.batteryLevelChanged.emit()
+        self.plugged_ = bool(payload.get("plugged", False))
+        self.pluggedChanged.emit()
+
+    def __handle_system_info(self, payload:dict):
+        if not MqttHelper.check_payload(payload, ["core", "system"]):
+            return
+        
+        self.__system_information = payload
+        self.systemInformationChanged.emit()    
 
     def __on_results_changed(self):        
         self.cleanFilesCountChanged.emit(self.__clean_files_count())
