@@ -274,7 +274,7 @@ Item {
                             anchors.centerIn: parent
                         }
 
-                        onCheckedChanged: function() {
+                        onToggled: function() {
                             if(checked) {
                                 Constants.addToAnalyse(
                                     type,

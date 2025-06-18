@@ -210,9 +210,8 @@ class ApplicationController(QObject):
         Api().get_files_list(self.sourceName_, False, "/",)
 
     @Slot(str, str)
-    def enqueue_file(self, filetype:str, filepath:str): 
-        #if notify_gui:
-        #    Api().debug("User added {} {} to the queue".format(filetype, filepath))
+    def enqueue_file(self, filetype:str, filepath:str):         
+        print("User added {} {} to the queue".format(filetype, filepath))
         
         self.__is_enquing = True
         self.__is_navigating = False        
@@ -241,7 +240,7 @@ class ApplicationController(QObject):
             # Get the file tree from the disk and enqueue it
             self.__is_enquing = True
             self.__set_system_state(SystemState.SystemGettingFilesList)
-            Api().get_files_list(self.sourceName_, True, filepath)
+            Api().get_files_list(self.sourceName_, False, filepath)
 
 
     @Slot(str)
@@ -632,6 +631,7 @@ class ApplicationController(QObject):
 
             #Api().debug("Files list received, count={}".format(len(files)))
             self.__folders_to_query -= 1
+            print(self.__folders_to_query)
 
             for file in files:
                 file["disk"] = disk
@@ -641,25 +641,38 @@ class ApplicationController(QObject):
                 file["selected"] = False                
                 #print(filepath)
 
-                if self.__is_enquing and file["type"] == "file":
-                    # On est en train de mettre des fichiers dans la queue (mode dossier récursif)
-                    file["inqueue"] = True
-                    self.__queue_files_size += file["size"]
-                    self.__queuedFilesList[filepath] = file
+                if self.__is_enquing:
+                    # On est en train de sélectionner des fichiers
+                    #if self.__analysis_mode == AnalysisMode.AnalyseSelection:
+                    # On est en mode de sélection unitaire
+                    if file["type"] == "file":                
+                        file["inqueue"] = True
+                        self.__queue_files_size += file["size"]
+                        self.__queuedFilesList[filepath] = file
+                    elif file["type"] == "folder":
+                        # Si c'est un dossier on va chercher les fichiers qu'il contient
+                        self.__folders_to_query += 1
+                        self.__thread_pool.submit(Api().get_files_list, self.sourceName_, False, filepath)
+                    '''else:
+                        # On est en mode de sélection de tout le disque
+                        print("sélection de tout le disque")
+                        self.__folders_to_query += 1
+                        self.__thread_pool.submit(Api().get_files_list, self.sourceName_, False, filepath)'''
                 else:
-                    # Sinon on est en train de sélectionner des fichiers
+                    # Sinon on est en train de peupler le navigateur
                     if self.__analysis_mode == AnalysisMode.AnalyseSelection:
+                        print("Peuplement du navigateur")
                         # Si on est en mode de sélection de fichiers
                         file["inqueue"] = False
                         if not self.__is_enquing:
                             self.__inputFilesList[filepath] = file
-                            #self.fileAdded.emit(filepath)
-                    else:
-                        # Sinon on automatise tout le processus et on demande la liste des sous répertoires
+                            #self.fileAdded.emit(filepath)                    
+                    '''else:
+                        # On est en mode de sélection de tout le disque
                         #Api().get_files_list(self.sourceName_, False, file["filepath"])
                         #threading.Timer(0.5, Api().get_files_list, args=(self.sourceName_, False, file["filepath"],)).start()
                         self.__folders_to_query += 1
-                        self.__thread_pool.submit(Api().get_files_list, self.sourceName_, False, filepath)
+                        self.__thread_pool.submit(Api().get_files_list, self.sourceName_, False, filepath)'''
             
             # On met à jour le compteur car cette opération est peu couteuse
             # et permet à l'utilisateur de voir qu'il se passe quelque chose
@@ -674,12 +687,11 @@ class ApplicationController(QObject):
                 # Après avoir récupéré la liste de tous les fichiers on met à jour les modèles                
                 if self.__analysis_mode == AnalysisMode.AnalyseSelection:
                     self.inputFilesListModel_.reset()
-                elif self.__is_enquing:
+                
+                if self.__is_enquing:
                     self.queueSizeChanged.emit(len(self.__queuedFilesList))
                     self.queueUpdated.emit()
                     #self.queueListModel_.reset()
-                else:
-                    self.inputFilesListModel_.reset()
 
                 if self.__analysis_mode == AnalysisMode.AnalyseSelection:
                     self.__set_system_state(SystemState.SystemWaitingForUserAction)
@@ -847,21 +859,16 @@ class ApplicationController(QObject):
         self.inputFilesListModel_.reset()
         self.systemUsedChanged.emit()
 
-    def __enqueue_all_files_recursively(self, path = "/"):
+    '''def __enqueue_all_files_recursively(self, path = "/"):
         # On met en queue le répertoire courant, puis tous les sous-répertoires récursivement
         # Des requêtes sont envoyées à PSEC pour obtenir la liste des fichiers des sous-répertoires
         # et chaque réponse alimentera la queue.
-        '''files = [value for value in self.__inputFilesList.values() if value.get("type") == "file"]
-        self.__folders_to_enqueue = [value for value in self.__inputFilesList.values() if value.get("type") == "folder"]
-        
-        for file in files:
-            self.enqueue_file("file", file["filepath"])
-        '''
+      
 
         # Stratégie simpliste, pour chaque répertoire à la racine on met en queue le répertoire avec activation de la récursivité
         # Et on espace chaque appel d'1/2 seconde
         for file in self.__inputFilesList.values():
-            self.enqueue_file(file["type"], file["filepath"])
+            self.enqueue_file(file["type"], file["filepath"])'''
 
     def __make_analysis_report(self):
         Api().info("Generate the analysis report")

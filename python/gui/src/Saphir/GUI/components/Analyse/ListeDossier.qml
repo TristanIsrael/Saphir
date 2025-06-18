@@ -201,8 +201,8 @@ Item {
                 spacing: 10
                 
                 Image {
-                    Layout.preferredWidth: parent.height 
-                    Layout.preferredHeight: parent.height                        
+                    Layout.preferredWidth: parent.height *0.8
+                    Layout.preferredHeight: parent.height *0.8                        
 
                     //anchors.verticalCenter: parent.verticalCenter
                     /*source: type === "file" ? Qt.resolvedUrl(Constants.colorModePath  + "FichierActif.svg")
@@ -228,7 +228,7 @@ Item {
                     clip: true
                     color: model.selected ? Constants.colorBlue : Constants.colorText
                     text: filename                        
-                    font.pointSize: listView.rowHeight
+                    font.pointSize: 18 //listView.rowHeight
                     verticalAlignment: Text.AlignVCenter
                     horizontalAlignment: Text.AlignLeft
                     elide: Label.ElideRight
@@ -276,7 +276,8 @@ Item {
                         anchors.centerIn: parent
                     }
 
-                    onCheckedChanged: function() {
+                    onToggled: function() {
+                        console.debug("onToggled")
                         if(checked) {
                             Constants.addToAnalyse(
                                 type,

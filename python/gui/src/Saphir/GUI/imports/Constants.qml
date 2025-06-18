@@ -240,6 +240,7 @@ QtObject {
                           /*real*/ progress,
                           /*int*/ filepath)
     {
+        console.debug("addToAnalyse")
         ApplicationController.enqueue_file(type, filepath)
         
     }
