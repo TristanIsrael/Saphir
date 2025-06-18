@@ -304,7 +304,7 @@ Item {
 
             RowLayout {
                 id: copySaneFilesComponent
-                visible: false // Constants.isOutputUSBPlugged && ApplicationController.systemState === Enums.SystemState.AnalysisCompleted
+                visible: Constants.isOutputUSBPlugged && ApplicationController.systemState === Enums.SystemState.AnalysisCompleted
                 width: parent.width * 0.2
                 height: parent.height * 0.1
                 anchors.right: parent.right

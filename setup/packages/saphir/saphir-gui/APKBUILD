@@ -34,7 +34,7 @@ package() {
     mkdir -p "$pkgdir/usr/lib/saphir"
     tar xvzf *.tar.gz -C "$pkgdir/usr/lib/saphir"    
     cd "$pkgdir/usr/lib/saphir"
-    ln -s "saphir_gui-$pkgver" gui
+    ln -s "saphir_gui-$pkgver.$pkgrel" gui
 
     install -D -m755 "$srcdir"/gui.initd "$pkgdir"/etc/init.d/gui
 }
