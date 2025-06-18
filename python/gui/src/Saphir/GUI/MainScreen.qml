@@ -302,9 +302,9 @@ Item {
                 }
             }
 
-            RowLayout {
+            /*RowLayout {
                 id: copySaneFilesComponent
-                visible: Constants.isOutputUSBPlugged && ApplicationController.systemState === Enums.SystemState.AnalysisCompleted
+                visible: Constants.isOutputUSBPlugged && ApplicationController.systemState === Enums.SystemState.AnalysisCompleted                
                 width: parent.width * 0.2
                 height: parent.height * 0.1
                 anchors.right: parent.right
@@ -321,6 +321,7 @@ Item {
 
                     Image {
                         id: copySaneFilesButton
+                        visible: parent.visible
                         anchors.fill: parent
                         Layout.alignment: Qt.AlignTop
                         source: Constants.isCopyingSaneFiles ? Qt.resolvedUrl(Constants.colorModePath  + "CopierFichiersActive.svg")
@@ -342,28 +343,8 @@ Item {
                     }
                 }
 
-                /*Item {
-                    Layout.preferredWidth: 80
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-
-                    Label {
-                        anchors.fill: parent
-                        color: Constants.colorText
-                        text: "Copier les fichiers sains"
-                        font.pixelSize: Math.min(height * 0.6, width * 0.15)
-                        horizontalAlignment: Text.AlignLeft
-                        verticalAlignment: Text.AlignVCenter
-
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: {
-                                ApplicationController.start_transfer()
-                            }
-                        }
-                    }
-                }   */             
-            }
+                          
+            }*/
 
             Rectangle {
                 id: copyProgressBar

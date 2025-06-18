@@ -94,7 +94,7 @@ Item {
                         Layout.alignment: Qt.AlignRight
                         Layout.preferredHeight: parent.height/2.5
                         Layout.preferredWidth: parent.height/2.5
-                        //visible: Constants.isOutputUSBPlugged && ApplicationController.systemState === Enums.SystemState.AnalysisCompleted
+                        visible: Constants.isOutputUSBPlugged && ApplicationController.systemState === Enums.SystemState.AnalysisCompleted
 
                         Image {
                             id: copySaneFilesButton
