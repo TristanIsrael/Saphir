@@ -1,7 +1,7 @@
 from libsaphir import ClamAntivirusController
 from DevModeHelper import DevModeHelper
 from psec import Parametres, Cles
-import threading
+from threading import Event
 
 class MockClamAntivirusController(ClamAntivirusController):
 
@@ -14,5 +14,5 @@ if __name__ == "__main__":
     mock = MockClamAntivirusController()
     mock.start()
 
-    lock = threading.Event()
+    lock = Event()
     lock.wait()

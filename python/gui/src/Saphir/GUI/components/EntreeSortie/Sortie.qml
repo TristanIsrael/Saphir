@@ -8,18 +8,6 @@ Item {
     property string label: Constants.outputUSBName
     property bool selected: Constants.isOutputUSBPlugged
 
-    /*Connections {
-        target: Constants
-        onOutputSUBPlugged: {
-            Constants.isOutputUSBPlugged = true
-            Constants.outputUSBName = usbName
-        }
-        onOutputUSBUnplugged: {
-            Constants.isOutputUSBPlugged = false
-            Constants.outputUSBName = ""
-        }
-    }*/
-
     Image {
         source: selected ? Qt.resolvedUrl(Constants.colorModePath  + "SupportSortieConnecte.svg")
                          : Qt.resolvedUrl(Constants.colorModePath  + "SupportSortieNonConnecte.svg")

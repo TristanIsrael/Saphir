@@ -140,7 +140,7 @@ Item {
         {
             id: listView
             clip: true
-            property int rowHeight: 25
+            property int rowHeight: 40
             Layout.preferredHeight: 95
             Layout.fillWidth: true
             Layout.fillHeight: true

@@ -168,6 +168,7 @@ class ApplicationController(QObject):
         # Ask for the list of files
         if self.__analysis_mode == AnalysisMode.AnalyseSelection:
             self.__folders_to_query = 1
+            self.set_long_process_running(True)
             Api().get_files_list(self.sourceName_, False) 
 
 
@@ -180,6 +181,7 @@ class ApplicationController(QObject):
         self.currentFolderChanged.emit()
         self.idCurrentFolderChanged.emit()
         self.__folders_to_query = 1
+        self.set_long_process_running(True)
         Api().get_files_list(self.sourceName_, False, folder)        
 
 
@@ -514,7 +516,7 @@ class ApplicationController(QObject):
 
         # Verify PSEC availability
         if states.get(Constantes.PSEC_DISK_CONTROLLER):
-            ready &= states.get(Constantes.PSEC_DISK_CONTROLLER) == EtatComposant.READY
+            ready &= states.get(Constantes.PSEC_DISK_CONTROLLER, EtatComposant.UNKNOWN) == EtatComposant.READY
             if ready and not self.__disk_controller_ready:
                 self.__disk_controller_ready = True
                 self.__on_disk_controller_state_changed(ready)
@@ -524,7 +526,7 @@ class ApplicationController(QObject):
         ready &= len(ids) >= ANTIVIRUS_NEEDED
         for id in ids:
             av = self.componentsHelper_.get_by_id(id)
-            ready &= av.get("state", EtatComposant.UNKNOWN) == EtatComposant.READY    
+            ready &= av.get("state", EtatComposant.UNKNOWN) == EtatComposant.READY
             if av.get("state", EtatComposant.UNKNOWN) == EtatComposant.READY and av not in self.analysisComponents_:
                 self.analysisComponents_.append(av)
 
@@ -568,7 +570,7 @@ class ApplicationController(QObject):
             self.inputFilesListModel_.reset()
             self.sourceNameChanged.emit(self.sourceName_)
         elif self.sourceName_ != "" and self.sourceName_ != disk and state == "connected":
-            # Une nouvelle source a été connectée                
+            # La destination a été connectée                
             self.targetReady_ = True
             self.targetReadyChanged.emit(self.targetReady_)
             self.targetName_ = disk
@@ -640,19 +642,17 @@ class ApplicationController(QObject):
                 #print(filepath)
 
                 if self.__is_enquing and file["type"] == "file":
+                    # On est en train de mettre des fichiers dans la queue (mode dossier récursif)
                     file["inqueue"] = True
                     self.__queue_files_size += file["size"]
-                    self.__queuedFilesList[filepath] = file                        
-                    #self.queueSizeChanged.emit(len(self.__queuedFilesList))                        
-
-                    '''if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                        self.fileQueued.emit(filepath)'''
+                    self.__queuedFilesList[filepath] = file
                 else:
+                    # Sinon on est en train de sélectionner des fichiers
                     if self.__analysis_mode == AnalysisMode.AnalyseSelection:
                         # Si on est en mode de sélection de fichiers
                         file["inqueue"] = False
                         if not self.__is_enquing:
-                            self.__inputFilesList[filepath] = file                        
+                            self.__inputFilesList[filepath] = file
                             #self.fileAdded.emit(filepath)
                     else:
                         # Sinon on automatise tout le processus et on demande la liste des sous répertoires
@@ -669,17 +669,23 @@ class ApplicationController(QObject):
             #print(self.__folders_to_query)
             if self.__folders_to_query == 0:
                 self.set_long_process_running(False)
+                # 
 
                 # Après avoir récupéré la liste de tous les fichiers on met à jour les modèles                
-                if self.__is_enquing:
+                if self.__analysis_mode == AnalysisMode.AnalyseSelection:
+                    self.inputFilesListModel_.reset()
+                elif self.__is_enquing:
                     self.queueSizeChanged.emit(len(self.__queuedFilesList))
                     self.queueUpdated.emit()
                     #self.queueListModel_.reset()
                 else:
-                    self.inputFilesListModel_.reset()            
+                    self.inputFilesListModel_.reset()
 
                 if self.__analysis_mode == AnalysisMode.AnalyseSelection:
                     self.__set_system_state(SystemState.SystemWaitingForUserAction)
+
+                # A la fin on sort du mode de mise en queue
+                self.__is_enquing = False
 
     def __handle_discover_components(self, payload:dict):
         if not MqttHelper.check_payload(payload, ["components"]):
@@ -689,8 +695,7 @@ class ApplicationController(QObject):
         components = payload.get("components", list())
         if len(components) > 0:
             self.componentsHelper_.update(components)
-            self.__check_components_availability()     
-            #self.__set_system_state(SystemState.SystemReady)
+            self.__check_components_availability()
             self.__components_model.components_updated()
 
     def __handle_copy_file(self, payload:dict):
@@ -953,7 +958,7 @@ class ApplicationController(QObject):
     
     def __set_system_state(self, state:SystemState):
         self.__system_state = state
-        print(f"System state: {self.__system_state}")
+        #print(f"System state: {self.__system_state}")
         self.systemStateChanged.emit(self.__system_state.value)
 
     def __queue_size(self):

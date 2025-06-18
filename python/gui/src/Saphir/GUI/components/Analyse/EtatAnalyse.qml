@@ -133,6 +133,7 @@ Item {
                         color: Constants.currentColorMode == Constants.ColorMode.STEALTH ? Constants.colorText : "#7E8EAC"
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
+                        visible: Constants.globalProgress < 1.0
                     }
                 }                          
 

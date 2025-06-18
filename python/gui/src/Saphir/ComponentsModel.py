@@ -1,6 +1,6 @@
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal, Slot
 from PySide6.QtCore import QFileInfo, Property
-from psec import Api, ComponentsHelper
+from psec import Api, ComponentsHelper, EtatComposant
 import humanize
 import collections
 
@@ -36,7 +36,8 @@ class ComponentsModel(QAbstractTableModel):
         elif index.column() == 1:
             return component.get("label", "err")
         elif index.column() == 2:
-            return component.get("state", "err")
+            state = component.get("state", EtatComposant.UNKNOWN)
+            return state.value
         
         return None    
 

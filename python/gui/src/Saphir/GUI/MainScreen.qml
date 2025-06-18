@@ -304,7 +304,7 @@ Item {
 
             RowLayout {
                 id: copySaneFilesComponent
-                visible: Constants.isOutputUSBPlugged && ApplicationController.systemState === Enums.SystemState.AnalysisCompleted
+                visible: false // Constants.isOutputUSBPlugged && ApplicationController.systemState === Enums.SystemState.AnalysisCompleted
                 width: parent.width * 0.2
                 height: parent.height * 0.1
                 anchors.right: parent.right
@@ -314,7 +314,8 @@ Item {
                 spacing: 10
 
                 Item {
-                    Layout.preferredWidth: 40
+                    //Layout.preferredWidth: 40
+                    //Layout.preferredHeight: parent.height
                     Layout.fillWidth: true
                     Layout.fillHeight: true
 
@@ -333,9 +334,15 @@ Item {
                             }
                         }
                     }
+
+                    HelpTip {
+                        libelle: "Copier les fichiers sains"
+                        y: parent.height/2
+                        visible: Constants.afficherAide & parent.visible
+                    }
                 }
 
-                Item {
+                /*Item {
                     Layout.preferredWidth: 80
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -355,7 +362,7 @@ Item {
                             }
                         }
                     }
-                }                
+                }   */             
             }
 
             Rectangle {

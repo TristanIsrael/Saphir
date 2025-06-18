@@ -85,29 +85,54 @@ Item {
                         id: entreeUSB2
                         Layout.alignment: Qt.AlignLeft
                         Layout.preferredHeight: parent.height
-                        Layout.preferredWidth: parent.width/2
+                        Layout.preferredWidth: visible ? parent.width/2 - img.width : 0
                         visible: ApplicationController.analysisMode !== Enums.AnalysisMode.AnalyseSelection
                     }
 
-                    /*Connections {
-                        target: entreeUSB2
-                        onSelectedSignal: if (entreeUSB2.selected) sortieUSB.selected=false;
-                    }*/
+                    Item {
+                        id: img
+                        Layout.alignment: Qt.AlignRight
+                        Layout.preferredHeight: parent.height/2.5
+                        Layout.preferredWidth: parent.height/2.5
+                        //visible: Constants.isOutputUSBPlugged && ApplicationController.systemState === Enums.SystemState.AnalysisCompleted
+
+                        Image {
+                            id: copySaneFilesButton
+                            anchors {
+                                top: parent.top
+                                bottom: parent.bottom
+                                right: parent.right
+                            }
+
+                            source: Constants.isCopyingSaneFiles ? Qt.resolvedUrl(Constants.colorModePath  + "CopierFichiersActive.svg")
+                                                                     : Qt.resolvedUrl(Constants.colorModePath  + "CopierFichiersActif.svg")
+                            fillMode: Image.PreserveAspectFit
+
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    ApplicationController.start_transfer()
+                                }
+                            }
+                        }
+
+                        HelpTip {
+                            libelle: "Copier les fichiers sains"
+                            y: parent.height/-2
+                            visible: Constants.afficherAide & parent.visible
+                        }
+                    }
 
                     Sortie {
                         id: sortieUSB
-                        Layout.alignment: Qt.AlignRight
+                        //Layout.alignment: Qt.AlignRight
+                        //Layout.preferredHeight: parent.height
                         Layout.preferredHeight: parent.height
+                        //Layout.preferredWidth: parent.width/2 - img.width
                         Layout.fillWidth: true
-                        Layout.leftMargin: ApplicationController.analysisMode === Enums.AnalysisMode.AnalyseSelection ? parent.width*0.3 : 0
-                        //Layout.preferredWidth: parent.width/2
-
+                        //Layout.leftMargin: ApplicationController.analysisMode === Enums.AnalysisMode.AnalyseSelection ? parent.width*0.3 : 0
                     }
                 }
-                // Connections {
-                //     target: sortieUSB
-                //     onSelectedSignal: if (sortieUSB.selected) entreeUSB.selected=false;
-                // }
 
             }
 

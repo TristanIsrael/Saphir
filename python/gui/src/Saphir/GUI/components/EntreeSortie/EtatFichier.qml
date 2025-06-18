@@ -284,6 +284,8 @@ Item {
         HelpTip {
             anchors.centerIn: parent
             libelle: "Progression de l'analyse"
+            y: height *2/3
+            x: width /-2
         }
     }    
 

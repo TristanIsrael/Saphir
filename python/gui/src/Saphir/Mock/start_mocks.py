@@ -1,4 +1,4 @@
-from psec import MockSysUsbController
+from psec import MockSysUsbController, Api
 from MockClamAntivirusController import MockClamAntivirusController
 from MockEeaAntivirusController import MockEeaAntivirusController
 from MockDom0Controller import MockDom0Controller
@@ -6,17 +6,23 @@ from DevModeHelper import DevModeHelper
 from MockDom0Controller import MockDom0Controller
 import threading
 
+
 if __name__ == "__main__":
     print("Démarrage des mocks...")
 
+    verrou_synchro = threading.Event()
+
     print("... Starting Mocked Dom0 Controller")
-    mockDom0 = MockDom0Controller()
+    mockDom0 = MockDom0Controller(verrou_synchro)
     mockDom0.start(DevModeHelper.get_storage_path())
+    verrou_synchro.wait()
 
     print("... Starting Mock sys-usb controller")
-    mockUSB = MockSysUsbController()
+    mockUSB = MockSysUsbController(verrou_synchro)
     mockUSB.start(DevModeHelper.get_mocked_source_disk_path(), DevModeHelper.get_storage_path(), DevModeHelper.get_mocked_destination_disk_path())
+    verrou_synchro.wait()
 
+    # Pour les antivirus on se synchronise avec l'API
     print("... Starting Mock ClamAV controller")
     mockAV = MockClamAntivirusController()
     mockAV.start()
@@ -28,4 +34,4 @@ if __name__ == "__main__":
     print("Démarrage des mocks terminé")
 
     lock = threading.Event()
-    lock.wait()    
+    lock.wait()

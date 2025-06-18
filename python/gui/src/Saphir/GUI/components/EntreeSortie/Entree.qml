@@ -59,7 +59,7 @@ Item {
     HelpTip {
         anchors.centerIn: parent
         libelle: "Nom du support source"
-        visible: Constants.afficherAide && ApplicationController.analysisMode === Enums.AnalysisMode.AnalyseSelection
+        visible: Constants.afficherAide && ApplicationController.analysisMode === Enums.AnalysisMode.AnalyseSelection && parent.visible
     }
 
     // //Test de changement de status
