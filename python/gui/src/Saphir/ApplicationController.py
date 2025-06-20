@@ -104,6 +104,7 @@ class ApplicationController(QObject):
     systemMustBeReset = Signal()
     doResetSystem = Signal()
     systemInformationChanged = Signal()
+    transferStartedChanged = Signal()
 
     # IO
     _mouse_x = 0
@@ -211,7 +212,7 @@ class ApplicationController(QObject):
 
     @Slot(str, str)
     def enqueue_file(self, filetype:str, filepath:str):         
-        print("User added {} {} to the queue".format(filetype, filepath))
+        #"User added {} {} to the queue".format(filetype, filepath))
         
         self.__is_enquing = True
         self.__is_navigating = False        
@@ -631,7 +632,6 @@ class ApplicationController(QObject):
 
             #Api().debug("Files list received, count={}".format(len(files)))
             self.__folders_to_query -= 1
-            print(self.__folders_to_query)
 
             for file in files:
                 file["disk"] = disk
@@ -715,7 +715,7 @@ class ApplicationController(QObject):
         
         success = status == "ok"
         if success:
-            self.__copied_files_count += 1
+            self.__copied_files_count += 1            
 
         file["status"] = FileStatus.FileCopySuccess if success else FileStatus.FileCopyError            
         Api().info("The file {} has been copied to {}. The footprint is {}".format(filepath, self.__targetName(), footprint))
@@ -1097,6 +1097,9 @@ class ApplicationController(QObject):
 
     def __get_system_information(self):
         return self.__system_information
+    
+    def __transfer_started(self):
+        return self.__system_state == SystemState.CopyCleanFiles
 
     '''def set_main_window(self, window:QWidget):
         self.__main_window = window
@@ -1131,6 +1134,7 @@ class ApplicationController(QObject):
     remainingTime = Property(int, __get_remaining_time, notify= remainingTimeChanged)
     analysingCount = Property(int, __analysing_count, notify= analysingCountChanged)
     transferProgress = Property(int, __transferred_count, notify= transferProgressChanged)
+    transferStarted = Property(bool, __transfer_started, notify= transferStartedChanged)
 
     mouseX = Property(int, __mouse_x, notify=mouseXChanged)
     mouseY = Property(int, __mouse_y, notify=mouseYChanged)
