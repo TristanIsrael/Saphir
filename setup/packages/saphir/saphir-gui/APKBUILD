@@ -1,7 +1,7 @@
 # Contributor:
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 pkgname=saphir-gui
-pkgver=2.1
+pkgver=2.2
 pkgrel=0
 pkgdesc="Saphir - Graphical User Interface"
 url="https://defense.gouv.fr/"

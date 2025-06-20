@@ -222,7 +222,8 @@ class ApplicationController(QObject):
             file = self.__inputFilesList[filepath]
             file["inqueue"] = True
             with self.__queue_files_list_lock:
-                self.__queuedFilesList[filepath] = copy.deepcopy(file)
+                self.__queuedFilesList[filepath] = file
+            #    self.__queuedFilesList[filepath] = copy.deepcopy(file)
 
             #self.fileQueued.emit(filepath)
             #self.queueListModel_.reset()
@@ -260,13 +261,12 @@ class ApplicationController(QObject):
         
         if file["type"] == "file":
             # Si c'est un fichier on le met en queue        
-            with self.__queue_files_list_lock:            
+            with self.__queue_files_list_lock:
                 self.__queuedFilesList.pop(filepath)
-                self.queueSizeChanged.emit(len(self.__queuedFilesList))
-                #self.fileUnqueued.emit(filepath)
-                #self.queueListModel_.reset()
-                self.queueUpdated.emit()
-                self.set_long_process_running(False)
+
+            self.queueSizeChanged.emit(len(self.__queuedFilesList))
+            self.queueUpdated.emit()
+            self.set_long_process_running(False)
         else:
             # C'est un dossier
             # ... il faut parcourir toutes les entrées de la liste et retirer chaque fichier 
@@ -653,11 +653,6 @@ class ApplicationController(QObject):
                         # Si c'est un dossier on va chercher les fichiers qu'il contient
                         self.__folders_to_query += 1
                         self.__thread_pool.submit(Api().get_files_list, self.sourceName_, False, filepath)
-                    '''else:
-                        # On est en mode de sélection de tout le disque
-                        print("sélection de tout le disque")
-                        self.__folders_to_query += 1
-                        self.__thread_pool.submit(Api().get_files_list, self.sourceName_, False, filepath)'''
                 else:
                     # Sinon on est en train de peupler le navigateur
                     if self.__analysis_mode == AnalysisMode.AnalyseSelection:
@@ -666,13 +661,6 @@ class ApplicationController(QObject):
                         file["inqueue"] = False
                         if not self.__is_enquing:
                             self.__inputFilesList[filepath] = file
-                            #self.fileAdded.emit(filepath)                    
-                    '''else:
-                        # On est en mode de sélection de tout le disque
-                        #Api().get_files_list(self.sourceName_, False, file["filepath"])
-                        #threading.Timer(0.5, Api().get_files_list, args=(self.sourceName_, False, file["filepath"],)).start()
-                        self.__folders_to_query += 1
-                        self.__thread_pool.submit(Api().get_files_list, self.sourceName_, False, filepath)'''
             
             # On met à jour le compteur car cette opération est peu couteuse
             # et permet à l'utilisateur de voir qu'il se passe quelque chose
@@ -686,7 +674,8 @@ class ApplicationController(QObject):
 
                 # Après avoir récupéré la liste de tous les fichiers on met à jour les modèles                
                 if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                    self.inputFilesListModel_.reset()
+                    if not self.__is_enquing:
+                        self.inputFilesListModel_.reset()
                 
                 if self.__is_enquing:
                     self.queueSizeChanged.emit(len(self.__queuedFilesList))
