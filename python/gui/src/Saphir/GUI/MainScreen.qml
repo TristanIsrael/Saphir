@@ -365,11 +365,12 @@ Item {
                     color: Constants.colorBlue
                     opacity: 0.3
                 }
+                
                 Label {
                     anchors.centerIn: parent
                     width: parent.width
                     height: parent.height
-                    text: Math.round(ApplicationController.transferProgress * 100.0) + "%"
+                    text: ApplicationController.systemState === Enums.SystemState.GeneratingReport ? "Génération du rapport" : ApplicationController.systemState === Enums.SystemState.TransferFinished ? "Copie terminée"  : Math.round(ApplicationController.transferProgress * 100.0) + "%"
                     color: Constants.colorText
                     font.pixelSize: Math.min(height * 0.6, width * 0.15)
                     horizontalAlignment: Text.AlignHCenter

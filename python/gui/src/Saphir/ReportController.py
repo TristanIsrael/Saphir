@@ -63,13 +63,14 @@ class ReportController(QObject):
         }
 
         script_dir = os.path.dirname(os.path.realpath(__file__))
-        env = Environment(loader=FileSystemLoader(os.path.join(script_dir, 'misc/templates')))
+        templates_dir = os.path.join(script_dir, 'misc/templates')
+        env = Environment(loader=FileSystemLoader(templates_dir))
         template = env.get_template('rapport_innocuite.html')
 
         html_content = template.render(data)
 
         out_filepath = self.get_report_filepath()
-        HTML(string=html_content).write_pdf(out_filepath)
+        HTML(string=html_content, base_url=templates_dir).write_pdf(out_filepath)
         
         print("Rapport généré dans le fichier", out_filepath)
         self.reportGenerated.emit()

@@ -7,7 +7,7 @@ QML_IMPORT_NAME = "net.alefbet"
 QML_IMPORT_MAJOR_VERSION = 1
 
 class SystemState(Enum):
-    SystemInactive, SystemStarting, SystemWaitingForDevice, SystemReady, SystemWaitingForUserAction,  SystemGettingFilesList, SystemAnalysisRunning, SystemNotClean, AnalysisCompleted, CopyCleanFiles, SystemMustBeReset, SystemResetting, SystemShuttingDown = range(12)
+    SystemInactive, SystemStarting, SystemWaitingForDevice, SystemReady, SystemWaitingForUserAction,  SystemGettingFilesList, SystemAnalysisRunning, SystemNotClean, AnalysisCompleted, CopyCleanFiles, GeneratingReport, TransferFinished, SystemMustBeReset, SystemResetting, SystemShuttingDown = range(15)
 
 class AnalysisState(Enum):
     AnalysisNotReady, AnalysisRunning, AnalysisStopped = range(3)

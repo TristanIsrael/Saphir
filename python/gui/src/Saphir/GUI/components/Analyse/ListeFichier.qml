@@ -9,50 +9,9 @@ Item {
     id: coreFileList
 
     property int maxItemDisplayed: 10
-    //property var _fileList: ApplicationController.queueListProxyModel
     property var _fileList: ApplicationController.queueListModel
     property bool selectSaneFiles: false
     property bool selectionMode: false
-
-    /*Connections {
-        target: Constants
-
-        onAnalyseFile: {
-            Constants.addToAnalyse(type, name, selected, status, analyseProgress, backId)
-        }
-
-        onUpdateFileProgress: {
-            for (let i = 0; i < Constants.runningFileList.count; i++)
-            {
-                var item = Constants.runningFileList.get(i)
-                if (backId === item.backId)
-                {
-                    //item.progress = newProgress
-                    Constants.runningFileList.setProperty(i, "progress", newProgress)
-                    _fileList.setProperty(i, "progress", newProgress)
-                    return;
-                }
-            }
-        }
-
-        onUpdateFileStatus: {
-            for (let i = 0; i < Constants.runningFileList.count; i++)
-            {
-                var item = Constants.runningFileList.get(i)
-                if (backId === item.backId)
-                {
-                    //item.status = newStatus
-                    Constants.runningFileList.setProperty(i, "status", newStatus)
-                    _fileList.setProperty(i, "status", newStatus)
-                    return;
-                }
-            }
-        }
-        
-        onClearRunningFileList: {
-            Constants.runningFileList.clear()
-        }
-    }*/
 
     Image {
         anchors.fill: parent
@@ -269,7 +228,6 @@ Item {
             }
 
             WheelHandler {
-                //property: "contentY"
                 onWheel: (event)=> {
                     var totalRowHeight = fileListListView.rowHeight + fileListListView.spacing
                     var delta = event.angleDelta.y > 0 ? -1 : 1
@@ -305,13 +263,15 @@ Item {
 
                 CheckBox
                 {
-                    visible: status === Enums.FileStatus.FileClean
+                    //visible: status === Enums.FileStatus.FileClean
                     Layout.preferredHeight: parent.height
                     Layout.preferredWidth: parent.height
-                    checked: selected
+                    checked: status === Enums.FileStatus.FileClean
+                    checkable: false
 
                     contentItem: Image {
-                        source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherVerte.svg")
+                        //source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherVerte.svg")
+                        source: status === Enums.FileStatus.FileClean ? Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherVerte.svg") : Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherActive.svg")
                         anchors.fill: parent                 
                         fillMode: Image.PreserveAspectFit
                     }

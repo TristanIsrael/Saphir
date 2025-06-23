@@ -40,7 +40,7 @@ QtObject {
     property int countAnalysingFiles: 0
     property int countSaneFiles: 0
     property int countInfectedFiles: 0
-    property bool isCopyingSaneFiles: ApplicationController.transferProgress > 0
+    property bool isCopyingSaneFiles: ApplicationController.systemState === Enums.SystemState.CopyCleanFiles || ApplicationController.systemState === Enums.SystemState.GeneratingReport || ApplicationController.systemState === Enums.SystemState.TransferFinished
     property real copyProgress: 0.0
 
         // -- Propriétés état du système

@@ -277,7 +277,6 @@ Item {
                     }
 
                     onToggled: function() {
-                        console.debug("onToggled")
                         if(checked) {
                             Constants.addToAnalyse(
                                 type,

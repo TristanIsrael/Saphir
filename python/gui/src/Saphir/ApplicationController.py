@@ -18,11 +18,13 @@ from ReportController import ReportController
 from libsaphir import ANTIVIRUS_NEEDED, DEVMODE
 from pathlib import Path
 from Enums import AnalysisMode
+from EMAETAEstimator import EMAETAEstimator
 import copy
 import threading
 import os
 import tempfile
 import base64
+import time
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
@@ -52,7 +54,7 @@ class ApplicationController(QObject):
     __is_enquing = False
     logListModel_:LogListModel
     __analysis_mode = AnalysisMode.Undefined
-    __analysis_start_time = datetime.now()
+    __analysis_start_time = datetime.now()    
     __queue_files_list_lock = threading.Lock()
     __folders_to_query = 1
     __queue_files_size = 0
@@ -61,6 +63,7 @@ class ApplicationController(QObject):
     __system_used = False
     __system_information = dict()
     __copied_files_count = 0    
+    __eta_estimator = None
     
     #__interfaceInputs = None
     #__main_window:QWidget
@@ -148,7 +151,7 @@ class ApplicationController(QObject):
         self.__thread_pool = ThreadPoolExecutor(max_workers=1)
 
         self.__report_controller = ReportController(self)
-        self.__report_controller.reportGenerated.connect(self.__on_report_generated)
+        self.__report_controller.reportGenerated.connect(self.__on_report_generated)        
 
 
     def start(self, ready_callback):
@@ -278,6 +281,7 @@ class ApplicationController(QObject):
         if self.analysisController_.state == AnalysisState.AnalysisStopped:
             Api().debug("User asked to start the analysis")
             self.__analysis_start_time = datetime.now()
+            self.__eta_estimator = EMAETAEstimator(len(self.__queuedFilesList))
             self.analysisController_.start_analysis(self.sourceName_)                    
         elif self.analysisController_.state == AnalysisState.AnalysisRunning:
             Api().debug("User asked to stop the analysis")
@@ -288,6 +292,7 @@ class ApplicationController(QObject):
         if self.analysisController_.state == AnalysisState.AnalysisStopped and self.analysisReady_:
             Api().debug("User asked to start the analysis")
             self.__analysis_start_time = datetime.now()
+            self.__eta_estimator = EMAETAEstimator(len(self.__queuedFilesList))
             self.analysisController_.start_analysis(self.sourceName_)
         
     @Slot()
@@ -303,24 +308,16 @@ class ApplicationController(QObject):
         self.__copied_files_count = 0        
         self.analysisController_.stop_analysis()        
 
+        self.__set_system_state(SystemState.CopyCleanFiles)
+
+        QTimer.singleShot(1, self.__do_start_transfer)
+
+    @Slot()
+    def __do_start_transfer(self):
         # Copie les fichiers analysés comme sains
         for filepath_, file_ in self.__queuedFilesList.items():
             if file_.get("status") == FileStatus.FileClean:
-                Api().copy_file(self.sourceName_, filepath_, self.targetName_)
-
-        # Génère le rapport
-        self.__make_analysis_report()
-
-        # Puis le rapport
-        report_filepath = self.__report_controller.get_report_filepath()
-        with open(report_filepath, 'rb') as f:
-            reportData = f.read()
-            Api().create_file(self.__report_controller.get_report_filename(), self.targetName_, reportData, True)
-
-        # Et le journal
-        with open(self.__logfile, 'rb') as f:
-            logData = f.read()
-            Api().create_file("journal.log", self.targetName_, logData)
+                Api().copy_file(self.sourceName_, filepath_, self.targetName_)        
 
     @Slot()
     def select_all_clean_files_for_copy(self):
@@ -424,11 +421,7 @@ class ApplicationController(QObject):
             
         result, mid = Api().subscribe(f"{Topics.DISCOVER_COMPONENTS}/response")
         if result:
-            self.__subscriptions.append(mid)
-            
-        result, mid = Api().subscribe(f"{Topics.COPY_FILE}/response")
-        if result:
-            self.__subscriptions.append(mid)
+            self.__subscriptions.append(mid)            
             
         result, mid = Api().subscribe(f"{Topics.ENERGY_STATE}/response")
         if result:
@@ -438,6 +431,9 @@ class ApplicationController(QObject):
         if result:
             self.__subscriptions.append(mid)            
 
+        result, mid = Api().subscribe(f"{Topics.CREATE_FILE}/response")
+        if result:
+            self.__subscriptions.append(mid)  
         
     def __on_subscribed(self, mid):
         if mid in self.__subscriptions:
@@ -465,11 +461,12 @@ class ApplicationController(QObject):
         self.analysisController_.fileUpdated.connect(self.queueListModel_.on_file_updated)
         self.analysisController_.stateChanged.connect(self.__on_analysis_state_changed)
         self.analysisController_.systemUsed.connect(self.__on_system_used)
+        self.analysisController_.iterationDone.connect(self.__on_iteration_done)
 
         self.logListModel_.listen_to_logs()
 
         self.pret_ = True
-        self.pretChanged.emit(self.pret_)
+        self.pretChanged.emit(self.pret_)        
 
     def __on_message_received(self, topic:str, payload:dict):      
         # ATTENTION : cette fonction est appelée depuis un autre thread
@@ -481,16 +478,16 @@ class ApplicationController(QObject):
         if topic == Topics.DISK_STATE:
             self.__handle_disk_state(payload)
             
-        elif topic == "{}/response".format(Topics.LIST_DISKS):
+        elif topic == f"{Topics.LIST_DISKS}/response":
             self.__handle_list_disks(payload)
 
-        elif topic == "{}/response".format(Topics.LIST_FILES):
+        elif topic == f"{Topics.LIST_FILES}/response":
             self.__handle_list_files(payload)
 
-        elif topic == "{}/response".format(Topics.DISCOVER_COMPONENTS):
+        elif topic == f"{Topics.DISCOVER_COMPONENTS}/response":
             self.__handle_discover_components(payload)
 
-        elif topic == "{}/response".format(Topics.COPY_FILE):
+        elif topic == f"{Topics.COPY_FILE}/response":
             self.__handle_copy_file(payload)
 
         elif topic == f"{Topics.ENERGY_STATE}/response":
@@ -499,8 +496,14 @@ class ApplicationController(QObject):
         elif topic == f"{Topics.SYSTEM_INFO}/response":
             self.__handle_system_info(payload)
 
+        elif topic == f"{Topics.CREATE_FILE}/response":
+            self.__handle_create_file(payload)
+
     def __is_file_in_folder(self, filepath:str, folder:str) -> bool:
         return filepath.startswith(folder) # type: ignore
+
+    def __on_iteration_done(self, duration:float):
+        self.__eta_estimator.update(duration)
 
 
     @Slot()
@@ -656,7 +659,6 @@ class ApplicationController(QObject):
                 else:
                     # Sinon on est en train de peupler le navigateur
                     if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                        print("Peuplement du navigateur")
                         # Si on est en mode de sélection de fichiers
                         file["inqueue"] = False
                         if not self.__is_enquing:
@@ -679,8 +681,7 @@ class ApplicationController(QObject):
                 
                 if self.__is_enquing:
                     self.queueSizeChanged.emit(len(self.__queuedFilesList))
-                    self.queueUpdated.emit()
-                    #self.queueListModel_.reset()
+                    self.queueUpdated.emit()                    
 
                 if self.__analysis_mode == AnalysisMode.AnalyseSelection:
                     self.__set_system_state(SystemState.SystemWaitingForUserAction)
@@ -722,6 +723,26 @@ class ApplicationController(QObject):
         self.fileUpdated.emit(filepath, ["status"])
         self.transferProgressChanged.emit()
 
+        if self.__transferred_count() == 1:
+            self.__finish_transfer()
+
+    def __finish_transfer(self):
+        self.__set_system_state(SystemState.GeneratingReport)
+
+        # Génère le rapport
+        self.__make_analysis_report()
+
+        # Puis copie le rapport
+        report_filepath = self.__report_controller.get_report_filepath()
+        with open(report_filepath, 'rb') as f:
+            reportData = f.read()
+            Api().create_file(self.__report_controller.get_report_filename(), self.targetName_, reportData, True)
+
+        # Et le journal
+        with open(self.__logfile, 'rb') as f:
+            logData = f.read()
+            Api().create_file("journal.log", self.targetName_, logData)
+
     def __handle_energy_state(self, payload:dict):
         if not MqttHelper.check_payload(payload, ["battery_level", "plugged"]):
             return
@@ -737,6 +758,15 @@ class ApplicationController(QObject):
         
         self.__system_information = payload
         self.systemInformationChanged.emit()    
+
+    def __handle_create_file(self, payload:dict):
+        disk = payload.get("disk", "")
+        filepath = str(payload.get("filepath", ""))
+
+        print(f"filepath:{filepath}, endswith:{filepath.endswith("journal.log")}, disk:{disk}, targetName:{self.targetName_}")
+        if disk == self.targetName_ and filepath.endswith("journal.log"):
+            self.__set_system_state(SystemState.TransferFinished)
+
 
     def __on_results_changed(self):        
         self.cleanFilesCountChanged.emit(self.__clean_files_count())
@@ -788,29 +818,20 @@ class ApplicationController(QObject):
 
 
     def __get_remaining_time(self):
-        # Calcul de la durée
-        duration = (datetime.now() - self.__analysis_start_time).total_seconds()
+        # Calcul de la durée de l'itération
+        if self.__eta_estimator is not None:
+            return self.__eta_estimator.remaining_time()
+        else:
+            return 0
 
         # Quantité restante
-        clean = self.__clean_files_size()
+        '''clean = self.__clean_files_size()
         infected = self.__infected_files_size()
-        #total = len(self.__queuedFilesList)
         total = self.__total_files_size()
         done = infected + clean
-        remaining = total - done
+        remaining = total - done'''
         
-        if duration > 0:
-            rate = done / duration
-        else:
-            rate = 0
-
-        #print("clean: {}, infected:{}, done:{}, total: {}, remaining: {}, rate: {} o/s".format(clean, infected, done, total, remaining, rate))
-
-
-        if rate > 0:
-            remaining_time = round(remaining / rate, 0)
-        else:
-            remaining_time = 0
+        remaining_time = self.__eta_estimator.update(duration)
 
         return remaining_time
 
@@ -954,7 +975,7 @@ class ApplicationController(QObject):
     
     def __set_system_state(self, state:SystemState):
         self.__system_state = state
-        #print(f"System state: {self.__system_state}")
+        print(f"System state: {SystemState(self.__system_state)}")
         self.systemStateChanged.emit(self.__system_state.value)
 
     def __queue_size(self):

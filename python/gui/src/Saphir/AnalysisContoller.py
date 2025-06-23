@@ -5,9 +5,8 @@ from libsaphir import TOPIC_ANALYSE
 from Enums import AnalysisMode
 from psec import Api, Parametres, Topics, Constantes
 from psec import Cles, MqttHelper
-from queue import Queue
 import threading
-import os
+import time
 
 class AnalysisController(QObject):
     ''' Cette classe contrôle la façon dont se déroule l'analyse des fichiers
@@ -23,6 +22,7 @@ class AnalysisController(QObject):
     __repository_capacity = 1
     __repository_size = 0
     __files_copy_queue = 0
+    __start_times = {}
     clean_files_count = 0
     clean_files_size = 0
     infected_files_count = 0    
@@ -33,6 +33,7 @@ class AnalysisController(QObject):
     resultsChanged = Signal()
     fileUpdated = Signal(str, list)
     systemUsed = Signal()
+    iterationDone = Signal(float)
 
     def __init__(self, files:dict, analysis_components:list, source_disk:str, analysis_mode_:AnalysisMode, parent:QObject|None=None) -> None:
         QObject.__init__(self, parent)
@@ -84,6 +85,7 @@ class AnalysisController(QObject):
         self.infected_files_count = 0    
         self.infected_files_size = 0 
         self.__files_copy_queue = 0
+        self.__start_times = {}
 
 
     ######
@@ -214,6 +216,10 @@ class AnalysisController(QObject):
             Api().delete_file(filepath, Constantes.REPOSITORY)
             self.__repository_size -= 1 # A faire en asynchrone après confirmation de suppression
 
+            start_time = self.__start_times.get(filepath, time.time())
+            duration = time.time() - start_time
+            self.iterationDone.emit(duration)
+
             if sain:
                 file["status"] = FileStatus.FileClean
                 self.clean_files_count += 1
@@ -257,11 +263,14 @@ class AnalysisController(QObject):
                 # First step is to copy the file into the repository
                 file = self.__get_next_file_waiting()
                 if file.get("inqueue", False) or self.__analysis_mode == AnalysisMode.AnalyseWholeSource:
-                    file["status"] = FileStatus.FileAnalysing
-                    self.fileUpdated.emit(file["filepath"], [file["status"]])
-                    Api().read_file(self.__source_disk, file.get("filepath", ""))
-                    self.__files_copy_queue += 1
-                    print("Demande un fichier supplémentaire")
+                    filepath = file.get("filepath", "#err")
+                    if filepath != "#err":
+                        file["status"] = FileStatus.FileAnalysing
+                        self.fileUpdated.emit(filepath, [file["status"]])
+                        Api().read_file(self.__source_disk, filepath)
+                        self.__start_times[filepath] = time.time()
+                        self.__files_copy_queue += 1
+                        #print("Demande un fichier supplémentaire")
         
         if self.__analysis_state == AnalysisState.AnalysisRunning:
             threading.Timer(0.1, self.__do_copy_files_into_repository).start()
