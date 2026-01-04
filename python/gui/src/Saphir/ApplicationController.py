@@ -701,13 +701,13 @@ class ApplicationController(QObject):
             self.__components_model.components_updated()
 
     def __handle_copy_file(self, payload:dict):
-        if not MqttHelper.check_payload(payload, ["filepath", "status", "footprint"]):
+        if not MqttHelper.check_payload(payload, ["filepath", "status", "fingerprint"]):
             Api().error("Missing arguments in copy file")
             return
         
         filepath = payload.get("filepath")
         status = payload.get("status")
-        footprint = payload.get("footprint")
+        fingerprint = payload.get("fingerprint")
 
         file = self.__queuedFilesList.get(filepath)
         if file is None:
@@ -719,7 +719,7 @@ class ApplicationController(QObject):
             self.__copied_files_count += 1            
 
         file["status"] = FileStatus.FileCopySuccess if success else FileStatus.FileCopyError            
-        Api().info("The file {} has been copied to {}. The footprint is {}".format(filepath, self.__targetName(), footprint))
+        Api().info("The file {} has been copied to {}. The fingerprint is {}".format(filepath, self.__targetName(), fingerprint))
         self.fileUpdated.emit(filepath, ["status"])
         self.transferProgressChanged.emit()
 

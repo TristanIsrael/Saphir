@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/images">
+        <file alias="back">connexion-de-formes-geometriques-bleues-abstraites-du-plexus-image-generee-par-ai.jpg</file>
+    </qresource>
+</RCC>

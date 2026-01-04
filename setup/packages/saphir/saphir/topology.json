@@ -1,17 +1,11 @@
-{
-    "pci": {
-        "blacklist": "00:0d.0"
-    },
+{    
     "usb": {
         "use": 1
     },
     "gui": {
         "use": 1,
         "memory": 2000,
-        "app-package": "saphir-gui",        
-        "screen": {
-            "rotation": 90
-        }
+        "app-package": "saphir-gui"        
     },
     "vcpu": {
         "groups": {
@@ -37,6 +31,25 @@
                 "vcpu_group": "antivirus"
             }
         ]
-    }
+    },
+    "configurations": [
+        {
+            "name": "Durabook R8",
+            "identifier": {
+                "Manufacturer": "Durabook",
+	            "Product Name": "R8AA"
+            },
+            "settings": {
+                "gui": {
+                    "screen": {
+                        "rotation": 90
+                    }
+                },
+                "pci": {
+                    "blacklist": "00:0d.0"
+                }
+            }
+        }
+    ]
 
 }

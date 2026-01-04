@@ -40,7 +40,7 @@ class ReportController(QObject):
         for fichier in fichiers.values():
             details_analyse.append({
                 "filepath": fichier.get("filepath", "inconnu"),
-                "footprint": fichier.get("footprint", "inconnu"),
+                "fingerprint": fichier.get("fingerprint", "inconnu"),
                 "results": fichier.get("results", dict())
             })
 

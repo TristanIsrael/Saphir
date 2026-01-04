@@ -6,10 +6,11 @@ Ce document recense les configurations mises en oeuvre pour les tests et la prod
 
 | Type | Modèle | Numéro | Usage | Utilisateur | Version Saphir | Version BIOS | Version Firmware | Addons | Mode |
 |--|--|--|--|--|--|--|--|--|--|
-| Tablette | Durabook R8 | 1 | Tests utilisateurs | FuscoL@b | 2.0.1 | BIOS 1.04 | UEFI 2.8 | Extension USB / LAN / Série | Debug = ON |
-| Tablette | Durabook R8 | 2 | Tests dev | Tristan Israël -> FH MI | en cours d'installation | BIOS 1.05 | UEFI 2.8 | Extension USB / LAN / Série | Debug = ON |
-| Tablette | Durabook R8 | 3 | En cours d'appro. |  |  |  |  |  |  |
-| Tablette | Durabook R8 | 4 | En cours d'appro. |  |  |  |  |  |  |
+| Tablette | Durabook R8 | 1 | Tests utilisateurs | FuscoL@b | 2.1.0 | BIOS R1.04 | UEFI 2.8 | Extension USB / LAN / Série | Debug = ON |
+| Tablette | Durabook R8 | 2 | Tests FH | Cécile et Lysiane | 2.1.0 | BIOS R1.05 / EC 00.08.05 | UEFI 2.8 | Sans extension | Debug = OFF |
+| Tablette | Durabook R8 | 3 | Tests dev | Tristan Israël | en cours d'installation | BIOS 1.05 / EC 00.08.07 | UEFI 2.8 | Extension USB / LAN / Série | Debug = ON |
+| Tablette | Durabook R8 | 4 | Tests utilisateurs |  | 2.1.0 | ? | ? | Sans extension | Debug = ON |
+| PC portable | HP ZBook 15 G3 | 5 | Démonstration | Tristan Israël | 2.1.0 | | | | Debug = ON |
 
 ## Tests
 

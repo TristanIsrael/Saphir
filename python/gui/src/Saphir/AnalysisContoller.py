@@ -107,9 +107,9 @@ class AnalysisController(QObject):
                 return
 
             filepath = payload.get("filepath", "")
-            footprint = payload.get("source_footprint", "")
+            fingerprint = payload.get("source_fingerprint", "")
             
-            self.__on_file_available(filepath, footprint)            
+            self.__on_file_available(filepath, fingerprint)            
 
         elif topic == f"{TOPIC_ANALYSE}/response":
             if not MqttHelper.check_payload(payload, ["component", "filepath", "success", "details"]):
@@ -140,7 +140,7 @@ class AnalysisController(QObject):
             self.__handle_sysinfo(payload)
                 
 
-    def __on_file_available(self, filepath:str, footprint:str) -> None:
+    def __on_file_available(self, filepath:str, fingerprint:str) -> None:
         self.__repository_size += 1
         self.__files_copy_queue -= 1
 
@@ -149,7 +149,7 @@ class AnalysisController(QObject):
 
             file = self.__files[filepath]
             file["status"] = FileStatus.FileAvailableInRepository
-            file["footprint"] = footprint
+            file["fingerprint"] = fingerprint
             self.fileUpdated.emit(filepath, ["status"])
 
             # Next step is to analyse the file
