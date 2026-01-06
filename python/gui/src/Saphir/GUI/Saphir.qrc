@@ -1,0 +1,30 @@
+<RCC>
+    <qresource>
+        <file>components/qmldir</file>
+        <file>content/images/back.jpg</file>
+        <file>content/images/back.png</file>
+        <file>content/images/back_orig.png</file>
+        <file>content/images/Logo.png</file>
+        <file>content/MainScreen.qml</file>
+        <file>content/MainScreenUi.ui.qml</file>
+        <file>content/shaders/combine_mask.frag</file>
+        <file>content/shaders/combine_mask.frag.qsb</file>
+        <file>content/shaders/mask.frag</file>
+        <file>content/shaders/mask.frag.qsb</file>
+        <file>content/shaders/rotatedgradient.frag</file>
+        <file>content/TopBar.qml</file>
+        <file>content/TopBarUi.ui.qml</file>
+        <file>Generated/Effects/Effect01/BlurHelper.qml</file>
+        <file>Generated/Effects/Effect01/BlurItem.qml</file>
+        <file>Generated/Effects/Effect01/bluritems.frag.qsb</file>
+        <file>Generated/Effects/Effect01/bluritems.vert.qsb</file>
+        <file>Generated/Effects/Effect01/designer/Effect01SpecificsDynamic.qml</file>
+        <file>Generated/Effects/Effect01/effect01.frag.qsb</file>
+        <file>Generated/Effects/Effect01/Effect01.qml</file>
+        <file>Generated/Effects/Effect01/effect01.vert.qsb</file>
+        <file>Generated/Effects/Effect01/qmldir</file>
+        <file>Generated/Effects/qmldir</file>
+        <file>qtquickcontrols2.conf</file>
+        <file>Saphir.qmlproject</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,4 @@
+module Components
+
+HalfCircle 1.0 HalfCircle.qml
+Panel 1.0 Panel.qml
