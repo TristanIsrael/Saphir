@@ -5,6 +5,7 @@ singleton Constants 1.0 Constants.qml
 singleton Environment 1.0 Environment.qml
 FlatButton 1.0 FlatButton.qml
 HalfCircle 1.0 HalfCircle.qml
+MessageDialog 1.0 MessageDialog.qml
 PanelBase 1.0 PanelBase.qml
 Panel 1.0 Panel.qml
 RoundButton 1.0 RoundButton.qml

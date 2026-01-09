@@ -1,3 +1,4 @@
 module Themes
 
 singleton ThemeWireframe 1.0 ThemeWireframe.qml
+singleton ThemeDark 1.0 ThemeDark.qml

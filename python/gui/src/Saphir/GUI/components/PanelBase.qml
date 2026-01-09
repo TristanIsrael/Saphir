@@ -5,9 +5,10 @@ Item {
     id: root
 
     property alias radius: wrapper.radius
-    property color taint: enabled ? "#444480" : "#666666"
+    property color taint: enabled ? Environment.colorPanelEnabled : Environment.colorPanelDisabled
     property int borderWidth: 1
     property bool highlight: true
+    property bool flat: false
 
     width: implicitWidth
     height: implicitHeight
@@ -19,6 +20,7 @@ Item {
 
         width: root.width + 2*shadow.shadowBlur
         height: root.height + 2*shadow.shadowBlur
+        visible: !flat
 
         border {
             width: root.borderWidth
@@ -27,6 +29,7 @@ Item {
 
         MultiEffect {
             anchors.fill: parent
+            visible: !flat
 
             source: ShaderEffectSource {
                 width: root.width
@@ -64,7 +67,7 @@ Item {
         Rectangle {
             id: highlightGradient
             anchors.fill: parent
-            visible: root.highlight
+            visible: root.highlight && !flat
 
             radius: wrapper.radius
 
@@ -78,10 +81,11 @@ Item {
 
     MultiEffect {
         id: shadow
+        visible: !flat
         source: wrapper
         anchors.fill: wrapper
         shadowEnabled: true
-        shadowColor: root.enabled ? "#aaffffff" : "#aaffffff"
+        shadowColor: root.enabled ? Environment.colorShadowEnabled : Environment.colorShadowDisabled
         shadowBlur: root.enabled ? 1.0 : 0.2
     }
 }

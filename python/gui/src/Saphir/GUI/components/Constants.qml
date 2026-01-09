@@ -5,9 +5,10 @@ QtObject {
     readonly property int mainWidth: 1200
     readonly property int mainHeight: 900
 
-    readonly property string light: "light"
-    readonly property string lark: "dark"
-    readonly property string lowVisibility: "low_visibility"
+    readonly property int light: 1
+    readonly property int dark: 2
+    readonly property int lowVisibility: 3
+    readonly property int wireframe: 4
 
     readonly property string iconMenu: "\ue5d2"
     readonly property string iconSystemState: "\ue9e4"

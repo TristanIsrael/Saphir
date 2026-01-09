@@ -1,16 +1,28 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import QtQuick.Effects
 import Components
 
 Item {
     id: mainWindow
 
     property alias back: back
+    property alias backFilter: backFilter
+    property alias pnlMenuThemes: pnlMenuThemes
+    property alias btnLowVisibility: btnLowVisibility
+    property alias btnDark: btnDark
+    property alias btnLight: btnLight
+    property alias pnlMainMenu: pnlMainMenu
+    property alias btnMainMenu: btnMainMenu
+    property alias btnHelp: btnHelp
+    property alias btnSystemState: btnSystemState
+    property alias btnLog: btnLog
+    property alias btnRestart: btnRestart
+    property alias btnShutdown: btnShutdown
 
-    /* Bindings */
-    property bool ready: false
-    property bool running: false
+    property bool menuThemesOpened: false
+    property bool mainMenuOpened: false
 
     /* Private properties */
     implicitWidth: 1344
@@ -24,10 +36,19 @@ Item {
         layer.enabled: true
 
         Image {
+            id: imgBack
             anchors.fill: parent
-            source: "images/back.png"
+            source: "images/3535287.jpg"
             fillMode: Image.PreserveAspectCrop
-            //layer.enabled: true
+        }
+
+        MultiEffect {
+            id: backFilter
+            anchors.fill: parent
+            source: imgBack
+            saturation: 0
+            colorization: 1.0
+            colorizationColor: Environment.colorFilterNotReady
         }
     }
 
@@ -40,51 +61,157 @@ Item {
     }
 
     /* Lower left buttons */
-    RoundButton {
-        id: btnTheme
-        visible: true
+    Panel {
+        id: pnlMenuThemes
 
-        x: width * 0.25
-        y: parent.height - (height * 1.25) * 2 - 20
+        x: btnLowVisibility.width * 0.25
+        y: parent.height - ((height * 1.25) * 2)
+        height: lytMenuThemes.height
+        width: mainWindow.menuThemesOpened ? lytMenuThemes.width : btnLowVisibility.width * 1.5
+        clip: false
+        highlight: false
+        radius: mainWindow.menuThemesOpened ? 10 : height
 
-        icon: Constants.iconThemeLight
+        RowLayout {
+            id: lytMenuThemes
+            height: btnLowVisibility.width * 1.5
+            spacing: btnLowVisibility.height * 0.3
+
+            Item {}
+
+            RoundButton {
+                id: btnLowVisibility
+                Layout.alignment: Qt.AlignHCenter
+                icon: Constants.iconThemeLowVisibility
+                flat: true
+                visible: mainWindow.menuThemesOpened
+                         || Environment.theme === Constants.lowVisibility
+            }
+
+            RoundButton {
+                id: btnDark
+                Layout.alignment: Qt.AlignHCenter
+                icon: Constants.iconThemeDark
+                flat: true
+                visible: mainWindow.menuThemesOpened
+                         || Environment.theme === Constants.dark
+            }
+
+            RoundButton {
+                id: btnLight
+                Layout.alignment: Qt.AlignHCenter
+                icon: Constants.iconThemeLight
+                flat: true
+                visible: mainWindow.menuThemesOpened
+                         || Environment.theme === Constants.light
+            }
+
+            Item {}
+        }
     }
 
-    RoundButton {
-        id: btnMenu
+    Panel {
+        id: pnlMainMenu
 
-        x: width * 0.25
+        x: btnShutdown.width * 0.25
         y: parent.height - (height * 1.25)
+        height: lytMainMenu.height
+        width: mainWindow.mainMenuOpened ? lytMainMenu.width : btnShutdown.width * 1.5
+        clip: false
+        highlight: false
+        radius: mainWindow.mainMenuOpened ? 10 : height
 
-        icon: Constants.iconMenu
+        RowLayout {
+            id: lytMainMenu
+            height: btnMainMenu.width * 1.5
+            spacing: btnMainMenu.height * 0.3
+
+            Item {}
+
+            RoundButton {
+                id: btnMainMenu
+                Layout.alignment: Qt.AlignHCenter
+                icon: Constants.iconMenu
+                flat: true
+            }
+
+            RoundButton {
+                id: btnHelp
+                Layout.alignment: Qt.AlignHCenter
+                icon: Constants.iconHelp
+                flat: true
+                visible: mainWindow.mainMenuOpened
+            }
+
+            RoundButton {
+                id: btnSystemState
+                Layout.alignment: Qt.AlignHCenter
+                icon: Constants.iconSystemState
+                flat: true
+                visible: mainWindow.mainMenuOpened
+            }
+
+            RoundButton {
+                id: btnLog
+                Layout.alignment: Qt.AlignHCenter
+                icon: Constants.iconLog
+                flat: true
+                visible: mainWindow.mainMenuOpened
+            }
+
+            RoundButton {
+                id: btnRestart
+                Layout.alignment: Qt.AlignHCenter
+                icon: Constants.iconRestart
+                flat: true
+                visible: mainWindow.mainMenuOpened
+            }
+
+            RoundButton {
+                id: btnShutdown
+                Layout.alignment: Qt.AlignHCenter
+                icon: Constants.iconShutdown
+                flat: true
+                visible: mainWindow.mainMenuOpened
+            }
+
+            Item {}
+        }
     }
 
     /* Lower right buttons */
-    RoundButton {
-        id: btnStartStop
+    Panel {
+        id: pnlStartStop
 
         x: parent.width - (width * 1.25)
         y: parent.height - (height * 1.25)
+        width: btnStartStop.width
+        height: btnStartStop.height
+        radius: height
 
-        icon: mainWindow.running ? Constants.iconPause : Constants.iconStart
-        outlined: false
-        enabled: mainWindow.ready
+        //flat: true
+        //icon: bindings.running ? Constants.iconPause : Constants.iconStart
+        enabled: bindings.ready
+
+        RoundButton {
+            id: btnStartStop
+            flat: true
+            width: 100
+            height: 100
+            icon: bindings.running ? Constants.iconPause : Constants.iconStart
+        }
     }
 
     /* Initial dialog */
-
-
-    /*MessageDialog {
+    MessageDialog {
         id: dlg
         anchors.centerIn: parent
-    }*/
 
+        label: qsTr("Please connect a storage")
+        buttonsLabels: []
+    }
 
-    /*RoundButton {
-        anchors.centerIn: parent
-
-        icon: Constants.iconThemeLight
-        width: 300
-        height: 300
-    }*/
+    Bindings {
+        id: bindings
+    }
 }

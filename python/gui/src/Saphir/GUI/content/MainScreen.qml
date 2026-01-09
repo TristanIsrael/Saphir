@@ -1,18 +1,141 @@
 import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
+import Components
 
 Window {
+    id: root
+
+    /* Internal properties */
     width: 1200
     height: 700
-
     visible: true
-    title: "TestGUI3"
+    title: "SAPHIR"
 
     MainScreenUi {
         id: window
-        anchors.fill: parent
-    }    
 
+        anchors.fill: parent
+
+        backFilter.colorizationColor: {
+            if(!bindings.ready) {
+                return Environment.colorFilterNotReady
+            } else {
+                if(bindings.infected) {
+                    return Environment.colorFilterInfected
+                } else if(bindings.used) {
+                    return Environment.colorFilterUsed
+                }
+            }
+
+            return Environment.colorFilterReady
+        }
+
+        /* Slots */
+        Connections {
+            target: window.btnDark
+
+            onClicked: function() {
+                window.menuThemesOpened = !window.menuThemesOpened
+            }
+        }
+
+        Connections {
+            target: window.btnLight
+
+            onClicked: function() {
+                window.menuThemesOpened = !window.menuThemesOpened
+            }
+        }
+
+        Connections {
+            target: window.btnLowVisibility
+
+            onClicked: function() {
+                window.menuThemesOpened = !window.menuThemesOpened
+            }
+        }
+
+        Connections {
+            target: window.btnMainMenu
+
+            onClicked: function() {
+                window.mainMenuOpened = !window.mainMenuOpened
+            }
+        }
+
+        Connections {
+            target: window.btnHelp
+
+            onClicked: function() {
+                window.mainMenuOpened = !window.mainMenuOpened
+            }
+        }
+
+        Connections {
+            target: window.btnSystemState
+
+            onClicked: function() {
+                window.mainMenuOpened = !window.mainMenuOpened
+            }
+        }
+
+        Connections {
+            target: window.btnLog
+
+            onClicked: function() {
+                window.mainMenuOpened = !window.mainMenuOpened
+            }
+        }
+
+        Connections {
+            target: window.btnRestart
+
+            onClicked: function() {
+                window.mainMenuOpened = !window.mainMenuOpened
+            }
+        }
+
+        Connections {
+            target: window.btnShutdown
+
+            onClicked: function() {
+                window.mainMenuOpened = !window.mainMenuOpened
+            }
+        }
+
+        /* Animations */
+        Behavior on pnlMenuThemes.width {
+            PropertyAnimation {
+                duration: 200
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        Behavior on pnlMenuThemes.radius {
+            PropertyAnimation {
+                duration: 200
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        Behavior on pnlMainMenu.width {
+            PropertyAnimation {
+                duration: 200
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        Behavior on pnlMainMenu.radius {
+            PropertyAnimation {
+                duration: 200
+                easing.type: Easing.OutCubic
+            }
+        }
+    }
+
+    Bindings {
+        id: bindings
+    }
 }
 

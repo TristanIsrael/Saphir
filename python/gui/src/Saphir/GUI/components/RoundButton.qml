@@ -6,9 +6,12 @@ Item {
 
     property bool outlined: true
     property alias icon: txt.text
-    property color taint: enabled ? "#d8d8d8" : "#444480"
+    property color taint: enabled ? Environment.colorButtonEnabled : Environment.colorButtonDisabled
     property int borderWidth: enabled ? 7 : 1
     property bool highlight: true
+    property bool flat: false
+
+    signal clicked()
 
     width: implicitWidth
     height: implicitHeight
@@ -19,27 +22,30 @@ Item {
     Circle { // Wrapper
         id: wrapper
 
-        width: root.width// + 2*shadow.shadowBlur
-        height: root.height// + 2*shadow.shadowBlur
+        anchors.centerIn: parent
+        width: root.width
+        height: root.height
+        visible: !root.flat
 
         borderWidth: root.borderWidth
         borderColor: root.enabled ? Qt.alpha(Qt.lighter(root.taint, 2.5), 0.9) : root.taint
 
         MultiEffect {
             anchors.fill: parent
+            visible: !root.flat
 
             source: ShaderEffectSource {
-                width: root.width
-                height: root.height
+                width: wrapper.width
+                height: wrapper.height
 
                 sourceItem: back
-                sourceRect: Qt.rect(root.x, root.y, root.width, root.height)
+                sourceRect: Qt.rect(wrapper.x, wrapper.y, wrapper.width, wrapper.height)
                 hideSource: true
                 live: true
             }
 
             anchors {
-                fill: root
+                fill: wrapper
             }
 
             brightness: root.enabled ? 0.7 : 0.2
@@ -54,10 +60,10 @@ Item {
             maskSource: ShaderEffectSource {
                 sourceItem: Circle {
                     color: "white"
-                    width: root.width
-                    height: root.height
+                    width: wrapper.width
+                    height: wrapper.height
                     layer.enabled: true
-                    borderWidth: 0
+                    borderWidth: 10
                 }
             }
         }        
@@ -65,10 +71,11 @@ Item {
 
     MultiEffect {
         id: shadow
+        visible: !root.flat
         source: wrapper
         anchors.fill: wrapper
         shadowEnabled: true
-        shadowColor: root.enabled ? "#aaffffff" : "#aaffffff"
+        shadowColor: root.enabled ? Environment.colorShadowEnabled : Environment.colorShadowDisabled
         shadowBlur: root.enabled ? 1.0 : 0.2
     }
 
@@ -77,8 +84,8 @@ Item {
             centerIn: wrapper
         }
 
-        width: wrapper.width *0.9
-        height: wrapper.width *0.9
+        width: wrapper.width *0.8
+        height: wrapper.width *0.8
 
         Text {
             id: txt
@@ -86,7 +93,13 @@ Item {
             font.family: outlined ? "Material Icons Outlined" : "Material Icons"
             text: Constants.iconHelp
             font.pixelSize: parent.height
-            color: root.enabled ? "#aafafafa" : "black"
+            color: root.enabled ? Environment.colorButtonTextEnabled : Environment.colorButtonTextDisabled
         }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+
+        onClicked: root.clicked()
     }
 }

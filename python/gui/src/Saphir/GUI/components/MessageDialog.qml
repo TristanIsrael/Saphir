@@ -5,9 +5,8 @@ import Components
 PanelBase {
     id: root
 
-    objectName: "dialog"
     property alias label: txt.text
-    property list<string> buttonsLabels: [ "Ok", "Cancel"]
+    property var buttonsLabels: [ qsTr("Ok"), qsTr("Cancel") ]
 
     width: implicitWidth
     height: implicitHeight
@@ -22,18 +21,20 @@ PanelBase {
             left: parent.left
             right: parent.right
             bottom: lyt.top
+            margins: height/10
         }
 
         text: "Message dialog"
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         color: Environment.colorText
-        font.pixelSize: lyt.height *0.5
+        font.pixelSize: height
         fontSizeMode: Text.HorizontalFit
     }
 
     RowLayout {
         id: lyt
+        visible: buttonsLabels.length > 0
 
         anchors {
             bottom: parent.bottom

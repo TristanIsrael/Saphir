@@ -5,11 +5,14 @@
         <file>components/Environment.qml</file>
         <file>components/FlatButton.qml</file>
         <file>components/HalfCircle.qml</file>
+        <file>components/MessageDialog.qml</file>
         <file>components/Panel.qml</file>
         <file>components/PanelBase.qml</file>
         <file>components/qmldir</file>
         <file>components/RoundButton.qml</file>
+        <file>content/Bindings.qml</file>
         <file>content/Energy.qml</file>
+        <file>content/images/3535287.jpg</file>
         <file>content/images/back.jpg</file>
         <file>content/images/back.png</file>
         <file>content/images/back_orig.png</file>
@@ -18,7 +21,6 @@
         <file>content/images/Logo.png</file>
         <file>content/MainScreen.qml</file>
         <file>content/MainScreenUi.ui.qml</file>
-        <file>content/MessageDialog.qml</file>
         <file>content/shaders/blur.frag</file>
         <file>content/shaders/blur.frag.qsb</file>
         <file>content/shaders/colorize.frag</file>

@@ -1,4 +1,5 @@
 import QtQuick
+import Components
 
 PanelBase {
     id: btn
@@ -17,7 +18,7 @@ PanelBase {
         id: lbl
         anchors.centerIn: parent
         text: "Button"
-        color: btn.enabled ? "#aafafafa" : "#aa666666"
+        color: btn.enabled ? Environment.colorButtonTextEnabled : Environment.colorButtonTextDisabled
         font.pixelSize: parent.height * 0.6
         fontSizeMode: Text.HorizontalFit
     }
