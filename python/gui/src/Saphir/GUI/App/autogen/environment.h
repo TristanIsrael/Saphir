@@ -8,8 +8,7 @@
 #include <QGuiApplication>
 #include "qqmlextensionplugin.h"
 
-Q_IMPORT_QML_PLUGIN(Generated_EffectsPlugin)
-Q_IMPORT_QML_PLUGIN(Generated_Effects_Effect01Plugin)
+Q_IMPORT_QML_PLUGIN(ThemesPlugin)
 
 const char mainQmlFile[] = "qrc:/qt/qml/content/MainScreen.qml";
 

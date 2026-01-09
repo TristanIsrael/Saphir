@@ -1,0 +1,3 @@
+module Themes
+
+singleton ThemeWireframe 1.0 ThemeWireframe.qml

@@ -13,6 +13,14 @@ Project {
         directory: "Generated"
     }
 
+    QmlFiles {
+        directory: "wireframe"
+    }
+
+    QmlFiles {
+        directory: "components"
+    }
+
     JavaScriptFiles {
         directory: "content/scripts"
     }
@@ -33,7 +41,7 @@ Project {
     Files {
         filter: "qmldir"
         directory: "."
-    }
+    }    
 
     FontFiles {
         filter: "*.ttf;*.otf"
@@ -88,7 +96,7 @@ Project {
     importPaths: [ ".", "components" ]
 
     /* Required for deployment */
-    targetDirectory: "/opt/TestGUI3"
+    targetDirectory: "/opt/Saphir"
 
     enableCMakeGeneration: true
     standaloneApp: true
@@ -106,7 +114,7 @@ Project {
               e.g. files: [ "TestGUI3Content/shaders/*.vert", "*.frag" ]  */
     ShaderTool {
         args: "-s --glsl \"100 es,120,150\" --hlsl 50 --msl 12"
-        files: [ "TestGUI3Content/shaders/*" ]
+        files: [ "content/shaders/*.frag" ]
     }
 
     multilanguageSupport: true

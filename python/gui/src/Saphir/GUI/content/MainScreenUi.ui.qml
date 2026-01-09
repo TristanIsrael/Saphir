@@ -1,80 +1,90 @@
 import QtQuick
 import QtQuick.Layouts
-import Qt5Compat.GraphicalEffects
+import QtQuick.Controls
 import Components
 
 Item {
-    id: root
+    id: mainWindow
 
-    implicitWidth: 1200
-    implicitHeight: 900
+    property alias back: back
+
+    /* Bindings */
+    property bool ready: false
+    property bool running: false
+
+    /* Private properties */
+    implicitWidth: 1344
+    implicitHeight: 768
     width: implicitWidth
     height: implicitHeight
 
-    Image {
+    Item {
         id: back
         anchors.fill: parent
-        source: "images/back.jpg"
-        fillMode: Image.Stretch
+        layer.enabled: true
+
+        Image {
+            anchors.fill: parent
+            source: "images/back.png"
+            fillMode: Image.PreserveAspectCrop
+            //layer.enabled: true
+        }
     }
 
-    Panel {
-        id: pnl
+    TopBar {
         anchors {
-            fill: parent
-            margins: 0
-        }
-
-
-        /*width: parent.width/3
-        height: parent.height*0.8
-        anchors.centerIn: parent*/
-
-        //glassColor: "#821e1e1e"
-        //glassColor: "#4deef3f8"
-        //glassColor: "#71eef3f8"
-        //glassColor: "#52eef3f8"
-        // opacité : #71 - #82
-        glassColor: "#444480"
-        blurRadius: 25
-        borderRadius: 0
-        borderWidth: 0
-        //borderRadius: height/12
-        borderColor: "#aaf7fdfa"
-        backgroundSource: back
-        highlight: true
-
-        // Top Bar
-        TopBar {
-            anchors {
-                left: parent.left
-                right: parent.right
-            }
-
-            height: root.height / 10
-        }
-
-        // Bouton de test
-        Rectangle {
-            id: btn
-            color: "#bb3c5a7c"
-            width: 200
-            height: 50
-            anchors.centerIn: parent
-            radius: height / 5
-
-            border {
-                width: 1
-                color: "#ff3c5a7c"
-            }
-
-            Text {
-                anchors.centerIn: parent
-                text: "Tester"
-                color: "#aaf7fdfa"
-                font.pixelSize: parent.height * 0.7
-                fontSizeMode: Text.HorizontalFit
-            }
+            left: parent.left
+            top: parent.top
+            right: parent.right
         }
     }
+
+    /* Lower left buttons */
+    RoundButton {
+        id: btnTheme
+        visible: true
+
+        x: width * 0.25
+        y: parent.height - (height * 1.25) * 2 - 20
+
+        icon: Constants.iconThemeLight
+    }
+
+    RoundButton {
+        id: btnMenu
+
+        x: width * 0.25
+        y: parent.height - (height * 1.25)
+
+        icon: Constants.iconMenu
+    }
+
+    /* Lower right buttons */
+    RoundButton {
+        id: btnStartStop
+
+        x: parent.width - (width * 1.25)
+        y: parent.height - (height * 1.25)
+
+        icon: mainWindow.running ? Constants.iconPause : Constants.iconStart
+        outlined: false
+        enabled: mainWindow.ready
+    }
+
+    /* Initial dialog */
+
+
+    /*MessageDialog {
+        id: dlg
+        anchors.centerIn: parent
+    }*/
+
+
+    /*RoundButton {
+        anchors.centerIn: parent
+
+        icon: Constants.iconThemeLight
+        width: 300
+        height: 300
+    }*/
 }

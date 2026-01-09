@@ -1,30 +1,57 @@
 <RCC>
     <qresource>
+        <file>components/Circle.qml</file>
+        <file>components/Constants.qml</file>
+        <file>components/Environment.qml</file>
+        <file>components/FlatButton.qml</file>
+        <file>components/HalfCircle.qml</file>
+        <file>components/Panel.qml</file>
+        <file>components/PanelBase.qml</file>
         <file>components/qmldir</file>
+        <file>components/RoundButton.qml</file>
+        <file>content/Energy.qml</file>
         <file>content/images/back.jpg</file>
         <file>content/images/back.png</file>
         <file>content/images/back_orig.png</file>
+        <file>content/images/icn_antivirus.png</file>
+        <file>content/images/icn_disk.png</file>
         <file>content/images/Logo.png</file>
         <file>content/MainScreen.qml</file>
         <file>content/MainScreenUi.ui.qml</file>
-        <file>content/shaders/combine_mask.frag</file>
-        <file>content/shaders/combine_mask.frag.qsb</file>
-        <file>content/shaders/mask.frag</file>
-        <file>content/shaders/mask.frag.qsb</file>
-        <file>content/shaders/rotatedgradient.frag</file>
+        <file>content/MessageDialog.qml</file>
+        <file>content/shaders/blur.frag</file>
+        <file>content/shaders/blur.frag.qsb</file>
+        <file>content/shaders/colorize.frag</file>
+        <file>content/shaders/colorize.frag.qsb</file>
+        <file>content/shaders/gradient.frag</file>
+        <file>content/shaders/gradient.frag.qsb</file>
+        <file>content/shaders/invert_alpha.frag</file>
+        <file>content/shaders/invert_alpha.frag.qsb</file>
         <file>content/TopBar.qml</file>
         <file>content/TopBarUi.ui.qml</file>
-        <file>Generated/Effects/Effect01/BlurHelper.qml</file>
-        <file>Generated/Effects/Effect01/BlurItem.qml</file>
-        <file>Generated/Effects/Effect01/bluritems.frag.qsb</file>
-        <file>Generated/Effects/Effect01/bluritems.vert.qsb</file>
-        <file>Generated/Effects/Effect01/designer/Effect01SpecificsDynamic.qml</file>
-        <file>Generated/Effects/Effect01/effect01.frag.qsb</file>
-        <file>Generated/Effects/Effect01/Effect01.qml</file>
-        <file>Generated/Effects/Effect01/effect01.vert.qsb</file>
-        <file>Generated/Effects/Effect01/qmldir</file>
-        <file>Generated/Effects/qmldir</file>
         <file>qtquickcontrols2.conf</file>
         <file>Saphir.qmlproject</file>
+        <file>themes/qmldir</file>
+        <file>wireframe/Analysis.qml</file>
+        <file>wireframe/Analysis_finished.qml</file>
+        <file>wireframe/Connected_storage.qml</file>
+        <file>wireframe/Copy_files.qml</file>
+        <file>wireframe/Copy_finished.qml</file>
+        <file>wireframe/Initial_state.qml</file>
+        <file>wireframe/Main_menu.qml</file>
+        <file>wireframe/Menu_themes.qml</file>
+        <file>wireframe/Select_files.qml</file>
+        <file>wireframe/Waiting_for_copy.qml</file>
+        <file>wireframe/WfBattery.qml</file>
+        <file>wireframe/WfButton.qml</file>
+        <file>wireframe/WfCheckbox.qml</file>
+        <file>wireframe/WfCircleButton.qml</file>
+        <file>wireframe/WfDialog.qml</file>
+        <file>wireframe/WfFilesProgress.qml</file>
+        <file>wireframe/WfGlobalProgress.qml</file>
+        <file>wireframe/WfMain.qml</file>
+        <file>wireframe/WfPanel.qml</file>
+        <file>wireframe/WfProgress.qml</file>
+        <file>wireframe/WfText.qml</file>
     </qresource>
 </RCC>

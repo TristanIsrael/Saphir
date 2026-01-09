@@ -10,7 +10,7 @@ Item {
 
     property alias lines: lines
     property alias maHour: maHour
-    property alias timeLabel: timeLabel
+    property alias lblTime: lblTime
     property alias gradientRect: gradientRect
 
     height: implicitHeight
@@ -27,8 +27,10 @@ Item {
 
     // Logo
     RowLayout {
+        id: lytLogo
+
         height: parent.height * 0.8
-        width: parent.width
+        //width: parent.width
         anchors.centerIn: parent
         spacing: 0
 
@@ -42,6 +44,7 @@ Item {
             Layout.alignment: Qt.AlignVCenter
 
             Image {
+                id: imgLogo
                 anchors.fill: parent
                 source: "images/Logo.png"
                 fillMode: Image.PreserveAspectFit
@@ -50,7 +53,6 @@ Item {
         }
 
         Text {
-            //Layout.fillHeight: true
             Layout.alignment: Qt.AlignVCenter
             text: "SAPHIR"
             font.family: "LED Dot-Matrix"
@@ -63,7 +65,7 @@ Item {
         }
     }
 
-    // Lines
+    // Decoration
     Item {
         id: lines
         anchors.fill: parent
@@ -149,22 +151,46 @@ Item {
         layer.smooth: true
     }
 
-    // Left part of the components
+    // Left information
     RowLayout {
         y: root.height * 0.4
         x: root.width * 0.07
         height: root.height * 0.5
+        width: lytLogo.x - x
 
         Label {
-            id: timeLabel
+            id: lblTime
             color: "#fffdfafd"
             text: "HH:mm:ss Z"
-            font.pixelSize: parent.height * 0.6
+            font.pixelSize: parent.height * 0.5
 
             MouseArea {
                 id: maHour
                 anchors.fill: parent
             }
+        }
+
+        Label {
+            id: restriction
+
+            text: qsTr("Restricted")
+            font.capitalization: Font.AllUppercase
+            font.pixelSize: parent.height * 0.4
+            color: "#90fcf8"
+        }
+    }
+
+    // Right icons
+    RowLayout {
+        y: root.height * 0.4
+        x: root.width - width - (root.width * 0.07) - (root.height * 0.9 * 0.1)
+        height: root.height * 0.5
+        width: root.width - lytLogo.width - lytLogo.x
+
+        layoutDirection: Qt.RightToLeft
+
+        Energy {
+            color: "#fafafa"
         }
     }
 }

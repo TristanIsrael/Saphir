@@ -16,7 +16,7 @@ TopBarUi {
         //property color startColor: "red"
         //property color endColor: "#ff3a95c3"
         //property real angle: 45.0
-        fragmentShader: "shaders/mask.frag.qsb"
+        fragmentShader: "shaders/gradient.frag.qsb"
     }
 
     Timer {
@@ -47,7 +47,7 @@ TopBarUi {
         const zulu = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDay(), now.getUTCHours(), now.getUTCMinutes(), now.getUTCSeconds())
         const localTime = Qt.formatTime(new Date(), "HH:mm:ss");
         const zuluTime = Qt.formatTime(zulu, "HH:mm:ssZ");
-        timeLabel.text = timeFormatZulu ? zuluTime : localTime
+        lblTime.text = timeFormatZulu ? zuluTime : localTime
     }
 
 }
