@@ -24,10 +24,24 @@ PanelBase {
 
             model: bindings.messages
 
+            onCountChanged: {
+                const txt = itemAtIndex(count -1)
+                if(txt !== null && txt.y > height) {
+                    contentY = txt.y - height + txt.height
+                }
+            }
+
             delegate: Text {
                 text: modelData
                 color: Environment.colorText
                 font.pixelSize: wrapper.height/(wrapper.lines+1)
+            }
+
+            Behavior on contentY {
+                PropertyAnimation {
+                    id: animateScroll
+                    duration: 200
+                }
             }
 
         }
