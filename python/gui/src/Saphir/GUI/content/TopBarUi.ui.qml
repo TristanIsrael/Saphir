@@ -81,9 +81,9 @@ Item {
             horizontalCenter: parent.horizontalCenter
             top: parent.top
             topMargin: root.height * 0.1
+            bottom: parent.bottom
+            bottomMargin: root.height * 0.1
         }
-
-        height: root.height - anchors.topMargin
 
         spacing: 0
 
@@ -231,15 +231,6 @@ Item {
                 anchors.fill: parent
             }
         }
-
-        Label {
-            id: restriction
-
-            text: qsTr("Restricted")
-            font.capitalization: Font.AllUppercase
-            font.pixelSize: parent.height * 0.5
-            color: "#90fcf8"
-        }
     }
 
     // Right icons
@@ -255,9 +246,21 @@ Item {
 
         //width: root.width - lytLogo.width - lytLogo.x
         layoutDirection: Qt.RightToLeft
+        spacing: 10
 
         Energy {
             color: "#fafafa"
+        }
+
+        Item {}
+
+        Label {
+            id: restriction
+
+            text: qsTr("Restricted")
+            font.capitalization: Font.AllUppercase
+            font.pixelSize: parent.height * 0.5
+            color: "#90fcf8"
         }
     }
 

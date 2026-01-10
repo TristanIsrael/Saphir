@@ -68,47 +68,62 @@ Item {
 
         x: btnLowVisibility.width * 0.25
         y: parent.height - ((height * 1.25) * 2)
+        z: 100
         height: lytMenuThemes.height
-        width: mainWindow.menuThemesOpened ? lytMenuThemes.width : btnLowVisibility.width * 1.5
+        width: mainWindow.menuThemesOpened ? lytMenuThemes.width : btnLowVisibility.width * 1.2
         clip: false
         highlight: false
-        radius: mainWindow.menuThemesOpened ? 10 : height
+        radius: height
 
-        RowLayout {
-            id: lytMenuThemes
-            height: btnLowVisibility.width * 1.5
-            spacing: btnLowVisibility.height * 0.3
+        Item {
+            // For clipping
+            width: pnlMenuThemes.width
+            height: pnlMenuThemes.height
+            clip: true
 
-            Item {}
+            RowLayout {
+                id: lytMenuThemes
+                height: btnLowVisibility.width * 1.2
+                anchors {
+                    verticalCenter: parent.verticalCenter
+                    left: parent.left
+                    leftMargin: btnLowVisibility.width * 0.05
+                }
 
-            RoundButton {
-                id: btnLowVisibility
-                Layout.alignment: Qt.AlignHCenter
-                icon: Constants.iconThemeLowVisibility
-                flat: true
-                visible: mainWindow.menuThemesOpened
-                         || Environment.theme === Constants.lowVisibility
+
+                /*height: btnLowVisibility.width * 1.5
+                spacing: btnLowVisibility.height * 0.3*/
+                Item {}
+
+                RoundButton {
+                    id: btnLowVisibility
+                    Layout.alignment: Qt.AlignHCenter
+                    icon: Constants.iconThemeLowVisibility
+                    flat: true
+                    visible: mainWindow.menuThemesOpened
+                             || Environment.theme === Constants.lowVisibility
+                }
+
+                RoundButton {
+                    id: btnDark
+                    Layout.alignment: Qt.AlignHCenter
+                    icon: Constants.iconThemeDark
+                    flat: true
+                    visible: mainWindow.menuThemesOpened
+                             || Environment.theme === Constants.dark
+                }
+
+                RoundButton {
+                    id: btnLight
+                    Layout.alignment: Qt.AlignHCenter
+                    icon: Constants.iconThemeLight
+                    flat: true
+                    visible: mainWindow.menuThemesOpened
+                             || Environment.theme === Constants.light
+                }
+
+                Item {}
             }
-
-            RoundButton {
-                id: btnDark
-                Layout.alignment: Qt.AlignHCenter
-                icon: Constants.iconThemeDark
-                flat: true
-                visible: mainWindow.menuThemesOpened
-                         || Environment.theme === Constants.dark
-            }
-
-            RoundButton {
-                id: btnLight
-                Layout.alignment: Qt.AlignHCenter
-                icon: Constants.iconThemeLight
-                flat: true
-                visible: mainWindow.menuThemesOpened
-                         || Environment.theme === Constants.light
-            }
-
-            Item {}
         }
     }
 
@@ -117,67 +132,81 @@ Item {
 
         x: btnShutdown.width * 0.25
         y: parent.height - (height * 1.25)
+        z: 100
         height: lytMainMenu.height
-        width: mainWindow.mainMenuOpened ? lytMainMenu.width : btnShutdown.width * 1.5
+        width: mainWindow.mainMenuOpened ? lytMainMenu.width : btnShutdown.width * 1.2
         clip: false
         highlight: false
-        radius: mainWindow.mainMenuOpened ? 10 : height
+        radius: height
 
-        RowLayout {
-            id: lytMainMenu
-            height: btnMainMenu.width * 1.5
-            spacing: btnMainMenu.height * 0.3
+        Item {
+            // For clipping
+            width: pnlMainMenu.width
+            height: pnlMainMenu.height
+            clip: true
 
-            Item {}
+            RowLayout {
+                id: lytMainMenu
+                height: btnMainMenu.width * 1.2
+                anchors {
+                    verticalCenter: parent.verticalCenter
+                    left: parent.left
+                    leftMargin: btnMainMenu.width * 0.05
+                }
 
-            RoundButton {
-                id: btnMainMenu
-                Layout.alignment: Qt.AlignHCenter
-                icon: Constants.iconMenu
-                flat: true
+                //spacing: btnMainMenu.height * 0.3
+                Item {}
+
+                RoundButton {
+                    id: btnMainMenu
+
+                    Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
+                    icon: Constants.iconMenu
+                    flat: true
+                }
+
+                RoundButton {
+                    id: btnHelp
+                    Layout.alignment: Qt.AlignHCenter
+                    icon: Constants.iconHelp
+                    flat: true
+                    visible: mainWindow.mainMenuOpened
+                }
+
+                RoundButton {
+                    id: btnSystemState
+                    Layout.alignment: Qt.AlignHCenter
+                    icon: Constants.iconSystemState
+                    flat: true
+                    visible: mainWindow.mainMenuOpened
+                }
+
+                RoundButton {
+                    id: btnLog
+                    Layout.alignment: Qt.AlignHCenter
+                    icon: Constants.iconLog
+                    flat: true
+                    visible: mainWindow.mainMenuOpened
+                }
+
+                RoundButton {
+                    id: btnRestart
+                    Layout.alignment: Qt.AlignHCenter
+                    icon: Constants.iconRestart
+                    flat: true
+                    visible: mainWindow.mainMenuOpened
+                }
+
+                RoundButton {
+                    id: btnShutdown
+                    Layout.alignment: Qt.AlignHCenter
+                    icon: Constants.iconShutdown
+                    flat: true
+                    visible: mainWindow.mainMenuOpened
+                }
+
+                Item {}
             }
-
-            RoundButton {
-                id: btnHelp
-                Layout.alignment: Qt.AlignHCenter
-                icon: Constants.iconHelp
-                flat: true
-                visible: mainWindow.mainMenuOpened
-            }
-
-            RoundButton {
-                id: btnSystemState
-                Layout.alignment: Qt.AlignHCenter
-                icon: Constants.iconSystemState
-                flat: true
-                visible: mainWindow.mainMenuOpened
-            }
-
-            RoundButton {
-                id: btnLog
-                Layout.alignment: Qt.AlignHCenter
-                icon: Constants.iconLog
-                flat: true
-                visible: mainWindow.mainMenuOpened
-            }
-
-            RoundButton {
-                id: btnRestart
-                Layout.alignment: Qt.AlignHCenter
-                icon: Constants.iconRestart
-                flat: true
-                visible: mainWindow.mainMenuOpened
-            }
-
-            RoundButton {
-                id: btnShutdown
-                Layout.alignment: Qt.AlignHCenter
-                icon: Constants.iconShutdown
-                flat: true
-                visible: mainWindow.mainMenuOpened
-            }
-
-            Item {}
         }
     }
 
@@ -198,8 +227,6 @@ Item {
         RoundButton {
             id: btnStartStop
             flat: true
-            width: 100
-            height: 100
             icon: bindings.running ? Constants.iconPause : Constants.iconStart
         }
     }

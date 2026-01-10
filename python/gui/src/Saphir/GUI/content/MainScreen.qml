@@ -100,13 +100,6 @@ Window {
             }
         }
 
-        Behavior on pnlMenuThemes.radius {
-            PropertyAnimation {
-                duration: 200
-                easing.type: Easing.OutCubic
-            }
-        }
-
         Behavior on pnlMainMenu.width {
             PropertyAnimation {
                 duration: 200
@@ -114,12 +107,6 @@ Window {
             }
         }
 
-        Behavior on pnlMainMenu.radius {
-            PropertyAnimation {
-                duration: 200
-                easing.type: Easing.OutCubic
-            }
-        }
     }
 
     Bindings {
