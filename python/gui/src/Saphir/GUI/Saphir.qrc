@@ -5,13 +5,22 @@
         <file>components/Environment.qml</file>
         <file>components/FlatButton.qml</file>
         <file>components/HalfCircle.qml</file>
+        <file>components/Icon.qml</file>
         <file>components/MessageDialog.qml</file>
         <file>components/Panel.qml</file>
         <file>components/PanelBase.qml</file>
         <file>components/qmldir</file>
         <file>components/RoundButton.qml</file>
+        <file>components/StyledText.qml</file>
+        <file>content/AnalysisPanel.qml</file>
         <file>content/Bindings.qml</file>
+        <file>content/Brightness.qml</file>
         <file>content/Energy.qml</file>
+        <file>content/FilesProgress.qml</file>
+        <file>content/FilesSelectionPanel.qml</file>
+        <file>content/fonts/Inter-Italic-VariableFont_opsz,wght.ttf</file>
+        <file>content/fonts/Inter-VariableFont_opsz,wght.ttf</file>
+        <file>content/GlobalProgress.qml</file>
         <file>content/images/3535287.jpg</file>
         <file>content/images/back.jpg</file>
         <file>content/images/back.png</file>
@@ -22,6 +31,7 @@
         <file>content/MainScreen.qml</file>
         <file>content/MainScreenUi.ui.qml</file>
         <file>content/MessagesPanel.qml</file>
+        <file>content/Progress.qml</file>
         <file>content/shaders/blur.frag</file>
         <file>content/shaders/blur.frag.qsb</file>
         <file>content/shaders/colorize.frag</file>
@@ -34,6 +44,7 @@
         <file>content/TopBarUi.ui.qml</file>
         <file>qtquickcontrols2.conf</file>
         <file>Saphir.qmlproject</file>
+        <file>Saphir/qmldir</file>
         <file>themes/qmldir</file>
         <file>wireframe/Analysis.qml</file>
         <file>wireframe/Analysis_finished.qml</file>

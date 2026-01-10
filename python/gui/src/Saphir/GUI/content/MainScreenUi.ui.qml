@@ -53,13 +53,15 @@ Item {
     }
 
     TopBar {
+        id: topBar
+
         anchors {
             left: parent.left
             top: parent.top
             right: parent.right
         }
 
-        height: parent.height * 0.05
+        height: parent.height * 0.06
     }
 
     /* Lower left buttons */
@@ -233,13 +235,16 @@ Item {
 
     /* Messages panel */
     MessagesPanel {
+        id: messagesPanel
+
         anchors {
             horizontalCenter: parent.horizontalCenter
             bottom: parent.bottom
             bottomMargin: parent.height * 0.05
         }
 
-        visible: !bindings.running
+        visible: !bindings.ready || (bindings.ready
+                                     && bindings.sourceName === "")
         radius: 10
     }
 
@@ -247,10 +252,33 @@ Item {
     MessageDialog {
         id: dlg
         anchors.centerIn: parent
-        visible: bindings.ready && bindings.sourceName === ""
+        visible: !bindings.ready && bindings.sourceName === ""
 
         label: qsTr("Please connect a storage")
         buttonsLabels: []
+    }
+
+    /* Main Panel */
+    Item {
+        anchors {
+            top: topBar.bottom
+            left: pnlMainMenu.right
+            right: pnlStartStop.left
+            bottom: parent.bottom
+            margins: root.height * 0.05
+        }
+
+        /* File selection */
+        FilesSelectionPanel {
+            anchors.fill: parent
+            visible: bindings.ready && !bindings.running
+        }
+
+        /* Analysis */
+        AnalysisPanel {
+            anchors.fill: parent
+            visible: bindings.ready && bindings.running
+        }
     }
 
     Bindings {

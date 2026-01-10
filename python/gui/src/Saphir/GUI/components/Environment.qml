@@ -12,7 +12,22 @@ QtObject {
     property int theme: Constants.dark
 
     property int mainWidth: 1200
-    property int mainHeight: 800
+    property int mainHeight: 800    
+
+    /** Colors */
+    property color colorDark: {
+        switch(root.theme) {
+            case Constants.wireframe : return ThemeWireframe.colorDark;
+            case Constants.dark: return ThemeDark.colorDark;
+        }
+    }
+
+    property color colorClear: {
+        switch(root.theme) {
+            case Constants.wireframe : return ThemeWireframe.colorClear;
+            case Constants.dark: return ThemeDark.colorClear;
+        }
+    }
 
     property color colorControl: {
         switch(root.theme) {
@@ -124,6 +139,27 @@ QtObject {
             case Constants.wireframe : return ThemeWireframe.colorFilterInfected;
             case Constants.dark: return ThemeDark.colorFilterInfected;
         }
-    }    
+    }
+
+    property color colorClean: {
+        switch(root.theme) {
+            case Constants.wireframe : return ThemeWireframe.colorClean;
+            case Constants.dark: return ThemeDark.colorClean;
+        }
+    }
+
+    property color colorInfected: {
+        switch(root.theme) {
+            case Constants.wireframe : return ThemeWireframe.colorInfected;
+            case Constants.dark: return ThemeDark.colorInfected;
+        }
+    }
+
+    property color colorWaiting: {
+        switch(root.theme) {
+            case Constants.wireframe : return ThemeWireframe.colorWaiting;
+            case Constants.dark: return ThemeDark.colorWaiting;
+        }
+    }
 
 }

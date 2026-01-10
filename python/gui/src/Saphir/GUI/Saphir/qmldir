@@ -1,0 +1,3 @@
+module Saphir
+
+singleton Enums 1.0 Enums.qml

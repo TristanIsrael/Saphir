@@ -23,6 +23,7 @@ QtObject {
     readonly property string iconThemeLowVisibility: "\ue8f5"
     readonly property string iconFile: "\ue24d"
     readonly property string iconFolder: "\ue2c7"
+    readonly property string iconFolderUp: "\ue9a3"
 
     readonly property string battery_0: "\uf306"
     readonly property string battery_15: "\uf30b"
@@ -31,4 +32,11 @@ QtObject {
     readonly property string battery_60: "\uf308"
     readonly property string battery_75: "\uf307"
     readonly property string battery_100: "\uf304"
+
+    enum Section {
+        Paragraph,
+        Title1,
+        Title2,
+        Title3
+    }
 }

@@ -3,12 +3,15 @@
 
 add_subdirectory(themes)
 add_subdirectory(App)
+add_subdirectory(Saphir)
 add_subdirectory(Dependencies)
 
 qt6_add_resources(${CMAKE_PROJECT_NAME} MainResource
     PREFIX "/qt/qml"
     VERSION 1.0
     FILES 
+        "content/fonts/Inter-Italic-VariableFont_opsz,wght.ttf"
+        "content/fonts/Inter-VariableFont_opsz,wght.ttf"
         "content/images/3535287.jpg"
         "content/images/back.jpg"
         "content/images/back.png"
@@ -28,4 +31,5 @@ qt6_add_resources(${CMAKE_PROJECT_NAME} MainResource
 
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
     Themesplugin
+    Saphirplugin
     QtQuickDesignerComponents)

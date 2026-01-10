@@ -27,7 +27,7 @@ WfMain {
                 topMargin: 20
             }
 
-            text: "Support name: UNTITLED"
+            text: "Storage name: UNTITLED"
             font.pixelSize: 24
         }
 

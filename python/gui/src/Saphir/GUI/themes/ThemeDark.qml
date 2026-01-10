@@ -2,6 +2,8 @@ pragma Singleton
 import QtQuick
 
 QtObject {
+    readonly property color colorDark: "#010101"
+    readonly property color colorClear: "#eaeaea"
     readonly property color colorBg: "#333333"
     readonly property color colorControl: "#333333"
     readonly property color colorText: "#aafafafa"
@@ -19,4 +21,8 @@ QtObject {
     readonly property color colorFilterReady: "#656dfd"
     readonly property color colorFilterUsed: "#ffa500"
     readonly property color colorFilterInfected: "#ff0000"
+
+    readonly property color colorClean: "#4CAF50"
+    readonly property color colorInfected: "#F44336"
+    readonly property color colorWaiting: "#FF9800"
 }

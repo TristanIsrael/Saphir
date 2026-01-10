@@ -15,6 +15,7 @@ Item {
     property alias gradientRect: gradientRect
     property alias gradientStart: gradientStart
     property alias gradientStop: gradientStop
+    property alias lblRestriction: lblRestriction
 
     height: implicitHeight
     width: implicitWidth
@@ -28,7 +29,7 @@ Item {
         anchors.fill: parent
         visible: true
         radius: height
-        color: bindings.systemStateColor
+        //color: Qt.darker(bindings.systemStateColor, 60)
         border {
             width: 1
             color: "#e8e8e8"
@@ -53,13 +54,13 @@ Item {
                 fill: wrapper
             }
 
-            brightness: 0.2
+            brightness: 0.0
             saturation: 0.0
             blurEnabled: true
             blurMax: 45
             blur: 0.7
             colorization: 0.3
-            colorizationColor: "#d8d8d8"
+            colorizationColor: bindings.systemStateColor
             autoPaddingEnabled: false
             maskEnabled: true
             maskSource: ShaderEffectSource {
@@ -80,9 +81,9 @@ Item {
         anchors {
             horizontalCenter: parent.horizontalCenter
             top: parent.top
-            topMargin: root.height * 0.1
+            topMargin: root.height * 0.05
             bottom: parent.bottom
-            bottomMargin: root.height * 0.1
+            bottomMargin: root.height * 0.05
         }
 
         spacing: 0
@@ -246,21 +247,24 @@ Item {
 
         //width: root.width - lytLogo.width - lytLogo.x
         layoutDirection: Qt.RightToLeft
-        spacing: 10
+        spacing: 5
 
-        Energy {
-            color: "#fafafa"
+        Energy {}
+
+        Brightness {
+            visible: bindings.ambientLightSensorReady
         }
 
         Item {}
 
         Label {
-            id: restriction
+            id: lblRestriction
 
-            text: qsTr("Restricted")
+            text: qsTr("Not protected")
+            font.family: "Inter"
             font.capitalization: Font.AllUppercase
             font.pixelSize: parent.height * 0.5
-            color: "#90fcf8"
+            font.bold: true
         }
     }
 

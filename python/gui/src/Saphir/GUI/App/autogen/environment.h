@@ -9,6 +9,7 @@
 #include "qqmlextensionplugin.h"
 
 Q_IMPORT_QML_PLUGIN(ThemesPlugin)
+Q_IMPORT_QML_PLUGIN(SaphirPlugin)
 
 const char mainQmlFile[] = "qrc:/qt/qml/content/MainScreen.qml";
 

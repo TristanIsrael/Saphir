@@ -5,7 +5,7 @@ import Components
 Item {
     id: root
 
-    property color color: "white"
+    property color color: Environment.colorText
 
     height: implicitHeight
     implicitHeight: 28

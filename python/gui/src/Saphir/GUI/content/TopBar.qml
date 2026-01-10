@@ -21,6 +21,34 @@ TopBarUi {
 
     gradientStart.color: Qt.alpha(bindings.systemStateColor, 0.0)
     gradientStop.color: Qt.alpha(bindings.systemStateColor, 0.1)
+    lblRestriction.text: {
+        switch (bindings.classificationLevel) {
+        case 0:
+            return qsTr("Not protected")
+        case 1:
+            return qsTr("Restricted")
+        case 2:
+            return qsTr("Secret")
+        case 3:
+            return qsTr("Top Secret")
+        }
+
+        return qsTr("Not protected")
+    }
+    lblRestriction.color: {
+        switch (bindings.classificationLevel) {
+        case 0:
+            return "#4caf50"
+        case 1:
+            return "#ffc107"
+        case 2:
+            return "#ff9800"
+        case 3:
+            return "#d32f2f"
+        }
+
+        return qsTr("Not protected")
+    }
 
     Timer {
         triggeredOnStart: true
