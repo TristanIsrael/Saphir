@@ -124,5 +124,6 @@ QtObject {
             case Constants.wireframe : return ThemeWireframe.colorFilterInfected;
             case Constants.dark: return ThemeDark.colorFilterInfected;
         }
-    }
+    }    
+
 }

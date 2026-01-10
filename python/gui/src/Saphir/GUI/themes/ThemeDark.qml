@@ -10,8 +10,8 @@ QtObject {
     readonly property color colorButtonDisabled: "#444480"
     readonly property color colorPanelEnabled: "#444480"
     readonly property color colorPanelDisabled: "#666666"
-    readonly property color colorShadowEnabled: "#aaffffff"
-    readonly property color colorShadowDisabled: "#aaffffff"
+    readonly property color colorShadowEnabled: "#aaeaeaea"
+    readonly property color colorShadowDisabled: "#aaeaeaea"
     readonly property color colorButtonTextEnabled: "#aafafafa"
     readonly property color colorButtonTextDisabled: "#030303"
 

@@ -58,6 +58,8 @@ Item {
             top: parent.top
             right: parent.right
         }
+
+        height: parent.height * 0.05
     }
 
     /* Lower left buttons */
@@ -202,10 +204,23 @@ Item {
         }
     }
 
+    /* Messages panel */
+    MessagesPanel {
+        anchors {
+            horizontalCenter: parent.horizontalCenter
+            bottom: parent.bottom
+            bottomMargin: parent.height * 0.05
+        }
+
+        visible: !bindings.running
+        radius: 10
+    }
+
     /* Initial dialog */
     MessageDialog {
         id: dlg
         anchors.centerIn: parent
+        visible: bindings.ready && bindings.sourceName === ""
 
         label: qsTr("Please connect a storage")
         buttonsLabels: []

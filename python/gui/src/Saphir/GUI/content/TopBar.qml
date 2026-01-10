@@ -19,6 +19,9 @@ TopBarUi {
         fragmentShader: "shaders/gradient.frag.qsb"
     }
 
+    gradientStart.color: Qt.alpha(bindings.systemStateColor, 0.0)
+    gradientStop.color: Qt.alpha(bindings.systemStateColor, 0.1)
+
     Timer {
         triggeredOnStart: true
         interval: 1000
@@ -48,6 +51,10 @@ TopBarUi {
         const localTime = Qt.formatTime(new Date(), "HH:mm:ss");
         const zuluTime = Qt.formatTime(zulu, "HH:mm:ssZ");
         lblTime.text = timeFormatZulu ? zuluTime : localTime
+    }
+
+    Bindings {
+        id: bindings
     }
 
 }

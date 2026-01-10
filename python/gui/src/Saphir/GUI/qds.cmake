@@ -9,13 +9,13 @@ qt6_add_resources(${CMAKE_PROJECT_NAME} MainResource
     PREFIX "/qt/qml"
     VERSION 1.0
     FILES 
+        "content/images/3535287.jpg"
         "content/images/back.jpg"
         "content/images/back.png"
         "content/images/back_orig.png"
         "content/images/icn_antivirus.png"
         "content/images/icn_disk.png"
         "content/images/Logo.png"
-        "content/images/3535287.jpg"
         "content/shaders/blur.frag"
         "content/shaders/blur.frag.qsb"
         "content/shaders/colorize.frag"

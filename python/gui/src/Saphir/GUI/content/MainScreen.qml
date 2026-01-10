@@ -15,21 +15,9 @@ Window {
     MainScreenUi {
         id: window
 
-        anchors.fill: parent
+        anchors.fill: parent        
 
-        backFilter.colorizationColor: {
-            if(!bindings.ready) {
-                return Environment.colorFilterNotReady
-            } else {
-                if(bindings.infected) {
-                    return Environment.colorFilterInfected
-                } else if(bindings.used) {
-                    return Environment.colorFilterUsed
-                }
-            }
-
-            return Environment.colorFilterReady
-        }
+        backFilter.colorizationColor: bindings.systemStateColor
 
         /* Slots */
         Connections {
@@ -136,6 +124,10 @@ Window {
 
     Bindings {
         id: bindings
+    }
+
+    /* Testing only */
+    Component.onCompleted: {
     }
 }
 

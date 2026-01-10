@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Shapes
 import QtQuick.Layouts
+import QtQuick.Effects
 import Qt5Compat.GraphicalEffects
 import Components
 
@@ -12,26 +13,78 @@ Item {
     property alias maHour: maHour
     property alias lblTime: lblTime
     property alias gradientRect: gradientRect
+    property alias gradientStart: gradientStart
+    property alias gradientStop: gradientStop
 
     height: implicitHeight
     width: implicitWidth
-    implicitHeight: 100
+    implicitHeight: 40
     implicitWidth: 800
 
     Rectangle {
-        id: backg
+        // Wrapper
+        id: wrapper
+
         anchors.fill: parent
-        color: "#050910"
-        visible: false
+        visible: true
+        radius: height
+        color: bindings.systemStateColor
+        border {
+            width: 1
+            color: "#e8e8e8"
+        }
+
+        MultiEffect {
+            anchors.fill: parent
+            visible: true
+
+            source: ShaderEffectSource {
+                width: wrapper.width
+                height: wrapper.height
+
+                sourceItem: back
+                sourceRect: Qt.rect(wrapper.x, wrapper.y, wrapper.width,
+                                    wrapper.height)
+                hideSource: true
+                live: true
+            }
+
+            anchors {
+                fill: wrapper
+            }
+
+            brightness: 0.2
+            saturation: 0.0
+            blurEnabled: true
+            blurMax: 45
+            blur: 0.7
+            colorization: 0.3
+            colorizationColor: "#d8d8d8"
+            autoPaddingEnabled: false
+            maskEnabled: true
+            maskSource: ShaderEffectSource {
+                sourceItem: Rectangle {
+                    color: "white"
+                    width: wrapper.width
+                    height: wrapper.height
+                    layer.enabled: true
+                }
+            }
+        }
     }
 
     // Logo
     RowLayout {
         id: lytLogo
 
-        height: parent.height * 0.8
-        //width: parent.width
-        anchors.centerIn: parent
+        anchors {
+            horizontalCenter: parent.horizontalCenter
+            top: parent.top
+            topMargin: root.height * 0.1
+        }
+
+        height: root.height - anchors.topMargin
+
         spacing: 0
 
         Item {
@@ -69,7 +122,7 @@ Item {
     Item {
         id: lines
         anchors.fill: parent
-        visible: true
+        visible: false
 
         property int strokeWidth: 2
 
@@ -134,16 +187,18 @@ Item {
     Rectangle {
         id: gradientRect
         anchors.fill: parent
-        visible: false
+        visible: true
 
         gradient: Gradient {
             GradientStop {
+                id: gradientStart
                 position: 0.0
-                color: "#66345878"
+                //color: Qt.alpha(systemStateColor, 0.1)
             }
             GradientStop {
+                id: gradientStop
                 position: 1.0
-                color: "#cc4096c7"
+                //color: Qt.alpha(systemStateColor, 0.3)
             }
         }
 
@@ -153,16 +208,23 @@ Item {
 
     // Left information
     RowLayout {
-        y: root.height * 0.4
-        x: root.width * 0.07
-        height: root.height * 0.5
+        anchors {
+            top: parent.top
+            topMargin: root.height * 0.1
+            left: parent.left
+            leftMargin: root.height * 0.2 * (Environment.mainWidth / Environment.mainHeight)
+            bottom: parent.bottom
+            bottomMargin: root.height * 0.1
+        }
+
+        //height: root.height - anchors.topMargin
         width: lytLogo.x - x
 
-        Label {
+        Text {
             id: lblTime
             color: "#fffdfafd"
             text: "HH:mm:ss Z"
-            font.pixelSize: parent.height * 0.5
+            font.pixelSize: parent.height * 0.7
 
             MouseArea {
                 id: maHour
@@ -175,22 +237,31 @@ Item {
 
             text: qsTr("Restricted")
             font.capitalization: Font.AllUppercase
-            font.pixelSize: parent.height * 0.4
+            font.pixelSize: parent.height * 0.5
             color: "#90fcf8"
         }
     }
 
     // Right icons
     RowLayout {
-        y: root.height * 0.4
-        x: root.width - width - (root.width * 0.07) - (root.height * 0.9 * 0.1)
-        height: root.height * 0.5
-        width: root.width - lytLogo.width - lytLogo.x
+        anchors {
+            top: parent.top
+            topMargin: root.height * 0.1
+            right: parent.right
+            rightMargin: root.height * 0.1 * (Environment.mainWidth / Environment.mainHeight)
+            bottom: parent.bottom
+            bottomMargin: root.height * 0.1
+        }
 
+        //width: root.width - lytLogo.width - lytLogo.x
         layoutDirection: Qt.RightToLeft
 
         Energy {
             color: "#fafafa"
         }
+    }
+
+    Bindings {
+        id: bindings
     }
 }

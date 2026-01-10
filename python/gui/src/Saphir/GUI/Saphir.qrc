@@ -21,6 +21,7 @@
         <file>content/images/Logo.png</file>
         <file>content/MainScreen.qml</file>
         <file>content/MainScreenUi.ui.qml</file>
+        <file>content/MessagesPanel.qml</file>
         <file>content/shaders/blur.frag</file>
         <file>content/shaders/blur.frag.qsb</file>
         <file>content/shaders/colorize.frag</file>
