@@ -32,7 +32,7 @@ PanelBase {
             }
 
             delegate: Text {
-                text: modelData
+                text: display
                 color: Environment.colorText
                 font.pixelSize: wrapper.height/(wrapper.lines+1)
             }

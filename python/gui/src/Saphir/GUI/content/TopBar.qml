@@ -61,7 +61,7 @@ TopBarUi {
     /* Slots */
     Connections {
         target: maHour
-        onClicked: function() {
+        function onClicked() {
             timeFormatZulu = !timeFormatZulu
             updateTime()
         }

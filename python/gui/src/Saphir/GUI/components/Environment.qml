@@ -162,4 +162,11 @@ QtObject {
         }
     }
 
+    property color colorSelected: {
+        switch(root.theme) {
+            case Constants.wireframe : return ThemeWireframe.colorSelected;
+            case Constants.dark: return ThemeDark.colorSelected;
+        }
+    }
+
 }

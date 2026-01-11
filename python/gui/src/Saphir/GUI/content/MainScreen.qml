@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Qt5Compat.GraphicalEffects
 import Components
+import Saphir
 
 Window {
     id: root
@@ -23,7 +24,7 @@ Window {
         Connections {
             target: window.btnDark
 
-            onClicked: function() {
+            function onClicked() {
                 window.menuThemesOpened = !window.menuThemesOpened
             }
         }
@@ -31,7 +32,7 @@ Window {
         Connections {
             target: window.btnLight
 
-            onClicked: function() {
+            function onClicked() {
                 window.menuThemesOpened = !window.menuThemesOpened
             }
         }
@@ -39,7 +40,7 @@ Window {
         Connections {
             target: window.btnLowVisibility
 
-            onClicked: function() {
+            function onClicked() {
                 window.menuThemesOpened = !window.menuThemesOpened
             }
         }
@@ -47,7 +48,7 @@ Window {
         Connections {
             target: window.btnMainMenu
 
-            onClicked: function() {
+            function onClicked() {
                 window.mainMenuOpened = !window.mainMenuOpened
             }
         }
@@ -55,7 +56,7 @@ Window {
         Connections {
             target: window.btnHelp
 
-            onClicked: function() {
+            function onClicked() {
                 window.mainMenuOpened = !window.mainMenuOpened
             }
         }
@@ -63,7 +64,7 @@ Window {
         Connections {
             target: window.btnSystemState
 
-            onClicked: function() {
+            function onClicked() {
                 window.mainMenuOpened = !window.mainMenuOpened
             }
         }
@@ -71,7 +72,7 @@ Window {
         Connections {
             target: window.btnLog
 
-            onClicked: function() {
+            function onClicked() {
                 window.mainMenuOpened = !window.mainMenuOpened
             }
         }
@@ -79,7 +80,7 @@ Window {
         Connections {
             target: window.btnRestart
 
-            onClicked: function() {
+            function onClicked() {
                 window.mainMenuOpened = !window.mainMenuOpened
             }
         }
@@ -87,8 +88,33 @@ Window {
         Connections {
             target: window.btnShutdown
 
-            onClicked: function() {
+            function onClicked() {
                 window.mainMenuOpened = !window.mainMenuOpened
+            }
+        }
+
+        Connections {
+            target: ApplicationController
+
+            function onSourceReadyChanged() {
+                if(ApplicationController.sourceReady) {
+                    window.dlgAnalyseWholeStorage.visible = true
+                }                
+            }
+        }
+
+        Connections {
+            target: window.dlgAnalyseWholeStorage
+
+            function onRejected() {
+                bindings.setAnalysisMode(Enums.AnalyseSelection)
+                window.pnlFileSelection.visible = true
+                window.dlgAnalyseWholeStorage.visible = false
+            }
+
+            function onAccepted() {
+                bindings.setAnalysisMode(Enums.AnalyseWholeSource)
+                window.dlgAnalyseWholeStorage.visible = false
             }
         }
 
@@ -115,6 +141,10 @@ Window {
 
     /* Testing only */
     Component.onCompleted: {
+        // Verify whether a storage is connected
+        if(ApplicationController.sourceReady) {
+            window.dlgAnalyseWholeStorage.visible = true
+        }
     }
 }
 

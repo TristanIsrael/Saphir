@@ -20,6 +20,9 @@ Item {
     property alias btnLog: btnLog
     property alias btnRestart: btnRestart
     property alias btnShutdown: btnShutdown
+    property alias pnlFileSelection: pnlFileSelection
+    property alias pnlStartStop: pnlStartStop
+    property alias dlgAnalyseWholeStorage: dlgAnalyseWholeStorage
 
     property bool menuThemesOpened: false
     property bool mainMenuOpened: false
@@ -222,9 +225,7 @@ Item {
         height: btnStartStop.height
         radius: height
 
-        //flat: true
-        //icon: bindings.running ? Constants.iconPause : Constants.iconStart
-        enabled: bindings.ready
+        enabled: bindings.analysisReady && bindings.queueSize > 0
 
         RoundButton {
             id: btnStartStop
@@ -243,26 +244,38 @@ Item {
             bottomMargin: parent.height * 0.05
         }
 
-        visible: !bindings.ready || (bindings.ready
-                                     && bindings.sourceName === "")
+        visible: !bindings.ready || (bindings.ready && bindings.sourceName === "")
         radius: 10
     }
 
-    /* Initial dialog */
+    /* Dialogs */
     MessageDialog {
-        id: dlg
+        id: dlgConnectStorage
+
         anchors.centerIn: parent
-        visible: !bindings.ready && bindings.sourceName === ""
+        visible: bindings.ready && bindings.analysisReady
+                 && bindings.sourceName === ""
 
         label: qsTr("Please connect a storage")
         buttonsLabels: []
+    }
+
+    MessageDialog {
+        id: dlgAnalyseWholeStorage
+
+        anchors.centerIn: parent
+        visible: false
+
+        label: qsTr("Do you want to analyze the whole storage?")
+        buttonsLabels: ["Yes", "No"]
     }
 
     /* Main Panel */
     Item {
         anchors {
             top: topBar.bottom
-            left: pnlMainMenu.right
+            left: parent.left
+            leftMargin: pnlMainMenu.x * 2 + btnMainMenu.width * 1.2
             right: pnlStartStop.left
             bottom: parent.bottom
             margins: root.height * 0.05
@@ -270,12 +283,14 @@ Item {
 
         /* File selection */
         FilesSelectionPanel {
+            id: pnlFileSelection
             anchors.fill: parent
-            visible: bindings.ready && !bindings.running
+            visible: false
         }
 
         /* Analysis */
         AnalysisPanel {
+            id: pnlAnalysis
             anchors.fill: parent
             visible: bindings.ready && bindings.running
         }

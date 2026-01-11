@@ -10,7 +10,7 @@ class DevModeHelper():
     
     @staticmethod
     def set_qt_plugins_path():
-        python_version = "3.13"
+        python_version = "3.14"
         venv_path = os.getenv("VIRTUAL_ENV")
         plugins_path = "{}/lib/python{}/site-packages/PySide6/Qt/plugins/platforms".format(venv_path, python_version)
         os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = plugins_path

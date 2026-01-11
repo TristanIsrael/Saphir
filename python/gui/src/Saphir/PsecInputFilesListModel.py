@@ -23,14 +23,15 @@ class PsecInputFilesListModel(QAbstractListModel):
     changeSelection = Signal(str)  # dossier
 
     # Variables
-    __fichiers:dict
-    #selection_:list[dict] = list()
+    __files:dict
     __rowCount = 0
     __lastRowCount = 0
+    __queuedFilesList:dict
 
-    def __init__(self, files:dict, parent=None):
-        super().__init__(parent)       
-        self.__fichiers = files
+    def __init__(self, files:dict, queuedFilesList:dict, parent=None):
+        super().__init__(parent)
+        self.__files = files
+        self.__queuedFilesList = queuedFilesList
 
     def onSourceChanged(self):
         self.updateFilesList.emit()
@@ -47,7 +48,7 @@ class PsecInputFilesListModel(QAbstractListModel):
             return None
 
         row = index.row()
-        fichier = list(self.__fichiers.values())[row]
+        fichier = list(self.__files.values())[row]
         #qDebug(f"data() - filepath:{fichier["filepath"]}, inqueue:{fichier["inqueue"]}")        
 
         if role == Roles.RoleType:
@@ -69,19 +70,13 @@ class PsecInputFilesListModel(QAbstractListModel):
             return fichier.get("progress", 0)
 
         if role == Roles.RoleSelected:
-            if (
-                fichier["type"] == "file"
-                #and self.selection_ == fichier
-            ):
-                #qDebug("--sélectionné")
-                #return True
-                return fichier["selected"] or fichier["inqueue"]
+            if fichier["type"] == "file":
+                return fichier["selected"]
             elif (
                 fichier["type"] == "folder"
                 and fichier["name"] != self.LibelleDossierPrecedent
-            ):                
-                #qDebug("--non-sélectionné")
-                return fichier["selected"] or fichier["inqueue"]
+            ):
+                return fichier["selected"]
             
             return False        
         
@@ -89,10 +84,16 @@ class PsecInputFilesListModel(QAbstractListModel):
             return 0
         
         if role == Roles.RoleInQueue:
-            inQueue = fichier.get("inqueue")
-            return inQueue if inQueue is not None else False
+            #inQueue = fichier.get("inqueue")
+            #return inQueue if inQueue is not None else False
+            if fichier["type"] == "file":
+                return fichier["filepath"] in self.__queuedFilesList
+            else:
+                return any(fichier["filepath"] in key for key in self.__queuedFilesList)
+
+            #return inQueue if inQueue is not None else False
         
-        return None    
+        return None
 
     '''def get(self, index:QModelIndex):
         return self.fichiers_[index.row()]
@@ -150,14 +151,28 @@ class PsecInputFilesListModel(QAbstractListModel):
         self.beginResetModel()
         #self.selection_.clear()
         self.__lastRowCount = 0
-        self.__rowCount = len(self.__fichiers)
+        self.__rowCount = len(self.__files)
         self.endResetModel()
 
-    def on_file_updated(self, filepath:str, fields:list):
-        if filepath not in self.__fichiers:
-            return
+    def on_file_updated(self, filepath:str, fields:list):    
+        is_child_of_folder = False
+        if filepath not in self.__files:
+            # The file added might be a child of one of the folders shown
+            is_child_of_folder = any(filepath in key for key in self.__queuedFilesList)
+            if not is_child_of_folder:
+                return
         
-        row = list(self.__fichiers.keys()).index(filepath)
+        #print("queue:", self.__queuedFilesList)
+
+        # If it is a file of the list
+        if not is_child_of_folder:
+            row = list(self.__files.keys()).index(filepath)
+        else:
+            folder = next((k for k in self.__files if k in filepath), None)
+            if folder is None:
+                return
+            row = list(self.__files.keys()).index(folder)
+
         #print(filepath)
         idx = self.index(row, 0)
 
@@ -175,7 +190,7 @@ class PsecInputFilesListModel(QAbstractListModel):
         self.dataChanged.emit(idx, idx, roles)
 
     def on_file_added(self):
-        self.__rowCount = len(self.__fichiers)
+        self.__rowCount = len(self.__files)
         self.beginInsertRows(QModelIndex(), self.__lastRowCount, self.__rowCount)
         self.endInsertRows()
         

@@ -10,25 +10,26 @@ from PySide6.QtGui import QGuiApplication, QFont, QFontDatabase, QPointingDevice
 from PySide6.QtQuick import QQuickWindow
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonType, qmlRegisterUncreatableType, qmlRegisterSingletonInstance
 from psec import Api, System
-from ApplicationController import ApplicationController
 from libsaphir import DEVMODE
+from ApplicationController import ApplicationController
+from Enums import Enums
 if DEVMODE:
     from DevModeHelper import DevModeHelper
     DevModeHelper.set_qt_plugins_path()
 
 api_ready = threading.Event()
 FORCE_FULLSCREEN = False
-VERSION = "2.1.0"
+VERSION = "2.2.0"
 
 def on_ready():
     print("PSEC API is ready")
-    api_ready.set()    
+    api_ready.set()
 
 def load_fonts(fonts:list):
     for font in fonts:
-        font_id = QFontDatabase.addApplicationFont("GUI/fonts/{}".format(font))
+        font_id = QFontDatabase.addApplicationFont(f"GUI/fonts/{font}")
         if font_id == -1:
-            print("Could not load font {}".format(font))
+            print(f"Could not load font {font}")
 
 class InputEventFilter(QObject):
     def __init__(self, window: QQuickWindow, app:QGuiApplication):
@@ -39,7 +40,7 @@ class InputEventFilter(QObject):
     def eventFilter(self, watched, event):
         # If the event is touch we ignore it
         # If we move the mouse once, the cursor becomes visible
-        if hasattr(event, "device"):                        
+        if hasattr(event, "device"):
             if isinstance(event.device(), QPointingDevice) and event.device().pointerType() != QPointingDevice.PointerType.Finger and event.type() != QEvent.Enter:
                 self.app.restoreOverrideCursor()
                 #self.window.setCursor(Qt.ArrowCursor)
@@ -55,13 +56,13 @@ def handle_sigint(signum, frame):
 
 signal.signal(signal.SIGINT, handle_sigint)
 
-if __name__ == "__main__":    
-    app.setQuitOnLastWindowClosed(True)   
+if __name__ == "__main__":
+    app.setQuitOnLastWindowClosed(True)
     app.setApplicationName("Saphir")
-    app.setApplicationVersion(VERSION)    
+    app.setApplicationVersion(VERSION)
 
     # Set default font
-    font = QFont("Roboto", 12)
+    font = QFont("Inter", 12)
     app.setFont(font)
 
     applicationController = ApplicationController()
@@ -71,16 +72,19 @@ if __name__ == "__main__":
     api_ready.wait()
 
     # Expose Types
-    qmlRegisterSingletonInstance(ApplicationController, "net.alefbet", 1, 0, "ApplicationController", applicationController)
+    qmlRegisterSingletonInstance(ApplicationController, "Saphir", 1, 0, "ApplicationController", applicationController)
+    qmlRegisterUncreatableType(Enums, "Saphir", 1, 0, "Enums", "Not instanciable")
 
     engine = QQmlApplicationEngine()
-    qml_file = Path(__file__).resolve().parent / "GUI/App.qml"
+    engine.addImportPath(Path(__file__).resolve().parent / "GUI")
+    #engine.addImportPath(Path(__file__).resolve().parent / "GUI/themes")
+    qml_file = Path(__file__).resolve().parent / "GUI/content/MainScreen.qml"
     
-    engine.load(qml_file)    
+    engine.load(qml_file)
     if not engine.rootObjects():
         sys.exit(-1)
     
-    qml_root = engine.rootObjects()[0]        
+    qml_root = engine.rootObjects()[0]
     app.setOverrideCursor(Qt.BlankCursor)
     filter = InputEventFilter(qml_root, app)
     app.installEventFilter(filter)
@@ -90,8 +94,8 @@ if __name__ == "__main__":
         qml_root.setHeight(System().get_screen_height())
 
     if FORCE_FULLSCREEN:
-        qml_root.showFullScreen()    
+        qml_root.showFullScreen()
 
     res = app.exec()
-    Api().info("Saphir is terminating with exit code {}".format(res))
+    Api().info(f"Saphir is terminating with exit code {res}")
     sys.exit(res)

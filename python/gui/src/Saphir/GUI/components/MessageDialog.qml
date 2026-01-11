@@ -6,7 +6,16 @@ PanelBase {
     id: root
 
     property alias label: txt.text
-    property var buttonsLabels: [ qsTr("Ok"), qsTr("Cancel") ]
+    property var buttonsLabels: [ labelOk, labelCancel ]
+
+    readonly property string labelOk: qsTr("Ok")
+    readonly property string labelAccept: qsTr("Yes")
+    readonly property string labelReject: qsTr("No")
+    readonly property string labelCancel: qsTr("Cancel")
+
+    signal accepted()
+    signal rejected()
+    signal buttonClicked(string label)
 
     width: implicitWidth
     height: implicitHeight
@@ -59,13 +68,30 @@ PanelBase {
                     color: "#fafafa"
                 }
 
-                Text {
+                StyledText {
+                    id: btnText
                     anchors.fill: parent
                     text: modelData
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                     font.pixelSize: parent.height * 0.4
                     font.capitalization: Font.SmallCaps
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+
+                    onClicked: function() {
+                        if(btnText.text === labelAccept || btnText.text === labelOk) {
+                            root.accepted()
+                        }
+
+                        if(btnText.text === labelCancel || btnText.text === labelReject) {
+                            root.rejected()
+                        }
+
+                        root.buttonClicked(btnText.text)
+                    }
                 }
             }
         }

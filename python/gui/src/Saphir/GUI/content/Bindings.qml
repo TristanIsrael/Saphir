@@ -1,26 +1,87 @@
 import QtQuick
 import Components
+import Saphir
 
 Item {
     id: root
 
     /* Bindings */
-    property bool ready: true
-    property bool running: true
+    property bool ready: ApplicationController.ready
+    property bool analysisReady: ApplicationController.analysisReady 
+    property bool running: false
     property bool infected: false
     property bool used: false
-    property string sourceName: "Untitled in"
-    property string targetName: "Untitled out"
-    property bool ambientLightSensorReady: true
-    property int ambientLight: 100 // 0 (dark) - 100 (sunny)
+    property string sourceName: ApplicationController.sourceName
+    property string targetName: ApplicationController.targetName
+    property bool ambientLightSensorReady: false
+    property int ambientLight: 0 // 0 (dark) - 100 (sunny)
     property int classificationLevel: 0 // to map with an enumeration
-    property string currentFolder: "/Folder 1"
-    property int nbClean: 1052
-    property int nbInfected: 5012
-    property int nbWaiting: 10120
+    property string currentFolder: ApplicationController.currentFolder
+    property int nbClean: ApplicationController.cleanFilesCount
+    property int nbInfected: ApplicationController.infectedFilesCount
+    property int nbAnalyzing: ApplicationController.analysingCount
+    property int nbWaiting: ApplicationController.queueSize - (ApplicationController.cleanFilesCount + ApplicationController.infectedFilesCount + ApplicationController.analysingCount)
+    property int queueSize: ApplicationController.queueSize
 
     /** Models */
-    property var sourceFilesListModel: ListModel {
+    property var sourceFilesListModel: ApplicationController.inputFilesListProxyModel
+
+    property var messages: ApplicationController.messagesListModel
+
+    /* System states */
+    readonly property color systemStateColor: {
+        if(!bindings.ready) {
+            return Environment.colorFilterNotReady
+        } else {
+            if(bindings.infected) {
+                return Environment.colorFilterInfected
+            } else if(bindings.used) {
+                return Environment.colorFilterUsed
+            }
+        }
+
+        return Environment.colorFilterReady
+    }
+
+    /* Functions */
+    function setAnalysisMode(mode) {
+        ApplicationController.analysisMode = mode
+    }
+
+    function updateSourceFilesList() {
+        ApplicationController.update_source_files_list()
+    }
+
+    function goToParentFolder() {
+        console.debug("goToParentFolder() called")
+        ApplicationController.go_to_parent_folder()
+    }
+
+    function goToFolder(folder) {
+        console.debug("goToFolder(", folder, ") called")
+        ApplicationController.go_to_folder(folder)
+    }
+
+    function addToQueue(type, filepath) {
+        console.debug("addToQueue(", type ,", ", filepath, ") called")
+        ApplicationController.enqueue_file(type, filepath)
+    }
+
+    function removeFromQueue(type, filepath) {
+        console.debug("removeFromQueue(", type ,", ", filepath, ") called")
+        ApplicationController.dequeue_file(filepath)
+    }
+
+    /**
+        For development only
+    */
+    ListModel {
+        id: debugMessages
+    }
+
+    ListModel {
+        id:debugSourceListModel
+
         ListElement {
             type: "folder"
             filepath: "/"
@@ -47,55 +108,13 @@ Item {
         }
     }
 
-    property alias messages: messages
-    //property ListModel messages
-
-    /* System states */
-    readonly property color systemStateColor: {
-        if(!bindings.ready) {
-            return Environment.colorFilterNotReady
-        } else {
-            if(bindings.infected) {
-                return Environment.colorFilterInfected
-            } else if(bindings.used) {
-                return Environment.colorFilterUsed
-            }
-        }
-
-        return Environment.colorFilterReady
-    }
-
-    /* Functions */
-    function goToParentFolder() {
-        console.debug("goToParentFolder() called")
-    }
-
-    function goToFolder(folder) {
-        console.debug("goToFolder(", folder, ") called")
-    }
-
-    function addToQueue(type, filepath) {
-        console.debug("addToQueue(", type ,", ", filepath, ") called")
-    }
-
-    function removeFromQueue(type, filepath) {
-        console.debug("removeFromQueue(", type ,", ", filepath, ") called")
-    }
-
-    /**
-        For development only
-    */
-    ListModel {
-        id: messages
-    }
-
     Timer {
         repeat: true
         interval: 1000
 
         running: false
         onTriggered: {
-            root.messages.append({"text": "Bla bla bla" + Math.random()})
+            root.debugMessages.append({"text": "Bla bla bla" + Math.random()})
         }
     }
 

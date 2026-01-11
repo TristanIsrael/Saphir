@@ -24,6 +24,8 @@ QtObject {
     readonly property string iconFile: "\ue24d"
     readonly property string iconFolder: "\ue2c7"
     readonly property string iconFolderUp: "\ue9a3"
+    readonly property string iconChecked: "\uf1fe"
+    readonly property string iconUnchecked: "\ue835"
 
     readonly property string battery_0: "\uf306"
     readonly property string battery_15: "\uf30b"
