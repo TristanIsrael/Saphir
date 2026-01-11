@@ -6,9 +6,10 @@ import Components
 Item {
     id: root
 
-    property int percent: 66
+    property int percent: (bindings.nbFinished / bindings.queueSize)*100
     property real stepPercent: 2.5
     property int totalSteps: Math.ceil(100 / stepPercent)
+    property int remainingTimeInMinutes: bindings.remainingTimeInMinutes
 
     width: implicitWidth
     height: implicitHeight
@@ -29,6 +30,7 @@ Item {
 
         Shape {
             anchors.fill: parent
+            preferredRendererType: Shape.CurveRenderer
 
             ShapePath {
                 strokeWidth: root.thickness
@@ -75,7 +77,7 @@ Item {
         Text {
             Layout.maximumWidth: root.width - root.thickness*2
             Layout.alignment: Qt.AlignHCenter
-            text: "ETA: 32 mn"
+            text: qsTr("ETA: %1 mn").arg(root.remainingTimeInMinutes)
             font.pixelSize: parent.height * 0.1
             color: Environment.colorText
         }

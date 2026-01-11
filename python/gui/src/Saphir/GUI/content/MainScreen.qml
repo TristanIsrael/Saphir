@@ -115,6 +115,22 @@ Window {
             function onAccepted() {
                 bindings.setAnalysisMode(Enums.AnalyseWholeSource)
                 window.dlgAnalyseWholeStorage.visible = false
+                window.pnlFileSelection.visible = false
+                bindings.startFullAnalysis()
+            }
+        }
+
+        Connections {
+            target: window.btnStartStop
+
+            function onClicked() {
+                if(!bindings.analyzing) {
+                    window.pnlFileSelection.visible = false
+                } else {
+                    window.pnlFileSelection.visible = true
+                }
+
+                bindings.startStopAnalysis()
             }
         }
 

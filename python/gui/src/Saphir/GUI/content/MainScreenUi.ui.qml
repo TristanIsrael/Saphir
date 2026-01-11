@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import QtQuick.Controls
 import QtQuick.Effects
 import Components
+import Saphir
 
 Item {
     id: mainWindow
@@ -22,6 +23,7 @@ Item {
     property alias btnShutdown: btnShutdown
     property alias pnlFileSelection: pnlFileSelection
     property alias pnlStartStop: pnlStartStop
+    property alias btnStartStop: btnStartStop
     property alias dlgAnalyseWholeStorage: dlgAnalyseWholeStorage
 
     property bool menuThemesOpened: false
@@ -230,7 +232,7 @@ Item {
         RoundButton {
             id: btnStartStop
             flat: true
-            icon: bindings.running ? Constants.iconPause : Constants.iconStart
+            icon: bindings.analyzing ? Constants.iconPause : Constants.iconStart
         }
     }
 
@@ -292,7 +294,7 @@ Item {
         AnalysisPanel {
             id: pnlAnalysis
             anchors.fill: parent
-            visible: bindings.ready && bindings.running
+            visible: bindings.ready && (bindings.analyzing || bindings.systemState === Enums.AnalysisCompleted)
         }
     }
 

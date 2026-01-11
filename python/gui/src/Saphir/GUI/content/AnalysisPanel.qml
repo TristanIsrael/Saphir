@@ -32,7 +32,6 @@ Item {
                         fill: parent
                         margins: 5
                     }
-
                 }
             }
 
@@ -67,7 +66,7 @@ Item {
                 }
                 clip: true
 
-                model: bindings.sourceFilesListModel
+                model: bindings.queueListModel
                 spacing: 10
                 property int rowHeight: 25
 

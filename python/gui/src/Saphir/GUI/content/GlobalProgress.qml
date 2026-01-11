@@ -11,7 +11,7 @@ Item {
     implicitWidth: 400
     implicitHeight: 400
 
-    property int total: bindings.nbClean + bindings.nbInfected + bindings.nbWaiting
+    property int total: bindings.queueSize
 
     property real radius: Math.min(width, height)/2 - 10
     property real thickness: 30
@@ -21,6 +21,8 @@ Item {
     // --- Section 1 : Clean ---
     Shape {
         anchors.fill: parent
+        preferredRendererType: Shape.CurveRenderer
+
         ShapePath {
             strokeWidth: thickness
             strokeColor: Environment.colorClean

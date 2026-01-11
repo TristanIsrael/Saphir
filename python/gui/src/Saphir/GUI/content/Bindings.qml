@@ -8,7 +8,7 @@ Item {
     /* Bindings */
     property bool ready: ApplicationController.ready
     property bool analysisReady: ApplicationController.analysisReady 
-    property bool running: false
+    property bool analyzing: ApplicationController.systemState === Enums.SystemAnalysisRunning
     property bool infected: false
     property bool used: false
     property string sourceName: ApplicationController.sourceName
@@ -21,11 +21,14 @@ Item {
     property int nbInfected: ApplicationController.infectedFilesCount
     property int nbAnalyzing: ApplicationController.analysingCount
     property int nbWaiting: ApplicationController.queueSize - (ApplicationController.cleanFilesCount + ApplicationController.infectedFilesCount + ApplicationController.analysingCount)
+    property int nbFinished: nbInfected + nbClean
     property int queueSize: ApplicationController.queueSize
+    property int remainingTimeInMinutes: ApplicationController.remainingTime
+    property int systemState: ApplicationController.systemState
 
     /** Models */
     property var sourceFilesListModel: ApplicationController.inputFilesListProxyModel
-
+    property var queueListModel: ApplicationController.queueListModel
     property var messages: ApplicationController.messagesListModel
 
     /* System states */
@@ -53,23 +56,27 @@ Item {
     }
 
     function goToParentFolder() {
-        console.debug("goToParentFolder() called")
         ApplicationController.go_to_parent_folder()
     }
 
     function goToFolder(folder) {
-        console.debug("goToFolder(", folder, ") called")
         ApplicationController.go_to_folder(folder)
     }
 
     function addToQueue(type, filepath) {
-        console.debug("addToQueue(", type ,", ", filepath, ") called")
         ApplicationController.enqueue_file(type, filepath)
     }
 
     function removeFromQueue(type, filepath) {
-        console.debug("removeFromQueue(", type ,", ", filepath, ") called")
         ApplicationController.dequeue_file(filepath)
+    }
+
+    function startFullAnalysis() {
+        ApplicationController.start_full_analysis()
+    }
+
+    function startStopAnalysis() {        
+        ApplicationController.start_stop_analysis()        
     }
 
     /**
