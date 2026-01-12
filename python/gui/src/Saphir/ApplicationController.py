@@ -476,7 +476,7 @@ class ApplicationController(QObject):
         self.ready_ = True
         self.readyChanged.emit(self.ready_)
 
-        self.__messages_model.addMessage(self.tr("Saphir has started... Waiting for the antiviruses..."))
+        self.__messages_model.addMessage(self.tr("Saphir has started... Waiting for the components to be ready."))
 
     def __on_message_received(self, topic:str, payload:dict):      
         # ATTENTION : cette fonction est appelée depuis un autre thread
@@ -519,8 +519,14 @@ class ApplicationController(QObject):
     @Slot()
     def shutdown(self):
         self.__set_system_state(SystemState.SystemShuttingDown)
+        self.__messages_model.addMessage(self.tr("The system is shutting down..."))
         Api().shutdown()
 
+    @Slot()
+    def restart(self):
+        self.__set_system_state(SystemState.SystemResetting)
+        self.__messages_model.addMessage(self.tr("Restarting is not implemented..."))
+        # TODO
 
     def __check_components_availability(self):
         states = self.componentsHelper_.get_states()

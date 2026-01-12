@@ -84,6 +84,7 @@ Window {
 
             function onClicked() {
                 window.mainMenuOpened = !window.mainMenuOpened
+                window.dlgRestart.visible = true
             }
         }
 
@@ -92,6 +93,7 @@ Window {
 
             function onClicked() {
                 window.mainMenuOpened = !window.mainMenuOpened
+                window.dlgShutdown.visible = true
             }
         }
 
@@ -149,6 +151,34 @@ Window {
 
             function onButtonClicked() {
                 window.dlgLog.visible = false
+            }
+        }
+
+        Connections {
+            target: window.dlgRestart
+
+            function onAccepted() {
+                bindings.restart()
+                window.dlgRestart.visible = false
+                window.pnlMessages.visible = true
+            }
+
+            function onRejected() {
+                window.dlgRestart.visible = false
+            }
+        }
+
+        Connections {
+            target: window.dlgShutdown
+
+            function onAccepted() {
+                bindings.shutdown()
+                window.dlgShutdown.visible = false
+                window.pnlMessages.visible = true
+            }
+
+            function onRejected() {
+                window.dlgShutdown.visible = false
             }
         }
 

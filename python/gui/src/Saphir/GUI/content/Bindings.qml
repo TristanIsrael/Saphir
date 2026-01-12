@@ -84,6 +84,14 @@ Item {
     function startStopAnalysis() {        
         ApplicationController.start_stop_analysis()        
     }
+    
+    function restart() {
+        ApplicationController.restart()
+    }
+
+    function shutdown() {
+        ApplicationController.shutdown()
+    }
 
     /**
         For development only

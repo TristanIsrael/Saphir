@@ -27,6 +27,9 @@ Item {
     property alias dlgAnalyseWholeStorage: dlgAnalyseWholeStorage
     property alias dlgSystemState: dlgSystemState
     property alias dlgLog: dlgLog
+    property alias dlgShutdown: dlgShutdown
+    property alias dlgRestart: dlgRestart
+    property alias pnlMessages: pnlMessages
 
     property bool menuThemesOpened: false
     property bool mainMenuOpened: false
@@ -240,7 +243,7 @@ Item {
 
     /* Messages panel */
     MessagesPanel {
-        id: messagesPanel
+        id: pnlMessages
 
         anchors {
             horizontalCenter: parent.horizontalCenter
@@ -273,6 +276,28 @@ Item {
         visible: false
 
         label: qsTr("Do you want to analyze the whole storage?")
+        buttonsLabels: ["Yes", "No"]
+        handheld: bindings.handheld
+    }
+
+    MessageDialog {
+        id: dlgRestart
+
+        anchors.centerIn: parent
+        visible: false
+
+        label: qsTr("Do you want to restart the system?")
+        buttonsLabels: ["Yes", "No"]
+        handheld: bindings.handheld
+    }
+
+    MessageDialog {
+        id: dlgShutdown
+
+        anchors.centerIn: parent
+        visible: false
+
+        label: qsTr("Do you want to shutdown the system?")
         buttonsLabels: ["Yes", "No"]
         handheld: bindings.handheld
     }
