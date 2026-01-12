@@ -1,4 +1,4 @@
-from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Signal, Slot
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal, Slot
 from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray, qDebug
 from Enums import Roles, FileStatus
 from psec import Api, Topics, Logger
@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 
 
-class LogListModel(QAbstractItemModel):
+class LogListModel(QAbstractTableModel):
     
     # Variables
     __logs = list()
@@ -14,12 +14,11 @@ class LogListModel(QAbstractItemModel):
 
 
     def __init__(self, parent=None):
-        super().__init__(parent)        
-
+        super().__init__(parent)
 
     def listen_to_logs(self):        
         Api().add_message_callback(self.__on_message)
-        Api().subscribe("{}/#".format(Topics.EVENTS))        
+        Api().subscribe(f"{Topics.EVENTS}/#")
 
     def index(self, row:int, column:int, parent=QModelIndex()) -> QModelIndex:
         return self.createIndex(row, column, parent)
@@ -27,6 +26,8 @@ class LogListModel(QAbstractItemModel):
     def rowCount(self, parent=QModelIndex()):
         return len(self.__logs)
         
+    def columnCount(self, parent=QModelIndex()):
+        return 3
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
@@ -37,29 +38,19 @@ class LogListModel(QAbstractItemModel):
 
         txt = None
 
-        if role == Roles.RoleDateTime:
-            txt = log.get("datetime", "inconnue")
-        elif role == Roles.RoleLogModule:
-            txt = log.get("module", "inconnu")
-        elif role == Roles.RoleLogDescription:
-            txt = log.get("description", "inconnu")
+        if index.column() == 0:
+            txt = log.get("datetime", self.tr("inconnue"))
+        elif index.column() == 1:
+            txt = log.get("module", self.tr("inconnu"))
+        elif index.column() == 2:
+            txt = log.get("description", self.tr("inconnu"))
 
         return txt
 
-    
-    def roleNames(self) -> dict:
-        roles = {
-            Roles.RoleDateTime: b'datetime',
-            Roles.RoleLogModule: b'module',
-            Roles.RoleLogDescription: b'description'
-        }
-
-        return roles
-
     def __on_message(self, topic:str, payload:dict):
-        if topic.startswith("{}".format(Topics.EVENTS)):
+        if topic.startswith(f"{Topics.EVENTS}"):
             #print("{} < {}".format(Logger.loglevel_from_topic(topic), self.__loglevel))
-            if Logger.loglevel_from_topic(topic) < self.__loglevel:                
+            if Logger.loglevel_from_topic(topic) < self.__loglevel:
                 return
 
             rows = len(self.__logs)

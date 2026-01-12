@@ -2,6 +2,8 @@ pragma Singleton
 import QtQuick
 
 QtObject {
+    id: qtObject
+    readonly property color colorOverlay: "#bb010101"
     readonly property color colorDark: "#010101"
     readonly property color colorClear: "#eaeaea"
     readonly property color colorBg: "#333333"

@@ -16,6 +16,7 @@ from DevModeHelper import DevModeHelper
 from ComponentsModel import ComponentsModel
 from ReportController import ReportController
 from MessagesListModel import MessagesListModel
+from SystemInformationModel import SystemInformationModel
 from libsaphir import ANTIVIRUS_NEEDED, DEVMODE
 from pathlib import Path
 from EMAETAEstimator import EMAETAEstimator
@@ -64,10 +65,12 @@ class ApplicationController(QObject):
     __disk_controller_ready = False
     __long_process_running = False
     __system_used = False
-    __system_information = dict()
+    #__system_information = dict()
     __copied_files_count = 0
     __eta_estimator = None
     __messages_model = MessagesListModel() 
+    __system_information_model = None
+    __handheld = True
     
     #__interfaceInputs = None
     #__main_window:QWidget
@@ -110,7 +113,7 @@ class ApplicationController(QObject):
     systemUsedChanged = Signal()
     systemMustBeReset = Signal()
     doResetSystem = Signal()
-    systemInformationChanged = Signal()
+    #systemInformationChanged = Signal()
     transferStartedChanged = Signal()
 
     # IO
@@ -157,7 +160,7 @@ class ApplicationController(QObject):
 
         self.__report_controller = ReportController(self)
         self.__report_controller.reportGenerated.connect(self.__on_report_generated)        
-
+        self.__system_information_model = SystemInformationModel(self.__handheld)
 
     def start(self, ready_callback):
         if DEVMODE:
@@ -760,15 +763,18 @@ class ApplicationController(QObject):
         
         self.battery_level_ = payload.get("battery_level", 0)
         self.batteryLevelChanged.emit()
+        self.__system_information_model.set_battery_level(self.battery_level_)
         self.plugged_ = bool(payload.get("plugged", False))
         self.pluggedChanged.emit()
+        self.__system_information_model.set_power_plugged(self.plugged_)
 
     def __handle_system_info(self, payload:dict):
         if not MqttHelper.check_payload(payload, ["core", "system"]):
             return
         
-        self.__system_information = payload
-        self.systemInformationChanged.emit()    
+        #self.__system_information = payload
+        self.__system_information_model.information_updated(payload)
+        #self.systemInformationChanged.emit()
 
     def __handle_create_file(self, payload:dict):
         disk = payload.get("disk", "")
@@ -1139,12 +1145,18 @@ class ApplicationController(QObject):
     def __get_system_information(self):
         return self.__system_information
     
+    def __get_handheld(self):
+        return self.__handheld
+
     def __transfer_started(self):
         return self.__system_state == SystemState.CopyCleanFiles
 
     def __get_messages_model(self):
         return self.__messages_model
-    
+
+    def __get_system_information_model(self):
+        return self.__system_information_model
+
     @Slot(str)
     def is_file_in_queue(self, filepath:str) -> bool:
         return filepath in self.__queuedFilesList
@@ -1155,11 +1167,6 @@ class ApplicationController(QObject):
         #print(filepath, present, self.__queuedFilesList)
         #return present
 
-    '''def set_main_window(self, window:QWidget):
-        self.__main_window = window
-        self.mousePointer = MousePointer(window.contentItem())
-        self.start_io_monitoring()
-    '''
     
     ready = Property(bool, __ready, __set_ready, notify=readyChanged) 
     currentFolder = Property(str, __current_folder, notify=currentFolderChanged)
@@ -1202,5 +1209,7 @@ class ApplicationController(QObject):
     longProcessRunning = Property(bool, __is_long_process_running, notify=longProcessRunningChanged)
     systemUsed = Property(bool, __is_system_used, notify=systemUsedChanged)
     componentsModel = Property(QObject, __get_components_model, constant=True)
-    systemInformation = Property(dict, __get_system_information, notify=systemInformationChanged)
+    #systemInformation = Property(dict, __get_system_information, notify=systemInformationChanged)
     messagesListModel = Property(QObject, __get_messages_model, constant=True)
+    systemInformationModel = Property(QObject, __get_system_information_model, constant=True)
+    handheld = Property(bool, __get_handheld, constant=True)

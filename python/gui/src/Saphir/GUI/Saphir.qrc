@@ -11,6 +11,7 @@
         <file>components/PanelBase.qml</file>
         <file>components/qmldir</file>
         <file>components/RoundButton.qml</file>
+        <file>components/SimpleDialog.qml</file>
         <file>components/StyledText.qml</file>
         <file>content/AnalysisPanel.qml</file>
         <file>content/Bindings.qml</file>
@@ -28,6 +29,7 @@
         <file>content/images/icn_antivirus.png</file>
         <file>content/images/icn_disk.png</file>
         <file>content/images/Logo.png</file>
+        <file>content/LogDialog.qml</file>
         <file>content/MainScreen.qml</file>
         <file>content/MainScreenUi.ui.qml</file>
         <file>content/MessagesPanel.qml</file>
@@ -40,6 +42,7 @@
         <file>content/shaders/gradient.frag.qsb</file>
         <file>content/shaders/invert_alpha.frag</file>
         <file>content/shaders/invert_alpha.frag.qsb</file>
+        <file>content/SystemStateDialog.qml</file>
         <file>content/TopBar.qml</file>
         <file>content/TopBarUi.ui.qml</file>
         <file>qtquickcontrols2.conf</file>

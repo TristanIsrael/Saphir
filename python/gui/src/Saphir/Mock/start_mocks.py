@@ -8,7 +8,7 @@ import threading
 
 
 if __name__ == "__main__":
-    print("Démarrage des mocks...")
+    print("Démarrage desx mocks...")
 
     verrou_synchro = threading.Event()
 

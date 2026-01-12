@@ -10,4 +10,5 @@ MessageDialog 1.0 MessageDialog.qml
 PanelBase 1.0 PanelBase.qml
 Panel 1.0 Panel.qml
 RoundButton 1.0 RoundButton.qml
+SimpleDialog 1.0 SimpleDialog.qml
 StyledText 1.0 StyledText.qml

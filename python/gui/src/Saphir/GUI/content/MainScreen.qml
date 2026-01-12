@@ -66,6 +66,7 @@ Window {
 
             function onClicked() {
                 window.mainMenuOpened = !window.mainMenuOpened
+                window.dlgSystemState.visible = true
             }
         }
 
@@ -74,6 +75,7 @@ Window {
 
             function onClicked() {
                 window.mainMenuOpened = !window.mainMenuOpened
+                window.dlgLog.visible = true
             }
         }
 
@@ -131,6 +133,22 @@ Window {
                 }
 
                 bindings.startStopAnalysis()
+            }
+        }
+
+        Connections {
+            target: window.dlgSystemState
+
+            function onButtonClicked() {
+                window.dlgSystemState.visible = false
+            }
+        }
+
+        Connections {
+            target: window.dlgLog
+
+            function onButtonClicked() {
+                window.dlgLog.visible = false
             }
         }
 

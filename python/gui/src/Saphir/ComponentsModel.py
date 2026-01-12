@@ -5,12 +5,11 @@ import humanize
 import collections
 
 
-class ComponentsModel(QAbstractTableModel):    
+class ComponentsModel(QAbstractTableModel):
 
     def __init__(self, components_helper:ComponentsHelper, parent=None):
         super().__init__(parent)       
         self.__components_helper = components_helper
-
 
     def rowCount(self, parent=QModelIndex()):        
         return len(self.__components_helper.get_components())
@@ -37,7 +36,14 @@ class ComponentsModel(QAbstractTableModel):
             return component.get("label", "err")
         elif index.column() == 2:
             state = component.get("state", EtatComposant.UNKNOWN)
-            return state.value
+            if state == EtatComposant.STARTING:
+                return self.tr("Starting")
+            elif state == EtatComposant.READY:
+                return self.tr("Ready")
+            elif state == EtatComposant.ERROR:
+                return self.tr("Error")
+            else:
+                return self.tr("Unknown")
         
         return None    
 

@@ -15,6 +15,13 @@ QtObject {
     property int mainHeight: 800    
 
     /** Colors */
+    property color colorOverlay: {
+        switch(root.theme) {
+            case Constants.wireframe : return ThemeWireframe.colorOverlay;
+            case Constants.dark: return ThemeDark.colorOverlay;
+        }
+    }
+
     property color colorDark: {
         switch(root.theme) {
             case Constants.wireframe : return ThemeWireframe.colorDark;

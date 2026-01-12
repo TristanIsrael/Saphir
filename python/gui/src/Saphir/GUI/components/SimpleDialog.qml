@@ -5,9 +5,10 @@ import Components
 Rectangle {
     id: itemRoot
 
-    property bool handheld: true
-    property alias label: txt.text
+    property bool handheld: false
+    property bool overlay: false
     property var buttonsLabels: [ labelOk, labelCancel ]
+    property var contentItem: Item { width: 400; height: 300}
 
     readonly property string labelOk: qsTr("Ok")
     readonly property string labelAccept: qsTr("Yes")
@@ -18,9 +19,11 @@ Rectangle {
     signal rejected()
     signal buttonClicked(string label)
 
-    implicitWidth: handheld ? Environment.mainWidth : root.implicitWidth
-    implicitHeight: handheld ? Environment.mainHeight : root.implicitHeight
-    color: handheld ? Environment.colorOverlay : "transparent"
+    width: implicitWidth
+    height: implicitHeight
+    implicitWidth: overlay || handheld ? Environment.mainWidth : root.width
+    implicitHeight: overlay || handheld ? Environment.mainHeight : root.height
+    color: overlay || handheld ? Environment.colorOverlay : "transparent"
     z: 100
 
     PanelBase {
@@ -28,28 +31,12 @@ Rectangle {
 
         anchors.centerIn: parent
 
-        width: implicitWidth
-        height: implicitHeight
-        implicitWidth: Environment.mainWidth/3
-        implicitHeight: Environment.mainHeight/3
+        width: itemRoot.contentItem.width
+        height: itemRoot.handheld ? itemRoot.contentItem.height : itemRoot.contentItem.height + lyt.height + 10
         radius: 10
 
-        Text {
-            id: txt
-            anchors {
-                top: parent.top
-                left: parent.left
-                right: parent.right
-                bottom: itemRoot.handheld ? parent.bottom : lyt.top
-                margins: height/10
-            }
-
-            text: "Message dialog"
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            color: Environment.colorText
-            font.pixelSize: height
-            fontSizeMode: Text.HorizontalFit
+        Component.onCompleted: {
+            root.children.push(itemRoot.contentItem)
         }
 
         RowLayout {
@@ -73,7 +60,7 @@ Rectangle {
 
                 Rectangle {
                     width: 100
-                    height: 50
+                    height: 50                    
 
                     color: "transparent"
                     border {
@@ -82,7 +69,7 @@ Rectangle {
                     }
 
                     StyledText {
-                        id: btnText
+                        id: btnText                        
                         anchors.fill: parent
                         text: modelData
                         horizontalAlignment: Text.AlignHCenter
@@ -116,7 +103,7 @@ Rectangle {
     // Buttons for handheld mode
     Repeater {
         id: rptButtonsHandheld
-        model: buttonsLabels        
+        model: buttonsLabels
 
         Panel {
             width: 100
@@ -159,7 +146,6 @@ Rectangle {
 
                     itemRoot.buttonClicked(btnText2.text)
                 }
-
             }
         }
     }

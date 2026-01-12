@@ -25,6 +25,8 @@ Item {
     property alias pnlStartStop: pnlStartStop
     property alias btnStartStop: btnStartStop
     property alias dlgAnalyseWholeStorage: dlgAnalyseWholeStorage
+    property alias dlgSystemState: dlgSystemState
+    property alias dlgLog: dlgLog
 
     property bool menuThemesOpened: false
     property bool mainMenuOpened: false
@@ -75,7 +77,7 @@ Item {
 
         x: btnLowVisibility.width * 0.25
         y: parent.height - ((height * 1.25) * 2)
-        z: 100
+        z: 99
         height: lytMenuThemes.height
         width: mainWindow.menuThemesOpened ? lytMenuThemes.width : btnLowVisibility.width * 1.2
         clip: false
@@ -139,7 +141,7 @@ Item {
 
         x: btnShutdown.width * 0.25
         y: parent.height - (height * 1.25)
-        z: 100
+        z: 99
         height: lytMainMenu.height
         width: mainWindow.mainMenuOpened ? lytMainMenu.width : btnShutdown.width * 1.2
         clip: false
@@ -246,7 +248,8 @@ Item {
             bottomMargin: parent.height * 0.05
         }
 
-        visible: !bindings.ready || (bindings.ready && bindings.sourceName === "")
+        visible: !bindings.ready || (bindings.ready
+                                     && bindings.sourceName === "")
         radius: 10
     }
 
@@ -260,6 +263,7 @@ Item {
 
         label: qsTr("Please connect a storage")
         buttonsLabels: []
+        handheld: bindings.handheld
     }
 
     MessageDialog {
@@ -270,6 +274,25 @@ Item {
 
         label: qsTr("Do you want to analyze the whole storage?")
         buttonsLabels: ["Yes", "No"]
+        handheld: bindings.handheld
+    }
+
+    /* System state */
+    SystemStateDialog {
+        id: dlgSystemState
+
+        anchors.centerIn: parent
+        visible: false
+        handheld: bindings.handheld
+    }
+
+    /* System log */
+    LogDialog {
+        id: dlgLog
+
+        anchors.centerIn: parent
+        visible: false
+        handheld: bindings.handheld
     }
 
     /* Main Panel */
@@ -294,7 +317,9 @@ Item {
         AnalysisPanel {
             id: pnlAnalysis
             anchors.fill: parent
-            visible: bindings.ready && (bindings.analyzing || bindings.systemState === Enums.AnalysisCompleted)
+            visible: bindings.ready
+                     && (bindings.analyzing
+                         || bindings.systemState === Enums.AnalysisCompleted)
         }
     }
 

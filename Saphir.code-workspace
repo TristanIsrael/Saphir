@@ -7,6 +7,9 @@
         {
             "name": "Panoptiscan",
             "path": "../Panoptiscan"
+        },
+        {
+            "path": "../PSEC"
         }
     ],    
     "settings": {

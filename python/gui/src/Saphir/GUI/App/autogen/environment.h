@@ -8,8 +8,8 @@
 #include <QGuiApplication>
 #include "qqmlextensionplugin.h"
 
-Q_IMPORT_QML_PLUGIN(ThemesPlugin)
 Q_IMPORT_QML_PLUGIN(SaphirPlugin)
+Q_IMPORT_QML_PLUGIN(ThemesPlugin)
 
 const char mainQmlFile[] = "qrc:/qt/qml/content/MainScreen.qml";
 

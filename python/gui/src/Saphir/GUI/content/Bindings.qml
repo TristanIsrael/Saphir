@@ -6,11 +6,14 @@ Item {
     id: root
 
     /* Bindings */
+    property bool handheld: ApplicationController.handheld
     property bool ready: ApplicationController.ready
     property bool analysisReady: ApplicationController.analysisReady 
     property bool analyzing: ApplicationController.systemState === Enums.SystemAnalysisRunning
-    property bool infected: false
-    property bool used: false
+    property bool infected: nbInfected > 0
+    property bool used: nbFinished > 0
+    property int batteryLevel: ApplicationController.batteryLevel
+    property bool plugged: ApplicationController.plugged
     property string sourceName: ApplicationController.sourceName
     property string targetName: ApplicationController.targetName
     property bool ambientLightSensorReady: false
@@ -30,6 +33,9 @@ Item {
     property var sourceFilesListModel: ApplicationController.inputFilesListProxyModel
     property var queueListModel: ApplicationController.queueListModel
     property var messages: ApplicationController.messagesListModel
+    property var componentsModel: ApplicationController.componentsModel
+    property var systemInformationModel: ApplicationController.systemInformationModel
+    property var logModel: ApplicationController.logListModel
 
     /* System states */
     readonly property color systemStateColor: {

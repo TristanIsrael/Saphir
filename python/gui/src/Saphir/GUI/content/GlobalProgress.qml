@@ -94,7 +94,7 @@ Item {
             Layout.maximumWidth: root.width - root.thickness*2
             Layout.alignment: Qt.AlignHCenter
             horizontalAlignment: Text.AlignHCenter
-            text: root.total
+            text: bindings.nbWaiting
             font.pixelSize: parent.height * 0.25
             font.bold: true
             fontSizeMode: Text.HorizontalFit

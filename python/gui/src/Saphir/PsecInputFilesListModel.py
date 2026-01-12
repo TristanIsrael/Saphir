@@ -1,16 +1,12 @@
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, Signal, Slot, qDebug
 from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray
-from Constants import LIBELLE_DOSSIER_PRECEDENT
 from Enums import Roles, FileStatus
 from psec import Api
 import humanize
 import collections
 
 
-class PsecInputFilesListModel(QAbstractListModel):
-    
-    # Constantes    
-    LibelleDossierPrecedent = "**UP**"
+class PsecInputFilesListModel(QAbstractListModel):    
 
     # Signaux publics
     fichierAjoute = Signal()
@@ -71,12 +67,7 @@ class PsecInputFilesListModel(QAbstractListModel):
 
         if role == Roles.RoleSelected:
             if fichier["type"] == "file":
-                return fichier["selected"]
-            elif (
-                fichier["type"] == "folder"
-                and fichier["name"] != self.LibelleDossierPrecedent
-            ):
-                return fichier["selected"]
+                return fichier["selected"]            
             
             return False        
         
