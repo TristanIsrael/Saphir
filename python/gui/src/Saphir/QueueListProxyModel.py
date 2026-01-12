@@ -83,6 +83,6 @@ class QueueListProxyModel(QSortFilterProxyModel):
         #self.invalidateFilter()
 
 
-    filtreSains = Property(bool, __get_filtre_sains, __set_filtre_sains, notify=filtreSainsChanged)
-    filtreInfectes = Property(bool, __get_filtre_infectes, __set_filtre_infectes, notify=filtreInfectesChanged)
-    filtreAutres = Property(bool, __get_filtre_autres, __set_filtre_autres, notify=filtreAutresChanged)
+    filterClean = Property(bool, __get_filtre_sains, __set_filtre_sains, notify=filtreSainsChanged)
+    filterInfected = Property(bool, __get_filtre_infectes, __set_filtre_infectes, notify=filtreInfectesChanged)
+    filterOther = Property(bool, __get_filtre_autres, __set_filtre_autres, notify=filtreAutresChanged)

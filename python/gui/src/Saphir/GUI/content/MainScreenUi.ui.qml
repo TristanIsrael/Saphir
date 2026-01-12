@@ -303,7 +303,7 @@ Item {
             leftMargin: pnlMainMenu.x * 2 + btnMainMenu.width * 1.2
             right: pnlStartStop.left
             bottom: parent.bottom
-            margins: root.height * 0.05
+            margins: mainWindow.height * 0.05
         }
 
         /* File selection */

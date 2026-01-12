@@ -147,7 +147,7 @@ class ApplicationController(QObject):
         self.sourceNameChanged.connect(self.inputFilesListModel_.onSourceChanged)
 
         self.inputFilesListProxyModel_ = PsecInputFilesListProxyModel(self.inputFilesListModel_, self)
-        self.queueListModel_ = QueueListModel(self.__queuedFilesList, self.analysisComponents_, self)
+        self.queueListModel_ = QueueListModel(self.__queuedFilesList, self)
         self.__queueListProxyModel = QueueListProxyModel(self.queueListModel_, self)
         self.fileUpdated.connect(self.queueListModel_.on_file_updated)
         self.queueUpdated.connect(self.queueListModel_.reset)
@@ -159,7 +159,7 @@ class ApplicationController(QObject):
         self.__thread_pool = ThreadPoolExecutor(max_workers=1)
 
         self.__report_controller = ReportController(self)
-        self.__report_controller.reportGenerated.connect(self.__on_report_generated)        
+        self.__report_controller.reportGenerated.connect(self.__on_report_generated)
         self.__system_information_model = SystemInformationModel(self.__handheld)
 
     def start(self, ready_callback):

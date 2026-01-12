@@ -22,10 +22,9 @@ class QueueListModel(QAbstractListModel):
     filtreInfectesChanged = Signal()
     filtreAutresChanged = Signal()
     
-    def __init__(self, files:dict, analysisComponents:list, parent=None):
+    def __init__(self, files:dict, parent=None):
         super().__init__(parent)
         self.__fichiers = files
-        self.__analysisComponents = analysisComponents
         self.__set_regle_filtrage_auto()
         self.__make_cache()
 
@@ -60,7 +59,7 @@ class QueueListModel(QAbstractListModel):
             #qDebug("{} -> {} ({})".format(fichier.get("name"), fichier.get("status", FileStatus.FileStatusUndefined), fichier.get("status", FileStatus.FileStatusUndefined).value))
             return fichier.get("status", FileStatus.FileStatusUndefined).value
         
-        if role == Roles.RoleProgress:            
+        if role == Roles.RoleProgress:
             return fichier.get("progress", 0)
         
         if role == Roles.RoleInfected:
@@ -117,7 +116,7 @@ class QueueListModel(QAbstractListModel):
             return
 
         # On cherche le fichier dans le cache
-        row = next(( (i, item) for i, item in enumerate(self.__cache) if item["filepath"] == filepath), None)        
+        row = next(( (i, item) for i, item in enumerate(self.__cache) if item["filepath"] == filepath), None)
 
         # On calcule la liste des status à filtrer
         filtres = self.__calcule_filtres()
@@ -142,7 +141,7 @@ class QueueListModel(QAbstractListModel):
             
         i, fichier = row
 
-        # On retire le fichier du cache si son status est incompatible avec les filtres        
+        # On retire le fichier du cache si son status est incompatible avec les filtres
         if "status" in fields and fichier["status"] not in filtres:
             print(f"retrait du fichier {fichier["filepath"]} à l'index {i}")
             self.beginRemoveRows(QModelIndex(), i, i)
@@ -170,39 +169,13 @@ class QueueListModel(QAbstractListModel):
             self.dataChanged.emit(idx, idx, roles)
         except Exception as e:
             print(e)
-       
-
-    '''
-    @Slot()
-    def on_file_added(self):        
-        # Cette fonction peut être appelée plusieurs fois alors que les données
-        #sont déjà dans la liste des fichiers.       
-        nbFichiers = len(self.__fichiers)
-        if nbFichiers == self.__row_count:
-            # La liste des fichiers est déjà complètement affichée
-            return
-        
-        # On n'ajoute l'élément que s'il est compatible avec le filtrage
-        filtres = self.__calculeFiltres()
-
-        self.beginInsertRows(QModelIndex(), self.__row_count, nbFichiers-1)
-        self.__row_count = nbFichiers
-        self.endInsertRows()       
-        
-    @Slot(str)
-    def on_file_removed(self, filepath:str):
-        pass
-        self.beginResetModel()
-        self.__row_count -= 1
-        self.endResetModel()
-    '''
 
     def get_filtre_sains(self):
         return self.__filtreSains
 
     def set_filtre_sains(self, filtre:bool):
-        self.__filtreSains = filtre
         self.beginResetModel()
+        self.__filtreSains = filtre
         self.__make_cache()
         self.endResetModel()
         #self.filtreSainsChanged.emit()
@@ -221,8 +194,8 @@ class QueueListModel(QAbstractListModel):
         return self.__filtreAutres
 
     def set_filtre_autres(self, filtre:bool):
-        self.__filtreAutres = filtre
         self.beginResetModel()
+        self.__filtreAutres = filtre
         self.__make_cache()
         self.endResetModel()
         #self.filtreAutresChanged.emit()
@@ -250,6 +223,6 @@ class QueueListModel(QAbstractListModel):
         return filtres
 
 
-    filtreSains = Property(bool, get_filtre_sains, set_filtre_sains, notify=filtreSainsChanged)
-    filtreInfectes = Property(bool, get_filtre_infectes, set_filtre_infectes, notify=filtreInfectesChanged)
-    filtreAutres = Property(bool, get_filtre_autres, set_filtre_autres, notify=filtreAutresChanged)
+    filterClean = Property(bool, get_filtre_sains, set_filtre_sains, notify=filtreSainsChanged)
+    filterInfected = Property(bool, get_filtre_infectes, set_filtre_infectes, notify=filtreInfectesChanged)
+    filterOther = Property(bool, get_filtre_autres, set_filtre_autres, notify=filtreAutresChanged)

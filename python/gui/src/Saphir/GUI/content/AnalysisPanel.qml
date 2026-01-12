@@ -7,6 +7,11 @@ import Saphir
 Item {
     id: main    
 
+    width: implicitWidth
+    height: implicitHeight
+    implicitWidth: Environment.mainWidth * 0.9
+    implicitHeight: Environment.mainHeight * 0.9
+
     ColumnLayout  {
         id: colLyt
 
@@ -15,8 +20,8 @@ Item {
 
         /* Progress */
         RowLayout {
-            //Layout.fillHeight: true
-            Layout.preferredHeight: parent.height * 0.5
+            Layout.fillHeight: true
+            Layout.maximumHeight: parent.height/3
             Layout.fillWidth: true
             spacing: height/20
 
@@ -55,161 +60,221 @@ Item {
 
         PanelBase {
             Layout.preferredWidth: parent.width
-            Layout.preferredHeight: parent.height * 0.5
+            Layout.fillHeight: true
             radius: 10
 
-            ListView {
-                id: fileListListView                
+            ColumnLayout {
                 anchors {
                     fill: parent
                     margins: parent.height * 0.05
                 }
-                clip: true
 
-                model: bindings.queueListModel
-                spacing: 10
-                property int rowHeight: 25
+                RowLayout {
+                    Layout.fillWidth: true
 
-                Component.onCompleted: {
-                    fileListListView.flickEnded.connect(snapToRow)
-                }
-
-                onContentYChanged: {
-                    if(!fileListListView.flicking && !fileListListView.moving) {
-                        snapToRow()
-                    }
-                }
-
-                function snapToRow() {
-                    var totalRowHeight = fileListListView.rowHeight + fileListListView.spacing
-                    var targetRow = Math.round(contentY / totalRowHeight)
-                    var targetY = targetRow * totalRowHeight
-                    if(contentY !== targetY) {
-                        contentY = targetY
-                    }
-                }
-
-                WheelHandler {
-                    onWheel: (event)=> {
-                        var totalRowHeight = fileListListView.rowHeight + fileListListView.spacing
-                        var delta = event.angleDelta.y > 0 ? -1 : 1
-                        let targetRow = Math.round(fileListListView.contentY / totalRowHeight) + delta
-                        targetRow = Math.max(0, Math.min(targetRow, fileListListView.count - 1))
-                        fileListListView.contentY = targetRow * totalRowHeight
-                    }
-                }
-
-                flickableDirection: Flickable.VerticalFlick
-                ScrollBar.vertical: ScrollBar
-                {
-                    id: scrollbar
-                    policy: parent.contentHeight > parent.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
-                    width:parent.width*0.03
-                    background: Rectangle {
-                        implicitWidth: parent.parent.width*0.01
-                        color: "#00000000"  // Couleur du fond de la scrollbar
-                        radius: 6
-                        border.color: Environment.colorText
-                    }
-
-                    contentItem: Rectangle {
-                        implicitWidth: parent.parent.width*0.01
-                        color: Environment.colorText  // Couleur de la barre de défilement
-                        radius: 6
-                    }
-                }
-
-                delegate : RowLayout {
-                    width: fileListListView.width - scrollbar.width
-                    height: fileListListView.rowHeight
-                    spacing: 10
-
-                    /*CheckBox
-                    {
-                        //visible: status === Enums.FileStatus.FileClean
-                        Layout.preferredHeight: parent.height
-                        Layout.preferredWidth: parent.height
-                        checked: status === Enums.FileStatus.FileClean
-                        checkable: false
-
-                        contentItem: Image {
-                            //source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherVerte.svg")
-                            source: status === Enums.FileStatus.FileClean ? Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherVerte.svg") : Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherActive.svg")
-                            anchors.fill: parent
-                            fillMode: Image.PreserveAspectFit
-                        }
-
-                        indicator: Image {
-                            visible: parent.checked
-                            source: Qt.resolvedUrl(Constants.colorModePath  + "CocheSain.svg")
-                            fillMode: Image.PreserveAspectFit
-                            width: parent.width*0.6
-                            height: width
-                            anchors.centerIn: parent
-                        }
-                    }
-
-                    Item {
-                        //Spacer pour aligner quand la checkbox n'est pas visible
-                        Layout.preferredWidth: 10
-                        visible: status !== Enums.FileStatus.FileClean
-                    }*/
+                    Item { Layout.fillWidth: true }
 
                     StyledText {
-                        Layout.preferredHeight: parent.height
-                        Layout.fillWidth: true
-                        text: filename
-                        color: getTextColor(status)
-                        horizontalAlignment: Text.AlignLeft
-                        verticalAlignment: Text.AlignVCenter
-                        elide: Text.ElideRight
+                        text: qsTr("Clean")
                     }
 
-                    Rectangle {
-                        Layout.preferredHeight: parent.height
-                        Layout.preferredWidth: fileListListView.width / 4
-                        color: "transparent"
-                        border.width: 2
-                        border.color: Environment.colorBorder
-                        visible: progress < 100
+                    Icon {
+                        text: checked ? Constants.iconChecked : Constants.iconUnchecked
+                        property bool checked: true
+
+                        onClicked: function() {
+                            checked = !checked
+                            fileListListView.model.filterClean = checked
+                        }
+                    }
+
+                    Item { Layout.preferredWidth: 10 }
+
+                    StyledText {
+                        text: qsTr("Infected")
+                    }
+
+                    Icon {
+                        text: checked ? Constants.iconChecked : Constants.iconUnchecked
+                        property bool checked: true
+
+                        onClicked: function() {
+                            checked = !checked
+                            fileListListView.model.filterInfected = checked
+                        }
+                    }
+
+                    Item { Layout.preferredWidth: 10 }
+
+                    StyledText {
+                        text: qsTr("Waiting")
+                    }
+
+                    Icon {
+                        text: checked ? Constants.iconChecked : Constants.iconUnchecked
+                        property bool checked: true
+
+                        onClicked: function() {
+                            checked = !checked
+                            fileListListView.model.filterOther = checked
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+                }
+
+                ListView {
+                    id: fileListListView
+                    clip: true
+
+                    Layout.fillHeight: true
+                    Layout.fillWidth: true
+
+                    model: bindings.queueListModel
+                    spacing: 10
+                    property int rowHeight: 25
+
+                    Component.onCompleted: {
+                        fileListListView.flickEnded.connect(snapToRow)
+                    }
+
+                    onContentYChanged: {
+                        if(!fileListListView.flicking && !fileListListView.moving) {
+                            snapToRow()
+                        }
+                    }
+
+                    function snapToRow() {
+                        var totalRowHeight = fileListListView.rowHeight + fileListListView.spacing
+                        var targetRow = Math.round(contentY / totalRowHeight)
+                        var targetY = targetRow * totalRowHeight
+                        if(contentY !== targetY) {
+                            contentY = targetY
+                        }
+                    }
+
+                    WheelHandler {
+                        onWheel: (event)=> {
+                            var totalRowHeight = fileListListView.rowHeight + fileListListView.spacing
+                            var delta = event.angleDelta.y > 0 ? -1 : 1
+                            let targetRow = Math.round(fileListListView.contentY / totalRowHeight) + delta
+                            targetRow = Math.max(0, Math.min(targetRow, fileListListView.count - 1))
+                            fileListListView.contentY = targetRow * totalRowHeight
+                        }
+                    }
+
+                    flickableDirection: Flickable.VerticalFlick
+                    ScrollBar.vertical: ScrollBar
+                    {
+                        id: scrollbar
+                        policy: parent.contentHeight > parent.height ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+                        width:parent.width*0.03
+                        background: Rectangle {
+                            implicitWidth: parent.parent.width*0.01
+                            color: "#00000000"  // Couleur du fond de la scrollbar
+                            radius: 6
+                            border.color: Environment.colorText
+                        }
+
+                        contentItem: Rectangle {
+                            implicitWidth: parent.parent.width*0.01
+                            color: Environment.colorText  // Couleur de la barre de défilement
+                            radius: 6
+                        }
+                    }
+
+                    delegate : RowLayout {
+                        width: fileListListView.width - scrollbar.width
+                        height: fileListListView.rowHeight
+                        spacing: 10
+
+                        /*CheckBox
+                        {
+                            //visible: status === Enums.FileStatus.FileClean
+                            Layout.preferredHeight: parent.height
+                            Layout.preferredWidth: parent.height
+                            checked: status === Enums.FileStatus.FileClean
+                            checkable: false
+
+                            contentItem: Image {
+                                //source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherVerte.svg")
+                                source: status === Enums.FileStatus.FileClean ? Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherVerte.svg") : Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherActive.svg")
+                                anchors.fill: parent
+                                fillMode: Image.PreserveAspectFit
+                            }
+
+                            indicator: Image {
+                                visible: parent.checked
+                                source: Qt.resolvedUrl(Constants.colorModePath  + "CocheSain.svg")
+                                fillMode: Image.PreserveAspectFit
+                                width: parent.width*0.6
+                                height: width
+                                anchors.centerIn: parent
+                            }
+                        }
+
+                        Item {
+                            //Spacer pour aligner quand la checkbox n'est pas visible
+                            Layout.preferredWidth: 10
+                            visible: status !== Enums.FileStatus.FileClean
+                        }*/
+
+                        StyledText {
+                            Layout.preferredHeight: parent.height
+                            Layout.fillWidth: true
+                            text: filename
+                            color: getTextColor(status)
+                            horizontalAlignment: Text.AlignLeft
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                        }
 
                         Rectangle {
-                            width: Math.min(parent.width * progress/100, parent.width)
-                            height: parent.height
-                            color: Environment.colorBorder
-                            opacity: 0.3
+                            Layout.preferredHeight: parent.height
+                            Layout.preferredWidth: fileListListView.width / 4
+                            color: "transparent"
+                            border.width: 2
+                            border.color: Environment.colorBorder
+                            visible: progress < 100
+
+                            Rectangle {
+                                width: Math.min(parent.width * progress/100, parent.width)
+                                height: parent.height
+                                color: Environment.colorBorder
+                                opacity: 0.3
+                            }
+
+                            StyledText {
+                                anchors.centerIn: parent
+                                width: parent.width
+                                height: parent.height
+                                text: Math.round(progress) + "%"
+                                color: Environment.colorText
+                                font.pixelSize: Math.min(height * 0.6, width * 0.15)
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
                         }
 
                         StyledText {
-                            anchors.centerIn: parent
-                            width: parent.width
-                            height: parent.height
-                            text: Math.round(progress) + "%"
-                            color: Environment.colorText
-                            font.pixelSize: Math.min(height * 0.6, width * 0.15)
-                            horizontalAlignment: Text.AlignHCenter
+                            Layout.preferredWidth: fileListListView.width / 3
+                            Layout.preferredHeight: parent.height
+                            text: getStatusText(status)
+                            color: getTextColor(status)
+                            horizontalAlignment: Text.AlignLeft
                             verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
+                            visible: progress === 100
                         }
                     }
 
-                    StyledText {
-                        Layout.preferredWidth: fileListListView.width / 3
-                        Layout.preferredHeight: parent.height
-                        text: getStatusText(status)
-                        color: getTextColor(status)
-                        horizontalAlignment: Text.AlignLeft
-                        verticalAlignment: Text.AlignVCenter
-                        elide: Text.ElideRight
-                        visible: progress === 100
-                    }
-                }
-
-                add: Transition {
-                    NumberAnimation {
-                        properties: "x"
-                        from: -width
-                        to: 0
-                        duration: 200
+                    add: Transition {
+                        NumberAnimation {
+                            properties: "x"
+                            from: -width
+                            to: 0
+                            duration: 200
+                        }
                     }
                 }
             }

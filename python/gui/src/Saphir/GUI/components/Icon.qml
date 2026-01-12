@@ -6,6 +6,8 @@ Item {
 
     property alias text: txt.text
 
+    signal clicked()
+
     width: implicitWidth
     height: implicitHeight
     implicitHeight: 24
@@ -19,5 +21,13 @@ Item {
         verticalAlignment: Text.AlignVCenter
         color: Environment.colorText
         text: Constants.iconFile
+    }
+
+    MouseArea {
+        anchors.fill: parent
+
+        onClicked: function() {
+            root.clicked()
+        }
     }
 }
