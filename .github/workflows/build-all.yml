@@ -1,0 +1,396 @@
+name: Build all packages
+ 
+on:
+  workflow_dispatch:
+    inputs:
+      force-all:
+        description: "Build all"
+        required: false
+        type: 'boolean'
+        default: 'false'      
+      force-saphir-main:
+        description: "Build Saphir (main)"
+        required: false
+        type: 'boolean'
+        default: 'false'
+      force-saphir-av-clamav:
+        description: "Build av-clamav"
+        required: false
+        type: 'boolean'
+        default: 'false'
+      force-saphir-av-eset:
+        description: "Build av-eset"
+        required: false
+        type: 'boolean'
+        default: 'false'
+      force-saphir-container-eset:
+        description: "Build av-container-eset"
+        required: false
+        type: 'boolean'
+        default: 'false'      
+      force-saphir-gui:
+        description: "Build gui"
+        required: false
+        type: 'boolean'
+        default: 'false'      
+      force-saphir-lib:
+        description: "Build lib"
+        required: false
+        type: 'boolean'
+        default: 'false'
+      force-saphir-splash:
+        description: "Build splash"
+        required: false
+        type: 'boolean'
+        default: 'false'         
+  push:
+    branches:
+      - "**"
+    paths:
+      - "setup/packages/saphir/**"
+      - "python/**"
+
+jobs:  
+  detect-changes:
+    name: Detect changed packages
+    runs-on: ubuntu-latest
+    outputs:
+      pkg-saphir: ${{ steps.detect.outputs.saphir }}      
+            
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect changed components
+        id: detect
+        run: |
+          echo "Detecting changes..."
+          declare -A paths=(
+            [saphir]="setup/packages/saphir/saphir"
+          )
+
+          for key in "${!paths[@]}"; do
+            if git diff --name-only ${{ github.event.before }} ${{ github.sha }} \
+              | grep "^${paths[$key]}"; then
+              echo "$key=true" >> $GITHUB_OUTPUT
+            else
+              echo "$key=false" >> $GITHUB_OUTPUT
+            fi
+          done
+
+  prepare:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    outputs:
+      check-saphir: ${{ steps.check-saphir.outputs.do_build }}
+      check-saphir-av-clamav: ${{ steps.check-saphir-av-clamav.outputs.do_build }}
+      check-saphir-av-eset: ${{ steps.check-saphir-av-eset.outputs.do_build }}
+      check-saphir-container-eset: ${{ steps.check-saphir-container-eset.outputs.do_build }}
+      check-saphir-gui: ${{ steps.check-saphir-gui.outputs.do_build }}
+      check-saphir-lib: ${{ steps.check-saphir-lib.outputs.do_build }}
+      check-saphir-splash: ${{ steps.check-saphir-splash.outputs.do_build }}
+    steps:
+      - id: check-saphir
+        name: check-saphir
+        env:
+          PKG_CHANGED: ${{ needs.detect-changes.outputs.saphir }}
+          FORCE: ${{ github.event.inputs.force-saphir }}
+          FORCE_ALL: ${{ github.event.inputs.force-all }}
+        run: |          
+          if [[ $PKG_CHANGED == 'true' || $FORCE == 'true' || $FORCE_ALL == 'true' ]]; then 
+            echo "do_build=true" >> $GITHUB_OUTPUT
+          else 
+            echo "do_build=false" >> $GITHUB_OUTPUT
+          fi
+      - id: check-saphir-av-clamav
+        name: check-saphir-av-clamav
+        env:
+          PKG_CHANGED: ${{ needs.detect-changes.outputs.saphir-av-clamav }}
+          FORCE: ${{ github.event.inputs.force-saphir-av-clamav }}
+          FORCE_ALL: ${{ github.event.inputs.force-all }}
+        run: |          
+          if [[ $PKG_CHANGED == 'true' || $FORCE == 'true' || $FORCE_ALL == 'true' ]]; then 
+            echo "do_build=true" >> $GITHUB_OUTPUT
+          else 
+            echo "do_build=false" >> $GITHUB_OUTPUT
+          fi
+      - id: check-saphir-av-eset
+        name: check-saphir-av-eset
+        env:
+          PKG_CHANGED: ${{ needs.detect-changes.outputs.saphir-av-eset }}
+          FORCE: ${{ github.event.inputs.force-saphir-av-eset }}
+          FORCE_ALL: ${{ github.event.inputs.force-all }}
+        run: |          
+          if [[ $PKG_CHANGED == 'true' || $FORCE == 'true' || $FORCE_ALL == 'true' ]]; then 
+            echo "do_build=true" >> $GITHUB_OUTPUT
+          else 
+            echo "do_build=false" >> $GITHUB_OUTPUT
+          fi
+      - id: check-saphir-av-container-eset
+        name: check-saphir-av-container-eset
+        env:
+          PKG_CHANGED: ${{ needs.detect-changes.outputs.saphir-av-container-eset }}
+          FORCE: ${{ github.event.inputs.force-saphir-av-container-eset }}
+          FORCE_ALL: ${{ github.event.inputs.force-all }}
+        run: |          
+          if [[ $PKG_CHANGED == 'true' || $FORCE == 'true' || $FORCE_ALL == 'true' ]]; then 
+            echo "do_build=true" >> $GITHUB_OUTPUT
+          else 
+            echo "do_build=false" >> $GITHUB_OUTPUT
+          fi
+      - id: check-saphir-container-eset
+        name: check-saphir-container-eset
+        env:
+          PKG_CHANGED: ${{ needs.detect-changes.outputs.saphir-container-eset }}
+          FORCE: ${{ github.event.inputs.force-saphir-container-eset }}
+          FORCE_ALL: ${{ github.event.inputs.force-all }}
+        run: |          
+          if [[ $PKG_CHANGED == 'true' || $FORCE == 'true' || $FORCE_ALL == 'true' ]]; then 
+            echo "do_build=true" >> $GITHUB_OUTPUT
+          else 
+            echo "do_build=false" >> $GITHUB_OUTPUT
+          fi
+      - id: check-saphir-gui
+        name: check-saphir-gui
+        env:
+          PKG_CHANGED: ${{ needs.detect-changes.outputs.saphir-gui }}
+          FORCE: ${{ github.event.inputs.force-saphir-gui }}
+          FORCE_ALL: ${{ github.event.inputs.force-all }}
+        run: |          
+          if [[ $PKG_CHANGED == 'true' || $FORCE == 'true' || $FORCE_ALL == 'true' ]]; then 
+            echo "do_build=true" >> $GITHUB_OUTPUT
+          else 
+            echo "do_build=false" >> $GITHUB_OUTPUT
+          fi
+      - id: check-saphir-lib
+        name: check-saphir-lib
+        env:
+          PKG_CHANGED: ${{ needs.detect-changes.outputs.saphir-lib }}
+          FORCE: ${{ github.event.inputs.force-saphir-lib }}
+          FORCE_ALL: ${{ github.event.inputs.force-all }}
+        run: |          
+          if [[ $PKG_CHANGED == 'true' || $FORCE == 'true' || $FORCE_ALL == 'true' ]]; then 
+            echo "do_build=true" >> $GITHUB_OUTPUT
+          else 
+            echo "do_build=false" >> $GITHUB_OUTPUT
+          fi
+      - id: check-saphir-splash
+        name: check-saphir-splash
+        env:
+          PKG_CHANGED: ${{ needs.detect-changes.outputs.saphir-splash }}
+          FORCE: ${{ github.event.inputs.force-saphir-splash }}
+          FORCE_ALL: ${{ github.event.inputs.force-all }}
+        run: |          
+          if [[ $PKG_CHANGED == 'true' || $FORCE == 'true' || $FORCE_ALL == 'true' ]]; then 
+            echo "do_build=true" >> $GITHUB_OUTPUT
+          else 
+            echo "do_build=false" >> $GITHUB_OUTPUT
+          fi
+
+  build-saphir:
+    needs: [ prepare, build-saphir-lib, build-saphir-splash ]
+    if: |
+      needs.prepare.outputs.check-saphir == 'true'
+    runs-on: ubuntu-latest
+ 
+    container:
+      image: alpine:3.21
+ 
+    steps:      
+      - name: Checkout sources
+        uses: actions/checkout@v4
+ 
+      - name: Prepare build environment
+        uses: ./.github/actions/prepare-build-env
+        with:
+          abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
+ 
+      - name: Build APK
+        uses: ./.github/actions/build-apk
+        with:
+          working-dir: setup/packages/saphir
+          artifact-name: saphir
+
+      - name: Publish package
+        uses: ./.github/actions/publish
+        with:
+          privkey: ${{ secrets.DEPLOY_KEY }}
+          filepath: /home/builder/packages/saphir/x86_64/
+
+  build-saphir-av-clamav:
+    needs: [ prepare ]
+    if: |
+      needs.prepare.outputs.check-saphir-av-clamav == 'true'
+    runs-on: ubuntu-latest
+ 
+    container:
+      image: alpine:3.21
+ 
+    steps:      
+      - name: Checkout sources
+        uses: actions/checkout@v4
+ 
+      - name: Prepare build environment
+        uses: ./.github/actions/prepare-build-env
+        with:
+          abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
+ 
+      - name: Build APK
+        uses: ./.github/actions/build-apk
+        with:
+          working-dir: setup/packages/saphir-av-clamav
+          artifact-name: saphir
+
+      - name: Publish package
+        uses: ./.github/actions/publish
+        with:
+          privkey: ${{ secrets.DEPLOY_KEY }}
+          filepath: /home/builder/packages/saphir/x86_64/
+
+  build-saphir-container-eset:
+    needs: [ prepare ]
+    if: |
+      needs.prepare.outputs.check-saphir-container-eset == 'true'
+    runs-on: ubuntu-latest
+ 
+    container:
+      image: alpine:3.21
+ 
+    steps:      
+      - name: Checkout sources
+        uses: actions/checkout@v4
+ 
+      - name: Prepare build environment
+        uses: ./.github/actions/prepare-build-env
+        with:
+          abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
+ 
+      - name: Build APK
+        uses: ./.github/actions/build-apk
+        with:
+          working-dir: setup/packages/saphir-container-eset
+          artifact-name: saphir
+
+      - name: Publish package
+        uses: ./.github/actions/publish
+        with:
+          privkey: ${{ secrets.DEPLOY_KEY }}
+          filepath: /home/builder/packages/saphir/x86_64/
+
+  build-saphir-av-eset:
+    needs: [ prepare, build-saphir-container-eset ]
+    if: |
+      needs.prepare.outputs.check-saphir-av-eset == 'true'
+    runs-on: ubuntu-latest
+ 
+    container:
+      image: alpine:3.21
+ 
+    steps:      
+      - name: Checkout sources
+        uses: actions/checkout@v4
+ 
+      - name: Prepare build environment
+        uses: ./.github/actions/prepare-build-env
+        with:
+          abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
+ 
+      - name: Build APK
+        uses: ./.github/actions/build-apk
+        with:
+          working-dir: setup/packages/saphir-av-eset
+          artifact-name: saphir
+
+      - name: Publish package
+        uses: ./.github/actions/publish
+        with:
+          privkey: ${{ secrets.DEPLOY_KEY }}
+          filepath: /home/builder/packages/saphir/x86_64/
+          
+  build-saphir-lib:
+    needs: [ prepare ]
+    if: |
+      needs.prepare.outputs.check-saphir-lib == 'true'
+    runs-on: ubuntu-latest
+ 
+    container:
+      image: alpine:3.21
+ 
+    steps:      
+      - name: Checkout sources
+        uses: actions/checkout@v4
+ 
+      - name: Prepare build environment
+        uses: ./.github/actions/prepare-build-env
+        with:
+          abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
+ 
+      - name: Build APK
+        uses: ./.github/actions/build-apk
+        with:
+          working-dir: setup/packages/saphir-lib
+          artifact-name: saphir
+
+      - name: Publish package
+        uses: ./.github/actions/publish
+        with:
+          privkey: ${{ secrets.DEPLOY_KEY }}
+          filepath: /home/builder/packages/saphir/x86_64/
+
+  build-saphir-gui:
+    needs: [ prepare, build-saphir-lib ]
+    if: |
+      needs.prepare.outputs.check-saphir-gui == 'true'
+    runs-on: ubuntu-latest
+ 
+    container:
+      image: alpine:3.21
+ 
+    steps:      
+      - name: Checkout sources
+        uses: actions/checkout@v4
+ 
+      - name: Prepare build environment
+        uses: ./.github/actions/prepare-build-env
+        with:
+          abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
+ 
+      - name: Build APK
+        uses: ./.github/actions/build-apk
+        with:
+          working-dir: setup/packages/saphir-gui
+          artifact-name: saphir
+
+      - name: Publish package
+        uses: ./.github/actions/publish
+        with:
+          privkey: ${{ secrets.DEPLOY_KEY }}
+          filepath: /home/builder/packages/saphir/x86_64/
+
+  uild-saphir-splash:
+    needs: [ prepare ]
+    if: |
+      needs.prepare.outputs.check-saphir-splash == 'true'
+    runs-on: ubuntu-latest
+ 
+    container:
+      image: alpine:3.21
+ 
+    steps:      
+      - name: Checkout sources
+        uses: actions/checkout@v4
+ 
+      - name: Prepare build environment
+        uses: ./.github/actions/prepare-build-env
+        with:
+          abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
+ 
+      - name: Build APK
+        uses: ./.github/actions/build-apk
+        with:
+          working-dir: setup/packages/saphir-splash
+          artifact-name: saphir
+
+      - name: Publish package
+        uses: ./.github/actions/publish
+        with:
+          privkey: ${{ secrets.DEPLOY_KEY }}
+          filepath: /home/builder/packages/saphir/x86_64/

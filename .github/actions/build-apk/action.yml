@@ -1,0 +1,27 @@
+name: Build APK
+
+inputs:
+  working-dir:
+    description: The directory of the APKBUILD
+    required: true
+  artifact-name:
+    description: The name of the artifact to publish
+    required: true
+
+runs:
+  using: composite  
+
+  steps:
+    - name: Build APK
+      working-directory: ${{ inputs.working-dir }}
+      shell: sh
+      run: |
+        apk update || true
+        sudo -u builder gitbranch="$GITHUB_REF_NAME" gitrepo="${{ github.event.repository.name }}" abuild checksum
+        sudo -u builder gitbranch="$GITHUB_REF_NAME" gitrepo="${{ github.event.repository.name }}" abuild -r 
+
+    - name: Upload packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: /home/builder/packages/psec/x86_64/*.apk

@@ -1,0 +1,53 @@
+name: Prepare Alpine build environment  
+
+inputs:
+  abuild-key:
+    description: Base64 encoded private key
+    required: true
+
+runs:
+  using: composite  
+
+  steps:
+    - shell: sh
+      run: |
+        apk update
+        apk add alpine-sdk build-base sudo git
+    - shell: sh
+      run: |
+        echo "Create abuild user"
+        adduser -D builder
+        addgroup builder abuild
+        echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+    - shell: sh
+      run: |
+        echo "Prepare directories"
+        chown -R builder:builder .
+        mkdir -p /home/builder/packages/psec/x86_64
+        chown -R builder:builder /home/builder/packages
+        chmod -R 770 /home/builder/packages
+
+    - shell: sh
+      run: |
+        echo "Restore abuild private key"
+        mkdir -p /home/builder/.abuild
+        echo "${{ inputs.abuild-key }}" | base64 -d \
+          > /home/builder/.abuild/psec.rsa
+        chmod 600 /home/builder/.abuild/psec.rsa
+        chown -R builder:builder /home/builder/.abuild
+        echo "PACKAGER_PRIVKEY=/home/builder/.abuild/psec.rsa" >> /etc/abuild.conf
+        echo "PACKAGER_NAME=\"Tristan Israël\"" >> /etc/abuild.conf
+        echo "PACKAGER_EMAIL=\"tristan.israel@alefbet.net\"" >> /etc/abuild.conf
+        echo "PACKAGER_SIGN=1" >> /etc/abuild.conf
+
+    - shell: sh
+      run: |
+        echo "Register the official repository"
+        sudo echo "https://www.alefbet.net/github/psec" >> /etc/apk/repositories
+
+    - shell: sh
+      run: |
+        echo "Copy abuild public key"
+        cp certs/psec.rsa.pub /home/builder/.abuild
+        cp certs/psec.rsa.pub /etc/apk/keys
