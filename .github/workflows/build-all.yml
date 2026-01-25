@@ -365,7 +365,7 @@ jobs:
           privkey: ${{ secrets.DEPLOY_KEY }}
           filepath: /home/builder/packages/saphir/x86_64/
 
-  uild-saphir-splash:
+  build-saphir-splash:
     needs: [ prepare ]
     if: |
       needs.prepare.outputs.check-saphir-splash == 'true'
