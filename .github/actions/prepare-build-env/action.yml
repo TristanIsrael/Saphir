@@ -44,6 +44,7 @@ runs:
     - shell: sh
       run: |
         echo "Register the official repository"
+        sudo echo "https://www.alefbet.net/github/psec" >> /etc/apk/repositories
         sudo echo "https://www.alefbet.net/github/saphir" >> /etc/apk/repositories
 
     - shell: sh

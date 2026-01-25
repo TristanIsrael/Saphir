@@ -206,7 +206,7 @@ jobs:
       - name: Build APK
         uses: ./.github/actions/build-apk
         with:
-          working-dir: setup/packages/saphir
+          working-dir: setup/packages/saphir/saphir
           artifact-name: saphir
 
       - name: Publish package
@@ -236,7 +236,7 @@ jobs:
       - name: Build APK
         uses: ./.github/actions/build-apk
         with:
-          working-dir: setup/packages/saphir-av-clamav
+          working-dir: setup/packages/saphir/saphir-av-clamav
           artifact-name: saphir
 
       - name: Publish package
@@ -266,7 +266,7 @@ jobs:
       - name: Build APK
         uses: ./.github/actions/build-apk
         with:
-          working-dir: setup/packages/saphir-container-eset
+          working-dir: setup/packages/saphir/saphir-container-eset
           artifact-name: saphir
 
       - name: Publish package
@@ -296,7 +296,7 @@ jobs:
       - name: Build APK
         uses: ./.github/actions/build-apk
         with:
-          working-dir: setup/packages/saphir-av-eset
+          working-dir: setup/packages/saphir/saphir-av-eset
           artifact-name: saphir
 
       - name: Publish package
@@ -326,7 +326,7 @@ jobs:
       - name: Build APK
         uses: ./.github/actions/build-apk
         with:
-          working-dir: setup/packages/saphir-lib
+          working-dir: setup/packages/saphir/saphir-lib
           artifact-name: saphir
 
       - name: Publish package
@@ -356,7 +356,7 @@ jobs:
       - name: Build APK
         uses: ./.github/actions/build-apk
         with:
-          working-dir: setup/packages/saphir-gui
+          working-dir: setup/packages/saphir/saphir-gui
           artifact-name: saphir
 
       - name: Publish package
@@ -386,7 +386,7 @@ jobs:
       - name: Build APK
         uses: ./.github/actions/build-apk
         with:
-          working-dir: setup/packages/saphir-splash
+          working-dir: setup/packages/saphir/saphir-splash
           artifact-name: saphir
 
       - name: Publish package
