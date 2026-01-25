@@ -15,21 +15,20 @@ subpackages=""
 replaces=""
 builddir="$srcdir/"
 options="!check"  # no tests provided
-giturl="https://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@github.com/TristanIsrael/saphir"
-source=""
+source="
+$pkgname.zip::https://github.com/TristanIsrael/Saphir/archive/refs/heads/$gitbranch.zip
+"
 
 prepare() {
-    mkdir -p "$builddir"
-    cd "$builddir"
-    git clone "$giturl" "$pkgname"
+    default_prepare
 }
 
 build() {
-    cd "$builddir/$pkgname"/python/libsaphir
+    cd "$gitrepo-$gitbranch/python/libsaphir"
     python3 -m build
 }
 
 package() {
-    cd "$builddir/$pkgname"/python/libsaphir/dist
+    cd "src/$gitrepo-$gitbranch/python/lib/dist"
     python3 -m installer --destdir=$pkgdir "libspahir-$pkgver-py3-none-any.whl"
 }
