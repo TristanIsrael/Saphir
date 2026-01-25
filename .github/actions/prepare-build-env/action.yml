@@ -52,3 +52,6 @@ runs:
         echo "Copy abuild public key"
         cp certs/saphir.rsa.pub /home/builder/.abuild
         cp certs/saphir.rsa.pub /etc/apk/keys
+
+        echo "Download PSEC public key"
+        wget https://www.alefbet.net/github/psec/psec.rsa.pub -o /etc/apk/keys/psec.rsa.pub
