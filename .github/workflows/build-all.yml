@@ -250,8 +250,11 @@ jobs:
     if: |
       needs.prepare.outputs.check-saphir-container-eset == 'true'
     runs-on: ubuntu-latest
-    
+
     steps:      
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        
       - name: Create the ESET container
         uses: ./.github/actions/create-eset-container
 
