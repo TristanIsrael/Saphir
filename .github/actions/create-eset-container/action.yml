@@ -35,8 +35,8 @@ runs:
       if: true 
       shell: sh
       run: |
-        sudo apt install -y mmdebstrap wget        
-        sudo mmdebstrap --no-check-gpg --variant=minbase bullseye ./rootfs http://deb.debian.org/debian        
+        sudo apt install -y mmdebstrap wget debian-archive-keyring      
+        sudo mmdebstrap --keyring /usr/share/keyrings/debian-archive-keyring.gpg --variant=minbase bullseye ./rootfs http://deb.debian.org/debian        
 
         echo Extract ESET installer
         chmod +x eeau_x86_64.bin
