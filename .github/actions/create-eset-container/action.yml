@@ -18,8 +18,8 @@ runs:
       run: |
         echo Create a container
         docker run --name tempdebian -d debian:bullseye sleep infinity
-        docker exec tempdebian sudo apt update
-        docker exec tempdebian sudo apt install -y libcurl4 wget
+        docker exec tempdebian apt update
+        docker exec tempdebian apt install -y libcurl4 wget
 
         echo Download the installer in the container 
         docker exec tempdebian wget https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/eeau_x86_64.bin
@@ -30,9 +30,10 @@ runs:
         docker exec tempdebian rm *.rpm
         docker exec tempdebian rm eeau_x86_64.bin
         docker exec tempdebian env ESET_DISABLE_WAP=1 sudo -E dpkg -i $(ls | grep eea | grep .deb | head -n 1)
+        docker exec tempdebian apt-get install -f -y
 
         echo Export container rootfs
-        docker exec tempdebian sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+        docker exec tempdebian rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
         docker export tempdebian > rootfs.tar
         mkdir rootfs && tar -xf rootfs.tar -C rootfs
         docker rm -f tempdebian
