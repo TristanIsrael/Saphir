@@ -17,6 +17,43 @@ runs:
       run: |
         wget https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/eeau_x86_64.bin
 
+    - name: Build rootfs with Docker
+      shell: sh
+      run: |
+        echo Extract ESET installer
+        chmod +x eeau_x86_64.bin
+        ./eeau_x86_64.bin -n -y
+        rm *.rpm
+        rm eeau_x86_64.bin
+        debfile=$(ls | grep eea | grep .deb | head -n 1)
+
+        # Extract the content of the debfile
+        mkdir -p eset-deb
+        ar x $debfile
+        tar xzf control.tar.gz -C eset-deb
+        tar xzf data.tar.gz -C eset-deb
+
+        echo Create a docker
+        docker run --name tempdebian -d debian:bullseye sleep infinity
+
+        echo Copy post install script into the container        
+        docker cp eset-deb/postinst tempdebian:/tmp
+        
+        echo Copy ESET files into the container
+        docker cp -r eset-deb/opt/* tempdebian:/opt
+        docker cp -r eset-deb/var/* tempdebian:/var
+        docker cp -r eset-deb/usr/* tempdebian:/usr
+
+        echo Install ESET in the container
+        docker exec tempdebian apt update && apt install -y libcurl4
+        docker exec tempdebian env ESET_DISABLE_WAP=1 /tmp/postinst configure
+        
+        echo Export docker rootfs
+        docker exec tempdebian rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+        docker export tempdebian > rootfs.tar
+        mkdir rootfs && tar -xf rootfs.tar -C rootfs
+        docker rm -f tempdebian
+
     - name: Create Debian container
       if: false
       shell: sh
@@ -32,7 +69,7 @@ runs:
         sudo cat "/var/lib/lxc/$pkgname/config"
 
     - name: Create Debian chroot
-      if: true 
+      if: false 
       shell: sh
       run: |
         sudo apt install -y mmdebstrap wget debian-archive-keyring      
