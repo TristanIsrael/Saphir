@@ -9,15 +9,40 @@ runs:
       shell: sh
       run: |
         sudo apt update
-        sudo apt install lxc lxc-templates dnsmasq liblxc-common iptables
-        sudo systemctl enable --now lxc-net
+        #sudo apt install lxc lxc-templates dnsmasq liblxc-common iptables
+        #sudo systemctl enable --now lxc-net
 
+    - name: Install ESET in a container 
+      if: false
+      shell: sh
+      run: |
+        echo Create a container
+        docker run --name tempdebian -d debian:bullseye sleep infinity
+
+        echo Download the installer in the container 
+        docker exec tempdebian wget https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/eeau_x86_64.bin
+
+        echo Run the installer
+        docker exec tempdebian chmod +x eeau_x86_64.bin
+        docker exec tempdebian ./eeau_x86_64.bin -n -y
+        docker exec tempdebian rm *.rpm
+        docker exec tempdebian rm eeau_x86_64.bin
+        docker exec tempdebian env ESET_DISABLE_WAP=1 dpkg -i $(ls | grep eea | grep .deb | head -n 1)
+
+        echo Export container rootfs
+        docker exec tempdebian rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+        docker export tempdebian > rootfs.tar
+        mkdir rootfs && tar -xf rootfs.tar -C rootfs
+        docker rm -f tempdebian
+      
     - name: Download ESET installer
+      if: false
       shell: sh
       run: |
         wget https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/eeau_x86_64.bin
 
     - name: Build rootfs with Docker
+      if: false
       shell: sh
       run: |
         echo Extract ESET installer
