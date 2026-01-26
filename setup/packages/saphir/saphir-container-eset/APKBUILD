@@ -35,7 +35,7 @@ build() {
     sudo rm -rf /var/lib/lxc/"$pkgname"
     sudo mv /var/lib/lxc/psec-container-debian /var/lib/lxc/"$pkgname"
     sudo chmod 770 /var/lib/lxc/"$pkgname"
-    #sudo chown -R admin /var/lib/lxc/"$pkgname"
+    sudo chown -R builder /var/lib/lxc/"$pkgname"
     sed -i '/^lxc\.rootfs\.path/d' /var/lib/lxc/"$pkgname"/config
     sed -i '/^lxc\.uts\.name/d' /var/lib/lxc/"$pkgname"/config
     echo "" >> /var/lib/lxc/"$pkgname"/config
@@ -141,7 +141,7 @@ package() {
 
     cd /var/lib/lxc/"$pkgname"    
     sudo mksquashfs rootfs "$pkgdir"/var/lib/saphir/"$pkgname".sqfs -comp xz -b 1M -Xdict-size 100%
-    #sudo chown admin:admin "$pkgdir"/var/lib/saphir/"$pkgname".sqfs
+    sudo chown builder:builder "$pkgdir"/var/lib/saphir/"$pkgname".sqfs
 
     install -D -m755 /var/lib/lxc/"$pkgname"/config "$pkgdir"/var/lib/lxc/"$pkgname"/config
 }
