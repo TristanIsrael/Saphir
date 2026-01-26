@@ -18,6 +18,7 @@ runs:
       run: |
         echo Create a container
         docker run --name tempdebian -d debian:bullseye sleep infinity
+        docker exec tempdebian apt update && apt install -y libcurl4 wget
 
         echo Download the installer in the container 
         docker exec tempdebian wget https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/eeau_x86_64.bin
