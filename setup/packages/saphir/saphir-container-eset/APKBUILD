@@ -80,6 +80,7 @@ build() {
     sleep 1
 
     echo *** Update APT
+    sudo lxc-attach -n "$pkgname" -- dhclient
     sudo lxc-attach -n "$pkgname" -- apt update
 
     echo Install libcurl
