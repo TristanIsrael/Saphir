@@ -33,7 +33,7 @@ build() {
     # Rename the LXC container and reconfigure
     echo Copy the template container
     sudo rm -rf /var/lib/lxc/"$pkgname"
-    sudo cp -r /var/lib/lxc/psec-container-debian /var/lib/lxc/"$pkgname"
+    sudo mv /var/lib/lxc/psec-container-debian /var/lib/lxc/"$pkgname"
     sudo chmod 770 /var/lib/lxc/"$pkgname"
     sudo chown -R admin /var/lib/lxc/"$pkgname"
     sed -i '/^lxc\.rootfs\.path/d' /var/lib/lxc/"$pkgname"/config

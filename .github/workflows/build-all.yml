@@ -24,7 +24,7 @@ on:
         type: 'boolean'
         default: 'false'
       force-saphir-container-eset:
-        description: "Build av-container-eset"
+        description: "Build container-eset"
         required: false
         type: 'boolean'
         default: 'false'      
