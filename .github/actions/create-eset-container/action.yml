@@ -9,7 +9,7 @@ runs:
       shell: sh
       run: |
         sudo apt update
-        sudo apt install lxc lxc-templates lxc-net dnsmasq liblxc-common iptables
+        sudo apt install lxc lxc-templates dnsmasq liblxc-common iptables
         sudo systemctl enable --now lxc-net
 
     - name: Download ESET installer
