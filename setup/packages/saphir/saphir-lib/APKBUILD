@@ -1,7 +1,7 @@
 # Contributor:
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 pkgname=saphir-lib
-pkgver=1.0
+pkgver=1.0.0
 pkgrel=0
 pkgdesc="Saphir - Library"
 url="https://defense.gouv.fr/"
