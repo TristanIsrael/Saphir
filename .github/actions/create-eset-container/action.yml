@@ -13,7 +13,7 @@ runs:
         #sudo systemctl enable --now lxc-net
 
     - name: Install ESET in a container 
-      if: false
+      if: true
       shell: sh
       run: |
         echo Create a container
