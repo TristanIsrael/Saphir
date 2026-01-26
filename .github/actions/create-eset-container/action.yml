@@ -28,7 +28,7 @@ runs:
       run: |
         echo Create the container 
         sudo lxc-create -n $pkgname -t download -- --dist $distro --release $release --arch $arch --variant $variant
-        cat "/var/lib/lxc/$pkgname/config"
+        sudo cat "/var/lib/lxc/$pkgname/config"
 
     - name: Install ESET in the container
       shell: sh 
