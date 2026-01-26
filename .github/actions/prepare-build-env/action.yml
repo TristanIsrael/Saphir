@@ -55,3 +55,4 @@ runs:
 
         echo "Download PSEC public key"
         wget https://www.alefbet.net/github/psec/psec.rsa.pub -o /etc/apk/keys/psec.rsa.pub
+        cat /etc/apk/keys/psec.rsa.pub
