@@ -58,7 +58,7 @@ runs:
             cp /mnt/keys/saphir.rsa.pub /etc/apk/keys
             cd /mnt/apk
             echo 'Building APK index...'
-            apk index -d PSEC -o APKINDEX.tar.gz *.apk
+            apk index -d Saphir -o APKINDEX.tar.gz *.apk
             echo 'Signing APK index...'
             abuild-sign -k /mnt/keys/saphir.rsa -p /mnt/keys/saphir.rsa.pub APKINDEX.tar.gz 
             cd /mnt/apk
