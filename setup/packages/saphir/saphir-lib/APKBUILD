@@ -30,5 +30,5 @@ build() {
 
 package() {
     cd "$gitrepo-$gitbranch/python/libsaphir/dist"
-    python3 -m installer --destdir=$pkgdir "libsaphir-$pkgver-py3-none-any.whl"
+    python3 -m installer --destdir=$pkgdir "libsaphir-*-py3-none-any.whl"
 }
