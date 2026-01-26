@@ -1,0 +1,142 @@
+name: Setup ESET in an LXC container
+description: Must be ran on an Ubuntu or Debian runner
+
+runs:
+  using: composite  
+
+  steps:    
+    - name: Install dependencies
+      shell: sh
+      run: |
+        sudo apt update
+        sudo apt install lxc lxc-templates lxc-net dnsmasq liblxc-common iptables
+        sudo systemctl enable --now lxc-net
+
+    - name: Download ESET installer
+      shell: sh
+      run: |
+        wget https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/eeau_x86_64.bin
+
+    - name: Create Ubuntu container
+      shell: sh
+      env:
+        pkgname: saphir-container-eset
+        distro: debian
+        release: bookworm
+        arch: amd64
+        variant: cloud
+      run: |
+        echo Create the container 
+        sudo lxc-create -n $pkgname -t download -- --dist $distro --release $release --arch $arch --variant $variant
+        cat "/var/lib/lxc/$pkgname/config"
+
+    - name: Install ESET in the container
+      shell: sh 
+      env:
+        pkgname: saphir-container-eset
+      run: |
+        echo Extract ESET installer
+        chmod +x eeau_x86_64.bin
+        ./eeau_x86_64.bin -n -y
+        rm *.rpm
+        rm eeau_x86_64.bin
+        debfile=$(ls | grep eea | grep .deb | head -n 1)
+
+        # Extract the content of the debfile
+        mkdir -p eset-deb
+        ar x $debfile
+        tar xzf control.tar.gz -C eset-deb
+        tar xzf data.tar.gz -C eset-deb
+
+        # Copy the post install script into the container
+        echo Copy post install script into the container
+        sudo cp eset-deb/postinst /var/lib/lxc/"$pkgname"/rootfs/root
+
+        # Copy ESET files into the container
+        echo Copy ESET files into the container
+        sudo cp -r eset-deb/opt/* /var/lib/lxc/"$pkgname"/rootfs/opt
+        sudo cp -r eset-deb/var/* /var/lib/lxc/"$pkgname"/rootfs/var
+        sudo cp -r eset-deb/usr/* /var/lib/lxc/"$pkgname"/rootfs/usr
+
+        # Setup the network
+        #echo Start networking
+        #sed -i '/^#lxc\.net/s/^#//' "/var/lib/lxc/$pkgname/config"
+        #sudo rc-service dnsmasq.lxcbr0 start
+
+        # Start the container and install ESET
+        echo Start LXC container
+        sudo rc-service cgroups start
+        sudo lxc-start -n "$pkgname"    
+
+        sleep 1
+
+        echo *** Update APT
+        sudo lxc-attach -n "$pkgname" -- apt update
+
+        echo Install libcurl
+        sudo lxc-attach -n "$pkgname" -- apt install -y libcurl4    
+
+        echo Execute ESET post install script
+        sudo lxc-attach -n "$pkgname" -- env ESET_DISABLE_WAP=1 /root/postinst configure
+
+    - name: Optimize the container
+      shell: sh 
+      env:
+        pkgname: saphir-container-eset
+      run: |
+        echo Clean the container to make it smaller
+        sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/var/opt/eset/eea/updated
+        sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/var/opt/eset/eea/lib/*.tar
+        sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/doc
+        sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/man
+        sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/mime
+        sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/info
+        sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/vim
+        sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/i18n
+        sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/locale
+        sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/var/lib/apt/lists
+        sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/lib/firmware
+        sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/boot
+        sudo lxc-attach -n "$pkgname" -- apt-get clean
+
+    - name: Finalize installation
+      shell: sh 
+      env:
+        pkgname: saphir-container-eset
+      run: |
+        # Stop the container
+        echo Stop the container
+        sudo lxc-stop -n "$pkgname"    
+
+        # Disable networking
+        echo Disable netorking
+        sed -i 's/^lxc\.net/#&/' /var/lib/lxc/"$pkgname"/config
+
+        # Add PSEC mount points
+        echo Add mount points
+        echo "" >> /var/lib/lxc/"$pkgname"/config
+        echo "lxc.mount.entry = /mnt/storage mnt/storage none bind,optional,create=dir" >> /var/lib/lxc/"$pkgname"/config
+
+        # Add XEN pv channels
+        echo Add XEN PV channels
+        echo "" >> /var/lib/lxc/"$pkgname"/config
+        echo "lxc.mount.entry = /dev/hvc1 dev/hvc1 none bind,optional,create=file" >> /var/lib/lxc/"$pkgname"/config
+
+        # Change the rootfs path
+        sed -i '/^lxc\.rootfs\.path/d' /var/lib/lxc/"$pkgname"/config
+        echo "lxc.rootfs.path = dir:/mnt/merged" >> /var/lib/lxc/"$pkgname"/config
+
+    - name: Compress the container
+      shell: sh
+      env:
+        pkgname: saphir-container-eset
+      run: |
+        tar cjf "/var/lib/lxc/$pkgname.tar.bz2" -C /var/lib/lxc .
+
+    - name: Publish package
+      uses: ./.github/actions/publish
+      with:
+        privkey: ${{ secrets.DEPLOY_KEY }}
+        filepath: "/var/lib/lxc/$pkgname.tar.bz2"
+        container: false
+    

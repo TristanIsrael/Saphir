@@ -250,30 +250,10 @@ jobs:
     if: |
       needs.prepare.outputs.check-saphir-container-eset == 'true'
     runs-on: ubuntu-latest
- 
-    container:
-      image: alpine:3.21
- 
+    
     steps:      
-      - name: Checkout sources
-        uses: actions/checkout@v4
- 
-      - name: Prepare build environment
-        uses: ./.github/actions/prepare-build-env
-        with:
-          abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
- 
-      - name: Build APK
-        uses: ./.github/actions/build-apk
-        with:
-          working-dir: setup/packages/saphir/saphir-container-eset
-          artifact-name: saphir-container-eset
-
-      - name: Publish package
-        uses: ./.github/actions/publish
-        with:
-          privkey: ${{ secrets.DEPLOY_KEY }}
-          filepath: /home/builder/packages/saphir/x86_64/
+      - name: Create the ESET container
+        uses: ./.github/actions/create-eset-container
 
   build-saphir-av-eset:
     needs: [ prepare, build-saphir-container-eset ]
