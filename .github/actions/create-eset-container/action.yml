@@ -36,7 +36,7 @@ runs:
       shell: sh
       run: |
         sudo apt install -y mmdebstrap wget        
-        sudo mmdebstrap --variant=minbase bullseye ./rootfs http://deb.debian.org/debian        
+        sudo mmdebstrap --no-check-gpg --variant=minbase bullseye ./rootfs http://deb.debian.org/debian        
 
         echo Extract ESET installer
         chmod +x eeau_x86_64.bin
