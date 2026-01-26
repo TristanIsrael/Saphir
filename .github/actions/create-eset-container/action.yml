@@ -17,7 +17,8 @@ runs:
       run: |
         wget https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/eeau_x86_64.bin
 
-    - name: Create Ubuntu container
+    - name: Create Debian container
+      if: false
       shell: sh
       env:
         pkgname: saphir-container-eset
@@ -28,9 +29,46 @@ runs:
       run: |
         echo Create the container 
         sudo lxc-create -n $pkgname -t download -- --dist $distro --release $release --arch $arch --variant $variant
-        #sudo cat "/var/lib/lxc/$pkgname/config"
+        sudo cat "/var/lib/lxc/$pkgname/config"
+
+    - name: Create Debian chroot
+      if: true 
+      shell: sh
+      run: |
+        sudo apt install -y mmdebstrap wget        
+        sudo mmdebstrap --variant=minbase bullseye ./rootfs http://deb.debian.org/debian        
+
+        echo Extract ESET installer
+        chmod +x eeau_x86_64.bin
+        ./eeau_x86_64.bin -n -y
+        rm *.rpm
+        rm eeau_x86_64.bin
+        debfile=$(ls | grep eea | grep .deb | head -n 1)
+
+        # Extract the content of the debfile
+        mkdir -p eset-deb
+        ar x $debfile
+        tar xzf control.tar.gz -C eset-deb
+        tar xzf data.tar.gz -C eset-deb
+
+        echo Copy post install script into the container
+
+        sudo mkdir -p ./rootfs/root
+        sudo cp eset-deb/postinst ./rootfs/root
+
+        # Copy ESET files into the container
+        echo Copy ESET files into the container
+        sudo cp -r eset-deb/opt/* ./rootfs/opt
+        sudo cp -r eset-deb/var/* ./rootfs/var
+        sudo cp -r eset-deb/usr/* ./rootfs/usr
+
+        sudo chroot ./rootfs /bin/bash -c "apt update && apt install -y libcurl4"
+
+        echo Execute ESET post install script
+        sudo chroot ./rootfs /bin/bash -c "env ESET_DISABLE_WAP=1 /root/postinst configure"
 
     - name: Install ESET in the container
+      if: false
       shell: sh 
       env:
         pkgname: saphir-container-eset
@@ -62,6 +100,8 @@ runs:
         #echo Start networking
         #sed -i '/^#lxc\.net/s/^#//' "/var/lib/lxc/$pkgname/config"
         #sudo rc-service dnsmasq.lxcbr0 start
+        sysctl net.ipv4.ip_forward
+        iptables -t nat -L -n
 
         # Start the container and install ESET
         echo Start LXC container
@@ -69,6 +109,12 @@ runs:
         sudo lxc-start -n "$pkgname"    
 
         sleep 1
+
+        echo *** Check configuration
+        sudo lxc-attach -n "$pkgname" -- ip link
+        sudo lxc-attach -n "$pkgname" -- ip addr
+        sudo lxc-attach -n "$pkgname" -- ip route
+        sudo lxc-attach -n "$pkgname" -- cat /etc/resolv.conf
 
         echo *** Update APT
         sudo lxc-attach -n "$pkgname" -- apt update
