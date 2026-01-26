@@ -54,5 +54,4 @@ runs:
         cp certs/saphir.rsa.pub /etc/apk/keys
 
         echo "Download PSEC public key"
-        wget https://www.alefbet.net/github/psec/psec.rsa.pub -o /etc/apk/keys/psec.rsa.pub
-        cat /etc/apk/keys/psec.rsa.pub
+        wget -P /etc/apk/keys https://www.alefbet.net/github/psec/psec.rsa.pub 
