@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "libspahir"
+name = "libsaphir"
 version = "1.0.0"
 authors = [ 
     { name="Tristan Israël", email="tristan.israel@alefbet.net" }, 
