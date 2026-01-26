@@ -32,8 +32,7 @@ runs:
       run: |
         echo "Restore abuild private key"
         mkdir -p /home/builder/.abuild
-        echo "${{ inputs.abuild-key }}" | base64 -d \
-          > /home/builder/.abuild/saphir.rsa
+        echo "${{ inputs.abuild-key }}" | base64 -d > /home/builder/.abuild/saphir.rsa
         chmod 600 /home/builder/.abuild/saphir.rsa
         chown -R builder:builder /home/builder/.abuild
         echo "PACKAGER_PRIVKEY=/home/builder/.abuild/saphir.rsa" >> /etc/abuild.conf
