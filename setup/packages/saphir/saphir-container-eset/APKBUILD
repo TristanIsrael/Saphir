@@ -70,11 +70,11 @@ build() {
     # Setup the network
     echo Start networking
     sed -i '/^#lxc\.net/s/^#//' "/var/lib/lxc/$pkgname/config"
-    sudo rc-service dnsmasq.lxcbr0 start
+    sudo rc-service dnsmasq.lxcbr0 restart
 
     # Start the container and install ESET
     echo Start LXC container
-    sudo rc-service cgroups start
+    sudo rc-service cgroups restart
     sudo lxc-start -n "$pkgname"    
 
     sleep 1
