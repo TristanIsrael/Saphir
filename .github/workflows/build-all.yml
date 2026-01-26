@@ -251,6 +251,9 @@ jobs:
       needs.prepare.outputs.check-saphir-container-eset == 'true'
     runs-on: ubuntu-latest
 
+    container:
+      image: alpine:3.21
+
     steps:      
       - name: Checkout sources
         uses: actions/checkout@v4
