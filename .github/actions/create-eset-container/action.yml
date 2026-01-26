@@ -40,9 +40,9 @@ runs:
         docker cp eset-deb/postinst tempdebian:/tmp
         
         echo Copy ESET files into the container
-        docker cp -r eset-deb/opt/* tempdebian:/opt
-        docker cp -r eset-deb/var/* tempdebian:/var
-        docker cp -r eset-deb/usr/* tempdebian:/usr
+        docker cp eset-deb/opt/* tempdebian:/opt
+        docker cp eset-deb/var/* tempdebian:/var
+        docker cp eset-deb/usr/* tempdebian:/usr
 
         echo Install ESET in the container
         docker exec tempdebian apt update && apt install -y libcurl4
