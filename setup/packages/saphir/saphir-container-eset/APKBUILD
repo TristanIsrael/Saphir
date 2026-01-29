@@ -68,6 +68,11 @@ build() {
 
     sleep 1
 
+    echo Add special devices to the rootfs
+    sudo mount -t proc /proc "$srcdir/$pkgname"/rootfs/proc
+    sudo mount --rbind /sys "$srcdir/$pkgname"/rootfs/sys
+    sudo mount --rbind /dev "$srcdir/$pkgname"/rootfs/dev
+
     echo *** Update APT
     #sudo chroot "$srcdir/$pkgname"/rootfs -- dhclient
     sudo chroot "$srcdir/$pkgname"/rootfs apt update
@@ -115,8 +120,12 @@ build() {
     # Compress archive
     # bzip2 "$pkgdir"/var/lib/lxc/"$pkgname".tar    
 
+    umount -f "$srcdir/$pkgname"/rootfs/dev
+    umount -f "$srcdir/$pkgname"/rootfs/sys
+    umount -f "$srcdir/$pkgname"/rootfs/proc
+
     cd "$srcdir/$pkgname"    
-    sudo mksquashfs rootfs "$srcdir/$pkgname".sqfs -comp xz -b 1M -Xdict-size 100%
+    sudo mksquashfs rootfs "$srcdir/$pkgname".sqfs -comp xz -b 1M -Xdict-size 100% -e rootfs/proc -e rootfs/sys -e rootfs/dev -e rootfs/tmp -e rootfs/run
     sudo chown builder:builder "$srcdir/$pkgname".sqfs
 }
 
