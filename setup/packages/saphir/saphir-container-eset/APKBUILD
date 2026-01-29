@@ -7,7 +7,7 @@ pkgdesc="Saphir - LXC Container for ESET Antivirus"
 url="https://defense.gouv.fr/"
 arch="x86_64"
 license="MIT"
-depends="lxc sudo"
+depends="sudo"
 makedepends="openrc psec-container-debian"
 checkdepends=""
 install="$pkgname.post-install $pkgname.pre-deinstall"
@@ -17,13 +17,6 @@ builddir="$srcdir/"
 options="!check"  # no tests provided
 source="https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/eeau_x86_64.bin"
 
-clean() {
-    sudo rm -rf "$srcdir" 
-    sudo rm -rf "$pkgdir"
-    sudo rm -rf "$builddir"
-    sudo rm -rf /var/lib/lxc/"$pkgname"
-}
-
 build() {
     # We need to install ESET inside of the Debian container
     # That is done by adding network capabilities to the container
@@ -32,15 +25,21 @@ build() {
 
     # Rename the LXC container and reconfigure
     echo Copy the template container
-    sudo rm -rf /var/lib/lxc/"$pkgname"
-    sudo mv /var/lib/lxc/psec-container-debian /var/lib/lxc/"$pkgname"
-    sudo chmod 770 /var/lib/lxc/"$pkgname"
-    sudo chown -R builder /var/lib/lxc/"$pkgname"
+    sudo rm -rf "$srcdir/$pkgname"
+    sudo mv /var/lib/lxc/psec-container-debian "$srcdir/$pkgname"
+    sudo chmod 770 "$srcdir/$pkgname"
+    sudo chown -R builder "$srcdir/$pkgname"
+
+    # Modify the path of the rootfs and the name of the container
+    cd "$srcdir/$pkgname"
+    sed -i '/^lxc\.rootfs\.path/d' config
+    sed -i '/^lxc\.uts\.name/d' config
+    echo "" >> config    
     sed -i '/^lxc\.rootfs\.path/d' /var/lib/lxc/"$pkgname"/config
-    sed -i '/^lxc\.uts\.name/d' /var/lib/lxc/"$pkgname"/config
-    echo "" >> /var/lib/lxc/"$pkgname"/config
-    echo "lxc.rootfs.path = dir:/var/lib/lxc/$pkgname/rootfs" >> /var/lib/lxc/"$pkgname"/config
-    echo "lxc.uts.name = $pkgname" >> /var/lib/lxc/"$pkgname"/config
+    #echo "lxc.rootfs.path = dir:/var/lib/lxc/$pkgname/rootfs" >> config
+    # In the post-install script we create an overlay FS
+    echo "lxc.rootfs.path = dir:/mnt/merged" >> config
+    echo "lxc.uts.name = $pkgname" >> config
 
     # Extract the debian installer
     echo Extract ESET installer
@@ -59,79 +58,55 @@ build() {
     
     # Copy the post install script into the container
     echo Copy post install script into the container
-    sudo cp eset-deb/postinst /var/lib/lxc/"$pkgname"/rootfs/root
+    sudo cp eset-deb/postinst "$srcdir/$pkgname"/rootfs/root
 
     # Copy ESET files into the container
     echo Copy ESET files into the container
-    sudo cp -r eset-deb/opt/* /var/lib/lxc/"$pkgname"/rootfs/opt
-    sudo cp -r eset-deb/var/* /var/lib/lxc/"$pkgname"/rootfs/var
-    sudo cp -r eset-deb/usr/* /var/lib/lxc/"$pkgname"/rootfs/usr
-
-    # Setup the network
-    echo Start networking
-    sed -i '/^#lxc\.net/s/^#//' "/var/lib/lxc/$pkgname/config"
-    sudo rc-service dnsmasq.lxcbr0 restart
-
-    # Start the container and install ESET
-    echo Start LXC container
-    sudo rc-service cgroups restart
-    sudo lxc-start -n "$pkgname"    
+    sudo cp -r eset-deb/opt/* "$srcdir/$pkgname"/rootfs/opt
+    sudo cp -r eset-deb/var/* "$srcdir/$pkgname"/rootfs/var
+    sudo cp -r eset-deb/usr/* "$srcdir/$pkgname"/rootfs/usr
 
     sleep 1
 
     echo *** Update APT
-    sudo lxc-attach -n "$pkgname" -- dhclient
-    sudo lxc-attach -n "$pkgname" -- apt update
+    #sudo chroot "$srcdir/$pkgname"/rootfs -- dhclient
+    sudo chroot "$srcdir/$pkgname"/rootfs -- apt update
 
     echo Install libcurl
-    sudo lxc-attach -n "$pkgname" -- apt install -y libcurl4    
+    sudo chroot "$srcdir/$pkgname"/rootfs apt install -y libcurl4    
 
     echo Execute ESET post install script
-    sudo lxc-attach -n "$pkgname" -- env ESET_DISABLE_WAP=1 /root/postinst configure
+    sudo chroot "$srcdir/$pkgname"/rootfs env ESET_DISABLE_WAP=1 /root/postinst configure
 
     echo Clean the container to make it smaller
-    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/var/opt/eset/eea/updated
-    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/var/opt/eset/eea/lib/*.tar
-    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/doc
-    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/man
-    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/mime
-    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/info
-    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/vim
-    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/i18n
-    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/usr/share/locale
-    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/var/lib/apt/lists
-    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/lib/firmware
-    sudo rm -rf /var/lib/lxc/"$pkgname"/rootfs/boot
-    sudo lxc-attach -n "$pkgname" -- apt-get clean
-
-    # Stop the container
-    echo Stop the container
-    sudo lxc-stop -n "$pkgname"    
-
-    # Disable networking
-    echo Disable netorking
-    sed -i 's/^lxc\.net/#&/' /var/lib/lxc/"$pkgname"/config
+    sudo chroot "$srcdir"/$pkgname/rootfs apt-get clean
+    sudo chroot "$srcdir"/$pkgname/rootfs apt-get autoremove --purge -y
+    sudo chroot "$srcdir"/$pkgname/rootfs apt-get autoclean
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/var/opt/eset/eea/updated
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/var/opt/eset/eea/lib/*.tar
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/usr/share/doc
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/usr/share/man
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/usr/share/mime
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/usr/share/info
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/usr/share/vim
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/usr/share/i18n
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/usr/share/locale
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/var/lib/apt/lists
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/lib/firmware
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/boot    
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/tmp/*
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/var/tmp/*    
 
     # Add PSEC mount points
+    cd "$srcdir/$pkgname"
     echo Add mount points
-    echo "" >> /var/lib/lxc/"$pkgname"/config
-    echo "lxc.mount.entry = /mnt/storage mnt/storage none bind,optional,create=dir" >> /var/lib/lxc/"$pkgname"/config
+    echo "" >> config
+    echo "lxc.mount.entry = /mnt/storage mnt/storage none bind,optional,create=dir,noexec,nodev,nosuid" >> config
 
     # Add XEN pv channels
     echo Add XEN PV channels
-    echo "" >> /var/lib/lxc/"$pkgname"/config
-    echo "lxc.mount.entry = /dev/hvc1 dev/hvc1 none bind,optional,create=file" >> /var/lib/lxc/"$pkgname"/config
-
-    # Change the rootfs path
-    sed -i '/^lxc\.rootfs\.path/d' /var/lib/lxc/"$pkgname"/config
-    echo "lxc.rootfs.path = dir:/mnt/merged" >> /var/lib/lxc/"$pkgname"/config
-}
-
-package() {
-    # The new package will be based on the vanilla psec-container-debian
-    # which won't be useful anymore. We will package the whole container
-    # including ESET installation
-    mkdir -p "$pkgdir"/var/lib/saphir
+    echo "" >> config
+    echo "lxc.mount.entry = /dev/hvc1 dev/hvc1 none bind,optional,create=file" >> config
 
     # Since 2.0 We use Squashfs to make it smaller and quicker
     # Tar container
@@ -140,9 +115,14 @@ package() {
     # Compress archive
     # bzip2 "$pkgdir"/var/lib/lxc/"$pkgname".tar    
 
-    cd /var/lib/lxc/"$pkgname"    
-    sudo mksquashfs rootfs "$pkgdir"/var/lib/saphir/"$pkgname".sqfs -comp xz -b 1M -Xdict-size 100%
-    sudo chown builder:builder "$pkgdir"/var/lib/saphir/"$pkgname".sqfs
+    cd "$srcdir/$pkgname"    
+    sudo mksquashfs rootfs "$srcdir/$pkgname".sqfs -comp xz -b 1M -Xdict-size 100%
+    sudo chown builder:builder "$srcdir/$pkgname".sqfs
+}
 
-    install -D -m755 /var/lib/lxc/"$pkgname"/config "$pkgdir"/var/lib/lxc/"$pkgname"/config
+package() {
+    mkdir -p "$pkgdir"/var/lib/saphir/"$pkgname"
+
+    install -D -m755 "$srcdir/$pkgname"/config "$pkgdir"/var/lib/lxc/"$pkgname"/config
+    install -D -m755 "$srcdir/$pkgname".sqfs "$pkgdir"/var/lib/saphir/"$pkgname".sqfs
 }
