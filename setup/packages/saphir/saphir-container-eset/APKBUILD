@@ -35,7 +35,7 @@ build() {
     sed -i '/^lxc\.rootfs\.path/d' config
     sed -i '/^lxc\.uts\.name/d' config
     echo "" >> config    
-    sed -i '/^lxc\.rootfs\.path/d' /var/lib/lxc/"$pkgname"/config
+    sed -i '/^lxc\.rootfs\.path/d' config
     #echo "lxc.rootfs.path = dir:/var/lib/lxc/$pkgname/rootfs" >> config
     # In the post-install script we create an overlay FS
     echo "lxc.rootfs.path = dir:/mnt/merged" >> config
