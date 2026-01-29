@@ -70,7 +70,7 @@ build() {
 
     echo *** Update APT
     #sudo chroot "$srcdir/$pkgname"/rootfs -- dhclient
-    sudo chroot "$srcdir/$pkgname"/rootfs -- apt update
+    sudo chroot "$srcdir/$pkgname"/rootfs apt update
 
     echo Install libcurl
     sudo chroot "$srcdir/$pkgname"/rootfs apt install -y libcurl4    
