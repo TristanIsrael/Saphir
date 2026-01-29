@@ -23,11 +23,11 @@ on:
         required: false
         type: 'boolean'
         default: 'false'
-      force-saphir-container-eset:
-        description: "Build container-eset"
-        required: false
-        type: 'boolean'
-        default: 'false'      
+      #force-saphir-container-eset:
+      #  description: "Build container-eset"
+      #  required: false
+      #  type: 'boolean'
+      #  default: 'false'      
       force-saphir-gui:
         description: "Build gui"
         required: false
@@ -248,6 +248,7 @@ jobs:
   build-saphir-container-eset:
     needs: [ prepare ]
     if: |
+      false &&
       needs.prepare.outputs.check-saphir-container-eset == 'true'
     runs-on: ubuntu-latest
 
