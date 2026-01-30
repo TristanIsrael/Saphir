@@ -92,7 +92,7 @@ jobs:
         name: check-saphir
         env:
           PKG_CHANGED: ${{ needs.detect-changes.outputs.saphir }}
-          FORCE: ${{ github.event.inputs.force-saphir }}
+          FORCE: ${{ github.event.inputs.force-saphir-main }}
           FORCE_ALL: ${{ github.event.inputs.force-all }}
         run: |          
           if [[ $PKG_CHANGED == 'true' || $FORCE == 'true' || $FORCE_ALL == 'true' ]]; then 
@@ -188,7 +188,7 @@ jobs:
   build-saphir:
     needs: [ prepare, build-saphir-splash ]
     if: |
-      needs.prepare.outputs.check-saphir == 'true'
+      needs.prepare.outputs.check-saphir == 'true'      
     runs-on: ubuntu-latest
  
     container:
@@ -369,8 +369,7 @@ jobs:
   build-saphir-splash:
     needs: [ prepare ]
     if: |
-      needs.prepare.outputs.check-saphir-splash == 'true' ||
-      needs.prepare.outputs.check-saphir == 'true'
+      needs.prepare.outputs.check-saphir-splash == 'true'      
     runs-on: ubuntu-latest
  
     container:
