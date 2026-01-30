@@ -277,7 +277,7 @@ jobs:
           filepath: /home/builder/packages/saphir/x86_64/
 
   build-saphir-av-eset:
-    needs: [ prepare, build-saphir-container-eset ]
+    needs: [ prepare ]
     if: |
       needs.prepare.outputs.check-saphir-av-eset == 'true'
     runs-on: ubuntu-latest

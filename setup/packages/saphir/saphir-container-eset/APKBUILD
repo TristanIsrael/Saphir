@@ -17,6 +17,10 @@ builddir="$srcdir/"
 options="!check"  # no tests provided
 source="https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/eeau_x86_64.bin"
 
+clean() {
+    sudo umount -f -R "$srcdir/$pkgname"/rootfs || true
+}
+
 build() {
     # We need to install ESET inside of the Debian container
     # That is done by adding network capabilities to the container
@@ -26,20 +30,21 @@ build() {
     # Rename the LXC container and reconfigure
     echo Copy the template container
     sudo rm -rf "$srcdir/$pkgname"
-    sudo mv /var/lib/lxc/psec-container-debian "$srcdir/$pkgname"
-    sudo chmod 770 "$srcdir/$pkgname"
-    sudo chown -R builder "$srcdir/$pkgname"
+    sudo cp -r /var/lib/lxc/psec-container-debian "$srcdir/$pkgname"
+    sudo cp /etc/resolv.conf "$srcdir/$pkgname"/rootfs/etc/
+    #sudo chmod 770 "$srcdir/$pkgname"
+    #sudo chown -R builder "$srcdir/$pkgname"
 
     # Modify the path of the rootfs and the name of the container
     cd "$srcdir/$pkgname"
-    sed -i '/^lxc\.rootfs\.path/d' config
-    sed -i '/^lxc\.uts\.name/d' config
-    echo "" >> config    
-    sed -i '/^lxc\.rootfs\.path/d' config
+    sudo sed -i '/^lxc\.rootfs\.path/d' config
+    sudo sed -i '/^lxc\.uts\.name/d' config
+    echo "" | sudo tee -a config > /dev/null
+    sudo sed -i '/^lxc\.rootfs\.path/d' config
     #echo "lxc.rootfs.path = dir:/var/lib/lxc/$pkgname/rootfs" >> config
     # In the post-install script we create an overlay FS
-    echo "lxc.rootfs.path = dir:/mnt/merged" >> config
-    echo "lxc.uts.name = $pkgname" >> config
+    echo "lxc.rootfs.path = dir:/mnt/merged" | sudo tee -a config > /dev/null
+    echo "lxc.uts.name = $pkgname" | sudo tee -a config > /dev/null
 
     # Extract the debian installer
     echo Extract ESET installer
@@ -69,24 +74,37 @@ build() {
     sleep 1
 
     echo Add special devices to the rootfs
-    sudo mount -t proc /proc "$srcdir/$pkgname"/rootfs/proc
-    sudo mount --rbind /sys "$srcdir/$pkgname"/rootfs/sys
-    sudo mount --rbind /dev "$srcdir/$pkgname"/rootfs/dev
+    sudo mkdir -p "$srcdir/$pkgname"/rootfs/proc
+    sudo mkdir -p "$srcdir/$pkgname"/rootfs/sys
+    sudo mkdir -p "$srcdir/$pkgname"/rootfs/dev
+    
+    sudo unshare -m ash -c "
+        sudo mount --make-rprivate /
+        sudo mount -t proc /proc "$srcdir/$pkgname"/rootfs/proc
+        sudo mount --rbind /sys "$srcdir/$pkgname"/rootfs/sys
+        sudo mount --rbind /dev "$srcdir/$pkgname"/rootfs/dev
 
-    echo *** Update APT
-    #sudo chroot "$srcdir/$pkgname"/rootfs -- dhclient
-    sudo chroot "$srcdir/$pkgname"/rootfs apt update
+        echo Set permisions
+        sudo chmod 1777 "$srcdir/$pkgname"/rootfs/tmp
 
-    echo Install libcurl
-    sudo chroot "$srcdir/$pkgname"/rootfs apt install -y libcurl4    
+        echo *** Update APT
+        #sudo chroot "$srcdir/$pkgname"/rootfs -- dhclient
+        sudo chroot "$srcdir/$pkgname"/rootfs apt update
 
-    echo Execute ESET post install script
-    sudo chroot "$srcdir/$pkgname"/rootfs env ESET_DISABLE_WAP=1 /root/postinst configure
+        echo Install libcurl
+        sudo chroot "$srcdir/$pkgname"/rootfs apt install -y libcurl4    
 
-    echo Clean the container to make it smaller
-    sudo chroot "$srcdir"/$pkgname/rootfs apt-get clean
-    sudo chroot "$srcdir"/$pkgname/rootfs apt-get autoremove --purge -y
-    sudo chroot "$srcdir"/$pkgname/rootfs apt-get autoclean
+        echo Execute ESET post install script
+        sudo chroot "$srcdir/$pkgname"/rootfs env ESET_DISABLE_WAP=1 /root/postinst configure
+
+        echo Clean the container to make it smaller
+        sudo chroot "$srcdir"/$pkgname/rootfs apt-get clean
+        sudo chroot "$srcdir"/$pkgname/rootfs apt-get autoremove --purge -y
+        sudo chroot "$srcdir"/$pkgname/rootfs apt-get autoclean  
+
+        sudo umount -f -R "$srcdir/$pkgname"/rootfs || true
+    "
+
     sudo rm -rf "$srcdir/$pkgname"/rootfs/var/opt/eset/eea/updated
     sudo rm -rf "$srcdir/$pkgname"/rootfs/var/opt/eset/eea/lib/*.tar
     sudo rm -rf "$srcdir/$pkgname"/rootfs/usr/share/doc
@@ -100,33 +118,32 @@ build() {
     sudo rm -rf "$srcdir/$pkgname"/rootfs/lib/firmware
     sudo rm -rf "$srcdir/$pkgname"/rootfs/boot    
     sudo rm -rf "$srcdir/$pkgname"/rootfs/tmp/*
-    sudo rm -rf "$srcdir/$pkgname"/rootfs/var/tmp/*    
+    sudo rm -rf "$srcdir/$pkgname"/rootfs/var/tmp/*  
 
     # Add PSEC mount points
     cd "$srcdir/$pkgname"
     echo Add mount points
-    echo "" >> config
-    echo "lxc.mount.entry = /mnt/storage mnt/storage none bind,optional,create=dir,noexec,nodev,nosuid" >> config
+    echo "" | sudo tee -a config > /dev/null
+    echo "lxc.mount.entry = /mnt/storage mnt/storage none bind,optional,create=dir,noexec,nodev,nosuid" | sudo tee -a config > /dev/null
 
     # Add XEN pv channels
     echo Add XEN PV channels
-    echo "" >> config
-    echo "lxc.mount.entry = /dev/hvc1 dev/hvc1 none bind,optional,create=file" >> config
+    echo "" | sudo tee -a config > /dev/null
+    echo "lxc.mount.entry = /dev/hvc1 dev/hvc1 none bind,optional,create=file" | sudo tee -a config > /dev/null
 
     # Since 2.0 We use Squashfs to make it smaller and quicker
     # Tar container
     # sudo tar cf "$pkgdir"/var/lib/lxc/"$pkgname".tar -C /var/lib/lxc/ .
     # sudo chown $USER "$pkgdir"/var/lib/lxc/"$pkgname".tar
     # Compress archive
-    # bzip2 "$pkgdir"/var/lib/lxc/"$pkgname".tar    
-
-    umount -f "$srcdir/$pkgname"/rootfs/dev
-    umount -f "$srcdir/$pkgname"/rootfs/sys
-    umount -f "$srcdir/$pkgname"/rootfs/proc
+    # bzip2 "$pkgdir"/var/lib/lxc/"$pkgname".tar
 
     cd "$srcdir/$pkgname"    
     sudo mksquashfs rootfs "$srcdir/$pkgname".sqfs -comp xz -b 1M -Xdict-size 100% -e rootfs/proc -e rootfs/sys -e rootfs/dev -e rootfs/tmp -e rootfs/run
-    sudo chown builder:builder "$srcdir/$pkgname".sqfs
+    #sudo chown builder:builder "$srcdir/$pkgname".sqfs
+
+    echo "Prepare for cleaning"
+    sudo chmod -R 777 "$srcdir"/*
 }
 
 package() {
