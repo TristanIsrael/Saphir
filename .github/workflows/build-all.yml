@@ -286,6 +286,10 @@ jobs:
       image: alpine:3.21
  
     steps:      
+      - name: test 
+        shell: sh
+        run: printenv | sort
+
       - name: Checkout sources
         uses: actions/checkout@v4
  
