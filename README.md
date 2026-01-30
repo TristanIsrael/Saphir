@@ -20,17 +20,15 @@ The sheep-dip intervenes in the reduction of risks related to viral infections w
 
 ## Typical threat management
 
-In a typical threat management scenario, the company has two diff
+Typically company has multiple levels of confidentiality, and the transfer of files between these levels is regulated and requires processing through a secure workstation.
 
-l'entreprise dispose de plusieurs niveaux de confidentialités dont le transfert de fichiers de l'un à l'autre est reglementé et nécessite le passage en station blanche.
+Typically, data coming from outside the company’s network or having been transported outside the offices is considered a potential threat. Data originating from the company’s local network or stored on media that has not left the offices is considered safe. Additional confidentiality levels may exist within the company.
 
-Typiquement, les données en provenance de l'extérieur du réseau de l'entreprise ou ayant été transportées à l'extérieur des bureaux sont considérées comme des menaces. Les données en provenance du réseau local de l'entreprise ou stockées sur un support n'ayant pas quitté les bureaux sont considérées comme surs. Il peut exister des niveaux de confidentialité supplémentaires à l'intérieur de l'entreprise.
-
-Un fichier en provenance d'Internet ou d'une clé USB personnelle doit **obligatoirement** être vérifié avant d'être apporté sur les moyens informatiques de l'entreprise.
+A file coming from the Internet or from a personal USB drive must be checked before being introduced into the company’s IT systems.
 
 ## Use cases
 
-The sheep-dip handles the following use cases :
+The sheep-dip handles the following use cases:
 - Scan an external disk connect on USB
 - Copy uninfected files on a second external disk
 

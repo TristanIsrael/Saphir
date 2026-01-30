@@ -369,7 +369,8 @@ jobs:
   build-saphir-splash:
     needs: [ prepare ]
     if: |
-      needs.prepare.outputs.check-saphir-splash == 'true'
+      needs.prepare.outputs.check-saphir-splash == 'true' ||
+      needs.prepare.outputs.check-saphir == 'true'
     runs-on: ubuntu-latest
  
     container:
