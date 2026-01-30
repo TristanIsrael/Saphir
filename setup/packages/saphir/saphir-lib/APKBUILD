@@ -24,11 +24,11 @@ prepare() {
 }
 
 build() {
-    cd "$gitrepo-$gitbranch/python/libsaphir"
+    cd "$srcdir/$gitrepo-$gitbranch/python/libsaphir"
     python3 -m build
 }
 
 package() {
-    cd "$gitrepo-$gitbranch/python/libsaphir/dist"
-    python3 -m installer --destdir=$pkgdir "libsaphir-*-py3-none-any.whl"
+    cd "$srcdir/$gitrepo-$gitbranch/python/libsaphir/dist"
+    python3 -m installer --destdir=$pkgdir "libsaphir-$pkgver-py3-none-any.whl"
 }
