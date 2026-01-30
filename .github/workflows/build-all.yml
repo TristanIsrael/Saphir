@@ -186,7 +186,7 @@ jobs:
           fi
 
   build-saphir:
-    needs: [ prepare, build-saphir-lib, build-saphir-splash ]
+    needs: [ prepare, build-saphir-splash ]
     if: |
       needs.prepare.outputs.check-saphir == 'true'
     runs-on: ubuntu-latest

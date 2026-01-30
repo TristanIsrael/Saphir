@@ -64,5 +64,5 @@ runs:
             cd /mnt/apk
             chown $(id -u):$(id -g) *
             chmod 644 *
-          "          
+          "
         EOF

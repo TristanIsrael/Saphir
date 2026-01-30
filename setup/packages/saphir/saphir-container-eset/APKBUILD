@@ -1,8 +1,11 @@
 # Contributor:
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
+# 
+# WARNING: this packet cannot be built on GitHub actions because it needs too much privileges on the host
+#
 pkgname=saphir-container-eset
 pkgver=2.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Saphir - LXC Container for ESET Antivirus"
 url="https://defense.gouv.fr/"
 arch="x86_64"
@@ -139,11 +142,8 @@ build() {
     # bzip2 "$pkgdir"/var/lib/lxc/"$pkgname".tar
 
     cd "$srcdir/$pkgname"    
-    sudo mksquashfs rootfs "$srcdir/$pkgname".sqfs -comp xz -b 1M -Xdict-size 100% -e rootfs/proc -e rootfs/sys -e rootfs/dev -e rootfs/tmp -e rootfs/run
+    sudo mksquashfs rootfs "$srcdir/$pkgname".sqfs -comp xz -b 1M -Xdict-size 100% -e rootfs/proc -e rootfs/sys -e rootfs/dev -e rootfs/tmp -e rootfs/run -noappend
     #sudo chown builder:builder "$srcdir/$pkgname".sqfs
-
-    echo "Prepare for cleaning"
-    sudo chmod -R 777 "$srcdir"/*
 }
 
 package() {
@@ -151,4 +151,7 @@ package() {
 
     install -D -m755 "$srcdir/$pkgname"/config "$pkgdir"/var/lib/lxc/"$pkgname"/config
     install -D -m755 "$srcdir/$pkgname".sqfs "$pkgdir"/var/lib/saphir/"$pkgname".sqfs
+
+    echo "Prepare for cleaning"
+    sudo rm -rf "$srcdir/$pkgname"
 }

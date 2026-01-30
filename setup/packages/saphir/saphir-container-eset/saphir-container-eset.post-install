@@ -7,10 +7,18 @@
 pkgname=saphir-container-eset
 mntdir=/mnt
 
-if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
-    echo Running in a Github workflow...
-    # No-op    
-else
+can_mount() {
+    tmp="$(mktemp -d)"
+    if mount -t tmpfs tmpfs "$tmp" 2>/dev/null; then
+        umount "$tmp"
+        rmdir "$tmp"
+        return 0
+    fi
+    rmdir "$tmp"
+    return 1
+}
+
+if can_mount; then
     # Mount the squash image
     sudo mkdir -p "$mntdir"/rootfs
     sudo mount -t squashfs /var/lib/saphir/"$pkgname".sqfs "$mntdir"/rootfs -o loop
@@ -20,6 +28,7 @@ else
     sudo mkdir -p "$mntdir"/work
     sudo mkdir -p "$mntdir"/merged
     sudo mount -t overlay overlay -o lowerdir="$mntdir"/rootfs,upperdir="$mntdir"/upper,workdir="$mntdir"/work "$mntdir"/merged
+else
+    echo Running in a Github workflow...
+    # No-op        
 fi
-
-
