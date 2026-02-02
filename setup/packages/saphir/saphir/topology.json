@@ -1,4 +1,8 @@
 {    
+    "product": {
+        "name": "Saphir",
+        "splash_bgcolor": "#3a414d"
+    },
     "usb": {
         "use": 1
     },
@@ -51,5 +55,4 @@
             }
         }
     ]
-
 }

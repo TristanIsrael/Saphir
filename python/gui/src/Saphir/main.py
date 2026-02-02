@@ -19,7 +19,7 @@ if DEVMODE:
 
 api_ready = threading.Event()
 FORCE_FULLSCREEN = False
-VERSION = "2.2.0"
+VERSION = "3.0.0"
 
 def on_ready():
     print("PSEC API is ready")

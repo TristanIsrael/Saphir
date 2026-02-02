@@ -1,0 +1,25 @@
+#!/sbin/openrc-run
+
+name="saphir"
+
+depend() {
+    need xenstored udev-trigger
+    after *
+}
+
+start() {
+    ebegin "Start Saphir"
+
+    # We only need to start PSEC orchestrator
+    rc-service orchestrator start    
+
+    eend $?
+}
+
+stop() {
+    ebegin "Stop Saphir"
+
+    kill -9 $(cat /var/run/$name.pid)
+
+    eend $?
+}

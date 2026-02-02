@@ -1,7 +1,7 @@
 # Contributor:
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 pkgname=saphir
-pkgver=2.2
+pkgver=3.0
 pkgrel=0
 pkgdesc="Saphir is a robust sheep-dip solution"
 url="https://defense.gouv.fr/"
@@ -18,7 +18,7 @@ options="!check"  # no tests provided
 
 source="
 topology.json
-splash_1280_800.png
+splash.png
 "
 
 package() {
@@ -28,6 +28,6 @@ package() {
 	#install -D -m644 "$srcdir"/Splash.png "$pkgdir"/boot/Splash.png
     #install -D -m644 "$srcdir"/Splash_1280_1024.ppm "$pkgdir"/boot/Splash_1280_1024.ppm
     #install -D -m644 "$srcdir"/Splash_1024_768.ppm "$pkgdir"/boot/Splash_1024_768.ppm
-    install -D -m644 "$srcdir"/splash_1280_800.png "$pkgdir"/boot/splash_1280_800.png
+    install -D -m644 "$srcdir"/splash.png "$pkgdir"/boot/splash.png
 }
 
