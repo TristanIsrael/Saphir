@@ -7,5 +7,5 @@ This package provides the Clam antivirus.
 Here is the dependencies tree for this product:
 
 - saphir-av-clam
-  - psec-lib
+  - safecor-lib
 

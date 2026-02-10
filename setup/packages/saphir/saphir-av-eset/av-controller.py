@@ -1,4 +1,3 @@
-from psec import MqttFactory, Api
 from libsaphir import EeaAntivirusController
 import threading
 

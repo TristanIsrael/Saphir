@@ -237,7 +237,7 @@ runs:
         echo Disable netorking
         sed -i 's/^lxc\.net/#&/' /var/lib/lxc/"$pkgname"/config
 
-        # Add PSEC mount points
+        # Add Safecor mount points
         echo Add mount points
         echo "" >> /var/lib/lxc/"$pkgname"/config
         echo "lxc.mount.entry = /mnt/storage mnt/storage none bind,optional,create=dir" >> /var/lib/lxc/"$pkgname"/config

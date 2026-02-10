@@ -1,28 +1,28 @@
 from libsaphir._abstract_antivirus_controller import AbstractAntivirusController
-from psec import EtatComposant, Parametres, Cles
+from safecor import ComponentState, Constants
 from libsaphir import FileStatus
 import subprocess, threading, os
 
 class ClamAntivirusController(AbstractAntivirusController):
     
-    __state = EtatComposant.UNKNOWN
+    __state = ComponentState.UNKNOWN
 
     def __init__(self):
         super().__init__("ClamAV", "ClamAV Antivirus controller")
 
     def _on_api_ready(self) -> None:
         self.info("ClamAV antivirus controller is starting.")        
-        self.__state = EtatComposant.STARTING
+        self.__state = ComponentState.STARTING
 
         # Verify the daemon is ready
         threading.Timer(0.5, self.__ping_clamd).start()
     
     def _analyse_file(self, filepath: str) -> None:
-        if self.__state != EtatComposant.READY:
+        if self.__state != ComponentState.READY:
             self.error("The component is not ready.")            
             return        
         
-        storage_filepath = "{}{}".format(Parametres().parametre(Cles.STORAGE_PATH_DOMU), filepath)
+        storage_filepath = f"{Constants.DOMU_REPOSITORY_PATH}{filepath}"
 
         if not os.path.exists(storage_filepath):
             errstr = "The file {} does not exist or is not accessible.".format(storage_filepath)
@@ -88,6 +88,6 @@ class ClamAntivirusController(AbstractAntivirusController):
         if proc.returncode > 0:
             threading.Timer(0.5, self.__ping_clamd).start()
         else:
-            self.__state = EtatComposant.READY
-            self.debug("Antivirus is ready. The storage path is {}".format(Parametres().parametre(Cles.STORAGE_PATH_DOMU)))
+            self.__state = ComponentState.READY
+            self.debug(f"Antivirus is ready. The storage path is {Constants.DOMU_REPOSITORY_PATH}")
             self.component_state_changed()

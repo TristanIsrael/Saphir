@@ -11,7 +11,7 @@ url="https://defense.gouv.fr/"
 arch="x86_64"
 license="MIT"
 depends="sudo"
-makedepends="openrc psec-container-debian"
+makedepends="openrc safecor-container-debian"
 checkdepends=""
 install="$pkgname.post-install $pkgname.pre-deinstall"
 subpackages=""
@@ -33,7 +33,7 @@ build() {
     # Rename the LXC container and reconfigure
     echo Copy the template container
     sudo rm -rf "$srcdir/$pkgname"
-    sudo cp -r /var/lib/lxc/psec-container-debian "$srcdir/$pkgname"
+    sudo cp -r /var/lib/lxc/safecor-container-debian "$srcdir/$pkgname"
     sudo cp /etc/resolv.conf "$srcdir/$pkgname"/rootfs/etc/
     #sudo chmod 770 "$srcdir/$pkgname"
     #sudo chown -R builder "$srcdir/$pkgname"
@@ -123,7 +123,7 @@ build() {
     sudo rm -rf "$srcdir/$pkgname"/rootfs/tmp/*
     sudo rm -rf "$srcdir/$pkgname"/rootfs/var/tmp/*  
 
-    # Add PSEC mount points
+    # Add Safecor mount points
     cd "$srcdir/$pkgname"
     echo Add mount points
     echo "" | sudo tee -a config > /dev/null

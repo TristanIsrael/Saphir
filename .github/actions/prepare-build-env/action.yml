@@ -43,7 +43,7 @@ runs:
     - shell: sh
       run: |
         echo "Register the official repository"
-        sudo echo "https://www.alefbet.net/github/psec" >> /etc/apk/repositories
+        sudo echo "https://www.alefbet.net/github/safecor" >> /etc/apk/repositories
         sudo echo "https://www.alefbet.net/github/saphir" >> /etc/apk/repositories
 
     - shell: sh
@@ -52,5 +52,5 @@ runs:
         cp certs/saphir.rsa.pub /home/builder/.abuild
         cp certs/saphir.rsa.pub /etc/apk/keys
 
-        echo "Download PSEC public key"
-        wget -P /etc/apk/keys https://www.alefbet.net/github/psec/psec.rsa.pub 
+        echo "Download Safecor public key"
+        wget -P /etc/apk/keys https://www.alefbet.net/github/safecor/safecor.rsa.pub 

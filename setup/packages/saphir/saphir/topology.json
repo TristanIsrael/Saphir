@@ -18,7 +18,7 @@
         }
     },
     "network": {
-        "repository": "http://psec-depots/depots/saphir"
+        "repository": "https://www.alefbet.net/github/saphir"
     },
     "business": {    
         "domains": [

@@ -7,6 +7,6 @@ This package provides the end-user GUI for Saphir.
 Here is the dependencies tree for this product:
 
 - saphir-gui
-  - psec-gui-base
-  - psec-lib
+  - safecor-gui-base
+  - safecor-lib
 

@@ -12,7 +12,7 @@ makedepends=""
 checkdepends=""
 install=""
 subpackages=""
-replaces="psec-core"
+replaces="safecor-core"
 builddir="$srcdir/"
 options="!check"  # no tests provided
 

@@ -9,12 +9,12 @@ from PySide6.QtCore import Qt, QEvent, QObject
 from PySide6.QtGui import QGuiApplication, QFont, QFontDatabase, QPointingDevice
 from PySide6.QtQuick import QQuickWindow
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonType, qmlRegisterUncreatableType, qmlRegisterSingletonInstance
-from psec import Api, System
+from safecor import Api, System
 from libsaphir import DEVMODE
-from ApplicationController import ApplicationController
-from Enums import Enums
+from application_controller import ApplicationController
+from enums import Enums
 if DEVMODE:
-    from DevModeHelper import DevModeHelper
+    from devmode_helper import DevModeHelper
     DevModeHelper.set_qt_plugins_path()
 
 api_ready = threading.Event()
@@ -22,7 +22,7 @@ FORCE_FULLSCREEN = False
 VERSION = "3.0.0"
 
 def on_ready():
-    print("PSEC API is ready")
+    print("Safecor API is ready")
     api_ready.set()
 
 def load_fonts(fonts:list):

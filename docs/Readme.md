@@ -9,7 +9,7 @@ The documentation is structured into subject-specific documents.
 ### Development
 
 - The documentation for the development of Saphir is available [here](developing-saphir.md).
-- The documentation of PSEC is available [here (#TODO)](#), including the documentation for [preparing the development environment](#).
+- The documentation of Safecor is available [here (#TODO)](#), including the documentation for [preparing the development environment](#).
 
 ### Performance
 

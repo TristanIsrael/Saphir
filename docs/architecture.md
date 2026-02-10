@@ -5,7 +5,7 @@ This document describes the architecture of Saphir.
 ## Components
 
 The components used in Saphir are:
-- PSEC Core
+- Safecor Core
 - GUI (provided)
 - Clam Antivirus (provided) 
 
@@ -25,7 +25,7 @@ The analysis of a disk is achieved with the following process:
 
 ## Communication mechanism
 
-The components correspond to different virtual machines (domains). They communicate thru the PSEC messaging channel based on MQTT. In addition to PSEC grammar, there is a specific grammar for Saphir used to handle the antivirus analyses.
+The components correspond to different virtual machines (domains). They communicate thru the Safecor messaging channel based on MQTT. In addition to Safecor grammar, there is a specific grammar for Saphir used to handle the antivirus analyses.
 
 ## Communication protocol
 

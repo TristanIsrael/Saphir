@@ -1,9 +1,9 @@
-from psec import MockSysUsbController, Api
-from MockClamAntivirusController import MockClamAntivirusController
-from MockEeaAntivirusController import MockEeaAntivirusController
-from MockDom0Controller import MockDom0Controller
-from DevModeHelper import DevModeHelper
-from MockDom0Controller import MockDom0Controller
+from safecor import MockSysUsbController, Api
+from mock_clam_antivirus_controller import MockClamAntivirusController
+from mock_eea_antivirus_controller import MockEeaAntivirusController
+from mock_dom0_controller import MockDom0Controller
+from devmode_helper import DevModeHelper
+from mock_dom0_controller import MockDom0Controller
 import threading
 
 

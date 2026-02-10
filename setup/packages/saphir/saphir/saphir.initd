@@ -10,7 +10,7 @@ depend() {
 start() {
     ebegin "Start Saphir"
 
-    # We only need to start PSEC orchestrator
+    # We only need to start Safecor orchestrator
     rc-service orchestrator start    
 
     eend $?

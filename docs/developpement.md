@@ -10,7 +10,7 @@ Les technologies, outils et dépendances mis en oeuvre dans Saphir sont :
 - Serveur DHCP
 - Python 3
 - Qt >= 6.5 (PySide6)
-- PSEC (*Platform Security Enhanced Core*)
+- Safecor (*Platform Security Enhanced Core*)
 - Visual Studio Code
 - Mosquitto
 
@@ -22,7 +22,7 @@ Le développement de Saphir nécessite les pré-requis suivants :
 - Visual Studio Code installé avec les plugins pour le codage et le débogage sous python
 - Broker Mosquitto >= 2.0
 - ClamAV (`clamd`)
-- PSEC doit être disponible dans le PATH (soit le code source, soit la bibliothèque python)
+- Safecor doit être disponible dans le PATH (soit le code source, soit la bibliothèque python)
 
 ## Dépendances
 
@@ -45,7 +45,7 @@ $ cd workspace
 - installer le module `venv` : `$ sudo apt install python-3.11-venv`
 - créer un environnement virtuel : `$ python3 -m venv venv`
   - entrer dans l'environnement : `$ . venv/bin/activate`
-- installer le module `PSEC` : `$ pip install ./psec-1.0-py3-none-any.whl`
+- installer le module `Safecor` : `$ pip install ./safecor-1.0-py3-none-any.whl`
   - les dépendances sont installées automatiquement : `humanize, joblib, etc`
 - décompresser le dossier source de Saphir
 - entrer dans le répertoire `python/gui/src/Saphir`
@@ -62,11 +62,11 @@ En ligne de commande il faut définir la variable d'environnement `PYTHONPATH` :
 
 ## Architecture
 
-En développement, l'architecture de Saphir utilise plusieurs bouchons pour simuler certaines interactions avec l'environnement. Les fonctions système sont fournies par `PSEC`, notamment les échanges de fichier et les mécanismes de communication inter-processus et de messagerie. Certaines de ces fonctions sont *mockées* dans l'environnement de développement pour augmenter la maîtrise des tests.
+En développement, l'architecture de Saphir utilise plusieurs bouchons pour simuler certaines interactions avec l'environnement. Les fonctions système sont fournies par `Safecor`, notamment les échanges de fichier et les mécanismes de communication inter-processus et de messagerie. Certaines de ces fonctions sont *mockées* dans l'environnement de développement pour augmenter la maîtrise des tests.
 
 L'élément central de l'orchestration des IPC et des messages est le broker Mosquitto.
 
-Les fichiers sont fournis, au travers de `PSEC`, par la classe `MockSysUsbController` qui simule la machine virtuelle qui fournit l'interface avec les supports USB.
+Les fichiers sont fournis, au travers de `Safecor`, par la classe `MockSysUsbController` qui simule la machine virtuelle qui fournit l'interface avec les supports USB.
 
 L'analyse antivirale est fournie par la classe `MockClamAntivirusController` qui permet l'intégration de ClamAV avec le système sous test.
 

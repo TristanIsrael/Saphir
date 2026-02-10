@@ -1,6 +1,6 @@
 {    
     "python.analysis.extraPaths": [        
-        "${workspaceFolder}/../PSEC/python/lib/src",
+        "${workspaceFolder}/../Safecor/python/lib/src",
         "${workspaceFolder}/../Saphir/python/libsaphir/src"
     ],
     "python.analysis.typeCheckingMode": "standard"

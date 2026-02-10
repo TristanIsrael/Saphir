@@ -1,4 +1,4 @@
-from psec import Api, MqttFactory, MqttHelper, Topics, EtatComposant
+from safecor import Api, MqttFactory, MqttHelper, Topics, ComponentState
 import threading, time, os, platform
 from queue import Queue
 from abc import ABC, abstractmethod
@@ -155,8 +155,8 @@ class AbstractAntivirusController(ABC):
         pass
 
     @abstractmethod
-    def _get_component_state(self) -> EtatComposant:
-        return EtatComposant.UNKNOWN
+    def _get_component_state(self) -> ComponentState:
+        return ComponentState.UNKNOWN
 
     @abstractmethod    
     def _analyse_file(self, filepath:str) -> None:

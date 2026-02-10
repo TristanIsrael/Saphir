@@ -7,7 +7,7 @@ pkgdesc="Saphir - Library"
 url="https://defense.gouv.fr/"
 arch="noarch"
 license="MIT"
-depends="psec-lib"
+depends="safecor-lib"
 makedepends="python3-dev py3-build py3-installer"
 checkdepends=""
 install=""
@@ -16,7 +16,6 @@ replaces=""
 builddir="$srcdir/"
 options="!check"  # no tests provided
 source="
-$pkgname.zip::https://github.com/TristanIsrael/Saphir/archive/refs/heads/$gitbranch.zip
 "
 
 prepare() {
