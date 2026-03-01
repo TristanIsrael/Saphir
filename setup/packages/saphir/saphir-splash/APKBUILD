@@ -17,13 +17,14 @@ builddir="$srcdir/"
 options="!check"  # no tests provided
 
 source="
-boot/Splash.png
-boot/Splash_800_1280.ppm
+boot/splash.png
 "
 
 package() {
     # Splash screen for grub and boot
-	install -D -m644 "$srcdir"/Splash.png "$pkgdir"/boot/Splash.png
-    install -D -m644 "$srcdir"/Splash_800_1280.ppm "$pkgdir"/boot/Splash_800_1280.ppm
+	install -D -m644 "$srcdir"/splash.png "$pkgdir"/boot/splash.png
 }
 
+sha512sums="
+97496a85945a98737a4b78eb0f7f56ce44712b7f4c4f45e038f990b77de1a665bdc0fda99dc90b28efecb2c8525f5912ffff41cbe022c36eb64dbd75f70b74e3  splash.png
+"

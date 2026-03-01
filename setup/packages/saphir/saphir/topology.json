@@ -17,9 +17,6 @@
             "antivirus": 0.8
         }
     },
-    "network": {
-        "repository": "https://www.alefbet.net/github/saphir"
-    },
     "business": {    
         "domains": [
             {
@@ -40,8 +37,8 @@
         {
             "name": "Durabook R8",
             "identifier": {
-                "Manufacturer": "Durabook",
-	            "Product Name": "R8AA"
+                "sys_vendor": "Durabook",
+	            "product_name": "R8AA"
             },
             "settings": {
                 "gui": {

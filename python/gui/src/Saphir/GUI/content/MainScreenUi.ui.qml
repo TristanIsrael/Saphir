@@ -22,7 +22,7 @@ Item {
     property alias btnRestart: btnRestart
     property alias btnShutdown: btnShutdown
     property alias pnlFileSelection: pnlFileSelection
-    property alias pnlStartStop: pnlStartStop
+    //property alias pnlStartStop: pnlStartStop
     property alias btnStartStop: btnStartStop
     property alias dlgAnalyseWholeStorage: dlgAnalyseWholeStorage
     property alias dlgSystemState: dlgSystemState
@@ -223,22 +223,22 @@ Item {
     }
 
     /* Lower right buttons */
-    Panel {
-        id: pnlStartStop
+    ShadowButton {
+        id: btnStartStop //pnlStartStop
 
         x: parent.width - (width * 1.25)
         y: parent.height - (height * 1.25)
-        width: btnStartStop.width
-        height: btnStartStop.height
-        radius: height
+        //width: btnStartStop.width
+        //height: btnStartStop.height
+        //radius: height
 
         enabled: bindings.analysisReady && bindings.queueSize > 0
 
-        RoundButton {
-            id: btnStartStop
-            flat: true
+        //RoundButton {
+        //    id: btnStartStop
+        //    flat: true
             icon: bindings.analyzing ? Constants.iconPause : Constants.iconStart
-        }
+        //}
     }
 
     /* Messages panel */
@@ -326,7 +326,7 @@ Item {
             top: topBar.bottom
             left: parent.left
             leftMargin: pnlMainMenu.x * 2 + btnMainMenu.width * 1.2
-            right: pnlStartStop.left
+            right: btnStartStop.left
             bottom: parent.bottom
             margins: mainWindow.height * 0.05
         }

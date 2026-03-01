@@ -35,3 +35,6 @@ package() {
 
     install -D -m755 "$srcdir"/gui.initd "$pkgdir"/etc/init.d/gui
 }
+sha512sums="
+d17ad346a31f4bf729b01e09e213eb0595d9088471082fa0ea31ad08ef80a5684ed84c931e2a3da52106b8da002bc586cebabde5af9586d7e642d251d62f35d1  gui.initd
+"

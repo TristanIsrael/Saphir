@@ -155,3 +155,6 @@ package() {
     echo "Prepare for cleaning"
     sudo rm -rf "$srcdir/$pkgname"
 }
+sha512sums="
+d640faa749aa50e84140895c39c3e80366ce897ce307b6a107f45aff880001e52c3ed13c5a31e2a9cb284e9138b79fa3622e56db651d116632938ea29566a478  eeau_x86_64.bin
+"

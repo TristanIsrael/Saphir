@@ -35,3 +35,12 @@ package() {
     install -D -m755 "$srcdir"/get-eea-description.sh "$pkgdir"/usr/lib/saphir/bin/get-eea-description.sh
     install -D -m755 "$srcdir"/stop-all-scans.sh "$pkgdir"/usr/lib/saphir/bin/stop-all-scans.sh
 }
+sha512sums="
+20cc15be276e85808a46495829eae6e38a55bee797d72d8cf95eaa542a2bcff834939ff856a1778de04a6ac3199413c5d79b501af676febcaf5174ecdd4a7258  av-controller.initd
+52da667fe75c288d4b964f9b1e19b0fba9d3b6b1847c49149774895713b73b78776ee704de714289299ea74ed0e5cddd23972075be07061e63bdd3b0e4ecf456  av-controller.py
+838defb2e35cba3fad4b3805033aff0cba55a8cba1760880dd46c65a73e685a272f741112ae5e463ea734009fff06bc8c4a8acc2ce2943584abbe02bc8285529  scan-file.sh
+f56f0b4f3254ad9307fb4155852d12252d6c4ec8d413dc78979437dba8589699ec400e0a12451f5523762f5b2e7fbf2275ef5d849811f956178aa2da8cbbb600  get-scan-result.sh
+c534c051e5eb281bd8bb6f218e54e97c870031591b9e12cf568004b43458636f794bb49560789fa2b929d51dfbf56a6c85363beee9d98c91b599f0a0462b167f  get-eea-version.sh
+08b6967eee224e8bd738c8fecee56d0cdf7eb4fdbfa503036efafac4387c4802f438ff3af4bae009b2cd04a49e79ab77ee2c982f34b0247ed0517619bbe4fffb  get-eea-description.sh
+7a7c9db603880d2a56fe54768c5ea6668cbe17179d27b1b460d6b9de9b3e04ca039d4529e3f26926a23b4be03d1abd7409dd2b95f0c533330f320a4a32a2d7cf  stop-all-scans.sh
+"
