@@ -18,8 +18,7 @@ options="!check"  # no tests provided
 py_src_dir="../../../../../python"
 source=""
 
-prepare() {    
-    ls -lR "../../../../"
+prepare() {
     echo "Copy source files"
     cp -r "$py_src_dir"/libsaphir "$srcdir"
 }
