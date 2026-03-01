@@ -15,23 +15,25 @@ subpackages=""
 replaces=""
 builddir="$srcdir/"
 options="!check"  # no tests provided
+py_src_dir="../../../../../python"
 source="gui.initd"
 
 prepare() {
-    default_prepare
+    echo "Copy source files"
+    cp -r "$py_src_dir"/gui "$srcdir"
 }
 
 build() {    
-    cd "$builddir/saphir/python/gui"
+    cd "$srcdir/gui"
     python3 -m build
 }
 
 package() {
-    cd "$builddir/saphir/python/gui/dist"
+    cd "$srcdir/gui/dist"
     mkdir -p "$pkgdir/usr/lib/saphir"
-    tar xvzf *.tar.gz -C "$pkgdir/usr/lib/saphir"    
+    tar xvzf "saphir-$pkgber.tar.gz" -C "$pkgdir/usr/lib/saphir"    
     cd "$pkgdir/usr/lib/saphir"
-    ln -s "saphir_gui-$pkgver.$pkgrel" gui
+    ln -s "gui-$pkgver" gui
 
     install -D -m755 "$srcdir"/gui.initd "$pkgdir"/etc/init.d/gui
 }
