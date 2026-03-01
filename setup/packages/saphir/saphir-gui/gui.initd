@@ -4,7 +4,8 @@ name="gui"
 command_background="yes"
 export DISPLAY=:0
 
-depend() {    
+depend() {
+    need xserver
     after syslog
 }
 

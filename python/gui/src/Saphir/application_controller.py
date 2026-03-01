@@ -150,7 +150,7 @@ class ApplicationController(QObject):
         self.allFilesUpdated.connect(self.inputFilesListModel_.reset)
         self.fileUpdated.connect(self.__queueListProxyModel.on_data_changed)
 
-        self.logListModel_ = LogListModel(self)        
+        self.logListModel_ = LogListModel(self)
         self.__thread_pool = ThreadPoolExecutor(max_workers=1)
 
         self.__report_controller = ReportController(self)
@@ -159,15 +159,15 @@ class ApplicationController(QObject):
 
     def start(self, ready_callback):
         if DEVMODE:
-            self.mqtt_client = DevModeHelper.create_mqtt_client("Saphir")
+            self.__mqtt_client = DevModeHelper.create_mqtt_client("Saphir")
         else:
-            self.mqtt_client = MqttFactory.create_mqtt_client_domu("Saphir")
+            self.__mqtt_client = MqttFactory.create_mqtt_client_domu("Saphir")
 
-        self.__logfile = os.path.join(tempfile.gettempdir(), "journal.log")
+        self.__logfile = os.path.join(tempfile.gettempdir(), "saphir.log")
         self.__ready_callback = ready_callback
 
-        Api().add_ready_callback(self.__on_api_ready)        
-        Api().start(mqtt_client=self.mqtt_client, recording=True, logfile=self.__logfile)
+        Api().add_ready_callback(self.__on_api_ready)
+        Api().start(mqtt_client=self.__mqtt_client, domain_identifier="GUI", recording=True, logfile=self.__logfile)
 
 
     @Slot()
