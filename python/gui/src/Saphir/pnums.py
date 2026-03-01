@@ -15,7 +15,7 @@ class AnalysisState(Enum):
 class AnalysisMode(Enum):
     Undefined, AnalyseWholeSource, AnalyseSelection = range(3)
 
-class Roles():    
+class Roles():
     RoleType = Qt.UserRole + 1
     RoleFilename = Qt.UserRole + 2
     RolePath = Qt.UserRole + 3
