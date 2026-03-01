@@ -15,7 +15,7 @@ subpackages=""
 replaces=""
 builddir="$srcdir/"
 options="!check"  # no tests provided
-py_src_dir="../../../../python"
+py_src_dir="../../../../../python"
 source=""
 
 prepare() {    
