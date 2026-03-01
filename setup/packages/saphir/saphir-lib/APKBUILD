@@ -15,18 +15,22 @@ subpackages=""
 replaces=""
 builddir="$srcdir/"
 options="!check"  # no tests provided
+py_src_dir="../../../../python"
 source=""
 
 prepare() {
-    default_prepare
+    mkdir -p "$srcdir"
+
+    echo "Copy source files"
+    cp -r "$py_src_dir"/libsaphir "$srcdir"
 }
 
 build() {
-    cd "$srcdir/$gitrepo-$gitbranch/python/libsaphir"
+    cd "$srcdir/libsaphir"
     python3 -m build
 }
 
 package() {
-    cd "$srcdir/$gitrepo-$gitbranch/python/libsaphir/dist"
-    python3 -m installer --destdir=$pkgdir "libsaphir-$pkgver-py3-none-any.whl"
+    cd "$srcdir/lib/dist"
+    python3 -m installer --destdir=$pkgdir "libsaphir-$pkgver.$pkgrel-py3-none-any.whl"
 }
