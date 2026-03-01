@@ -32,7 +32,7 @@ class ApplicationController(QObject):
     # Member variables
 
     ready_ = False
-    monitorEnergy_ = False
+    __monitorEnergy = True
     sourceName_ = ""
     sourceReady_ = False
     targetName_ = ""
@@ -401,7 +401,7 @@ class ApplicationController(QObject):
     
 
     def __on_api_ready(self):                
-        Api().add_message_callback(self.__on_message_received)        
+        Api().add_message_callback(self.__on_message_received)
         Api().add_subscription_callback(self.__on_subscribed)
         Api().add_shutdown_callback(self.__on_shutdown)
         
@@ -453,7 +453,7 @@ class ApplicationController(QObject):
             self.__ready_callback()
 
         self.__set_system_state(SystemState.SystemReady)
-        Api().discover_components()   
+        Api().discover_components()
         Api().request_system_info()
 
         # Energy management
@@ -807,7 +807,7 @@ class ApplicationController(QObject):
 
 
     def __request_energy_state(self):
-        if not self.monitorEnergy_:
+        if not self.__monitorEnergy:
             return
         
         Api().request_energy_state()

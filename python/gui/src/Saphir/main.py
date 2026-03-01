@@ -61,9 +61,20 @@ if __name__ == "__main__":
     app.setApplicationName("Saphir")
     app.setApplicationVersion(VERSION)
 
-    # Set default font
+    app_root_path = Path(__file__).parent
+
+    # Set the default font
     font = QFont("Inter", 12)
     app.setFont(font)
+
+    # Install font Google Material
+    font_file = app_root_path / "fonts/MaterialSymbolsOutlined-VariableFont_FILL,GRAD,opsz,wght.ttf"
+    font_id = QFontDatabase.addApplicationFont(font_file.as_posix())
+
+    if font_id != -1:
+        print("The font Google Material has been correctly installed")
+    else:
+        print(f"The font Google Material has not been installed. Font path={font_file}")
 
     applicationController = ApplicationController()
     applicationController.start(on_ready)
@@ -76,9 +87,8 @@ if __name__ == "__main__":
     qmlRegisterUncreatableType(Enums, "Saphir", 1, 0, "Enums", "Not instanciable")
 
     engine = QQmlApplicationEngine()
-    engine.addImportPath(Path(__file__).resolve().parent / "GUI")
-    #engine.addImportPath(Path(__file__).resolve().parent / "GUI/themes")
-    qml_file = Path(__file__).resolve().parent / "GUI/content/MainScreen.qml"
+    engine.addImportPath(app_root_path / "GUI")
+    qml_file = app_root_path / "GUI/content/MainScreen.qml"
     
     engine.load(qml_file)
     if not engine.rootObjects():
