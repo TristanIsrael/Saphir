@@ -29,6 +29,6 @@ build() {
 }
 
 package() {
-    cd "$srcdir/lib/dist"
+    cd "$srcdir/libsaphir/dist"
     python3 -m installer --destdir=$pkgdir "libsaphir-$pkgver.$pkgrel-py3-none-any.whl"
 }
