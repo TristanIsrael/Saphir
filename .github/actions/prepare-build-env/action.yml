@@ -54,4 +54,3 @@ runs:
 
         echo "Download Safecor public key"
         wget -P /etc/apk/keys https://www.alefbet.net/github/safecor/safecor.rsa.pub 
-        wget -P /etc/apk/keys https://www.alefbet.net/github/saphir/saphir.rsa.pub 
