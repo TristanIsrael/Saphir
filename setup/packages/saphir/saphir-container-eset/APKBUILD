@@ -2,6 +2,7 @@
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 # 
 # WARNING: this packet cannot be built on GitHub actions because it needs too much privileges on the host
+# It must be built on a regular virtual machine
 #
 pkgname=saphir-container-eset
 pkgver=2.0
@@ -20,8 +21,9 @@ builddir="$srcdir/"
 options="!check"  # no tests provided
 source="https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/eeau_x86_64.bin"
 
-clean() {
+clean() {    
     sudo umount -f -R "$srcdir/$pkgname"/rootfs || true
+    sudo rm -rf "$srcdir" "$pkgdir" "$builddir" tmp
 }
 
 build() {
@@ -35,9 +37,7 @@ build() {
     sudo rm -rf "$srcdir/$pkgname"
     sudo cp -r /var/lib/lxc/safecor-container-debian "$srcdir/$pkgname"
     sudo cp /etc/resolv.conf "$srcdir/$pkgname"/rootfs/etc/
-    #sudo chmod 770 "$srcdir/$pkgname"
-    #sudo chown -R builder "$srcdir/$pkgname"
-
+    
     # Modify the path of the rootfs and the name of the container
     cd "$srcdir/$pkgname"
     sudo sed -i '/^lxc\.rootfs\.path/d' config

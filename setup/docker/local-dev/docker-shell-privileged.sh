@@ -35,6 +35,7 @@ if [ $EMULATE -eq 1 ]; then
         # Run the container
         "$DOCKER_PATH/docker" run \
         -it \
+        --privileged \
         --rm \
         --platform linux/amd64 \
         --mount type=bind,source="$PRIVATE_KEY",target=/home/builder/.abuild/saphir.rsa,readonly \
@@ -49,6 +50,7 @@ if [ $EMULATE -eq 1 ]; then
         # Run the container
         echo "$DOCKER_PATH/docker" run \
         --rm \
+        --privileged \
         --platform linux/amd64 \
         --mount type=bind,source="$PRIVATE_KEY",target=/home/builder/.abuild/saphir.rsa,readonly \
         $MOUNT_REPO \
@@ -68,6 +70,7 @@ else
         # Run the container
         "$DOCKER_PATH/docker" run \
         --rm \
+        --privileged \
         -it \
         --mount type=bind,source="$PRIVATE_KEY",target=/home/builder/.abuild/saphir.rsa,readonly \
         $MOUNT_REPO \
@@ -81,6 +84,7 @@ else
         # Run the container
         "$DOCKER_PATH/docker" run \
         --rm \
+        --privileged \
         --mount type=bind,source="$PRIVATE_KEY",target=/home/builder/.abuild/saphir.rsa,readonly \
         $MOUNT_REPO \
         -v "$SAPHIR_SOURCE_PATH:/home/builder/src/Saphir" \

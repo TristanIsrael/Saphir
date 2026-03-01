@@ -23,6 +23,7 @@ on:
         required: false
         type: 'boolean'
         default: 'false'
+      # The container archive cannot be built on GitHub
       #force-saphir-container-eset:
       #  description: "Build container-eset"
       #  required: false

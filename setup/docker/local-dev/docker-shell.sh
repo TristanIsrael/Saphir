@@ -1,3 +1,3 @@
 #!/bin/sh
 
-./docker-cmd.sh
+./docker-cmd.sh $1
