@@ -23,11 +23,11 @@ on:
         required: false
         type: 'boolean'
         default: 'false'
-      #force-saphir-container-eset:
-      #  description: "Build container-eset"
-      #  required: false
-      #  type: 'boolean'
-      #  default: 'false'      
+      force-saphir-container-eset:
+        description: "Build container-eset"
+        required: false
+        type: 'boolean'
+        default: 'false'      
       force-saphir-gui:
         description: "Build gui"
         required: false
