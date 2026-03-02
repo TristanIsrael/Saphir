@@ -496,7 +496,7 @@ class ApplicationController(QObject):
             self.__handle_copy_file(payload)
 
         elif topic == f"{Topics.ENERGY_STATE}/response":
-            self.__handle_energy_state(payload)      
+            self.__handle_energy_state(payload)
 
         elif topic == f"{Topics.SYSTEM_INFO}/response":
             self.__handle_system_info(payload)

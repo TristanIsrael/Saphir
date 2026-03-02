@@ -26,6 +26,7 @@ Item {
     property alias btnStartStop: btnStartStop
     property alias dlgAnalyseWholeStorage: dlgAnalyseWholeStorage
     property alias dlgSystemState: dlgSystemState
+    property alias dlgConnectStorage: dlgConnectStorage
     property alias dlgLog: dlgLog
     property alias dlgShutdown: dlgShutdown
     property alias dlgRestart: dlgRestart
@@ -265,7 +266,7 @@ Item {
                  && bindings.sourceName === ""
 
         label: qsTr("Please connect a storage")
-        buttonsLabels: []
+        buttonsLabels: [ qsTr("Close") ]
         handheld: bindings.handheld
     }
 
@@ -276,7 +277,7 @@ Item {
         visible: false
 
         label: qsTr("Do you want to analyze the whole storage?")
-        buttonsLabels: ["Yes", "No"]
+        buttonsLabels: [ qsTr("Yes"), qsTr("No") ]
         handheld: bindings.handheld
     }
 
@@ -287,7 +288,7 @@ Item {
         visible: false
 
         label: qsTr("Do you want to restart the system?")
-        buttonsLabels: ["Yes", "No"]
+        buttonsLabels: [ qsTr("Yes"), qsTr("No")]
         handheld: bindings.handheld
     }
 
@@ -298,7 +299,7 @@ Item {
         visible: false
 
         label: qsTr("Do you want to shutdown the system?")
-        buttonsLabels: ["Yes", "No"]
+        buttonsLabels: [ qsTr("Yes"), qsTr("No") ]
         handheld: bindings.handheld
     }
 

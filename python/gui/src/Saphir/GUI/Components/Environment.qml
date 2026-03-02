@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQuick
+import QtQuick.Window
 import Components
 import Themes
 
@@ -12,7 +13,7 @@ QtObject {
     property int theme: Constants.dark
 
     property int mainWidth: 1200
-    property int mainHeight: 800    
+    property int mainHeight: 800
 
     /** Colors */
     property color colorOverlay: {
@@ -175,5 +176,5 @@ QtObject {
             case Constants.dark: return ThemeDark.colorSelected;
         }
     }
-
+  
 }

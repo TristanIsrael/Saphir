@@ -182,6 +182,14 @@ Window {
             }
         }
 
+        Connections {
+            target: window.dlgConnectStorage
+
+            function onButtonClicked() {
+                window.dlgConnectStorage.visible = false
+            }
+        }
+
         /* Animations */
         Behavior on pnlMenuThemes.width {
             PropertyAnimation {
@@ -203,12 +211,25 @@ Window {
         id: bindings
     }
 
-    /* Testing only */
     Component.onCompleted: {
         // Verify whether a storage is connected
         if(ApplicationController.sourceReady) {
             window.dlgAnalyseWholeStorage.visible = true
-        }
+        }        
+    }
+
+    onWidthChanged: {
+        updateDimensions()
+    }
+
+    onHeightChanged: {
+        updateDimensions()
+    }
+
+    /* Functions */
+    function updateDimensions() {
+        Environment.mainWidth = root.width
+        Environment.mainHeight = root.height
     }
 }
 
