@@ -45,7 +45,7 @@ class ApplicationController(QObject):
     queueListModel_:QueueListModel
     __queueListProxyModel:QueueListProxyModel
     componentsHelper_ = ComponentsHelper()
-    analysisReady_ = False
+    __analysis_ready = False
     analysisComponents_ = list()
     analysisController_:AnalysisController
     __files_to_enqueue = list()
@@ -292,7 +292,7 @@ class ApplicationController(QObject):
 
     @Slot()
     def start_analysis(self):
-        if self.analysisController_.state == AnalysisState.AnalysisStopped and self.analysisReady_:
+        if self.analysisController_.state == AnalysisState.AnalysisStopped and self.__analysis_ready:
             Api().debug("User asked to start the analysis")
             self.__analysis_start_time = datetime.now()
             self.__eta_estimator = EMAETAEstimator(len(self.__queuedFilesList))
@@ -538,16 +538,16 @@ class ApplicationController(QObject):
         # Verify antiviruses availability
         ids = self.componentsHelper_.get_ids_by_type("antivirus")
         ready &= len(ids) >= ANTIVIRUS_NEEDED
-        for id in ids:
-            av = self.componentsHelper_.get_by_id(id)
+        for comp_id in ids:
+            av = self.componentsHelper_.get_by_id(comp_id)
             ready &= av.get("state", ComponentState.UNKNOWN) == ComponentState.READY
             if av.get("state", ComponentState.UNKNOWN) == ComponentState.READY and av not in self.analysisComponents_:
                 self.analysisComponents_.append(av)
 
         # The system is ready when all necessary components are ready
         # and the number of antiviruses needed is reached
-        self.analysisReady_ = ready
-        self.analysisReadyChanged.emit(self.analysisReady_)
+        self.__analysis_ready = ready
+        self.analysisReadyChanged.emit(self.__analysis_ready)
 
         if ready:
             self.__messages_model.addMessage(self.tr("The antiviruses are ready"))
@@ -726,7 +726,7 @@ class ApplicationController(QObject):
 
         file = self.__queuedFilesList.get(filepath)
         if file is None:
-            Api().error("The file {} has not been found in the analysis queue".format(filepath))
+            Api().error(f"The file {filepath} has not been found in the analysis queue")
             return
         
         success = status == "ok"
@@ -734,7 +734,7 @@ class ApplicationController(QObject):
             self.__copied_files_count += 1            
 
         file["status"] = FileStatus.FileCopySuccess if success else FileStatus.FileCopyError            
-        Api().info("The file {} has been copied to {}. The fingerprint is {}".format(filepath, self.__targetName(), fingerprint))
+        Api().info(f"The file {filepath} has been copied to {self.__targetName()}. The fingerprint is {fingerprint}")
         self.fileUpdated.emit(filepath, ["status"])
         self.transferProgressChanged.emit()
 
@@ -979,7 +979,7 @@ class ApplicationController(QObject):
         #return sum(1 for item in self.__inputFilesList.values() if item.get("inqueue", False))
 
     def __analysisReady(self):
-        return self.analysisReady_
+        return self.__analysis_ready
     
     def __analysis_controller(self):
         return self.analysisController_    

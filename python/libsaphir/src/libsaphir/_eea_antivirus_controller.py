@@ -240,7 +240,7 @@ class EeaAntivirusController(AbstractAntivirusController):
         # We verify whether de LXC container is ready
         cmd = "lxc-info -n saphir-container-eset | grep '^State' | awk '{{print $2}}'"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        if result.returncode > 0:            
+        if result.returncode > 0:
             threading.Timer(0.5, self.__ping_eea).start()
         else:
             state = result.stdout.strip()

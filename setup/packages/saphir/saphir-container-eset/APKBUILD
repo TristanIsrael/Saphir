@@ -134,6 +134,9 @@ build() {
     echo "" | sudo tee -a config > /dev/null
     echo "lxc.mount.entry = /dev/hvc1 dev/hvc1 none bind,optional,create=file" | sudo tee -a config > /dev/null
 
+    # Remove network configuration in the lxc
+    sudo sed -i '/^lxc\.net\.0\.\(type = veth\|link = lxcbr0\|flags = up\)$/d' config
+
     # Since 2.0 We use Squashfs to make it smaller and quicker
     # Tar container
     # sudo tar cf "$pkgdir"/var/lib/lxc/"$pkgname".tar -C /var/lib/lxc/ .

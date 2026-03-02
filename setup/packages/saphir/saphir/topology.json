@@ -47,7 +47,7 @@
                     }
                 },
                 "pci": {
-                    "blacklist": "00:0d.0"
+                    "blacklist": ["00:0d.0"]
                 }
             }
         }

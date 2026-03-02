@@ -61,7 +61,7 @@ if __name__ == "__main__":
     app.setApplicationName("Saphir")
     app.setApplicationVersion(VERSION)
 
-    app_root_path = Path(__file__).parent
+    app_root_path = Path(__file__).resolve().parent
 
     # Set the default font
     font = QFont("Inter", 12)
