@@ -230,9 +230,9 @@ class EeaAntivirusController(AbstractAntivirusController):
         if proc.returncode == 0:
             if proc.stdout is not None:
                 return proc.stdout.decode().strip()
-        
+
         return "#err"
-        
+
     #######################
     ## Private functions
     #
