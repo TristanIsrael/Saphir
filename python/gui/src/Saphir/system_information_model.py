@@ -35,6 +35,12 @@ class SystemInformationModel(QAbstractTableModel):
         self.__update_information()
         self.endResetModel()
 
+    def get_uuid(self):
+        return self.__system_information_data.get("system", {}).get("uuid", "")
+    
+    def get_safecor_version(self):
+        return self.__system_information_data.get("core", {}).get("version", "unknown")
+
     def rowCount(self, parent=QModelIndex()) -> int:
         return len(self.__system_information)
     

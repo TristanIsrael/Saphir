@@ -1,7 +1,19 @@
 {    
+    "python.envFile": "${workspaceFolder}/.env",
+    "python.terminal.useEnvFile": true,
     "python.analysis.extraPaths": [        
         "${workspaceFolder}/../Safecor/python/lib/src",
-        "${workspaceFolder}/../Saphir/python/libsaphir/src"
+        "${workspaceFolder}/../python/libsaphir/src",
+        "${workspaceFolder}/python/gui/src",
+        "${workspaceFolder}/python/gui/src/tests"
     ],
-    "python.analysis.typeCheckingMode": "standard"
+    "python.analysis.typeCheckingMode": "standard",
+    "python.testing.unittestArgs": [
+        "-v", "-s", 
+        "${workspaceFolder}/python/gui/tests",  // Répertoire contenant les tests
+        "-p", "test_*.py"        // Pattern pour trouver les fichiers de test
+    ],
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestEnabled": true,
+    "python.testing.cwd": "python", 
 }

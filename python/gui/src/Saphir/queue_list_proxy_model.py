@@ -1,8 +1,9 @@
 from PySide6.QtCore import QSortFilterProxyModel, QModelIndex, QPersistentModelIndex, Property, Signal
-from queue_list_model import QueueListModel
-from enums import Roles, FileStatus
+from libsaphir import FileStatus
+from . import QueueListModel
+from . import Roles
 
-class QueueListProxyModel(QSortFilterProxyModel):    
+class QueueListProxyModel(QSortFilterProxyModel):
 
     filtreSainsChanged = Signal()
     filtreInfectesChanged = Signal()

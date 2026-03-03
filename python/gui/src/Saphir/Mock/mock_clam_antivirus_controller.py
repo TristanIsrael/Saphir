@@ -1,5 +1,5 @@
 from libsaphir import ClamAntivirusController
-from devmode_helper import DevModeHelper
+from Saphir import DevModeHelper
 from threading import Event
 from safecor import Constants
 

@@ -1,9 +1,8 @@
-from safecor import MockSysUsbController, Api
 from mock_clam_antivirus_controller import MockClamAntivirusController
 from mock_eea_antivirus_controller import MockEeaAntivirusController
 from mock_dom0_controller import MockDom0Controller
-from devmode_helper import DevModeHelper
-from mock_dom0_controller import MockDom0Controller
+from Saphir import DevModeHelper
+from safecor import MockSysUsbController
 import threading
 
 
@@ -19,7 +18,7 @@ if __name__ == "__main__":
 
     print("... Starting Mock sys-usb controller")
     mockUSB = MockSysUsbController(verrou_synchro)
-    mockUSB.start(DevModeHelper.get_mocked_source_disk_path(), DevModeHelper.get_storage_path(), DevModeHelper.get_mocked_destination_disk_path())
+    mockUSB.start(DevModeHelper.DISKS, DevModeHelper.get_storage_path(), DevModeHelper.get_mocked_destination_disk_path())
     verrou_synchro.wait()
 
     # Pour les antivirus on se synchronise avec l'API

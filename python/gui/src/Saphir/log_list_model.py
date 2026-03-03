@@ -1,6 +1,5 @@
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal, Slot
 from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray, qDebug
-from enums import Roles, FileStatus
 from safecor import Api, Topics, Logger
 import logging
 from datetime import datetime

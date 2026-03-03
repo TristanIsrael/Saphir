@@ -5,17 +5,18 @@ import signal
 import threading
 from pathlib import Path
 
+from Saphir import Enums, ApplicationController
+from libsaphir import DEVMODE
+if DEVMODE:
+    from Saphir import DevModeHelper
+    DevModeHelper.set_qt_plugins_path()
 from PySide6.QtCore import Qt, QEvent, QObject
+from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtGui import QGuiApplication, QFont, QFontDatabase, QPointingDevice
 from PySide6.QtQuick import QQuickWindow
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonType, qmlRegisterUncreatableType, qmlRegisterSingletonInstance
 from safecor import Api, System
-from libsaphir import DEVMODE
-from application_controller import ApplicationController
-from enums import Enums
-if DEVMODE:
-    from devmode_helper import DevModeHelper
-    DevModeHelper.set_qt_plugins_path()
+
 
 api_ready = threading.Event()
 FORCE_FULLSCREEN = False
@@ -86,7 +87,9 @@ if __name__ == "__main__":
     qmlRegisterSingletonInstance(ApplicationController, "Saphir", 1, 0, "ApplicationController", applicationController)
     qmlRegisterUncreatableType(Enums, "Saphir", 1, 0, "Enums", "Not instanciable")
 
+    QQuickStyle.setStyle("Basic")
     engine = QQmlApplicationEngine()
+    engine.rootContext().setContextProperty("DEVMODE", DEVMODE)
     engine.addImportPath(app_root_path / "GUI")
     qml_file = app_root_path / "GUI/content/MainScreen.qml"
     

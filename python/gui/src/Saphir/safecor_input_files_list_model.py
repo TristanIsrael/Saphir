@@ -1,10 +1,6 @@
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, Signal, Slot, qDebug
 from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray
-from enums import Roles, FileStatus
-from safecor import Api
-import humanize
-import collections
-
+from . import Roles
 
 class SafecorInputFilesListModel(QAbstractListModel):
 

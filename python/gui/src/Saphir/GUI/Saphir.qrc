@@ -11,7 +11,9 @@
         <file>components/PanelBase.qml</file>
         <file>components/qmldir</file>
         <file>components/RoundButton.qml</file>
+        <file>components/ShadowButton.qml</file>
         <file>components/SimpleDialog.qml</file>
+        <file>components/StyledComboBox.qml</file>
         <file>components/StyledText.qml</file>
         <file>content/AnalysisPanel.qml</file>
         <file>content/Bindings.qml</file>

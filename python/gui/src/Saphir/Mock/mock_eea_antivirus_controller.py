@@ -1,5 +1,5 @@
 from libsaphir import AbstractAntivirusController
-from devmode_helper import DevModeHelper
+from Saphir import DevModeHelper
 from safecor import ComponentState, Constants
 import threading
 import os
@@ -17,7 +17,7 @@ class MockEeaAntivirusController(AbstractAntivirusController):
     def _on_api_ready(self) -> None:
         pass
     
-    def _get_component_state(self) -> str:
+    def _get_component_state(self) -> ComponentState:
         return ComponentState.READY
     
     def _analyse_file(self, filepath: str) -> None:

@@ -1,9 +1,7 @@
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, Signal, Slot
 from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray, qDebug
-from enums import Roles, FileStatus
-from safecor import Api
-import humanize
-import collections
+from libsaphir import FileStatus
+from . import Roles
 
 
 class QueueListModel(QAbstractListModel):
@@ -12,10 +10,10 @@ class QueueListModel(QAbstractListModel):
     #__last_row_count = 0
     __row_count = 0
     __max_rows = 999999
-    __fichiers:dict
-    __filtreSains = True
-    __filtreInfectes = True
-    __filtreAutres = True
+    __files:dict
+    __filter_clean = True
+    __filter_infected = True
+    __filter_other = True
     __cache = []
 
     filtreSainsChanged = Signal()
@@ -24,8 +22,8 @@ class QueueListModel(QAbstractListModel):
     
     def __init__(self, files:dict, parent=None):
         super().__init__(parent)
-        self.__fichiers = files
-        self.__set_regle_filtrage_auto()
+        self.__files = files
+        self.__set_auto_filter_rule()
         self.__make_cache()
 
 
@@ -39,34 +37,33 @@ class QueueListModel(QAbstractListModel):
             return None
 
         row = index.row()
-        #fichier = list(self.__fichiers.values())[row]
-        fichier = self.__cache[row]
+        file = self.__cache[row]
         #qDebug("fonction data() - filename:%s, filepath:%s" % (fichier["name"], fichier["filepath"]))        
 
         if role == Roles.RoleType:
-            return fichier.get("type", "")
+            return file.get("type", "")
         
         if role == Roles.RoleFilename:
-            return fichier.get("name", "#err")
+            return file.get("name", "#err")
         
         if role == Roles.RolePath:
-            return fichier.get("path", "#err")
+            return file.get("path", "#err")
         
         if role == Roles.RoleFilepath:
-            return fichier.get("filepath", "#err")
+            return file.get("filepath", "#err")
         
         if role == Roles.RoleStatus:
             #qDebug("{} -> {} ({})".format(fichier.get("name"), fichier.get("status", FileStatus.FileStatusUndefined), fichier.get("status", FileStatus.FileStatusUndefined).value))
-            return fichier.get("status", FileStatus.FileStatusUndefined).value
+            return file.get("status", FileStatus.FileStatusUndefined).value
         
         if role == Roles.RoleProgress:
-            return fichier.get("progress", 0)
+            return file.get("progress", 0)
         
         if role == Roles.RoleInfected:
-            return fichier.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileInfected
+            return file.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileInfected
 
         if role == Roles.RoleSelected:
-            return fichier.get("select_for_copy", False)
+            return file.get("select_for_copy", False)
 
         return None
 
@@ -89,7 +86,7 @@ class QueueListModel(QAbstractListModel):
 
     def reset(self):
         self.beginResetModel()
-        self.__set_regle_filtrage_auto()
+        self.__set_auto_filter_rule()
         self.__make_cache()
         self.endResetModel()
 
@@ -97,35 +94,35 @@ class QueueListModel(QAbstractListModel):
     def __make_cache(self):
         self.__cache.clear()
 
-        if len(self.__fichiers) == 0:
+        if len(self.__files) == 0:
             return
 
-        if self.__filtreSains:
-            self.__cache.extend([v for _,v in self.__fichiers.items() if v.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean])
+        if self.__filter_clean:
+            self.__cache.extend([v for _,v in self.__files.items() if v.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean])
 
-        if self.__filtreInfectes:
-            self.__cache.extend([v for _,v in self.__fichiers.items() if v.get("status", FileStatus.FileStatusUndefined) in (FileStatus.FileAnalysisError, FileStatus.FileCopyError, FileStatus.FileInfected)])
+        if self.__filter_infected:
+            self.__cache.extend([v for _,v in self.__files.items() if v.get("status", FileStatus.FileStatusUndefined) in (FileStatus.FileAnalysisError, FileStatus.FileCopyError, FileStatus.FileInfected)])
         
-        if self.__filtreAutres:
-            self.__cache.extend([v for _,v in self.__fichiers.items() if v.get("status", FileStatus.FileStatusUndefined) in (FileStatus.FileAnalysing, FileStatus.FileAvailableInRepository, FileStatus.FileStatusUndefined)])
+        if self.__filter_other:
+            self.__cache.extend([v for _,v in self.__files.items() if v.get("status", FileStatus.FileStatusUndefined) in (FileStatus.FileAnalysing, FileStatus.FileAvailableInRepository, FileStatus.FileStatusUndefined)])
 
 
     @Slot(str, list)
     def on_file_updated(self, filepath:str, fields:list):
-        if filepath not in self.__fichiers:
+        if filepath not in self.__files:
             return
 
-        # On cherche le fichier dans le cache
+        # We look for the file in the cache
         row = next(( (i, item) for i, item in enumerate(self.__cache) if item["filepath"] == filepath), None)
 
-        # On calcule la liste des status à filtrer
-        filtres = self.__calcule_filtres()
-
-        # Si le fichier n'est pas dans le cache parce que son status précédent l'avait exclu
-        # du cache, il faut l'ajouter dans le cache.
+        # We evaluate the filters we will use
+        filtres = self.__evaluate_filters()
+        
+        # If the file is not in the cache because its previous status excluded it from the cache
+        # we have to add it in the cace
         if row is None:
-            # On le récupère dans le dictionnaire global
-            orig = self.__fichiers[filepath]
+            # We get the file from the global dictionary
+            orig = self.__files[filepath]
             if orig is None:
                 print(f"Le fichier {filepath} n'a pas été trouvé dans le dictionnaire global")
                 return
@@ -141,9 +138,9 @@ class QueueListModel(QAbstractListModel):
             
         i, fichier = row
 
-        # On retire le fichier du cache si son status est incompatible avec les filtres
+        # We remove the file from the cache if its status is incompatible with the filters
         if "status" in fields and fichier["status"] not in filtres:
-            print(f"retrait du fichier {fichier["filepath"]} à l'index {i}")
+            print(f"Removed the file {fichier["filepath"]} at index {i}")
             self.beginRemoveRows(QModelIndex(), i, i)
             del self.__cache[i]
             self.endRemoveRows()
@@ -159,7 +156,7 @@ class QueueListModel(QAbstractListModel):
         if "status" in fields:
             roles.append(Roles.RoleStatus)
         if "progress" in fields:
-            roles.append(Roles.RoleProgress)        
+            roles.append(Roles.RoleProgress)
         if "inqueue" in fields:
             roles.append(Roles.RoleInQueue)
         if "select_for_copy" in fields:
@@ -170,59 +167,56 @@ class QueueListModel(QAbstractListModel):
         except Exception as e:
             print(e)
 
-    def get_filtre_sains(self):
-        return self.__filtreSains
+    def get_filter_clean(self):
+        return self.__filter_clean
 
-    def set_filtre_sains(self, filtre:bool):
+    def set_filter_clean(self, filtre:bool):
         self.beginResetModel()
-        self.__filtreSains = filtre
+        self.__filter_clean = filtre
         self.__make_cache()
         self.endResetModel()
-        #self.filtreSainsChanged.emit()
 
-    def get_filtre_infectes(self):
-        return self.__filtreInfectes
+    def get_filter_infected(self):
+        return self.__filter_infected
 
-    def set_filtre_infectes(self, filtre:bool):
+    def set_filter_infected(self, filtre:bool):
         self.beginResetModel()
-        self.__filtreInfectes = filtre
+        self.__filter_infected = filtre
         self.__make_cache()
         self.endResetModel()
-        #self.filtreInfectesChanged.emit()
 
-    def get_filtre_autres(self):
-        return self.__filtreAutres
+    def get_filter_other(self):
+        return self.__filter_other
 
-    def set_filtre_autres(self, filtre:bool):
+    def set_filter_other(self, filtre:bool):
         self.beginResetModel()
-        self.__filtreAutres = filtre
+        self.__filter_other = filtre
         self.__make_cache()
         self.endResetModel()
-        #self.filtreAutresChanged.emit()
 
-    def __set_regle_filtrage_auto(self):
-        # On filtre sur le type pour n'afficher que les erreurs si la quantité d'enregistrements dépasse la limite
-        if len(self.__fichiers) > self.__max_rows:
-            self.__filtreSains = False
+    def __set_auto_filter_rule(self):        
+        # We filter on the type so we show only errors when the quantity of records override the limits
+        if len(self.__files) > self.__max_rows:
+            self.__filter_clean = False
             self.filtreSainsChanged.emit()
-            self.__filtreInfectes = True
+            self.__filter_infected = True
             self.filtreInfectesChanged.emit()
-            self.__filtreAutres = False
+            self.__filter_other = False
             self.filtreAutresChanged.emit()
 
-    def __calcule_filtres(self):
+    def __evaluate_filters(self):
         filtres = []
 
-        if self.__filtreSains:
+        if self.__filter_clean:
             filtres.append(FileStatus.FileClean)
-        if self.__filtreInfectes:
+        if self.__filter_infected:
             filtres.extend( (FileStatus.FileAnalysisError, FileStatus.FileCopyError, FileStatus.FileInfected) )
-        if self.__filtreAutres:
+        if self.__filter_other:
             filtres.extend( (FileStatus.FileAnalysing, FileStatus.FileAvailableInRepository, FileStatus.FileStatusUndefined) )
 
         return filtres
 
 
-    filterClean = Property(bool, get_filtre_sains, set_filtre_sains, notify=filtreSainsChanged)
-    filterInfected = Property(bool, get_filtre_infectes, set_filtre_infectes, notify=filtreInfectesChanged)
-    filterOther = Property(bool, get_filtre_autres, set_filtre_autres, notify=filtreAutresChanged)
+    filterClean = Property(bool, get_filter_clean, set_filter_clean, notify=filtreSainsChanged)
+    filterInfected = Property(bool, get_filter_infected, set_filter_infected, notify=filtreInfectesChanged)
+    filterOther = Property(bool, get_filter_other, set_filter_other, notify=filtreAutresChanged)

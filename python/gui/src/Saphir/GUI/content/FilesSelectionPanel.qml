@@ -24,12 +24,37 @@ PanelBase {
             Layout.fillWidth: true
             Layout.preferredHeight: lblStorageName.height
 
-            StyledText {
+            /*StyledText {
                 id: lblStorageName
                 section: Constants.Section.Title1
 
                 text: qsTr("Storage name: ") +bindings.sourceName
             }
+
+            Icon {
+                text: Constants.iconSelectDisk
+                Layout.preferredHeight: 36
+                Layout.preferredWidth: 36
+                visible: bindings.storagesList.length > 1
+            }*/
+
+            StyledText {
+                id: lblStorageName
+                section: Constants.Section.Title1
+
+                text: qsTr("Storage name: ")
+            }
+
+            StyledComboBox {
+                id: comboStorages
+                model: bindings.storagesList   
+                currentValue: ApplicationController.sourceName
+
+                onActivated: {                    
+                    ApplicationController.on_storage_selected(comboStorages.currentValue)
+                }
+            }
+
 
             Item { Layout.fillWidth: true }
 
@@ -40,7 +65,7 @@ PanelBase {
             }
         }
 
-        /* Fil d'Ariane */
+        /* Breadcrumbs */
         StyledText
         {            
             Layout.fillWidth: true

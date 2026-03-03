@@ -1,8 +1,6 @@
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal, Slot
 from PySide6.QtCore import QFileInfo, Property
-from safecor import Api, ComponentsHelper, ComponentState
-import humanize
-import collections
+from safecor import ComponentsHelper, ComponentState
 
 
 class ComponentsModel(QAbstractTableModel):

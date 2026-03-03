@@ -1,8 +1,7 @@
 from PySide6.QtCore import QObject, Property, Signal
-from enums import AnalysisState, FileStatus
-from libsaphir import TOPIC_ANALYSE
-from enums import AnalysisMode
-from safecor import Api, Topics, MqttHelper, Constants
+from . import AnalysisState, AnalysisMode
+from libsaphir import TOPIC_ANALYSE, FileStatus
+from safecor import Api, Topics, MqttHelper, Constants, FileHelper, DiskState
 import threading
 import time
 
@@ -21,10 +20,13 @@ class AnalysisController(QObject):
     __repository_size = 0
     __files_copy_queue = 0
     __start_times = {}
-    clean_files_count = 0
-    clean_files_size = 0
-    infected_files_count = 0
-    infected_files_size = 0
+    __clean_files_count = 0
+    __clean_files_size = 0
+    __infected_files_count = 0
+    __infected_files_size = 0
+    __archive_mounted = None
+    __archive_file = {}
+    BIG_FILE_SIZE_IN_MB = 500000 # 20 MB
 
     # Signals
     stateChanged = Signal(AnalysisState)
@@ -34,6 +36,10 @@ class AnalysisController(QObject):
     iterationDone = Signal(float)
 
     def __init__(self, files:dict, analysis_components:list, source_disk:str, analysis_mode_:AnalysisMode, parent:QObject|None=None) -> None:
+        """ Instanciates a new Analysis controller
+        
+        The files list is provided by the Application controller and is a reference.
+        """
         QObject.__init__(self, parent)
 
         self.__files = files
@@ -47,6 +53,8 @@ class AnalysisController(QObject):
         Api().subscribe(f"{TOPIC_ANALYSE}/response")
         Api().subscribe(f"{TOPIC_ANALYSE}/status")
         Api().subscribe(f"{Topics.SYSTEM_INFO}/response")
+        Api().subscribe(Topics.DISK_STATE)
+        Api().subscribe(f"{Topics.LIST_FILES}/response")
 
         # On demande les infos sur le système parce qu'on veut affiner le nombre
         # de fichiers analysés en même temps
@@ -60,7 +68,7 @@ class AnalysisController(QObject):
     def start_analysis(self, source_name:str) -> None:
         Api().info("Starting the analysis", "AnalysisController")
 
-        self.__set_state(AnalysisState.AnalysisRunning)
+        self.__set_analysis_state(AnalysisState.AnalysisRunning)
         self.__files_copy_queue = 0
         Api().publish(f"{TOPIC_ANALYSE}/resume", {})
 
@@ -74,14 +82,14 @@ class AnalysisController(QObject):
         Api().info("Stopping the analysis", "AnalysisController")        
         Api().publish(f"{TOPIC_ANALYSE}/stop", {})
         Api().clear_sys_usb_queues()        
-        self.__set_state(AnalysisState.AnalysisStopped)
+        self.__set_analysis_state(AnalysisState.AnalysisStopped)
 
 
     def reset(self):
-        self.clean_files_count = 0
-        self.clean_files_size = 0
-        self.infected_files_count = 0    
-        self.infected_files_size = 0 
+        self.__clean_files_count = 0
+        self.__clean_files_size = 0
+        self.__infected_files_count = 0
+        self.__infected_files_size = 0
         self.__files_copy_queue = 0
         self.__start_times = {}
 
@@ -95,7 +103,7 @@ class AnalysisController(QObject):
         
         if topic == Topics.NEW_FILE:
             if not MqttHelper.check_payload(payload, ["disk", "filepath"]):
-                Api().error("Malformed message for topic {}".format(topic))
+                Api().error(f"Malformed message for topic {topic}")
                 return
             
             disk = payload.get("disk")
@@ -107,45 +115,88 @@ class AnalysisController(QObject):
             filepath = payload.get("filepath", "")
             fingerprint = payload.get("source_fingerprint", "")
             
-            self.__on_file_available(filepath, fingerprint)            
-
+            self.__on_file_available(filepath, fingerprint)
         elif topic == f"{TOPIC_ANALYSE}/response":
             if not MqttHelper.check_payload(payload, ["component", "filepath", "success", "details"]):
-                Api().error("Malformed message for topic {}".format(topic))
+                Api().error(f"Malformed message for topic {topic}")
                 return
                         
             self.__handle_result(payload.get("component", ""), payload.get("filepath", ""), payload.get("success", False), payload.get("details", ""))
-
         elif topic == f"{TOPIC_ANALYSE}/status":
             if not MqttHelper.check_payload(payload, ["filepath", "status", "progress"]):
-                Api().error("Malformed message for topic {}".format(topic))
+                Api().error(f"Malformed message for topic {topic}")
                 return
             
             self.__handle_status(payload.get("filepath", ""), FileStatus(payload.get("status", 0)), payload.get("progress", 0))
-
         elif topic == Topics.ERROR:
             if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
                 # On filtre pour ne pas provoquer de boucle infinie
                 return
             
             self.__handle_error(payload)
-
         elif topic == f"{Topics.SYSTEM_INFO}/response":
             if not MqttHelper.check_payload(payload, ["system"]):
                 Api().warn(f"Wrong response format for system info response. Using {self.__repository_capacity} scans in parallel.")
-                return 
+                return
             
             self.__handle_sysinfo(payload)
-                
+        elif topic == Topics.DISK_STATE:
+            if not MqttHelper.check_payload(payload, ["disk", "state"]):
+                Api().error(f"Malformed message for topic {topic}")
+                return
+            
+            disk = payload.get("disk", "")
+            state = payload.get("state", "")
+            
+            # We only monitor the state mounted for the archives
+            if state == DiskState.MOUNTED.value:
+                self.__on_archive_mounted(disk)
+        elif topic == f"{Topics.LIST_FILES}/response":
+            # We only monitor this message when we mounted an archive before
+            if self.__archive_mounted is None:
+                return
+            
+            if not MqttHelper.check_payload(payload, ["disk", "files"]):
+                Api().error(f"Malformed message for topic {topic}")
+                return
+            
+            disk = payload.get("disk", "")
+            files = payload.get("files", [])
+
+            # If we receive a files list, it means that we have mounted a disk
+            if len(files) > 0:
+                # We set a lock on the files list while working on it
+                for file in files:
+                    if file["type"] == "folder":
+                        continue
+
+                    file["disk"] = disk
+                    filepath = f"{file.get("path")}{"/" if file.get("path") != "/" else ""}{file.get("name")}"
+                    file["filepath"] = filepath
+                    file["status"] = FileStatus.FileStatusUndefined
+                    file["selected"] = True
+                    file["inqueue"] = True
+                    
+                    # Update the files list
+                    if "content" in self.__archive_file:
+                        archive_content = self.__archive_file["content"]
+                    else:
+                        self.__archive_file["content"] = {}
+                        archive_content = self.__archive_file["content"]
+                    
+                    archive_content[filepath] = file
+
 
     def __on_file_available(self, filepath:str, fingerprint:str) -> None:
         self.__repository_size += 1
         self.__files_copy_queue -= 1
 
         try:
+            # If any file has been read the system becomes dirty
             self.systemUsed.emit()
 
-            file = self.__files[filepath]
+            file = self.__files[filepath] if self.__archive_mounted is None else self.__archive_file.get("content", {}).get(filepath, {})
+
             file["status"] = FileStatus.FileAvailableInRepository
             file["fingerprint"] = fingerprint
             self.fileUpdated.emit(filepath, ["status"])
@@ -154,11 +205,16 @@ class AnalysisController(QObject):
             payload = {
                 "filepath": filepath
             }
-            Api().publish("{}/request".format(TOPIC_ANALYSE), payload)
+            Api().publish(f"{TOPIC_ANALYSE}/request", payload)
         except Exception as e:
             print("EXCEPTION")
             print(e)
 
+    def __on_archive_mounted(self, disk:str):
+        # When an archive has been mounted we need to query its files list
+        # And insert them into the analysis queue
+        self.__archive_mounted = disk
+        Api().get_files_list(disk, True)
 
     def __handle_sysinfo(self, payload:dict):
         # L'information est dans system.machine.cpu.count
@@ -179,37 +235,42 @@ class AnalysisController(QObject):
 
 
     def __handle_status(self, filepath:str, status:FileStatus, progress:int):
-        file = self.__files[filepath]        
+        if self.__archive_mounted is not None:
+            # If this is an archive we ignore the status
+            return
+        
+        file = self.__files[filepath]
         file["status"] = status
 
         if progress > file.get("progress", 0):
             file["progress"] = progress
         
-        self.fileUpdated.emit(filepath, ["progress"]) 
+        self.fileUpdated.emit(filepath, ["progress"])
         
 
     def __handle_result(self, component:str, filepath:str, success:bool, details:str):
-        file = self.__files[filepath]
-        results = file.get("results", dict())
-        av = results.get(component, dict())        
+        # If the file is in an archive we put the results in the file content field
+        # We gather all the results inside this file entity
+        file = self.__files[filepath] if self.__archive_mounted is None else self.__archive_file.get("content", {}).get(filepath, {})
+
+        results = file.get("results", {})
+        av = results.get(component, {})
 
         # Premier passage : pas d'état pour le fichier, on prend le nouvel état
         # Deuxième passage : si le fichier était clean et qu'il ne l'est plus alors il passe à infecté
         #                    si le fichier n'était pas clean, on ne tient pas compte de son nouvel état
-        av["result"] = "Sain" if success else "Infecté"
+        av["result"] = "Clean" if success else "Infected"
         av["details"] = details
         results[component] = av
         file["results"] = results
 
         # Le progrès écrase les précédentes valeurs car il s'agit
-        # ici du résultat de l'analyse et plus de la progression        
+        # ici du résultat de l'analyse et plus de la progression
         progress = 0 if len(self.__analysis_components) == 0 else 100 * len(results) / len(self.__analysis_components)
-        file["progress"] = progress                        
-
-        # Si l'analyse du fichier est terminée on supprime le fichier du dépôt
+        file["progress"] = progress
+        
         if progress == 100.0:
-            # On calcule l'état du fichier
-            sain = self.__calcule_consensus_resultats(filepath)
+            clean = self.__evaluate_result_consensus(filepath)
 
             Api().delete_file(filepath, Constants.STR_REPOSITORY)
             self.__repository_size -= 1 # A faire en asynchrone après confirmation de suppression
@@ -218,21 +279,57 @@ class AnalysisController(QObject):
             duration = time.time() - start_time
             self.iterationDone.emit(duration)
 
-            if sain:
+            if clean:
                 file["status"] = FileStatus.FileClean
-                self.clean_files_count += 1
-                self.clean_files_size += file["size"]
-            else: #if file["status"] == FileStatus.FileInfected or file["status"] == FileStatus.FileAnalysisError or file["status"] == FileStatus.FileCopyError:
+                self.__clean_files_count += 1
+                self.__clean_files_size += file["size"]
+            else:
                 file["status"] = FileStatus.FileInfected
-                self.infected_files_count += 1
-                self.infected_files_size += file["size"]            
+                self.__infected_files_count += 1
+                self.__infected_files_size += file["size"]
         
         self.fileUpdated.emit(filepath, ["status", "progress"])
         self.resultsChanged.emit()
-        print(f"Fichier {filepath}, status={file["status"]}, progress={file["progress"]}, progress={progress}, success={success}, component={component}")
+        print(f"File {filepath}, status={file["status"]}, progress={file["progress"]}, success={success}, component={component}")
+
+        if self.__archive_mounted is not None:
+            # If we are analyzing an archive we also notify the changes on the archive
+            # The progress of the archive file depends on the progress of its content
+            nb_results = 0
+
+            for f in list(self.__archive_file.get("content", {}).values()):
+                results = f.get("results", {})
+                nb_results = nb_results + len(results)
+            
+            progress = 0 if len(self.__analysis_components) == 0 else len(self.__archive_file.get("content", {}) / nb_results) * 100 / len(self.__analysis_components)
+            self.__archive_file["progress"] = progress
+
+            if progress == 100.0:
+                clean = self.__evaluate_result_consensus_archive()
+                
+                Api().unmount(self.__archive_mounted)
+                self.__archive_mounted = None
+                self.__archive_file = {}
+
+                start_time = self.__start_times.get(filepath, time.time())
+                duration = time.time() - start_time
+                self.iterationDone.emit(duration)
+
+                if clean:
+                    file["status"] = FileStatus.FileClean
+                    self.__clean_files_count += 1
+                    self.__clean_files_size += file["size"]
+                else:
+                    file["status"] = FileStatus.FileInfected
+                    self.__infected_files_count += 1
+                    self.__infected_files_size += file["size"]
+            
+            self.fileUpdated.emit(self.__archive_file, ["status", "progress"])
+            self.resultsChanged.emit()
+            print(f"Archive file {self.__archive_file["name"]}, status={self.__archive_file["status"]}, progress={self.__archive_file["progress"]}, success={success}")
 
 
-    def __handle_error(self, payload):        
+    def __handle_error(self, payload):
         filepath = payload.get("filepath", "")
         #error = payload.get("error", "")
 
@@ -241,66 +338,104 @@ class AnalysisController(QObject):
         #Api().warn(f"There was an error with the file {filepath}: {error}")
         file["status"] = FileStatus.FileAnalysisError
         file["progress"] = 100
-        self.infected_files_count += 1
-        self.infected_files_size += file["size"]
+        self.__infected_files_count += 1
+        self.__infected_files_size += file["size"]
         self.fileUpdated.emit(filepath, ["status", "progress"])
-        self.resultsChanged.emit() 
+        self.resultsChanged.emit()
 
         Api().delete_file(filepath, Constants.STR_REPOSITORY)
         self.__repository_size -= 1
 
     
     def __do_copy_files_into_repository(self):
-        # On copie des fichiers dans le dépôt à concurrence de la place disponible
-        # et de la capacité du dépôt.
-        # On gère localement le compteur de fichiers du dépôt pour ne pas avoir
-        # à envoyer une requête à Safecor.
-        if self.__repository_capacity > self.__repository_size and len(self.__files) > 0:
+        # We copy files in the repository until it is full (__repository_size)
+        # We handle a local value to avoid sending queries to Safecor
+        file = self.__get_next_file_waiting()
 
-            for i in range(self.__repository_capacity - self.__repository_size - self.__files_copy_queue):
-                # First step is to copy the file into the repository
-                file = self.__get_next_file_waiting()
+        if file is not None:
+            for _ in range(self.__repository_capacity - self.__repository_size - self.__files_copy_queue):                
                 if file.get("inqueue", False) or self.__analysis_mode == AnalysisMode.AnalyseWholeSource:
-                    filepath = file.get("filepath", "#err")
-                    if filepath != "#err":
+                    filepath = file.get("filepath", None)
+
+                    if filepath is None:
+                        continue
+                    
+                    if file.get("size", 0) > self.BIG_FILE_SIZE_IN_MB and FileHelper.is_archive_file(file["name"]):
+                        # If the file is big and is an archive we mount it
+                        # If there is an archive inside an archive there will be problems...
                         file["status"] = FileStatus.FileAnalysing
-                        self.fileUpdated.emit(filepath, [file["status"]])
-                        Api().read_file(self.__source_disk, filepath)
+                        Api().mount_file(self.__source_disk, file["filepath"])
+                    else:
+                        file["status"] = FileStatus.FileAnalysing
+
+                        if self.__archive_mounted is None:
+                            self.fileUpdated.emit(filepath, [file["status"]])
+                        else:
+                            self.fileUpdated.emit(self.__archive_mounted, [file["status"]])
+
+                        source_disk = self.__source_disk if self.__archive_mounted is None else self.__archive_mounted
+
+                        Api().read_file(source_disk, filepath)
+                        
                         self.__start_times[filepath] = time.time()
                         self.__files_copy_queue += 1
-                        #print("Demande un fichier supplémentaire")
+                    
         
-        if self.__analysis_state == AnalysisState.AnalysisRunning:
+        if self.__analysis_state == AnalysisState.AnalysisRunning and (len(self.__files) > 0 or len(self.__archive_file.get("content", {})) > 0):
             threading.Timer(0.1, self.__do_copy_files_into_repository).start()
+        else:
+            print("No more file to analyse... Exiting loop")
 
 
-    def __get_next_file_waiting(self) -> dict:
-        for f in self.__files.values():
+    def __get_next_file_waiting(self) -> dict|None:
+        files_list = self.__files if self.__archive_mounted is None else self.__archive_file.get("content", {})
+
+        # We get the next file not analyzed
+        for f in files_list.values():
             if f["status"] == FileStatus.FileStatusUndefined:
                 return f
-            
-        return dict()
+                        
+        return None
     
-    def __calcule_consensus_resultats(self, filepath:str) -> bool:
-        file = self.__files[filepath]
+    def __evaluate_result_consensus(self, filepath:str) -> bool:
+        file = self.__files[filepath] if self.__archive_mounted is None else self.__archive_file
         results = file.get("results", {})
     
         for entry in results.values():
-            if entry.get("result") == "Infecté":
+            if entry.get("result") == "Infected":
                 return False
             
         return True
+    
+    def __evaluate_result_consensus_archive(self) -> bool:
+        clean = True
+        
+        for f in list(self.__archive_file.get("content", {}).values()):
+            clean = clean and self.__evaluate_result_consensus(f)
+
+        return clean
 
     ######
     ## Getters and setters
     #
-    def __get_state(self) -> AnalysisState:
-        return self.__analysis_state    
+    def get_analysis_state(self) -> AnalysisState:
+        return self.__analysis_state
     
-
-    def __set_state(self, state:AnalysisState):
+    def get_clean_files_count(self) -> int:
+        return self.__clean_files_count
+    
+    def get_clean_files_size(self) -> int:
+        return self.__clean_files_size
+    
+    def get_infected_files_count(self) -> int:
+        return self.__infected_files_count
+    
+    def get_infected_files_size(self) -> int:
+        return self.__infected_files_size
+    
+    def __set_analysis_state(self, state:AnalysisState):
         self.__analysis_state = state
         self.stateChanged.emit(state)
 
 
-    state = Property(int, __get_state, notify= stateChanged)
+    state = Property(int, get_analysis_state, notify= stateChanged)

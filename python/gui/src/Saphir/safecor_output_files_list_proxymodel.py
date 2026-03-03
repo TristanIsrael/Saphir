@@ -1,10 +1,7 @@
 from PySide6.QtCore import QSortFilterProxyModel, QModelIndex, Qt, Signal, Slot
 from PySide6.QtCore import qDebug, QDir, QFileInfo, Property, QThread, QPersistentModelIndex
-from queue_list_model import QueueListModel
-from enums import Roles, FileStatus
-from pathlib import Path
-import humanize
-import collections
+from . import QueueListModel
+from Saphir.enums import Roles, FileStatus
 
 
 class SafecorOutputFilesListProxyModel(QSortFilterProxyModel):

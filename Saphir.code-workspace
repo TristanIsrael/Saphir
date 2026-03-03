@@ -7,9 +7,6 @@
         {
             "name": "Panoptiscan",
             "path": "../Panoptiscan"
-        },
-        {
-            "path": "../Safecor"
         }
     ],    
     "settings": {

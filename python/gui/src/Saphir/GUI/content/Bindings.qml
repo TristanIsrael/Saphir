@@ -22,12 +22,12 @@ Item {
     property string currentFolder: ApplicationController.currentFolder
     property int nbClean: ApplicationController.cleanFilesCount
     property int nbInfected: ApplicationController.infectedFilesCount
-    property int nbAnalyzing: ApplicationController.analysingCount
     property int nbWaiting: ApplicationController.queueSize - (ApplicationController.cleanFilesCount + ApplicationController.infectedFilesCount + ApplicationController.analysingCount)
     property int nbFinished: nbInfected + nbClean
     property int queueSize: ApplicationController.queueSize
     property int remainingTimeInMinutes: ApplicationController.remainingTime
     property int systemState: ApplicationController.systemState
+    property var storagesList: ApplicationController.storages
 
     /** Models */
     property var sourceFilesListModel: ApplicationController.inputFilesListProxyModel

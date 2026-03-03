@@ -1,10 +1,7 @@
 from PySide6.QtCore import QSortFilterProxyModel, QModelIndex, Qt, Signal, Slot
 from PySide6.QtCore import qDebug, QDir, QFileInfo, Property, QThread, QPersistentModelIndex
-from safecor_input_files_list_model import SafecorInputFilesListModel
-from enums import Roles
-from pathlib import Path
-import humanize
-import collections
+from . import SafecorInputFilesListModel
+from . import Roles
 
 
 class SafecorInputFilesListProxyModel(QSortFilterProxyModel):

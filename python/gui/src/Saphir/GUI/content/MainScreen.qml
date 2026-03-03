@@ -215,7 +215,11 @@ Window {
         // Verify whether a storage is connected
         if(ApplicationController.sourceReady) {
             window.dlgAnalyseWholeStorage.visible = true
-        }        
+        }
+
+        if(DEVMODE) {
+            window.pnlFileSelection.visible = true
+        }
     }
 
     onWidthChanged: {
