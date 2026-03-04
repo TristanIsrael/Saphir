@@ -2,7 +2,7 @@ from safecor import Api, MqttFactory, MqttHelper, Topics, ComponentState
 import threading, time, os, platform
 from queue import Queue
 from abc import ABC, abstractmethod
-from libsaphir import TOPIC_ANALYSE, DEVMODE
+from libsaphir import TOPIC_ANALYSIS, DEVMODE
 from . import FileStatus
 
 class AbstractAntivirusController(ABC):
@@ -58,7 +58,7 @@ class AbstractAntivirusController(ABC):
             "details": details
         }
 
-        Api().publish("{}/response".format(TOPIC_ANALYSE), payload)
+        Api().publish("{}/response".format(TOPIC_ANALYSIS), payload)
 
     def update_status(self, filepath:str, status:FileStatus, progress:int):
         payload = {
@@ -68,7 +68,7 @@ class AbstractAntivirusController(ABC):
             "progress": progress
         }
 
-        Api().publish("{}/status".format(TOPIC_ANALYSE), payload)
+        Api().publish("{}/status".format(TOPIC_ANALYSIS), payload)
 
     def component_state_changed(self):
         components = [{
@@ -86,17 +86,17 @@ class AbstractAntivirusController(ABC):
     def __on_api_ready(self):
         self.debug("Current CPU count is {}. Using {} workers.".format(os.cpu_count(), self.__max_workers))
         Api().subscribe(f"{Topics.DISCOVER_COMPONENTS}/request")
-        Api().subscribe(f"{TOPIC_ANALYSE}/request")
-        Api().subscribe(f"{TOPIC_ANALYSE}/stop")
-        Api().subscribe(f"{TOPIC_ANALYSE}/resume")
-        Api().subscribe(f"{TOPIC_ANALYSE}/reset")
+        Api().subscribe(f"{TOPIC_ANALYSIS}/request")
+        Api().subscribe(f"{TOPIC_ANALYSIS}/stop")
+        Api().subscribe(f"{TOPIC_ANALYSIS}/resume")
+        Api().subscribe(f"{TOPIC_ANALYSIS}/reset")
         self._on_api_ready()
 
     def __on_message_received(self, topic:str, payload:dict):
         if topic == f"{Topics.DISCOVER_COMPONENTS}/request":
             self.component_state_changed()            
 
-        elif topic == f"{TOPIC_ANALYSE}/request":
+        elif topic == f"{TOPIC_ANALYSIS}/request":
             if not MqttHelper.check_payload(payload, ["filepath"]):
                 self.error("Missing required argument filepath")
                 return
@@ -104,13 +104,13 @@ class AbstractAntivirusController(ABC):
             filepath = payload.get("filepath")
             self.__files_queue.put(filepath)
 
-        elif topic == f"{TOPIC_ANALYSE}/stop":
+        elif topic == f"{TOPIC_ANALYSIS}/stop":
             self.__can_run = False
 
-        elif topic == f"{TOPIC_ANALYSE}/resume":
+        elif topic == f"{TOPIC_ANALYSIS}/resume":
             self.__can_run = True
             
-        elif topic == f"{TOPIC_ANALYSE}/reset":
+        elif topic == f"{TOPIC_ANALYSIS}/reset":
             self.__can_run = False
 
             time.sleep(0.2)

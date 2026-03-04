@@ -1,0 +1,13 @@
+[run]
+source =
+    python/gui/src
+    python/libsaphir/src
+
+omit =
+    tests/*
+    */tests/*
+    */test_*.py
+    */shibokensupport/*
+    */site-packages/*
+    */pyscript*
+    */signature_bootstrap.py*

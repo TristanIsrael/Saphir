@@ -1,0 +1,11 @@
+pyserial
+joblib
+humanize
+paho-mqtt>=2.0.0
+pyudev
+msgpack
+psutil
+libvirt-python
+PySide6
+evdev
+inotify_simple
