@@ -3,6 +3,7 @@ from . import AnalysisState, AnalysisMode, AnalysisHelper
 from libsaphir import TOPIC_ANALYSIS, FileStatus
 from safecor import Api, Topics, MqttHelper, Constants, FileHelper, DiskState
 import threading
+from threading import Lock
 import time
 
 class AnalysisController(QObject):
@@ -26,6 +27,7 @@ class AnalysisController(QObject):
     __infected_files_size = 0
     __archive_mounted_name = None
     __archive_file = {}
+    __file_lock = Lock()
     BIG_FILE_SIZE_IN_MB = 500000 # 20 MB
 
     # Signals
@@ -119,6 +121,7 @@ class AnalysisController(QObject):
                         
             self.__handle_result(payload.get("component", ""), payload.get("filepath", ""), payload.get("success", False), payload.get("details", ""))
         elif topic == f"{TOPIC_ANALYSIS}/status":
+            return # Ignored
             if not MqttHelper.check_payload(payload, ["filepath", "status", "progress"]):
                 Api().error(f"Malformed message for topic {topic}")
                 return
@@ -161,7 +164,6 @@ class AnalysisController(QObject):
 
             # If we receive a files list, it means that we have mounted a disk
             if len(files) > 0:
-                # We set a lock on the files list while working on it
                 for file in files:
                     if file["type"] == "folder":
                         continue
@@ -210,6 +212,8 @@ class AnalysisController(QObject):
         # When an archive has been mounted we need to query its files list
         # And insert them into the analysis queue
         self.__archive_mounted_name = disk
+        file = self.__files.get(self.__archive_mounted_filepath, {})
+        self.__archive_file = file
         Api().get_files_list(disk, True)
 
     def __handle_sysinfo(self, payload:dict):
@@ -244,38 +248,47 @@ class AnalysisController(QObject):
         self.fileUpdated.emit(filepath, ["progress"])
         
 
-    def __handle_result(self, component:str, filepath:str, success:bool, details:str):        
+    def __handle_result(self, component:str, filepath:str, success:bool, details:str):
+        # We work in a critical sectionn because this function may be called by
+        # multiple threads at the same time
+        self.__file_lock.acquire()
 
         # If the file is in an archive we put the results in the file content field
         # We gather all the results inside this file entity
         if self.__archive_mounted_name is None:
             clean, file_size = AnalysisHelper.update_file_result(self.__files, filepath, success, component, details, self.__analysis_components)            
+            self.fileUpdated.emit(filepath, ["status", "progress"])
         else:
             clean, file_size = AnalysisHelper.update_archive_result(self.__archive_file, filepath, success, component, details, self.__analysis_components) 
-
-        if clean:            
-            self.__clean_files_count += 1
-            self.__clean_files_size += file_size
-        else:
-            self.__infected_files_count += 1
-            self.__infected_files_size += file_size
+            self.fileUpdated.emit(self.__archive_mounted_filepath, ["status", "progress"])                    
         
         if AnalysisHelper.is_analysis_finished(self.__files, filepath):
-            Api().delete_file(filepath, Constants.STR_REPOSITORY)
-            self.__repository_size -= 1 # A faire en asynchrone après confirmation de suppression
-
+            if clean:            
+                self.__clean_files_count += 1
+                self.__clean_files_size += file_size
+            else:
+                self.__infected_files_count += 1
+                self.__infected_files_size += file_size
+            
             start_time = self.__start_times.get(filepath, time.time())
             duration = time.time() - start_time
             self.iterationDone.emit(duration)
 
-        if self.__archive_mounted_name is None:
-            progress = AnalysisHelper.get_file_progress(self.__files, filepath)
-        else:
-            progress = AnalysisHelper.get_archive_progress(self.__archive_file)
+            self.resultsChanged.emit()
 
-        self.fileUpdated.emit(filepath, ["status", "progress"])
-        self.resultsChanged.emit()
-        print(f"File {filepath}, status={"clean" if clean else "infected"}, progress={progress}, success={success}, component={component}")        
+        # Free the slot in the repository
+        Api().delete_file(filepath, Constants.STR_REPOSITORY)
+        self.__repository_size -= 1 # A faire en asynchrone après confirmation de suppression
+
+
+        #if self.__archive_mounted_name is None:
+        #    progress = AnalysisHelper.get_file_progress(self.__files, filepath)            
+        #else:
+        #    progress = AnalysisHelper.get_archive_progress(self.__archive_file)        
+
+        print(f"File {filepath}, status={"clean" if clean else "infected"}, success={success}, component={component}")        
+
+        self.__file_lock.release()
 
     def __handle_error(self, payload):
         filepath = payload.get("filepath", "")
@@ -315,6 +328,7 @@ class AnalysisController(QObject):
                     # If the file is big and is an archive we mount it
                     # If there is an archive inside an archive there will be problems...
                     file["status"] = FileStatus.FileAnalysing
+                    self.__archive_mounted_filepath = file["filepath"]
                     Api().mount_file(self.__source_disk, file["filepath"])
                 else:
                     file["status"] = FileStatus.FileAnalysing
@@ -339,6 +353,7 @@ class AnalysisController(QObject):
 
     def __get_repository_free_slots(self):
         nb_files = self.__repository_capacity - self.__repository_size - self.__files_copy_queue_size
+        print("free slots=", nb_files)
         return nb_files
 
     def __get_next_group_of_files(self, size_limit):
@@ -351,6 +366,8 @@ class AnalysisController(QObject):
             
             if len(group) >= size_limit:
                 break
+
+        print("next group of files:", group)
 
         return group
 

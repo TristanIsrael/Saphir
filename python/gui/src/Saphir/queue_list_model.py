@@ -129,7 +129,7 @@ class QueueListModel(QAbstractListModel):
             
             if orig["status"] in filtres:
                 len_cache = len(self.__cache)
-                self.beginInsertRows(QModelIndex(), len_cache, len_cache+1)
+                self.beginInsertRows(QModelIndex(), len_cache, len_cache)
                 self.__cache.append(orig)
                 row = len(self.__cache)-1
                 self.endInsertRows()
@@ -146,7 +146,7 @@ class QueueListModel(QAbstractListModel):
             self.endRemoveRows()
             return
 
-        # Si le fichier était déjà dans le cache
+        # If the file was already in the cache
         idx = self.index(i, 0)
 
         if not idx.isValid():

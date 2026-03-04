@@ -266,7 +266,7 @@ class ApplicationController(QObject):
             Api().debug("User asked to start the analysis")
             self.__analysis_start_time = datetime.now()
             self.__eta_estimator.update(len(self.__queued_files_list))
-            self.__analysis_controller.start_analysis(self.__source_name)                    
+            self.__analysis_controller.start_analysis()
         elif self.__analysis_controller.state == AnalysisState.AnalysisRunning:
             Api().debug("User asked to stop the analysis")
             self.__analysis_controller.stop_analysis()
@@ -277,7 +277,7 @@ class ApplicationController(QObject):
             Api().debug("User asked to start the analysis")
             self.__analysis_start_time = datetime.now()
             self.__eta_estimator.update(len(self.__queued_files_list))
-            self.__analysis_controller.start_analysis(self.__source_name)
+            self.__analysis_controller.start_analysis()
         
     @Slot()
     def stop_analysis(self):
@@ -669,6 +669,11 @@ class ApplicationController(QObject):
             self.__set_system_state(SystemState.SystemGettingFilesList)
 
     def __handle_list_files(self, payload:dict) -> None:
+        # If the analysis is running we don't care about this message
+        # because the AnalysisController will do
+        if self.__system_state == SystemState.SystemAnalysisRunning:
+            return 
+        
         with self.__queue_files_list_lock:
             disk = payload.get("disk")
             files = payload.get("files", list())
