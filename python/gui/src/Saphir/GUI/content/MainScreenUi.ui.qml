@@ -233,7 +233,7 @@ Item {
         //height: btnStartStop.height
         //radius: height
 
-        enabled: bindings.analysisReady && bindings.queueSize > 0
+        enabled: bindings.analysisReady && bindings.queueSize > 0 && !bindings.used
 
         //RoundButton {
         //    id: btnStartStop

@@ -18,20 +18,21 @@ class AbstractAntivirusController(ABC):
     __component_name = "NoName"    
     __component_description = ""
     __files_queue = Queue()
-    __commands_thread = None
     __max_workers = 1
     __workers = 0
     __can_run = True
 
     def __init__(self, component_name:str, component_description:str, max_workers:int = -1):
         self.__component_name = component_name
-        self.__component_description = component_description
+        self.__component_description = component_description        
 
         if max_workers == -1:
             if os.cpu_count() is not None:
                 self.__max_workers = os.cpu_count()
         else:
             self.__max_workers = max_workers    
+
+        self.__commands_thread = threading.Thread(target= self.__commands_loop)
 
     def start(self):
         if not DEVMODE:
@@ -43,8 +44,7 @@ class AbstractAntivirusController(ABC):
         Api().add_ready_callback(self.__on_api_ready)
         Api().start(mqtt_client=self.__mqtt_client)
         
-        # Start the commands thread
-        self.__commands_thread = threading.Thread(target= self.__commands_loop)
+        # Start the commands thread        
         self.__commands_thread.start()
 
     def stop(self):
@@ -109,6 +109,7 @@ class AbstractAntivirusController(ABC):
 
         elif topic == f"{TOPIC_ANALYSIS}/resume":
             self.__can_run = True
+            self.__commands_thread.start()
             
         elif topic == f"{TOPIC_ANALYSIS}/reset":
             self.__can_run = False

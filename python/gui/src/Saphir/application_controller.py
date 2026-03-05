@@ -825,7 +825,6 @@ class ApplicationController(QObject):
         if disk == self.__target_name and filepath.endswith("journal.log"):
             self.__set_system_state(SystemState.TransferFinished)
 
-
     def __on_results_changed(self):
         self.cleanFilesCountChanged.emit(self.__get_clean_files_count())
         self.infectedFilesCountChanged.emit(self.__get_infected_files_count())
@@ -833,11 +832,11 @@ class ApplicationController(QObject):
         self.remainingTimeChanged.emit()
         
         if self.__get_infected_files_count() + self.__get_clean_files_count() == self.__get_queue_size():
+            print("results changed. queue_size=", self.__get_queue_size(), ", infected=", self.__get_infected_files_count(), ", clean=", self.__get_clean_files_count())
             self.__analysis_controller.stop_analysis()
             self.__analysis_end_time = datetime.now()
             self.__set_system_state(SystemState.AnalysisCompleted)
             #self.__make_analysis_report()
-
 
     def __on_disk_controller_state_changed(self, ready:bool):
         Api().debug(f"Safecor disk controller is {"ready" if ready else "not ready"}")
@@ -1013,7 +1012,6 @@ class ApplicationController(QObject):
     def __get_queue_size(self):
         with self.__queue_files_list_lock:
             return len(self.__queued_files_list)
-        #return sum(1 for item in self.__inputFilesList.values() if item.get("inqueue", False))
 
     def __is_analysis_ready(self):
         return self.__analysis_ready

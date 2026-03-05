@@ -245,3 +245,38 @@ class TestAnalysisHelper(unittest.TestCase):
         file = archive_content.get(filepath, {})
         file["progress"] = 100.0
         self.assertEqual(AnalysisHelper.calculate_archive_progress(archive_file), 100.0)
+
+    def test_is_file_completed(self):
+        file = { "progress": 0, "status": FileStatus.FileStatusUndefined }
+        self.assertFalse(AnalysisHelper.is_file_completed(file))
+
+        file["progress"] = 100
+        self.assertTrue(AnalysisHelper.is_file_completed(file))
+
+        file["progress"] = 10
+        file["status"] = FileStatus.FileAnalysing
+        self.assertFalse(AnalysisHelper.is_file_completed(file))
+
+        file["progress"] = 10
+        file["status"] = FileStatus.FileAnalysisError
+        self.assertTrue(AnalysisHelper.is_file_completed(file))
+
+        file["progress"] = 10
+        file["status"] = FileStatus.FileAvailableInRepository
+        self.assertFalse(AnalysisHelper.is_file_completed(file))
+
+        file["progress"] = 10
+        file["status"] = FileStatus.FileClean
+        self.assertTrue(AnalysisHelper.is_file_completed(file))
+
+        file["progress"] = 10
+        file["status"] = FileStatus.FileCopyError
+        self.assertTrue(AnalysisHelper.is_file_completed(file))
+
+        file["progress"] = 10
+        file["status"] = FileStatus.FileCopySuccess
+        self.assertFalse(AnalysisHelper.is_file_completed(file))
+
+        file["progress"] = 10
+        file["status"] = FileStatus.FileInfected
+        self.assertTrue(AnalysisHelper.is_file_completed(file))

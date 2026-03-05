@@ -22,7 +22,7 @@ Item {
     property string currentFolder: ApplicationController.currentFolder
     property int nbClean: ApplicationController.cleanFilesCount
     property int nbInfected: ApplicationController.infectedFilesCount
-    property int nbWaiting: ApplicationController.queueSize - (ApplicationController.cleanFilesCount + ApplicationController.infectedFilesCount + ApplicationController.analysingCount)
+    property int nbWaiting: ApplicationController.queueSize - (ApplicationController.cleanFilesCount + ApplicationController.infectedFilesCount)
     property int nbFinished: nbInfected + nbClean
     property int queueSize: ApplicationController.queueSize
     property int remainingTimeInMinutes: ApplicationController.remainingTime

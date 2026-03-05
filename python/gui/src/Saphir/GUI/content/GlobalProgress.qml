@@ -1,3 +1,9 @@
+/** 
+    \author Tristan Israël (tristan.israel@alefbet.net)
+
+    This view show a circular gauge with the repartition of clean and infected/erroneous files.
+*/
+
 import QtQuick
 import QtQuick.Shapes
 import QtQuick.Layouts
@@ -121,8 +127,8 @@ Item {
     function radialPosition(startAngle, sweepAngle) {
         var midAngle = startAngle + sweepAngle/2
         var rad = midAngle * Math.PI / 180
-        // Position centrée dans l'anneau
-        var r = root.radius - root.thickness/2 - 15 // marge 5px vers le centre
+        // Centered in the circle
+        var r = root.radius - root.thickness/2 - 15 
         return { x: root.cx + r * Math.cos(rad),
                  y: root.cy + r * Math.sin(rad) }
     }

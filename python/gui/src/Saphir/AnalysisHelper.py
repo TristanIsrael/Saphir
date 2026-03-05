@@ -16,9 +16,12 @@ class AnalysisHelper():
                 file["status"] = FileStatus.FileClean            
             else:
                 file["status"] = FileStatus.FileInfected
+
+            # Now we unlock the file
+            #file["locked"] = False
         else:
             file["status"] = FileStatus.FileAnalysing
-            
+                
         return clean, file.get("size", 0)
 
     @staticmethod
@@ -39,8 +42,11 @@ class AnalysisHelper():
                 archive_file["status"] = FileStatus.FileClean            
             else:
                 archive_file["status"] = FileStatus.FileInfected
+
+            # Now we unlock the file
+            #file["locked"] = False
         else:
-            archive_file["status"] = FileStatus.FileAnalysing
+            archive_file["status"] = FileStatus.FileAnalysing        
             
         return clean, archive_file.get("size", 0)
         
@@ -142,3 +148,22 @@ class AnalysisHelper():
             sum_progress = sum_progress + file.get("progress", 0.0)
 
         return sum_progress / nb_files
+
+    @staticmethod
+    def is_file_completed(file:dict) -> bool:
+        """ Returns whether the analysis is finished on a file 
+        
+        The analysis is finished when the progress is 100% or when the status is clean, 
+        infected or error.
+        """
+
+        progress = file.get("progress", 0)
+        status = file.get("status", FileStatus.FileStatusUndefined)
+        
+        return progress == 100 \
+            or status in [ 
+                FileStatus.FileAnalysisError, 
+                FileStatus.FileClean, 
+                FileStatus.FileCopyError, 
+                FileStatus.FileInfected
+                ]

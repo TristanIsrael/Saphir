@@ -1,6 +1,7 @@
 from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, Signal, Slot
 from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray, qDebug
 from libsaphir import FileStatus
+from threading import Lock
 from . import Roles
 
 
@@ -15,6 +16,7 @@ class QueueListModel(QAbstractListModel):
     __filter_infected = True
     __filter_other = True
     __cache = []
+    __update_lock = Lock()
 
     filtreSainsChanged = Signal()
     filtreInfectesChanged = Signal()
@@ -92,80 +94,84 @@ class QueueListModel(QAbstractListModel):
 
 
     def __make_cache(self):
-        self.__cache.clear()
+        with self.__update_lock:
+            self.__cache.clear()
 
-        if len(self.__files) == 0:
-            return
+            if len(self.__files) == 0:
+                return
 
-        if self.__filter_clean:
-            self.__cache.extend([v for _,v in self.__files.items() if v.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean])
+            if self.__filter_clean:
+                self.__cache.extend([v for _,v in self.__files.items() if v.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean])
 
-        if self.__filter_infected:
-            self.__cache.extend([v for _,v in self.__files.items() if v.get("status", FileStatus.FileStatusUndefined) in (FileStatus.FileAnalysisError, FileStatus.FileCopyError, FileStatus.FileInfected)])
-        
-        if self.__filter_other:
-            self.__cache.extend([v for _,v in self.__files.items() if v.get("status", FileStatus.FileStatusUndefined) in (FileStatus.FileAnalysing, FileStatus.FileAvailableInRepository, FileStatus.FileStatusUndefined)])
+            if self.__filter_infected:
+                self.__cache.extend([v for _,v in self.__files.items() if v.get("status", FileStatus.FileStatusUndefined) in (FileStatus.FileAnalysisError, FileStatus.FileCopyError, FileStatus.FileInfected)])
+            
+            if self.__filter_other:
+                self.__cache.extend([v for _,v in self.__files.items() if v.get("status", FileStatus.FileStatusUndefined) in (FileStatus.FileAnalysing, FileStatus.FileAvailableInRepository, FileStatus.FileStatusUndefined)])
 
 
     @Slot(str, list)
     def on_file_updated(self, filepath:str, fields:list):
-        if filepath not in self.__files:
-            return
-
-        # We look for the file in the cache
-        row = next(( (i, item) for i, item in enumerate(self.__cache) if item["filepath"] == filepath), None)
-
-        # We evaluate the filters we will use
-        filtres = self.__evaluate_filters()
-        
-        # If the file is not in the cache because its previous status excluded it from the cache
-        # we have to add it in the cace
-        if row is None:
-            # We get the file from the global dictionary
-            orig = self.__files[filepath]
-            if orig is None:
-                print(f"Le fichier {filepath} n'a pas été trouvé dans le dictionnaire global")
+        with self.__update_lock:
+            print(">>>", filepath)
+            
+            if filepath not in self.__files:
                 return
+
+            # We look for the file in the cache
+            row = next(( (i, item) for i, item in enumerate(self.__cache) if item["filepath"] == filepath), None)
+
+            # We evaluate the filters we will use
+            filters = self.__evaluate_filters()
             
-            if orig["status"] in filtres:
-                len_cache = len(self.__cache)
-                self.beginInsertRows(QModelIndex(), len_cache, len_cache)
-                self.__cache.append(orig)
-                row = len(self.__cache)-1
-                self.endInsertRows()
-            
-            return
-            
-        i, fichier = row
+            # If the file is not in the cache because its previous status excluded it from the cache
+            # we have to add it in the cace
+            if row is None:
+                # We get the file from the global dictionary
+                orig = self.__files[filepath]
+                if orig is None:
+                    print(f"The file {filepath} has not been found in the queue")
+                    return
+                
+                if orig["status"] in filters:
+                    len_cache = len(self.__cache)
+                    self.beginInsertRows(QModelIndex(), len_cache, len_cache)
+                    self.__cache.append(orig)
+                    row = len(self.__cache)-1
+                    self.endInsertRows()
+                
+                return
+                
+            i, fichier = row
 
-        # We remove the file from the cache if its status is incompatible with the filters
-        if "status" in fields and fichier["status"] not in filtres:
-            print(f"Removed the file {fichier["filepath"]} at index {i}")
-            self.beginRemoveRows(QModelIndex(), i, i)
-            del self.__cache[i]
-            self.endRemoveRows()
-            return
+            # We remove the file from the cache if its status is incompatible with the filters
+            if "status" in fields and fichier["status"] not in filters:
+                #print(f"Removed the file {fichier["filepath"]} at index {i}")
+                self.beginRemoveRows(QModelIndex(), i, i)
+                del self.__cache[i]
+                self.endRemoveRows()
+                return
 
-        # If the file was already in the cache
-        idx = self.index(i, 0)
+            # If the file was already in the cache
+            idx = self.index(i, 0)
 
-        if not idx.isValid():
-            return
+            if not idx.isValid():
+                return
 
-        roles = list()
-        if "status" in fields:
-            roles.append(Roles.RoleStatus)
-        if "progress" in fields:
-            roles.append(Roles.RoleProgress)
-        if "inqueue" in fields:
-            roles.append(Roles.RoleInQueue)
-        if "select_for_copy" in fields:
-            roles.append(Roles.RoleSelected)
+            roles = []
+            if "status" in fields:
+                roles.append(Roles.RoleStatus)
+            if "progress" in fields:
+                roles.append(Roles.RoleProgress)
+            if "inqueue" in fields:
+                roles.append(Roles.RoleInQueue)
+            if "select_for_copy" in fields:
+                roles.append(Roles.RoleSelected)
 
-        try:
-            self.dataChanged.emit(idx, idx, roles)
-        except Exception as e:
-            print(e)
+            try:
+                self.dataChanged.emit(idx, idx, roles)
+            except Exception as e:
+                print(e)
 
     def get_filter_clean(self):
         return self.__filter_clean
@@ -194,7 +200,7 @@ class QueueListModel(QAbstractListModel):
         self.__make_cache()
         self.endResetModel()
 
-    def __set_auto_filter_rule(self):        
+    def __set_auto_filter_rule(self):
         # We filter on the type so we show only errors when the quantity of records override the limits
         if len(self.__files) > self.__max_rows:
             self.__filter_clean = False

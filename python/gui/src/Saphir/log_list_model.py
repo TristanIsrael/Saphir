@@ -47,7 +47,7 @@ class LogListModel(QAbstractTableModel):
         return txt
 
     def __on_message(self, topic:str, payload:dict):
-        if topic.startswith(f"{Topics.EVENTS}"):
+        if topic.startswith(Topics.EVENTS):
             #print("{} < {}".format(Logger.loglevel_from_topic(topic), self.__loglevel))
             if Logger.loglevel_from_topic(topic) < self.__loglevel:
                 return

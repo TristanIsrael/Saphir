@@ -1,3 +1,9 @@
+/** 
+    \author Tristan Israël (tristan.israel@alefbet.net)
+
+    This view show a circular gauge with the percentage of files analyzed.
+*/
+
 import QtQuick
 import QtQuick.Shapes
 import QtQuick.Layouts
@@ -24,7 +30,6 @@ Item {
     property real cx: width/2
     property real cy: height/2
 
-    // --- Repeater pour créer toutes les sections ---
     Repeater {
         model: totalSteps
 
@@ -36,7 +41,6 @@ Item {
                 strokeWidth: root.thickness
                 capStyle: ShapePath.FlatCap
 
-                // Sections remplies
                 strokeColor: index < Math.round(root.percent / root.stepPercent)
                              ? root.filledColor
                              : root.emptyColor
@@ -47,7 +51,7 @@ Item {
                     radiusX: root.radius
                     radiusY: root.radius
                     startAngle: -90 + index * 360 / root.totalSteps
-                    sweepAngle: 360 / root.totalSteps - 1   // -1 pour espacement entre sections
+                    sweepAngle: 360 / root.totalSteps - 1   
                 }
             }
         }
