@@ -22,7 +22,7 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     exit 0
 fi
 
-# Expect exactly one argument
+# Expect exactly two arguments
 if [ "$#" -ne 2 ]; then
     echo "Error: missing argument" >&2
     show_help
@@ -37,18 +37,12 @@ if [ ! -d "$DIR" ]; then
     exit 1
 fi
 
-if [ "$#" -ne 2 ]; then 
-    echo "Error: missing argument" >&2
-    show_help
-    exit 1
-fi
 
 ARCH="$2"
 
 # ---- Main logic ----
 echo "Synchronizing official repository with the directory $DIR"
-wget -4 --recursive --no-parent -nH --cut-dirs=2 -R "index.html*" -e robots=off --accept "*.apk,APKINDEX.tar.gz" -P $DIR https://www.alefbet.net/github/saphir/$ARCH/
-
+wget -4 --recursive --no-parent -nH --cut-dirs=2 -R "index.html*" -e robots=off --accept "*.apk,APKINDEX.tar.gz" -P $DIR https://www.alefbet.net/github/safecor/$ARCH/
 
 # Recreate the symbolic link to noarch if needed
 if [ ! -e "$DIR/noarch" ]; then 

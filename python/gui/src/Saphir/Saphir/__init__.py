@@ -20,7 +20,7 @@ from .application_controller import ApplicationController
 
 __all__ = [
     "AnalysisMode", "AnalysisState", "SystemState", "Roles", "Enums",
-    "analysis_helper",
+    "AnalysisHelper",
     "AnalysisController",    
     "DevModeHelper",
     "LogListModel", "QueueListModel", "QueueListProxyModel", "ComponentsModel", 

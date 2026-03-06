@@ -72,9 +72,9 @@
 
         <h1 style="text-align: center;">Scan report</h1>
                 
-        <table class="tableau_resultat {{ resultat_analyse }}">
+        <table class="tableau_resultat {{ analysis_result }}">
             <tr>
-                <th>Résultat</th>
+                <th>Scan result</th>
             </tr>
             <tr>
                 <td>{{ label_scan_result }}</td>
@@ -102,9 +102,9 @@
             <tr>
                 <td>                    
                     <p>Analyzed files: {{ analyzed_files_count }}</p>
-                    <p>Fichiers sains: {{ clean_files_count }}</p>
-                    <p>Fichiers infectés: {{ infected_files_count }}</p>
-                    <p>Fichiers copiés: {{ copied_files_count }}</p>
+                    <p>Clean files: {{ clean_files_count }}</p>
+                    <p>Infected files: {{ infected_files_count }}</p>
+                    <p>Copied files: {{ copied_files_count }}</p>
                 </td>
             </tr>
         </table>
@@ -132,11 +132,11 @@
             {% for entry in analysis_details %}
             <tr>
                 <td>
-                    Chemin : {{ entry.filepath }}<br/>
-                    Empreinte : {{ entry.fingerprint }}<br/>
+                    Path: {{ entry.filepath }}<br/>
+                    Fingerprint: {{ entry.fingerprint }}<br/>
                     <ul>
                     {% for key, value in entry.results.items() %}
-                    <li>Résultat {{ key }} : {{ value.result }} - {{ value.details }}</li>
+                    <li>Result {{ key }}: {{ value.result }} - {{ value.details }}</li>
                     {% endfor %}
                     </ul>
                 </td>

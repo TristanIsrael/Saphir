@@ -45,8 +45,8 @@ class ReportController(QObject):
             })
 
         data = {
-            "resultat_analyse": "succes" if infected_files_count == 0 else "erreur",
-            "label_scan_result": "Aucun fichier infecté n'a été identifié." if infected_files_count == 0 else "Des infections ont été identifiées.",
+            "analysis_result": "succes" if infected_files_count == 0 else "erreur",
+            "label_scan_result": "No threat has been detected." if infected_files_count == 0 else "Threats have been idenfitied.",
             "start_datetime": start_datetime.strftime("%d/%m/%Y %H:%M:%S"),
             "end_datetime": end_datetime.strftime("%d/%m/%Y %H:%M:%S"),
             "equipement_id": equipement_id,
