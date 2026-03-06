@@ -29,7 +29,8 @@ class AnalysisController(QObject):
     __archive_mounted_filepath = None
     __archive_file = {}
     __queue_lock = Lock()
-    BIG_FILE_SIZE_IN_MB = 500000 # 20 MB
+    __repository_lock = Lock()
+    BIG_FILE_SIZE_IN_MB = 20*1024*1024 # 20 MB
 
     # Signals
     stateChanged = Signal(AnalysisState)
@@ -52,9 +53,11 @@ class AnalysisController(QObject):
 
         Api().add_message_callback(self.__on_api_message)
         Api().subscribe(Topics.NEW_FILE)
-        Api().subscribe(Topics.ERROR)
+        Api().subscribe(Topics.DELETED_FILE)
+        #Api().subscribe(Topics.ERROR)
         Api().subscribe(f"{TOPIC_ANALYSIS}/response")
         Api().subscribe(f"{TOPIC_ANALYSIS}/status")
+        Api().subscribe(f"{TOPIC_ANALYSIS}/error")
         Api().subscribe(f"{Topics.SYSTEM_INFO}/response")
         Api().subscribe(Topics.DISK_STATE)
         Api().subscribe(f"{Topics.LIST_FILES}/response")
@@ -91,6 +94,7 @@ class AnalysisController(QObject):
         self.__infected_files_size = 0
         self.__files_copy_queue_size = 0
         self.__start_times = {}
+        self.__repository_size = 0
 
 
     ######
@@ -128,7 +132,7 @@ class AnalysisController(QObject):
                 return
             
             self.__handle_status(payload.get("filepath", ""), FileStatus(payload.get("status", 0)), payload.get("progress", 0))
-        elif topic == Topics.ERROR:
+        elif topic == f"{TOPIC_ANALYSIS}/error":
             if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
                 # On filtre pour ne pas provoquer de boucle infinie
                 return
@@ -152,44 +156,33 @@ class AnalysisController(QObject):
             if state == DiskState.MOUNTED.value:
                 self.__on_archive_mounted(disk)
         elif topic == f"{Topics.LIST_FILES}/response":
-            with self.__queue_lock:                
-                # We only monitor this message when we mounted an archive before
-                if self.__archive_mounted_name is None:
-                    return
-                
-                if not MqttHelper.check_payload(payload, ["disk", "files"]):
-                    Api().error(f"Malformed message for topic {topic}")
-                    return
-                
-                disk = payload.get("disk", "")
-                files = payload.get("files", [])
+            # We only monitor this message when we mounted an archive before
+            if self.__archive_mounted_name is None:
+                return
+            
+            if not MqttHelper.check_payload(payload, ["disk", "files"]):
+                Api().error(f"Malformed message for topic {topic}")
+                return
+            
+            disk = payload.get("disk", "")
+            files = payload.get("files", [])
 
-                # If we receive a files list, it means that we have mounted a disk
-                if len(files) > 0:
-                    for file in files:
-                        if file["type"] == "folder":
-                            continue
+            self.__on_list_files_received(disk, files)
+        elif topic == Topics.DELETED_FILE:
+            if not MqttHelper.check_payload(payload, ["disk", "filepath"]):
+                Api().error(f"Malformed message for topic {topic}")
+                return
+            
+            disk = payload.get("disk", "")
+            filepath = payload.get("filepath", "")
 
-                        file["disk"] = disk
-                        filepath = f"{file.get("path")}{"/" if file.get("path") != "/" else ""}{file.get("name")}"
-                        file["filepath"] = filepath
-                        file["status"] = FileStatus.FileStatusUndefined
-                        file["selected"] = True
-                        file["inqueue"] = True
-                        
-                        # Update the files list
-                        if "content" in self.__archive_file:
-                            archive_content = self.__archive_file["content"]
-                        else:
-                            self.__archive_file["content"] = {}
-                            archive_content = self.__archive_file["content"]
-                        
-                        archive_content[filepath] = file
+            if disk == Constants.STR_REPOSITORY:
+                self.__on_deleted_file(disk, filepath)
 
 
     def __on_file_available(self, filepath:str, fingerprint:str) -> None:
         with self.__queue_lock:
-            self.__repository_size += 1
+            self.inc_repository_size()
             self.__files_copy_queue_size -= 1
 
             try:
@@ -210,6 +203,34 @@ class AnalysisController(QObject):
             except Exception as e:
                 print("EXCEPTION")
                 print(e)
+
+    def __on_deleted_file(self, disk:str, filepath:str):
+        print(f"The file {filepath} has been removed from the repository")
+        self.dec_repository_size()
+
+    def __on_list_files_received(self, disk:str, files:list):
+        with self.__queue_lock:
+            # If we receive a files list, it means that we have mounted a disk
+            if len(files) > 0:
+                for file in files:
+                    if file["type"] == "folder":
+                        continue
+
+                    file["disk"] = disk
+                    filepath = f"{file.get("path")}{"/" if file.get("path") != "/" else ""}{file.get("name")}"
+                    file["filepath"] = filepath
+                    file["status"] = FileStatus.FileStatusUndefined
+                    file["selected"] = True
+                    file["inqueue"] = True
+                    
+                    # Update the files list
+                    if "content" in self.__archive_file:
+                        archive_content = self.__archive_file["content"]
+                    else:
+                        self.__archive_file["content"] = {}
+                        archive_content = self.__archive_file["content"]
+                    
+                    archive_content[filepath] = file
 
     def __on_archive_mounted(self, disk:str):
         # When an archive has been mounted we need to query its files list
@@ -238,6 +259,8 @@ class AnalysisController(QObject):
 
 
     def __handle_status(self, filepath:str, status:FileStatus, progress:int):
+        return # Unused
+        '''
         with self.__queue_lock:
             if self.__archive_mounted_name is not None:
                 # If this is an archive we ignore the status
@@ -249,7 +272,7 @@ class AnalysisController(QObject):
             if progress > file.get("progress", 0):
                 file["progress"] = progress
             
-            self.fileUpdated.emit(filepath, ["progress"])
+            self.fileUpdated.emit(filepath, ["progress"])'''
         
 
     def __handle_result(self, component:str, filepath:str, success:bool, details:str):
@@ -284,11 +307,15 @@ class AnalysisController(QObject):
 
                     # Free the slot in the repository
                     Api().delete_file(filepath, Constants.STR_REPOSITORY)
-                    self.__repository_size = self.__repository_size - 1 # TODO: asynchronously after the file has been deleted
             else:
-                # If this is a file in an archive            
+                file = AnalysisHelper.get_file_in_archive(self.__archive_file, filepath)
+                if file.get("progress", 0) == 100:
+                    # Free the slot in the repository for the file in the archive
+                    Api().delete_file(filepath, Constants.STR_REPOSITORY)
+
+                # If this is a file in an archive
                 if self.__archive_file.get("progress", 0) == 100:
-                    if clean:            
+                    if clean:
                         self.__clean_files_count += 1
                         self.__clean_files_size += file_size
                     else:
@@ -300,27 +327,24 @@ class AnalysisController(QObject):
 
                     # We finished analyzing the image so we clean...
                     Api().unmount(self.__archive_mounted_name)
-                    self.__archive_mounted_name = None 
+                    self.__archive_mounted_name = None
                     self.__archive_mounted_filepath = None
                     self.__archive_file = {}
 
                     start_time = self.__start_times.get(filepath, time.time())
                     duration = time.time() - start_time
-                    self.iterationDone.emit(duration)
-
-                    # Free the slot in the repository for the file in the archive
-                    Api().delete_file(filepath, Constants.STR_REPOSITORY)
-                    self.__repository_size = self.__repository_size - 1 # TODO: asynchronously after the file has been deleted        
+                    self.iterationDone.emit(duration)                
 
                 # Free the slot in the repository for the archive
-                Api().delete_file(self.__archive_mounted_filepath, Constants.STR_REPOSITORY)
-                self.__repository_size = self.__repository_size - 1 # TODO: asynchronously after the file has been deleted        
+                #Api().delete_file(self.__archive_mounted_filepath, Constants.STR_REPOSITORY)
+                #self.__repository_size = self.__repository_size - 1 # TODO: asynchronously after the file has been deleted        
 
             #print(f"File {filepath}, status={"clean" if clean else "infected"}, success={success}, component={component}")        
 
     def __handle_error(self, payload):
-        filepath = payload.get("filepath", "")
-        #error = payload.get("error", "")        
+        print("Error received:", payload)
+
+        '''filepath = payload.get("filepath", "")
 
         file = self.__files[filepath]
         
@@ -333,7 +357,7 @@ class AnalysisController(QObject):
         self.resultsChanged.emit()
 
         Api().delete_file(filepath, Constants.STR_REPOSITORY)
-        self.__repository_size -= 1
+        self.__repository_size -= 1'''
 
     
     def __do_copy_files_into_repository(self):
@@ -344,7 +368,7 @@ class AnalysisController(QObject):
         #print("next group:", files)
 
         with self.__queue_lock:
-            for file in files:            
+            for file in files:
                 file["locked"] = True
 
                 if file.get("inqueue", False) or self.__analysis_mode == AnalysisMode.AnalyseWholeSource:
@@ -376,12 +400,12 @@ class AnalysisController(QObject):
                         self.__files_copy_queue_size += 1
                             
         if self.__analysis_state == AnalysisState.AnalysisRunning and (len(self.__files) > 0 or len(self.__archive_file.get("content", {})) > 0):
-            threading.Timer(0.5, self.__do_copy_files_into_repository).start()
+            threading.Timer(0.1, self.__do_copy_files_into_repository).start()
         else:
             print("No more file to analyse... Exiting loop")
 
     def __get_repository_free_slots(self):
-        nb_files = self.__repository_capacity - self.__repository_size - self.__files_copy_queue_size
+        nb_files = self.__repository_capacity - self.get_repository_size() - self.__files_copy_queue_size
         #print("free slots=", nb_files)
         return nb_files
 
@@ -434,8 +458,8 @@ class AnalysisController(QObject):
         files_list = self.__files if self.__archive_mounted_name is None else self.__archive_file.get("content", {})
         
         return len(
-            {k:f for k,f in files_list.items() if 
-                f.get("status", None) in [ 
+            {k:f for k,f in files_list.items() if
+                f.get("status", None) in [
                     FileStatus.FileAnalysing,
                     FileStatus.FileAvailableInRepository,
                     FileStatus.FileCopySuccess
@@ -467,9 +491,22 @@ class AnalysisController(QObject):
 
     def get_repository_capacity(self):
         return self.__repository_capacity
-    
+        
+    def set_repository_size(self, val:int):
+        with self.__repository_lock:
+            self.__repository_size = val
+
     def get_repository_size(self):
-        return self.__repository_size
+        with self.__repository_lock:
+            return self.__repository_size
+        
+    def inc_repository_size(self):
+        with self.__repository_lock:
+            self.__repository_size += 1
+
+    def dec_repository_size(self):
+        with self.__repository_lock:
+            self.__repository_size -= 1
     
     def get_queue_size(self):
         return len(self.__files)

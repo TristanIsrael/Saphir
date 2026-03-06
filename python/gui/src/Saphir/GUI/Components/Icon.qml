@@ -5,6 +5,7 @@ Item {
     id: root
 
     property alias text: txt.text
+    property alias color: txt.color
 
     signal clicked()
 
@@ -16,7 +17,7 @@ Item {
     Text {
         id: txt
         anchors.fill: parent
-        font.family: "Material Symbols Outlined"
+        font.family: "Material Icons"
         font.pixelSize: height * 0.9
         verticalAlignment: Text.AlignVCenter
         color: Environment.colorText

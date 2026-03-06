@@ -1,2 +1,2 @@
-# Contrat de licence d'utilisation de Panoptiscan
+# End user licence for Saphir
 

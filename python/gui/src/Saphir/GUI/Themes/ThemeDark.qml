@@ -29,4 +29,7 @@ QtObject {
     readonly property color colorWaiting: "#99dfdfdf"
 
     readonly property color colorSelected: "#66656dfd"
+
+    readonly property color colorIconFile: "#4DA8F1"
+    readonly property color colorIconFolder: "#FFAEC0"
 }

@@ -61,6 +61,8 @@ class TestAnalysisController(unittest.TestCase):
             return
         elif topic == f"{Topics.DELETE_FILE}/request":
             return
+        elif topic == Topics.DELETED_FILE:
+            return
 
         self.__message_lock.acquire()
         if topic.startswith(Topics.SYSTEM_INFO):
@@ -73,7 +75,7 @@ class TestAnalysisController(unittest.TestCase):
         #print(self.__messages_recv)
 
         if len(self.__messages_recv) == self.__nb_expected_messages:
-            self.__message_event.set()       
+            self.__message_event.set()
 
         self.__message_lock.release()
      
@@ -119,7 +121,7 @@ class TestAnalysisController(unittest.TestCase):
         self.__update_queue(self.STORAGE_FILES.get("files", []))
 
         self.__messages_recv.clear()
-        self.__message_event.clear()                
+        self.__message_event.clear()
         self.__nb_expected_messages = 3
         self.__analysis_controller.start_analysis()
         self.assertEqual(self.__analysis_controller.get_analysis_state(), AnalysisState.AnalysisRunning)
@@ -128,7 +130,7 @@ class TestAnalysisController(unittest.TestCase):
 
         self.__analysis_controller._AnalysisController__repository_size = 0
 
-        # Verify the message received        
+        # Verify the message received
         self.assertEqual(len(self.__messages_recv), 3)
         self.assertEqual(self.__messages_recv[0]["topic"], f"{TOPIC_ANALYSIS}/resume")
         self.assertEqual(self.__messages_recv[1]["topic"], f"{Topics.READ_FILE}/request")
@@ -155,7 +157,7 @@ class TestAnalysisController(unittest.TestCase):
         file = self.__files_queue.get("/.DS_Store", {})
         self.assertIn(file.get("status", FileStatus.FileStatusUndefined), [FileStatus.FileAvailableInRepository, FileStatus.FileAnalysing])
 
-        # Now the analysis request has been sent we send progress information
+        # Now that the analysis request has been sent we send progress information
         payload = {
             "component": "av_test",
             "filepath": "/.DS_Store",
@@ -196,13 +198,24 @@ class TestAnalysisController(unittest.TestCase):
             "success": False,
             "details": "Some details"
         }
+
         self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
 
-        time.sleep(0.1)
+        time.sleep(0.5)
 
         # We verify the values
         self.assertEqual(file.get("progress", 0), 100)
         self.assertEqual(file.get("status", FileStatus.FileAnalysing), FileStatus.FileInfected)
+
+        # We send a delete file notification
+        self.__nb_expected_messages = 1
+        self.__message_event.clear()
+        self.__messages_recv.clear()
+        notif = NotificationFactory.create_notification_deleted_file(Constants.STR_REPOSITORY, "/.DS_Store")
+        self.__mqtt_client.publish(Topics.DELETED_FILE, notif)
+
+        time.sleep(0.2)
+
         self.assertEqual(self.__analysis_controller.get_repository_size(), 0)
 
         # After that we analyse the second file
@@ -487,14 +500,14 @@ class TestAnalysisController(unittest.TestCase):
         self.__update_queue(deepcopy(self.STORAGE_MIXED_FILES.get("files")))
 
         self.__messages_recv.clear()
-        self.__message_event.clear()                
+        self.__message_event.clear()
         self.__nb_expected_messages = 3
         self.__analysis_controller.start_analysis()
         self.assertEqual(self.__analysis_controller.get_analysis_state(), AnalysisState.AnalysisRunning)
         # Wait for the Analysis/resume message
         self.assertTrue(self.__message_event.wait(2))
 
-        # Verify the message received 
+        # Verify the message received
         self.assertEqual(len(self.__messages_recv), 3)
         self.assertEqual(self.__messages_recv[0]["topic"], f"{TOPIC_ANALYSIS}/resume")
         self.assertEqual(self.__messages_recv[1]["topic"], f"{Topics.READ_FILE}/request")
@@ -507,15 +520,13 @@ class TestAnalysisController(unittest.TestCase):
         self.__nb_expected_messages = 1
         self.__message_event.clear()
         payload = NotificationFactory.create_notification_new_file(Constants.STR_REPOSITORY, "/File.txt", "abcdef0123456789", "abcdef0123456789")
-        self.__mqtt_client.publish(Topics.NEW_FILE, payload)        
-
+        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
         # Wait for the analysis request
         self.__message_event.wait(0.5)        
         
         self.assertEqual(len(self.__messages_recv), 1)
         self.assertEqual(self.__messages_recv[0]["topic"], f"{TOPIC_ANALYSIS}/request")
         self.assertEqual(self.__messages_recv[0]["payload"], {"filepath": "/File.txt"})
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 1)
 
         # Send the results
         self.__messages_recv.clear()
@@ -542,7 +553,6 @@ class TestAnalysisController(unittest.TestCase):
         self.assertEqual(len(self.__messages_recv), 1)
         self.assertEqual(self.__messages_recv[0]["topic"], f"{TOPIC_ANALYSIS}/request")
         self.assertEqual(self.__messages_recv[0]["payload"], {"filepath": "/File2.txt"})
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 1)
 
         # Then we send the results
         self.__messages_recv.clear()
@@ -553,14 +563,19 @@ class TestAnalysisController(unittest.TestCase):
         payload = { "component": "av2", "filepath": "/File2.txt", "success": True, "details": "Some details" }
         self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
 
+        # We send deleted file notifications
+        notif = NotificationFactory.create_notification_deleted_file(Constants.STR_REPOSITORY, "File.txt")
+        self.__mqtt_client.publish(Topics.DELETED_FILE, notif)
+        notif = NotificationFactory.create_notification_deleted_file(Constants.STR_REPOSITORY, "File2.txt")
+        self.__mqtt_client.publish(Topics.DELETED_FILE, notif)
+
         # Wait for a request for the next file (the archive)
         self.assertTrue(self.__message_event.wait(2))
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 0)
 
         # Verify the message received 
         self.assertEqual(len(self.__messages_recv), 1)
         self.assertEqual(self.__messages_recv[0]["topic"], f"{Topics.MOUNT_FILE}/request")
-        self.assertEqual(self.__messages_recv[0]["payload"], {"disk": "Archives", "filepath": "/Test.iso"})            
+        self.assertEqual(self.__messages_recv[0]["payload"], {"disk": "Archives", "filepath": "/Test.iso"})
 
         # We send the notification that the file has been mounted
         self.__messages_recv.clear()
@@ -840,12 +855,35 @@ class TestAnalysisController(unittest.TestCase):
 
         self.__analysis_controller._AnalysisController__repository_size = 1
 
+        # We provide some content for the archive Test.iso
+        archive_files = {
+            "content": {
+                "/File1.txt": { "name": "File1.txt", "path": "/" },
+                "/File2.txt": { "name": "File2.txt", "path": "/" }
+            }
+        }
+        self.__analysis_controller._AnalysisController__archive_mounted_name = "Test.iso"
+        self.__analysis_controller._AnalysisController__archive_file = archive_files
+
+        files = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
+        self.assertEqual(len(files), 2) # This should be the content of the archive
+
+        # Set the files finished
+        archive_files["content"]["/File1.txt"]["progress"] = 100
+        archive_files["content"]["/File1.txt"]["locked"] = True
+        archive_files["content"]["/File2.txt"]["progress"] = 100
+        archive_files["content"]["/File2.txt"]["locked"] = True
+
         files = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
         self.assertEqual(len(files), 0) # The group should be empty
 
+        # Mark the archive finished
         queue[1]["status"] = FileStatus.FileClean
         queue[1]["progress"] = 100.0
         queue[1]["locked"] = True
+        self.__analysis_controller._AnalysisController__archive_mounted_name = None
+        self.__analysis_controller._AnalysisController__archive_mounted_filepath = None
+        self.__analysis_controller._AnalysisController__archive_file = {}
         self.__analysis_controller._AnalysisController__repository_size = 0
 
         files = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
@@ -869,27 +907,22 @@ class TestAnalysisController(unittest.TestCase):
         spyIterationDone = QSignalSpy(self.__analysis_controller.iterationDone)
         spyResultsChanged = QSignalSpy(self.__analysis_controller.resultsChanged)
 
-        # Force the repository size
-        self.__analysis_controller._AnalysisController__repository_size = 8
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 8)
-
         # The first analysis
         self.__analysis_controller._AnalysisController__handle_result("av1", "/.DS_Store", True, "")
 
         self.assertEqual(spyFileUpdated.count(), 1)
         self.assertEqual(spyIterationDone.count(), 0)
         self.assertEqual(spyResultsChanged.count(), 0)
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 8)
         self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
         self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
 
         # The second analysis
         self.__analysis_controller._AnalysisController__handle_result("av2", "/.DS_Store", True, "")
 
+
         self.assertEqual(spyFileUpdated.count(), 2)
         self.assertEqual(spyIterationDone.count(), 1)
         self.assertEqual(spyResultsChanged.count(), 1)
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 7)
         self.assertEqual(self.__analysis_controller.get_clean_files_count(), 1)
         self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
 
@@ -900,7 +933,6 @@ class TestAnalysisController(unittest.TestCase):
         self.assertEqual(spyFileUpdated.count(), 3)
         self.assertEqual(spyIterationDone.count(), 1)
         self.assertEqual(spyResultsChanged.count(), 1)
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 7)
         self.assertEqual(self.__analysis_controller.get_clean_files_count(), 1)
         self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
 
@@ -910,7 +942,6 @@ class TestAnalysisController(unittest.TestCase):
         self.assertEqual(spyFileUpdated.count(), 4)
         self.assertEqual(spyIterationDone.count(), 2)
         self.assertEqual(spyResultsChanged.count(), 2)
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 6)
         self.assertEqual(self.__analysis_controller.get_clean_files_count(), 1)
         self.assertEqual(self.__analysis_controller.get_infected_files_count(), 1)
 
@@ -924,11 +955,7 @@ class TestAnalysisController(unittest.TestCase):
         self.__analysis_controller._AnalysisController__archive_mounted_filepath = "/Test.iso"
         self.__analysis_controller._AnalysisController__archive_file = { "name": "Test.iso", "path": "/", "size": 50000000, "inqueue": True, "content": content }
         self.assertEqual(self.__analysis_controller.get_queue_size(), 4)
-
-        # Force the repository size
-        self.__analysis_controller._AnalysisController__repository_size = 8
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 8)
-
+        
         spyFileUpdated = QSignalSpy(self.__analysis_controller.fileUpdated)
         spyIterationDone = QSignalSpy(self.__analysis_controller.iterationDone)
         spyResultsChanged = QSignalSpy(self.__analysis_controller.resultsChanged)
@@ -941,7 +968,6 @@ class TestAnalysisController(unittest.TestCase):
         self.assertEqual(spyResultsChanged.count(), 0)
         self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
         self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 7)
 
         # File 1 - analysis 2
         self.__analysis_controller._AnalysisController__handle_result("av2", "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp", True, "")
@@ -951,7 +977,6 @@ class TestAnalysisController(unittest.TestCase):
         self.assertEqual(spyResultsChanged.count(), 0)
         self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
         self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 6)
 
         # File 2 - analysis 1
         self.__analysis_controller._AnalysisController__handle_result("av1", "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag", True, "")
@@ -961,7 +986,6 @@ class TestAnalysisController(unittest.TestCase):
         self.assertEqual(spyResultsChanged.count(), 0)
         self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
         self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 5)
 
         # File 2 - analysis 2
         self.__analysis_controller._AnalysisController__handle_result("av2", "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag", False, "")
@@ -971,7 +995,6 @@ class TestAnalysisController(unittest.TestCase):
         self.assertEqual(spyResultsChanged.count(), 0)
         self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
         self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 4)
 
         # File 3 - analysis 1
         self.__analysis_controller._AnalysisController__handle_result("av1", "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json", True, "")
@@ -981,7 +1004,6 @@ class TestAnalysisController(unittest.TestCase):
         self.assertEqual(spyResultsChanged.count(), 0)
         self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
         self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 3)
 
         # File 3 - analysis 2
         self.__analysis_controller._AnalysisController__handle_result("av2", "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json", True, "")
@@ -991,7 +1013,6 @@ class TestAnalysisController(unittest.TestCase):
         self.assertEqual(spyResultsChanged.count(), 0)
         self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
         self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 2)
 
         # File 4 - analysis 1
         self.__analysis_controller._AnalysisController__handle_result("av1", "/1.3.0/switch/.overlays/parental_control.ovl", True, "")
@@ -1001,7 +1022,6 @@ class TestAnalysisController(unittest.TestCase):
         self.assertEqual(spyResultsChanged.count(), 0)
         self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
         self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 1)
 
         # File 4 - analysis 2
         self.__analysis_controller._AnalysisController__handle_result("av2", "/1.3.0/switch/.overlays/parental_control.ovl", True, "")
@@ -1012,7 +1032,7 @@ class TestAnalysisController(unittest.TestCase):
         self.assertEqual(spyResultsChanged.count(), 1)
         self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
         self.assertEqual(self.__analysis_controller.get_infected_files_count(), 1)
-        self.assertEqual(self.__analysis_controller.get_repository_size(), -1) # At the end we free 2 slots
+
 
     def test_get_working_files_count(self):
         self.__files_queue.clear()

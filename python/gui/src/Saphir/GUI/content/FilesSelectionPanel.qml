@@ -195,6 +195,7 @@ PanelBase {
                         Layout.preferredHeight: parent.height *0.8
 
                         text: type === "file" ? Constants.iconFile : Constants.iconFolder
+                        color: type === "file" ? Environment.colorIconFile : Environment.colorIconFolder
 
                         MouseArea {
                             anchors.fill: parent

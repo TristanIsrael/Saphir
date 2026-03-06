@@ -21,13 +21,22 @@
         <file>content/Energy.qml</file>
         <file>content/FilesProgress.qml</file>
         <file>content/FilesSelectionPanel.qml</file>
-        <file>content/fonts/Inter-Italic-VariableFont_opsz,wght.ttf</file>
-        <file>content/fonts/Inter-VariableFont_opsz,wght.ttf</file>
+        <file>content/fonts/Inter-Italic-VariableFont_opsz_wght.ttf</file>
+        <file>content/fonts/Inter-VariableFont_opsz_wght.ttf</file>
+        <file>content/fonts/MaterialIcons-Regular.ttf</file>
+        <file>content/fonts/MaterialIconsOutlined-Regular.otf</file>
         <file>content/GlobalProgress.qml</file>
         <file>content/images/3535287.jpg</file>
         <file>content/images/back.jpg</file>
         <file>content/images/back.png</file>
         <file>content/images/back_orig.png</file>
+        <file>content/images/battery_android_2_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg</file>
+        <file>content/images/battery_android_3_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg</file>
+        <file>content/images/battery_android_4_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg</file>
+        <file>content/images/battery_android_5_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg</file>
+        <file>content/images/battery_android_6_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg</file>
+        <file>content/images/battery_android_alert_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg</file>
+        <file>content/images/battery_android_full_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg</file>
         <file>content/images/icn_antivirus.png</file>
         <file>content/images/icn_disk.png</file>
         <file>content/images/Logo.png</file>

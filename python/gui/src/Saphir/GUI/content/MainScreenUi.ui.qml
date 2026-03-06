@@ -225,21 +225,29 @@ Item {
 
     /* Lower right buttons */
     ShadowButton {
-        id: btnStartStop //pnlStartStop
+        id: btnStartStop
 
         x: parent.width - (width * 1.25)
         y: parent.height - (height * 1.25)
-        //width: btnStartStop.width
-        //height: btnStartStop.height
-        //radius: height
 
-        enabled: bindings.analysisReady && bindings.queueSize > 0 && !bindings.used
+        enabled: bindings.analysisReady && bindings.queueSize > 0
+                 && !bindings.used
 
-        //RoundButton {
-        //    id: btnStartStop
-        //    flat: true
-            icon: bindings.analyzing ? Constants.iconPause : Constants.iconStart
-        //}
+        icon: bindings.analyzing ? Constants.iconPause : Constants.iconStart
+    }
+
+    ShadowButton {
+        id: btnCopyFiles
+
+        x: parent.width - (width * 1.25)
+        anchors {
+            bottom: btnStartStop.top
+            bottomMargin: 10
+        }
+
+        enabled: bindings.systemState === Enums.AnalysisCompleted
+
+        icon: Constants.iconCopyFiles
     }
 
     /* Messages panel */
@@ -266,7 +274,7 @@ Item {
                  && bindings.sourceName === ""
 
         label: qsTr("Please connect a storage")
-        buttonsLabels: [ qsTr("Close") ]
+        buttonsLabels: [qsTr("Close")]
         handheld: bindings.handheld
     }
 
@@ -277,7 +285,7 @@ Item {
         visible: false
 
         label: qsTr("Do you want to analyze the whole storage?")
-        buttonsLabels: [ qsTr("Yes"), qsTr("No") ]
+        buttonsLabels: [qsTr("Yes"), qsTr("No")]
         handheld: bindings.handheld
     }
 
@@ -288,7 +296,7 @@ Item {
         visible: false
 
         label: qsTr("Do you want to restart the system?")
-        buttonsLabels: [ qsTr("Yes"), qsTr("No")]
+        buttonsLabels: [qsTr("Yes"), qsTr("No")]
         handheld: bindings.handheld
     }
 
@@ -299,7 +307,7 @@ Item {
         visible: false
 
         label: qsTr("Do you want to shutdown the system?")
-        buttonsLabels: [ qsTr("Yes"), qsTr("No") ]
+        buttonsLabels: [qsTr("Yes"), qsTr("No")]
         handheld: bindings.handheld
     }
 

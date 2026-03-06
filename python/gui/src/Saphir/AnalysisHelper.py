@@ -161,9 +161,9 @@ class AnalysisHelper():
         status = file.get("status", FileStatus.FileStatusUndefined)
         
         return progress == 100 \
-            or status in [ 
-                FileStatus.FileAnalysisError, 
-                FileStatus.FileClean, 
-                FileStatus.FileCopyError, 
+            or status in [
+                FileStatus.FileAnalysisError,
+                FileStatus.FileClean,
+                FileStatus.FileCopyError,
                 FileStatus.FileInfected
                 ]

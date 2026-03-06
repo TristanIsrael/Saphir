@@ -11,7 +11,7 @@ class ClamAntivirusController(AbstractAntivirusController):
         super().__init__("ClamAV", "ClamAV Antivirus controller")
 
     def _on_api_ready(self) -> None:
-        self.info("ClamAV antivirus controller is starting.")        
+        self.info("ClamAV antivirus controller is starting.")
         self.__state = ComponentState.STARTING
 
         # Verify the daemon is ready
@@ -19,20 +19,20 @@ class ClamAntivirusController(AbstractAntivirusController):
     
     def _analyse_file(self, filepath: str) -> None:
         if self.__state != ComponentState.READY:
-            self.error("The component is not ready.")            
-            return        
+            self.error("The component is not ready.")
+            return
         
         storage_filepath = f"{Constants.DOMU_REPOSITORY_PATH}{filepath}"
 
         if not os.path.exists(storage_filepath):
-            errstr = "The file {} does not exist or is not accessible.".format(storage_filepath)
+            errstr = f"The file {storage_filepath} does not exist or is not accessible."
             self.error(errstr)
             self.publish_result(filepath, False, errstr)
             return
 
         self.update_status(filepath, FileStatus.FileAnalysing, 0)
 
-        cmd = ["clamdscan", storage_filepath]        
+        cmd = ["clamdscan", storage_filepath]
         proc = subprocess.run(cmd, capture_output=True)
         success = False
         details = ""
@@ -40,9 +40,8 @@ class ClamAntivirusController(AbstractAntivirusController):
             success = True
         elif proc.returncode == 1:
             success = False
-            '''Output example:
-              /private/tmp/eicar.txt: Eicar-Signature FOUND\n\n----------- SCAN SUMMARY -----------\nInfected files: 1\nTime: 0.011 sec (0 m 0 s)\nStart Date: 2024:12:04 10:04:36\nEnd Date:   2024:12:04 10:04:36\n', stderr=b'
-            '''
+            # Output example:
+            #  /private/tmp/eicar.txt: Eicar-Signature FOUND\n\n----------- SCAN SUMMARY -----------\nInfected files: 1\nTime: 0.011 sec (0 m 0 s)\nStart Date: 2024:12:04 10:04:36\nEnd Date:   2024:12:04 10:04:36\n', stderr=b'
             if len(proc.stdout) == 0:
                 self.error("Clamdscan command produced no output")
                 return

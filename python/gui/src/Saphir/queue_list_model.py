@@ -113,8 +113,6 @@ class QueueListModel(QAbstractListModel):
     @Slot(str, list)
     def on_file_updated(self, filepath:str, fields:list):
         with self.__update_lock:
-            print(">>>", filepath)
-            
             if filepath not in self.__files:
                 return
 

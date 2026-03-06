@@ -15,12 +15,13 @@ class AbstractAntivirusController(ABC):
     Answer to the requester and gives details on the analysis result.
     """
 
-    __component_name = "NoName"    
+    __component_name = "NoName"
     __component_description = ""
     __files_queue = Queue()
     __max_workers = 1
     __workers = 0
     __can_run = True
+    __mqtt_client = None
 
     def __init__(self, component_name:str, component_description:str, max_workers:int = -1):
         self.__component_name = component_name
@@ -58,7 +59,7 @@ class AbstractAntivirusController(ABC):
             "details": details
         }
 
-        Api().publish("{}/response".format(TOPIC_ANALYSIS), payload)
+        Api().publish(f"{TOPIC_ANALYSIS}/response", payload)
 
     def update_status(self, filepath:str, status:FileStatus, progress:int):
         payload = {
@@ -68,7 +69,7 @@ class AbstractAntivirusController(ABC):
             "progress": progress
         }
 
-        Api().publish("{}/status".format(TOPIC_ANALYSIS), payload)
+        Api().publish(f"{TOPIC_ANALYSIS}/status", payload)
 
     def component_state_changed(self):
         components = [{
@@ -84,7 +85,7 @@ class AbstractAntivirusController(ABC):
         Api().publish_components(components)
 
     def __on_api_ready(self):
-        self.debug("Current CPU count is {}. Using {} workers.".format(os.cpu_count(), self.__max_workers))
+        self.debug(f"Current CPU count is {os.cpu_count()}. Using {self.__max_workers} workers.")
         Api().subscribe(f"{Topics.DISCOVER_COMPONENTS}/request")
         Api().subscribe(f"{TOPIC_ANALYSIS}/request")
         Api().subscribe(f"{TOPIC_ANALYSIS}/stop")
@@ -94,7 +95,7 @@ class AbstractAntivirusController(ABC):
 
     def __on_message_received(self, topic:str, payload:dict):
         if topic == f"{Topics.DISCOVER_COMPONENTS}/request":
-            self.component_state_changed()            
+            self.component_state_changed()
 
         elif topic == f"{TOPIC_ANALYSIS}/request":
             if not MqttHelper.check_payload(payload, ["filepath"]):
@@ -159,7 +160,7 @@ class AbstractAntivirusController(ABC):
     def _get_component_state(self) -> ComponentState:
         return ComponentState.UNKNOWN
 
-    @abstractmethod    
+    @abstractmethod
     def _analyse_file(self, filepath:str) -> None:
         """ This function must be synchronous as the caller manages a workers count.
         It is ran in a thread so it can be blocked until the work is terminated.
@@ -167,7 +168,7 @@ class AbstractAntivirusController(ABC):
         pass
 
     @abstractmethod
-    def _stop_immediately(self):        
+    def _stop_immediately(self):
         pass
     
     @abstractmethod

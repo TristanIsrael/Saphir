@@ -57,6 +57,17 @@ def handle_sigint(signum, frame):
 
 signal.signal(signal.SIGINT, handle_sigint)
 
+def install_font(filename:str):
+    app_root_path = Path(__file__).resolve().parent
+
+    # Install font Google Material
+    font_id = QFontDatabase.addApplicationFont(Path(app_root_path / f"fonts/{filename}").as_posix())
+
+    if font_id != -1:
+        print(f"The font {filename} has been correctly installed")
+    else:
+        print(f"The font {filename} has not been installed.")
+
 if __name__ == "__main__":
     app.setQuitOnLastWindowClosed(True)
     app.setApplicationName("Saphir")
@@ -64,18 +75,16 @@ if __name__ == "__main__":
 
     app_root_path = Path(__file__).resolve().parent
 
+    # Install fonts
+    install_font("MaterialIconsOutlined-Regular.otf")
+    install_font("MaterialIcons-Regular.ttf")
+    install_font("Inter-VariableFont_opsz_wght.ttf")
+    install_font("Inter-Italic-VariableFont_opsz_wght.ttf")
+    install_font("MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].ttf")
+
     # Set the default font
     font = QFont("Inter", 12)
     app.setFont(font)
-
-    # Install font Google Material
-    font_file = app_root_path / "fonts/MaterialSymbolsOutlined-VariableFont_FILL,GRAD,opsz,wght.ttf"
-    font_id = QFontDatabase.addApplicationFont(font_file.as_posix())
-
-    if font_id != -1:
-        print("The font Google Material has been correctly installed")
-    else:
-        print(f"The font Google Material has not been installed. Font path={font_file}")
 
     applicationController = ApplicationController()
     applicationController.start(on_ready)

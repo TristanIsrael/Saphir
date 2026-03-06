@@ -176,5 +176,19 @@ QtObject {
             case Constants.dark: return ThemeDark.colorSelected;
         }
     }
+
+    property color colorIconFolder: {
+        switch(root.theme) {
+            case Constants.wireframe : return ThemeWireframe.colorIconFolder;
+            case Constants.dark: return ThemeDark.colorIconFolder;
+        }
+    }
+
+    property color colorIconFile: {
+        switch(root.theme) {
+            case Constants.wireframe : return ThemeWireframe.colorIconFile;
+            case Constants.dark: return ThemeDark.colorIconFile;
+        }
+    }
   
 }

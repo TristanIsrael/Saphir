@@ -40,3 +40,7 @@ The sheep-dip handles the following use cases:
 | v3.21 | ![Working](https://img.shields.io/badge/Working-109900) |
 | v3.22 | ![Not tested](https://img.shields.io/badge/Not%20tested-ffa500) |
 | v3.23 | ![Not tested](https://img.shields.io/badge/Not%20tested-ffa500) |
+
+## Licences
+
+- Google Material Design font font version 3 - Apache Licence version 2.0
