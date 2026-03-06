@@ -75,21 +75,43 @@ Item {
 
                 StyledText {
                     Layout.fillWidth: true
-                    text: qsTr("Please connect a storage...")
+                    text: {
+                        if(bindings.targetName === "") {
+                            return qsTr("Please connect a storage...")
+                        } else {
+                            // Transfer in progress
+                            if(bindings.systemState === Enums.CopyCleanFiles) {
+                                return qsTr("Copy in progress...")
+                            } else if (bindings.systemState === Enums.GeneratingReport) {
+                                return qsTr("Generating the report...")
+                            } else if (bindings.systemState === Enums.TransferFinished) {
+                                return qsTr("The transfer is finished!")
+                            }
+                        }
+
+                        return qsTr("Undefined (%1)").arg(bindings.systemState)
+                    }
                     horizontalAlignment: Qt.AlignHCenter
-                    color: Environment.colorWarning
+                    color: {
+                        if(bindings.targetName === "") {
+                            return Environment.colorWarning
+                        } else {
+                            // Transfer in progress...
+                            if([Enums.CopyCleanFiles, Enums.GeneratingReport].includes(bindings.systemState)) {
+                                return Environment.colorText
+                            } else if (bindings.systemState === Enums.GeneratingReport) {
+                                return Environment.colorText
+                            } else if (bindings.systemState === Enums.TransferFinished) {
+                                return Environment.colorClean
+                            }
+                        }
+
+                        return qsTr("Undefined (%1)").arg(bindings.systemState)
+                    }
+
                     section: Constants.Section.Title2
-                    visible: bindings.targetName === ""
                 }
 
-                StyledText {
-                    Layout.fillWidth: true
-                    text: qsTr("Copy in progress...")
-                    horizontalAlignment: Qt.AlignHCenter
-                    section: Constants.Section.Title2
-                    color: Environment.colorClean
-                    visible: [Enums.CopyCleanFiles, Enums.GeneratingReport].includes(bindings.systemState)
-                }
             }
         }
 

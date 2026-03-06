@@ -21,12 +21,12 @@ class MockEeaAntivirusController(AbstractAntivirusController):
         return ComponentState.READY
     
     def _analyse_file(self, filepath: str) -> None:
-        self.debug("Analysis triggered for file {}".format(filepath))
+        self.debug(f"Analysis triggered for the file {filepath}")
 
         storage_filepath = Constants.DOMU_REPOSITORY_PATH
 
         if not os.path.exists(storage_filepath):
-            errstr = "The file {} does not exist or is not accessible.".format(storage_filepath)
+            errstr = f"The file {storage_filepath} does not exist or is not accessible."
             self.error(errstr)
             self.publish_result(filepath, False, errstr)
             return
@@ -36,7 +36,7 @@ class MockEeaAntivirusController(AbstractAntivirusController):
         time.sleep(duration_in_seconds)
 
         result = random.choices([0, 1], weights=[10, 90])[0]
-        self.publish_result(filepath, True if result == 1 else False, "")
+        self.publish_result(filepath, result == 1, "")
 
     def _stop_immediately(self):
         pass

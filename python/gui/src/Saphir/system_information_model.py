@@ -5,7 +5,7 @@ import threading
 class SystemInformationModel(QAbstractTableModel):
         
     __system_information = [] # Extracted data (tuples list)
-    __system_information_data: dict
+    __system_information_data = {}
     __update_mutex = threading.Lock()
     __battery_level = 0
     __plugged = False

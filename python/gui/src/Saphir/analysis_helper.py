@@ -13,7 +13,7 @@ class AnalysisHelper():
         clean = AnalysisHelper.evaluate_result_consensus(file)
         if AnalysisHelper.is_analysis_finished(files, filepath):
             if clean:
-                file["status"] = FileStatus.FileClean            
+                file["status"] = FileStatus.FileClean
             else:
                 file["status"] = FileStatus.FileInfected
 

@@ -31,7 +31,7 @@ class AbstractAntivirusController(ABC):
             if os.cpu_count() is not None:
                 self.__max_workers = os.cpu_count()
         else:
-            self.__max_workers = max_workers    
+            self.__max_workers = max_workers
 
         self.__commands_thread = threading.Thread(target= self.__commands_loop)
 
@@ -129,8 +129,9 @@ class AbstractAntivirusController(ABC):
 
     def __commands_loop(self):
         while self.__can_run:
-            if not self.__files_queue.empty() and self.__workers < self.__max_workers: # type: ignore                    
+            if not self.__files_queue.empty() and self.__workers < self.__max_workers: # type: ignore
                 filepath = self.__files_queue.get()
+                print("CLAM start thread for file", filepath)
                 threading.Thread(target=self.__analyse_file, args=(filepath,)).start()
 
             time.sleep(0.1)

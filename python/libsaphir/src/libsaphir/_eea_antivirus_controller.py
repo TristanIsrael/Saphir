@@ -37,7 +37,7 @@ class EeaAntivirusController(AbstractAntivirusController):
     def _analyse_file(self, filepath: str) -> None:
         if self.__state != ComponentState.READY:
             self.error("The component is not ready.")
-            return        
+            return
         
         #storage_filepath = "{}{}".format(Parametres().parametre(Cles.STORAGE_PATH_DOMU), filepath)
         storage_filepath = f"{Constants.DOMU_REPOSITORY_PATH}{filepath}"

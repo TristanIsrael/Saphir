@@ -8,16 +8,18 @@ class ClamAntivirusController(AbstractAntivirusController):
     __state = ComponentState.UNKNOWN
 
     def __init__(self):
-        super().__init__("ClamAV", "ClamAV Antivirus controller")
+        super().__init__("ClamAV", "Clam Antivirus controller")
 
     def _on_api_ready(self) -> None:
-        self.info("ClamAV antivirus controller is starting.")
+        self.info("Clam antivirus controller is starting.")
         self.__state = ComponentState.STARTING
 
         # Verify the daemon is ready
         threading.Timer(0.5, self.__ping_clamd).start()
     
     def _analyse_file(self, filepath: str) -> None:
+        print("CLAMAV analyse file", filepath)
+        
         if self.__state != ComponentState.READY:
             self.error("The component is not ready.")
             return

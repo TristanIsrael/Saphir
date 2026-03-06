@@ -293,7 +293,7 @@ class ApplicationController(QObject):
         Api().info("Start transfer of clean files to target disk")
 
         self.__copied_files_count = 0
-        self.__analysis_controller.stop_analysis()
+        #self.__analysis_controller.stop_analysis()
 
         self.__set_system_state(SystemState.CopyCleanFiles)
 
@@ -302,7 +302,7 @@ class ApplicationController(QObject):
 
     @Slot()
     def __do_start_transfer(self):
-        # Copie les fichiers analysés comme sains
+        # Copy all the clean files
         for filepath_, file_ in self.__queued_files_list.items():
             if file_.get("status") == FileStatus.FileClean:
                 Api().copy_file(self.__source_name, filepath_, self.__target_name)
@@ -609,64 +609,6 @@ class ApplicationController(QObject):
             self.__input_files_list.clear()
             self.__input_files_listmodel.reset()
 
-    def __handle_disk_state_orig(self, payload:dict):
-        disk = payload.get("disk")
-        if disk is None:
-            Api().error("The disk value is missing")
-            return
-        
-        state = payload.get("state")
-        if state is None:
-            Api().error("The state value is missing")
-            return
-        
-        # Is it a source or a destination disk?
-        if self.__source_name == "" and state == "connected":
-            if self.__system_used:
-                # Une nouvelle source est connectée
-                # ce qui n'est pas autorisé si le système a été utilisé
-                self.__system_state = SystemState.SystemMustBeReset
-                self.systemMustBeReset.emit()
-            else:              
-                self.__source_ready = True
-                self.sourceReadyChanged.emit(self.__source_ready)
-                self.__source_name = disk
-                self.__analysis_controller.set_source_disk(disk)
-                self.sourceNameChanged.emit(self.__source_name)
-        elif self.__source_name != "" and self.__source_name == disk and state == "disconnected":
-            # La source a été déconnectée
-            self.__source_ready = False
-            self.sourceReadyChanged.emit(self.__source_ready)
-            self.__source_name = ""
-            self.__analysis_controller.set_source_disk("")
-            self.__input_files_list.clear()
-            self.__input_files_listmodel.reset()
-            self.sourceNameChanged.emit(self.__source_name)
-        elif self.__source_name != "" and self.__source_name != disk and state == "connected":
-            # La destination a été connectée                
-            self.__target_ready = True
-            self.targetReadyChanged.emit(self.__target_ready)
-            self.__target_name = disk
-            self.targetNameChanged.emit(disk)
-        elif self.__target_name != "" and self.__target_name == disk and state == "disconnected":
-            # La destination a été déconnectée
-            self.__target_ready = False
-            self.targetReadyChanged.emit(self.__target_ready)
-            self.__target_name = ""
-            self.targetNameChanged.emit(disk)
-        if self.__target_ready == True and self.__source_ready == False:
-            # If there is only one disk connected it becomes the source
-            self.__source_name = self.__target_name
-            self.__analysis_controller.set_source_disk(self.__target_name)
-            self.__target_name = ""
-            self.__source_ready = True
-            self.__target_ready = False
-            self.sourceNameChanged.emit(self.__source_name)
-            self.sourceReadyChanged.emit(self.__source_ready)
-            self.targetNameChanged.emit(self.__target_name)
-            self.targetReadyChanged.emit(self.__target_ready)
-            self.__input_files_list.clear()
-            self.__input_files_listmodel.reset()
 
     def __handle_list_disks(self, payload:dict):
         # If an analysis is running, we let the AnalysisController handle this message
@@ -702,7 +644,7 @@ class ApplicationController(QObject):
         # If the analysis is running we don't care about this message
         # because the AnalysisController will do
         if self.__system_state == SystemState.SystemAnalysisRunning:
-            return 
+            return
         
         with self.__queue_files_list_lock:
             disk = payload.get("disk")
@@ -802,28 +744,29 @@ class ApplicationController(QObject):
         success = status == "ok"
         if success:
             self.__copied_files_count += 1
+            self.copiedFilesCountChanged.emit()
 
         file["status"] = FileStatus.FileCopySuccess if success else FileStatus.FileCopyError
         Api().info(f"The file {filepath} has been copied to {self.__get_target_name()}. The fingerprint is {fingerprint}")
         self.fileUpdated.emit(filepath, ["status"])
         self.transferProgressChanged.emit()
 
-        if self.__get_transferred_count() == 1:
+        if self.__get_transferred_ratio() == 1:
             self.__finish_transfer()
 
     def __finish_transfer(self):
         self.__set_system_state(SystemState.GeneratingReport)
 
-        # Génère le rapport
+        # Generate the report
         self.__make_analysis_report()
 
-        # Puis copie le rapport
+        # Then copy it on the disk
         report_filepath = self.__report_controller.get_report_filepath()
         with open(report_filepath, 'rb') as f:
             reportData = f.read()
             Api().create_file(self.__report_controller.get_report_filename(), self.__target_name, reportData, True)
 
-        # Et le journal
+        # So the log file
         with open(self.__logfile, 'rb') as f:
             logData = f.read()
             Api().create_file("journal.log", self.__target_name, logData)
@@ -942,7 +885,7 @@ class ApplicationController(QObject):
         Api().info("Generate the analysis report")
 
         # On prépare la structure pour les détails des antivirus
-        antiviruses = dict()
+        antiviruses = {}
 
         for component in self.__components_helper.get_components():
             if component.get("type") == "antivirus":
@@ -955,15 +898,15 @@ class ApplicationController(QObject):
 
         # On exécute la génération du rapport dans un thread
         self.__report_controller.make_report(
-            fichiers= self.__queued_files_list,
+            files= self.__queued_files_list,
             clean_files_count= self.__get_clean_files_count(),
             infected_files_count= self.__get_infected_files_count(),
             analyzed_files_count= len(self.__queued_files_list),
             copied_files_count= self.__copied_files_count,
-            date_heure_debut_analyse= self.__analysis_start_time,
-            date_heure_fin_analyse= self.__analysis_end_time,
-            identifiant_equipement= self.__system_information_model.get_uuid(),
-            nom_support= self.__source_name,
+            start_datetime= self.__analysis_start_time,
+            end_datetime= self.__analysis_end_time,
+            equipement_id= self.__system_information_model.get_uuid(),
+            storage_name= self.__source_name,
             safecor_version= self.__system_information_model.get_safecor_version(),
             saphir_version= QCoreApplication.applicationVersion(),
             antiviruses=antiviruses
@@ -1072,7 +1015,7 @@ class ApplicationController(QObject):
     def __get_total_files_size(self):
         return self.__queue_files_size
 
-    def __get_transferred_count(self):
+    def __get_transferred_ratio(self):
         with self.__queue_files_list_lock:
             clean_files = sum(1 for item in self.__queued_files_list.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean)
             copy_success = sum(1 for item in self.__queued_files_list.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileCopySuccess) 
@@ -1080,7 +1023,7 @@ class ApplicationController(QObject):
             if copy_success > 0:
                 return copy_success / (copy_success + clean_files)
             else:
-                return 0            
+                return 0
 
     def __is_task_running(self):
         return True
@@ -1164,7 +1107,7 @@ class ApplicationController(QObject):
     cleanFilesSize = Property(int, __get_clean_files_size, notify= cleanFilesSizeChanged)
     globalProgress = Property(int, __get_global_progress, notify= globalProgressChanged)
     remainingTime = Property(int, __get_remaining_time, notify= remainingTimeChanged)
-    transferProgress = Property(int, __get_transferred_count, notify= transferProgressChanged)
+    transferProgress = Property(int, __get_transferred_ratio, notify= transferProgressChanged)
     transferStarted = Property(bool, __is_transfer_started, notify= transferStartedChanged)
     copiedFilesCount = Property(int, __get_copied_files_count, notify=copiedFilesCountChanged)
 

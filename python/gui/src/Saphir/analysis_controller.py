@@ -201,7 +201,7 @@ class AnalysisController(QObject):
                 }
                 Api().publish(f"{TOPIC_ANALYSIS}/request", payload)
             except Exception as e:
-                print("EXCEPTION")
+                print("An error occured when handling the new_file notification")
                 print(e)
 
     def __on_deleted_file(self, disk:str, filepath:str):
@@ -333,7 +333,7 @@ class AnalysisController(QObject):
 
                     start_time = self.__start_times.get(filepath, time.time())
                     duration = time.time() - start_time
-                    self.iterationDone.emit(duration)                
+                    self.iterationDone.emit(duration)
 
                 # Free the slot in the repository for the archive
                 #Api().delete_file(self.__archive_mounted_filepath, Constants.STR_REPOSITORY)
