@@ -31,6 +31,8 @@ Item {
     property alias dlgShutdown: dlgShutdown
     property alias dlgRestart: dlgRestart
     property alias pnlMessages: pnlMessages
+    property alias pnlFilesCopy: pnlFilesCopy
+    property alias btnCopyFiles: btnCopyFiles
 
     property bool menuThemesOpened: false
     property bool mainMenuOpened: false
@@ -262,6 +264,7 @@ Item {
 
         visible: !bindings.ready || (bindings.ready
                                      && bindings.sourceName === "")
+        //|| pnlFilesCopy.visible
         radius: 10
     }
 
@@ -354,6 +357,16 @@ Item {
             visible: bindings.ready
                      && (bindings.analyzing
                          || bindings.systemState === Enums.AnalysisCompleted)
+                     && !pnlFilesCopy.visible
+        }
+
+        /* Files copy */
+        FilesCopyPanel {
+            id: pnlFilesCopy
+            anchors {
+                fill: parent
+            }
+            visible: false
         }
     }
 

@@ -80,7 +80,6 @@ if __name__ == "__main__":
     install_font("MaterialIcons-Regular.ttf")
     install_font("Inter-VariableFont_opsz_wght.ttf")
     install_font("Inter-Italic-VariableFont_opsz_wght.ttf")
-    install_font("MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].ttf")
 
     # Set the default font
     font = QFont("Inter", 12)

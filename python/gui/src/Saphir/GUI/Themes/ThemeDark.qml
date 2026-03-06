@@ -32,4 +32,6 @@ QtObject {
 
     readonly property color colorIconFile: "#4DA8F1"
     readonly property color colorIconFolder: "#FFAEC0"
+
+    readonly property color colorWarning: "#fc7304"
 }

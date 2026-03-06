@@ -19,6 +19,7 @@
         <file>content/Bindings.qml</file>
         <file>content/Brightness.qml</file>
         <file>content/Energy.qml</file>
+        <file>content/FilesCopyPanel.qml</file>
         <file>content/FilesProgress.qml</file>
         <file>content/FilesSelectionPanel.qml</file>
         <file>content/fonts/Inter-Italic-VariableFont_opsz_wght.ttf</file>

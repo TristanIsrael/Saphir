@@ -2,7 +2,7 @@ __author__ = "Tristan Israël (tristan.israel@alefbet.net)"
 __version__ = '3.0.0'
 
 from .enums import AnalysisMode, AnalysisState, SystemState, Roles, Enums
-from .AnalysisHelper import AnalysisHelper
+from .analysis_helper import AnalysisHelper
 from .analysis_controller import AnalysisController
 from .devmode_helper import DevModeHelper
 from .log_list_model import LogListModel
@@ -20,7 +20,7 @@ from .application_controller import ApplicationController
 
 __all__ = [
     "AnalysisMode", "AnalysisState", "SystemState", "Roles", "Enums",
-    "AnalysisHelper",
+    "analysis_helper",
     "AnalysisController",    
     "DevModeHelper",
     "LogListModel", "QueueListModel", "QueueListProxyModel", "ComponentsModel", 

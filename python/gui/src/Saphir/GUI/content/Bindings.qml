@@ -24,10 +24,13 @@ Item {
     property int nbInfected: ApplicationController.infectedFilesCount
     property int nbWaiting: ApplicationController.queueSize - (ApplicationController.cleanFilesCount + ApplicationController.infectedFilesCount)
     property int nbFinished: nbInfected + nbClean
+    property int nbCopied: ApplicationController.copiedFilesCount
     property int queueSize: ApplicationController.queueSize
     property int remainingTimeInMinutes: ApplicationController.remainingTime
     property int systemState: ApplicationController.systemState
     property var storagesList: ApplicationController.storages
+    property int cleanFilesSize: ApplicationController.cleanFilesSize
+    property int targetAvailableSize: ApplicationController.targetAvailableSize
 
     /** Models */
     property var sourceFilesListModel: ApplicationController.inputFilesListProxyModel

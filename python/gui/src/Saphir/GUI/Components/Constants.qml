@@ -45,6 +45,7 @@ QtObject {
         Paragraph,
         Title1,
         Title2,
-        Title3
+        Title3,
+        Tiny
     }
 }

@@ -12,7 +12,10 @@ import Components
 Item {
     id: root
 
-    property int percent: (bindings.nbFinished / bindings.queueSize)*100
+    property int currentValue
+    property int maximumValue
+
+    property int percent: (currentValue / maximumValue)*100
     property real stepPercent: 2.5
     property int totalSteps: Math.ceil(100 / stepPercent)
     property int remainingTimeInMinutes: bindings.remainingTimeInMinutes

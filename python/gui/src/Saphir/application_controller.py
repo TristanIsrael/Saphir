@@ -103,6 +103,9 @@ class ApplicationController(QObject):
     #systemInformationChanged = Signal()
     transferStartedChanged = Signal()
     storagesChanged = Signal()
+    cleanFilesSizeChanged = Signal()
+    targetAvailableSizeChanged = Signal()
+    copiedFilesCountChanged = Signal()
 
     # Energy
     __battery_level = 0
@@ -289,19 +292,20 @@ class ApplicationController(QObject):
     def start_transfer(self):
         Api().info("Start transfer of clean files to target disk")
 
-        self.__copied_files_count = 0        
-        self.__analysis_controller.stop_analysis()        
+        self.__copied_files_count = 0
+        self.__analysis_controller.stop_analysis()
 
         self.__set_system_state(SystemState.CopyCleanFiles)
 
-        QTimer.singleShot(1, self.__do_start_transfer)
+        # Start in the run-loop
+        threading.Timer(0.1, self.__do_start_transfer).start()
 
     @Slot()
     def __do_start_transfer(self):
         # Copie les fichiers analysés comme sains
         for filepath_, file_ in self.__queued_files_list.items():
             if file_.get("status") == FileStatus.FileClean:
-                Api().copy_file(self.__source_name, filepath_, self.__target_name)        
+                Api().copy_file(self.__source_name, filepath_, self.__target_name)
 
     @Slot()
     def select_all_clean_files_for_copy(self):
@@ -575,9 +579,35 @@ class ApplicationController(QObject):
             self.__input_files_list.clear()
             self.__input_files_listmodel.reset()
             self.sourceNameChanged.emit(self.__source_name)
-        #elif self.__analysis_controller.get_analysis_state() == AnalysisState.AnalysisRunning and state == DiskState.MOUNTED.value:
-            # If the analysis is running it might be an archive that has been mounted
-            # We let AnalysisController know that
+        elif self.__source_name != "" and self.__source_name != disk and state == DiskState.CONNECTED.value:
+            # The target has been connected
+            self.__target_ready = True
+            self.targetReadyChanged.emit(self.__target_ready)
+            self.__target_name = disk
+            self.targetNameChanged.emit(disk)
+
+            # Verify whether the disk has enough space
+            if True:
+                self.start_transfer()
+        elif self.__target_name != "" and self.__target_name == disk and state == DiskState.DISCONNECTED.value:
+            # The target has been disconnected
+            self.__target_ready = False
+            self.targetReadyChanged.emit(self.__target_ready)
+            self.__target_name = ""
+            self.targetNameChanged.emit(disk)
+        if self.__target_ready and not self.__source_ready:
+            # If there is only one disk connected it becomes the source
+            self.__source_name = self.__target_name
+            self.__analysis_controller.set_source_disk(self.__target_name)
+            self.__target_name = ""
+            self.__source_ready = True
+            self.__target_ready = False
+            self.sourceNameChanged.emit(self.__source_name)
+            self.sourceReadyChanged.emit(self.__source_ready)
+            self.targetNameChanged.emit(self.__target_name)
+            self.targetReadyChanged.emit(self.__target_ready)
+            self.__input_files_list.clear()
+            self.__input_files_listmodel.reset()
 
     def __handle_disk_state_orig(self, payload:dict):
         disk = payload.get("disk")
@@ -771,9 +801,9 @@ class ApplicationController(QObject):
         
         success = status == "ok"
         if success:
-            self.__copied_files_count += 1            
+            self.__copied_files_count += 1
 
-        file["status"] = FileStatus.FileCopySuccess if success else FileStatus.FileCopyError            
+        file["status"] = FileStatus.FileCopySuccess if success else FileStatus.FileCopyError
         Api().info(f"The file {filepath} has been copied to {self.__get_target_name()}. The fingerprint is {fingerprint}")
         self.fileUpdated.emit(filepath, ["status"])
         self.transferProgressChanged.emit()
@@ -827,6 +857,7 @@ class ApplicationController(QObject):
 
     def __on_results_changed(self):
         self.cleanFilesCountChanged.emit(self.__get_clean_files_count())
+        self.cleanFilesSizeChanged.emit()
         self.infectedFilesCountChanged.emit(self.__get_infected_files_count())
         self.globalProgressChanged.emit(self.__get_global_progress())
         self.remainingTimeChanged.emit()
@@ -1032,7 +1063,7 @@ class ApplicationController(QObject):
         return self.__analysis_controller.get_infected_files_size() if self.__analysis_controller is not None else 0
 
     
-    def __get_global_progress(self):      
+    def __get_global_progress(self):
         if self.__get_queue_size() == 0:
             return 0
         
@@ -1078,7 +1109,7 @@ class ApplicationController(QObject):
 
     def __get_components_model(self):
         return self.__components_model
-    
+
     def __get_handheld(self):
         return self.__handheld
 
@@ -1091,6 +1122,12 @@ class ApplicationController(QObject):
     def __get_system_information_model(self):
         return self.__system_information_model
 
+    def __get_target_available_size(self):
+        return 0
+    
+    def __get_copied_files_count(self):
+        return self.__copied_files_count
+
     @Slot(str)
     def is_file_in_queue(self, filepath:str) -> bool:
         return filepath in self.__queued_files_list
@@ -1099,7 +1136,7 @@ class ApplicationController(QObject):
     def is_folder_in_queue(self, filepath:str) -> bool:
         return any(filepath in key for key in self.__queued_files_list)
 
-    
+
     ready = Property(bool, __is_ready, __set_ready, notify=readyChanged) 
     currentFolder = Property(str, __get_current_folder, notify=currentFolderChanged)
     idCurrentFolder = Property(str, __get_current_folder, notify=idCurrentFolderChanged)
@@ -1119,14 +1156,17 @@ class ApplicationController(QObject):
     analysisReady = Property(bool, __is_analysis_ready, notify= analysisReadyChanged)
     analysisController = Property(AnalysisController, __get_analysis_controller, constant=True)
     taskRunning = Property(bool, __is_task_running, notify=taskRunningChanged)
+    targetAvailableSize = Property(bool, __get_target_available_size, notify=targetAvailableSizeChanged)
 
     #totalFilesCount = Property(int, __total_files_count, notify= totalFilesCountChanged)
     infectedFilesCount = Property(int, __get_infected_files_count, notify= infectedFilesCountChanged)
     cleanFilesCount = Property(int, __get_clean_files_count, notify= cleanFilesCountChanged)
+    cleanFilesSize = Property(int, __get_clean_files_size, notify= cleanFilesSizeChanged)
     globalProgress = Property(int, __get_global_progress, notify= globalProgressChanged)
     remainingTime = Property(int, __get_remaining_time, notify= remainingTimeChanged)
     transferProgress = Property(int, __get_transferred_count, notify= transferProgressChanged)
     transferStarted = Property(bool, __is_transfer_started, notify= transferStartedChanged)
+    copiedFilesCount = Property(int, __get_copied_files_count, notify=copiedFilesCountChanged)
 
     batteryLevel = Property(int, __get_battery_level, notify=batteryLevelChanged)
     plugged = Property(bool, __is_plugged, notify=pluggedChanged)

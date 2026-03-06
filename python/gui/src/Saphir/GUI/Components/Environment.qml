@@ -190,5 +190,12 @@ QtObject {
             case Constants.dark: return ThemeDark.colorIconFile;
         }
     }
+
+    property color colorWarning: {
+        switch(root.theme) {
+            case Constants.wireframe : return ThemeWireframe.colorWarning;
+            case Constants.dark: return ThemeDark.colorWarning;
+        }
+    }
   
 }

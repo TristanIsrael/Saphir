@@ -79,8 +79,8 @@ class TestAnalysisHelper(unittest.TestCase):
         av_result = file["results"]["av2"]
         self.assertTrue(av_result["result"])
         self.assertTrue(success)
-        self.assertEqual(size, 6148)       
-        self.assertEqual(file.get("status", None), FileStatus.FileClean) 
+        self.assertEqual(size, 6148)
+        self.assertEqual(file.get("status", None), FileStatus.FileClean)
 
         success, size = AnalysisHelper.update_file_result(files, ".DS_Store", False, "av2", "this is not OK", self.ANALYSIS_COMPONENTS)        
         self.assertEqual(len(file["results"]), 2)
@@ -90,7 +90,7 @@ class TestAnalysisHelper(unittest.TestCase):
         self.assertEqual(av_result["result"], "Infected")
         self.assertFalse(success)
         self.assertEqual(size, 6148)
-        self.assertEqual(file.get("status", None), FileStatus.FileInfected) 
+        self.assertEqual(file.get("status", None), FileStatus.FileInfected)
 
 
     def test_update_archive_result(self):

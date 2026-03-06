@@ -190,6 +190,14 @@ Window {
             }
         }
 
+        Connections {
+            target: window.btnCopyFiles
+
+            function onClicked() {
+                window.pnlFilesCopy.visible = true
+            }
+        }
+
         /* Animations */
         Behavior on pnlMenuThemes.width {
             PropertyAnimation {

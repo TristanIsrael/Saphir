@@ -33,6 +33,9 @@ Item {
                 Layout.preferredWidth: parent.height
 
                 FilesProgress {
+                    currentValue: bindings.nbFinished
+                    maximumValue: bindings.queueSize
+
                     anchors {
                         fill: parent
                         margins: 5

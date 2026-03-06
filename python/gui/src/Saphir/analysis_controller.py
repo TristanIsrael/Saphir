@@ -82,9 +82,9 @@ class AnalysisController(QObject):
         threading.Timer(0.5, self.__do_copy_files_into_repository).start()
 
     def stop_analysis(self) -> None:
-        Api().info("Stopping the analysis", "AnalysisController")        
+        Api().info("Stopping the analysis", "AnalysisController")
         Api().publish(f"{TOPIC_ANALYSIS}/stop", {})
-        Api().clear_sys_usb_queues()        
+        Api().clear_sys_usb_queues()
         self.__set_analysis_state(AnalysisState.AnalysisStopped)
 
     def reset(self):
