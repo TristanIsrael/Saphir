@@ -47,11 +47,14 @@ PanelBase {
 
             StyledComboBox {
                 id: comboStorages
-                model: bindings.storagesList   
-                currentIndex: indexOfValue(ApplicationController.sourceName)
+                model: bindings.storagesList                   
 
                 onActivated: {                    
                     ApplicationController.on_storage_selected(comboStorages.currentValue)
+                }
+
+                Component.onCompleted: {
+                    currentIndex = indexOfValue(ApplicationController.sourceName)
                 }
             }
 
