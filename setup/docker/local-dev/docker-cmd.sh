@@ -1,7 +1,7 @@
 #!/bin/sh
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PRIVATE_KEY="/Users/tristanisrael/Documents/Sources/crypto/saphir.rsa"
+PRIVATE_KEY="/Volumes/SECURITY/Saphir/abuild/saphir.rsa"
 SAPHIR_SOURCE_PATH="/Users/tristanisrael/Documents/Sources/Saphir"
 DOCKER_PATH="/usr/local/bin"
 IMAGE_NAME="saphir-dev"
