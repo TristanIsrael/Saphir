@@ -151,7 +151,7 @@ class ApplicationController(QObject):
         self.__ready_callback = ready_callback
 
         Api().add_ready_callback(self.__on_api_ready)
-        Api().start(mqtt_client=self.__mqtt_client, domain_identifier="GUI", recording=True, logfile=self.__logfile)
+        Api().start(mqtt_client=self.__mqtt_client, domain_identifier="GUI", recording=True, logfile=self.__logfile)        
 
 
     @Slot()
@@ -330,7 +330,7 @@ class ApplicationController(QObject):
         # Reset the environment means destroying and re-creating dirty VMs:
         # - sys-usb
         # - all analysis VM
-        #Api().restart_domain("sys-usb")
+        Api().restart_domain("sys-usb")
 
         ids = self.__components_helper.get_ids_by_type("antivirus")
         for id in ids:
@@ -352,7 +352,7 @@ class ApplicationController(QObject):
         self.__input_files_listmodel.reset()
         self.__source_name = ""
         self.__analysis_controller.set_source_disk("")
-        self.__target_name = ""   
+        self.__target_name = ""
         self.totalFilesCountChanged.emit(0)
         self.cleanFilesCountChanged.emit(0)
         self.infectedFilesCountChanged.emit(0)
@@ -362,6 +362,8 @@ class ApplicationController(QObject):
         self.remainingTimeChanged.emit()
         self.__long_process_running = False
         self.longProcessRunningChanged.emit()
+
+        self.__messages_model.addMessage(self.tr("The system is resetting, please wait..."))
 
     @Slot()
     def set_long_process_running(self, running:bool):
@@ -456,9 +458,9 @@ class ApplicationController(QObject):
         self.__ready = True
         self.readyChanged.emit(self.__ready)
 
-        self.__messages_model.addMessage(self.tr("Saphir has started... Waiting for the components to be ready."))
+        self.__messages_model.addMessage(self.tr("Saphir has started... Waiting for the components to be ready."))        
 
-    def __on_message_received(self, topic:str, payload:dict):      
+    def __on_message_received(self, topic:str, payload:dict):
         # ATTENTION : cette fonction est appelée depuis un autre thread
         # il faut envoyer des signaux pour communiquer avec les autres
         # objets du système  
@@ -501,12 +503,6 @@ class ApplicationController(QObject):
         self.__set_system_state(SystemState.SystemShuttingDown)
         self.__messages_model.addMessage(self.tr("The system is shutting down..."))
         Api().shutdown()
-
-    @Slot()
-    def restart(self):
-        self.__set_system_state(SystemState.SystemResetting)
-        self.__messages_model.addMessage(self.tr("Restarting is not implemented..."))
-        # TODO
 
     def __check_components_availability(self):
         states = self.__components_helper.get_states()
@@ -721,7 +717,7 @@ class ApplicationController(QObject):
             Api().error("The response is malformed")
             return
         
-        components = payload.get("components", list())
+        components = payload.get("components", [])
         if len(components) > 0:
             self.__components_helper.update(components)
             self.__check_components_availability()
@@ -763,13 +759,13 @@ class ApplicationController(QObject):
         # Then copy it on the disk
         report_filepath = self.__report_controller.get_report_filepath()
         with open(report_filepath, 'rb') as f:
-            reportData = f.read()
-            Api().create_file(self.__report_controller.get_report_filename(), self.__target_name, reportData, True)
+            report_data = f.read()
+            Api().create_file(self.__report_controller.get_report_filename(), self.__target_name, report_data, True)
 
         # So the log file
         with open(self.__logfile, 'rb') as f:
-            logData = f.read()
-            Api().create_file("journal.log", self.__target_name, logData)
+            log_data = f.read()
+            Api().create_file("journal.log", self.__target_name, log_data)
 
     def __handle_energy_state(self, payload:dict):
         if not MqttHelper.check_payload(payload, ["battery_level", "plugged"]):
@@ -797,6 +793,9 @@ class ApplicationController(QObject):
         print(f"filepath:{filepath}, endswith:{filepath.endswith("journal.log")}, disk:{disk}, targetName:{self.__target_name}")
         if disk == self.__target_name and filepath.endswith("journal.log"):
             self.__set_system_state(SystemState.TransferFinished)
+            self.__messages_model.addMessage(self.tr("The report ang log have been copied to the destination storage."))
+            self.__messages_model.addMessage(self.tr("You can now remove it."))
+            self.__messages_model.addMessage(self.tr("If you want to analyze another storage you will have to reset the system from the menu."))
 
     def __on_results_changed(self):
         self.cleanFilesCountChanged.emit(self.__get_clean_files_count())

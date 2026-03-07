@@ -88,8 +88,8 @@ Item {
         ApplicationController.start_stop_analysis()        
     }
     
-    function restart() {
-        ApplicationController.restart()
+    function reset() {
+        ApplicationController.reset()
     }
 
     function shutdown() {

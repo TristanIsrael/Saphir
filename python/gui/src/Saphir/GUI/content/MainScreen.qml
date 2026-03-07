@@ -158,7 +158,7 @@ Window {
             target: window.dlgRestart
 
             function onAccepted() {
-                bindings.restart()
+                bindings.reset()
                 window.dlgRestart.visible = false
                 window.pnlMessages.visible = true
             }
@@ -217,6 +217,12 @@ Window {
 
     Bindings {
         id: bindings
+
+        onSystemStateChanged: {
+            if(bindings.systemState === Enums.TransferFinished) {
+                window.pnlFilesCopy.visible = false
+            }
+        }
     }
 
     Component.onCompleted: {
@@ -226,7 +232,7 @@ Window {
         }
 
         if(DEVMODE) {
-            window.pnlFileSelection.visible = true
+            //window.pnlFileSelection.visible = true
         }
     }
 
