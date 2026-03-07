@@ -264,6 +264,7 @@ Item {
 
         visible: !bindings.ready || (bindings.ready
                                      && bindings.sourceName === "")
+                 || bindings.systemState === Enums.TransferFinished
         //|| pnlFilesCopy.visible
         radius: 10
     }
@@ -285,9 +286,9 @@ Item {
         id: dlgAnalyseWholeStorage
 
         anchors.centerIn: parent
-        visible: false
+        visible: true
 
-        label: qsTr("Do you want to analyze the whole storage?")
+        label: qsTr("Do you want to analyze\nthe whole storage?")
         buttonsLabels: [qsTr("Yes"), qsTr("No")]
         handheld: bindings.handheld
     }
@@ -363,9 +364,11 @@ Item {
         /* Files copy */
         FilesCopyPanel {
             id: pnlFilesCopy
+
             anchors {
                 fill: parent
             }
+
             visible: false
         }
     }

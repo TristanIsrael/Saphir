@@ -44,7 +44,7 @@ Rectangle {
                 margins: height/10
             }
 
-            text: "Message dialog"
+            text: ""
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
             color: Environment.colorText
