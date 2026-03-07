@@ -41,7 +41,7 @@ class ReportController(QObject):
             analysis_details.append({
                 "filepath": fichier.get("filepath", "inconnu"),
                 "fingerprint": fichier.get("fingerprint", "inconnu"),
-                "results": fichier.get("results", dict())
+                "results": fichier.get("results", {})
             })
 
         data = {
@@ -63,7 +63,7 @@ class ReportController(QObject):
         }
 
         script_dir = os.path.dirname(os.path.realpath(__file__))
-        templates_dir = os.path.join(script_dir, 'misc/templates')
+        templates_dir = os.path.join(script_dir, 'templates')
         env = Environment(loader=FileSystemLoader(templates_dir))
         template = env.get_template('scan_report_en.html')
 

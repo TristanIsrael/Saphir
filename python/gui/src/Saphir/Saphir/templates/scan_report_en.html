@@ -1,76 +1,12 @@
 <html>
     <head>
-        <style type="text/css">
-            .tableau {
-                border: solid 1px gray;
-                width: 100%;
-                margin-top: 1cm;
-            }
-
-            .tableau th {
-                background-color: #333;
-                color: white;
-                height: 1cm;
-                text-align: center;
-            }
-
-            .tableau td {                
-                padding-left: 2mm;
-                padding-right: 2mm;
-                overflow-wrap: break-word; 
-                word-break: break-all;
-            }
-
-            .tableau p {
-                line-height: 0.2cm;
-                overflow-wrap: break-word;
-            }
-
-            .tableau p.details {
-                line-height: initial;
-                overflow-wrap: break-word;
-            }
-
-            .tableau p.indent {
-                padding-left: 0.5cm;
-            }
-
-            .tableau_resultat {
-                border: solid 1px gray;
-                width: 100%;
-                margin-top: 1cm;
-            }
-
-            .tableau_resultat.succes th {
-                background-color: green;
-                color: white;
-                height: 1cm;
-                text-align: center;
-            }
-
-            .tableau_resultat.erreur th {
-                background-color: red;
-                color: white;
-                height: 1cm; 
-                text-align: center;               
-            }
-
-            .tableau_resultat td {
-                padding: 2mm;
-                text-align: center;
-            }            
-
-        </style>
+        <meta charset="UTF-8"/>
+        <title>Scan report</title>
+        <link rel="stylesheet" href="scan_report.css"/>
     </head>
-    <body>
-        <table style="width: 100%;">
-            <tr>
-                <td><image src="logo_minarm.svg" style="height:3cm"></image></td>
-                <td style="text-align: right"><image src="logo_saphir.svg" style="height:3cm"></td>
-            </tr>
-        </table>
-
+    <body>        
         <h1 style="text-align: center;">Scan report</h1>
+        <div style="position: absolute; top: -0.5cm; left: 0"><image src="logo_saphir.svg" style="height:3cm"></image></div>
                 
         <table class="tableau_resultat {{ analysis_result }}">
             <tr>
@@ -88,7 +24,7 @@
             <tr>
                 <td>
                     <p>Analysis started on: {{ a }}</p>
-                    <p>Analyse terminée le: {{ start_datetime }}</p>
+                    <p>Analyse finished on: {{ start_datetime }}</p>
                     <p>Equipment ID: {{ equipement_id }}</p>
                     <p>Name of the storage analyzed: {{ storage_name }}</p>
                     <p>Partitions: {{ partitions }}</p>

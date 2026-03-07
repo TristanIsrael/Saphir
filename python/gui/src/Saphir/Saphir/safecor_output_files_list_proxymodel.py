@@ -1,7 +1,7 @@
 from PySide6.QtCore import QSortFilterProxyModel, QModelIndex, Qt, Signal, Slot
 from PySide6.QtCore import qDebug, QDir, QFileInfo, Property, QThread, QPersistentModelIndex
-from . import QueueListModel
-from Saphir.enums import Roles, FileStatus
+from . import QueueListModel, Roles
+from libsaphir import FileStatus
 
 
 class SafecorOutputFilesListProxyModel(QSortFilterProxyModel):
@@ -17,9 +17,9 @@ class SafecorOutputFilesListProxyModel(QSortFilterProxyModel):
         self.setSortRole(Roles.RoleFilename)
         self.sort(0)
 
-    def filterAcceptsRow(self, source_row:int, source_parent:QModelIndex|QPersistentModelIndex):        
+    def filterAcceptsRow(self, source_row:int, source_parent:QModelIndex|QPersistentModelIndex):
         idx = self.sourceModel().index(source_row, 0, QModelIndex())
-        #path = self.sourceModel().data(idx, Roles.RolePath)        
+        #path = self.sourceModel().data(idx, Roles.RolePath)
         type = self.sourceModel().data(idx, Roles.RoleType)
         status = self.sourceModel().data(idx, Roles.RoleStatus)
         

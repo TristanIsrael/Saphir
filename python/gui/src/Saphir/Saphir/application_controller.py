@@ -890,7 +890,7 @@ class ApplicationController(QObject):
         for component in self.__components_helper.get_components():
             if component.get("type") == "antivirus":
                 av_id = component.get("id", "unknown")
-                av = antiviruses.get(av_id, dict())
+                av = antiviruses.get(av_id, {})
                 av["version"] = component.get("version")
                 description = component.get("description", "")
                 av["description"] = description.replace("\n", "<br/>")

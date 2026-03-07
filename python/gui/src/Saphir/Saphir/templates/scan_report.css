@@ -1,0 +1,76 @@
+
+@page {
+    size: A4;
+    margin: 1.5cm;
+}
+
+@font-face {
+    font-family: Inter;
+    src: url("../../fonts/Inter-VariableFont_opsz_wght.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+}
+
+body {
+    font-family: "Inter", sans-serif;
+}
+
+.tableau {
+    border: solid 1px gray;
+    width: 100%;
+    margin-top: 1cm;
+}
+
+.tableau th {
+    background-color: #333;
+    color: white;
+    height: 1cm;
+    text-align: center;
+}
+
+.tableau td {                
+    padding-left: 2mm;
+    padding-right: 2mm;
+    overflow-wrap: break-word; 
+    word-break: break-all;
+}
+
+.tableau p {
+    line-height: 0.2cm;
+    overflow-wrap: break-word;
+}
+
+.tableau p.details {
+    line-height: initial;
+    overflow-wrap: break-word;
+}
+
+.tableau p.indent {
+    padding-left: 0.5cm;
+}
+
+.tableau_resultat {
+    border: solid 1px gray;
+    width: 100%;
+    margin-top: 1cm;
+}
+
+.tableau_resultat.succes th {
+    background-color: green;
+    color: white;
+    height: 1cm;
+    text-align: center;
+}
+
+.tableau_resultat.erreur th {
+    background-color: red;
+    color: white;
+    height: 1cm; 
+    text-align: center;               
+}
+
+.tableau_resultat td {
+    padding: 2mm;
+    text-align: center;
+}            
+

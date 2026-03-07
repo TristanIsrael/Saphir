@@ -4,7 +4,7 @@
     "python.analysis.extraPaths": [        
         "${workspaceFolder}/../Safecor/python/lib/src",
         "${workspaceFolder}/python/libsaphir/src",
-        "${workspaceFolder}/python/gui/src",
+        "${workspaceFolder}/python/gui/src/Saphir",
         "${workspaceFolder}/python/gui/tests"
     ],
     "python.analysis.typeCheckingMode": "standard",
