@@ -21,7 +21,7 @@ Item {
         font.pixelSize: height * 0.9
         verticalAlignment: Text.AlignVCenter
         color: Environment.colorText
-        text: Constants.iconFile
+        text: ""
     }
 
     MouseArea {

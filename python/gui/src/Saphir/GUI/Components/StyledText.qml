@@ -7,7 +7,7 @@ Text {
     property int section: Constants.Section.Paragraph
 
     font.family: "Inter"
-    text: "Text"
+    text: ""
     color: Environment.colorText
     font.pixelSize: {
         switch(root.section) {

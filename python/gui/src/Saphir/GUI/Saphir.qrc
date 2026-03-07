@@ -9,7 +9,7 @@
         <file>components/MessageDialog.qml</file>
         <file>components/Panel.qml</file>
         <file>components/PanelBase.qml</file>
-        <file>components/qmldir</file>
+        <file>Components/qmldir</file>
         <file>components/RoundButton.qml</file>
         <file>components/ShadowButton.qml</file>
         <file>components/SimpleDialog.qml</file>
