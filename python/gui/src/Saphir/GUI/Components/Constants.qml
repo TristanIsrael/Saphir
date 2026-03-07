@@ -28,7 +28,7 @@ QtObject {
     readonly property string iconFolderUp: "\ue9a3"
     readonly property string iconChecked: "\ue834"
     readonly property string iconUnchecked: "\ue835"
-    readonly property string iconCore: "\ue726"
+    readonly property string iconCore: "\ue322"
     readonly property string iconAntivirus: "\ue9e0"
     readonly property string iconSelectDisk: "\ue5c6" //"\ue8d4"
     readonly property string iconCopyFiles: "\ue2c6" //"\uf09b"
