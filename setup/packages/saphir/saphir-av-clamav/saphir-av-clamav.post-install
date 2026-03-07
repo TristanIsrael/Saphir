@@ -1,5 +1,7 @@
 #!/bin/sh
 
+usermod -aG safecor clamav
+
 mkdir -p /var/log/clamav
 chmod 777 /var/log/clamav
 
