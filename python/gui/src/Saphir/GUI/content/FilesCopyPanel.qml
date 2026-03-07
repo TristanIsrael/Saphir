@@ -80,7 +80,9 @@ Item {
                             return qsTr("Please connect a storage...")
                         } else {
                             // Transfer in progress
-                            if(bindings.systemState === Enums.CopyCleanFiles) {
+                            if(bindings.systemState === Enums.AnalysisCompleted) {
+                                return qsTr("The copy will begin shortly...")
+                            } else if(bindings.systemState === Enums.CopyCleanFiles) {
                                 return qsTr("Copy in progress...")
                             } else if (bindings.systemState === Enums.GeneratingReport) {
                                 return qsTr("Generating the report...")
@@ -97,7 +99,9 @@ Item {
                             return Environment.colorWarning
                         } else {
                             // Transfer in progress...
-                            if([Enums.CopyCleanFiles, Enums.GeneratingReport].includes(bindings.systemState)) {
+                            if(bindings.systemState === Enums.AnalysisCompleted) {
+                                return Environment.colorText
+                            } else if([Enums.CopyCleanFiles, Enums.GeneratingReport].includes(bindings.systemState)) {
                                 return Environment.colorText
                             } else if (bindings.systemState === Enums.GeneratingReport) {
                                 return Environment.colorText
@@ -106,7 +110,7 @@ Item {
                             }
                         }
 
-                        return qsTr("Undefined (%1)").arg(bindings.systemState)
+                        return Environment.colorText
                     }
 
                     section: Constants.Section.Title2

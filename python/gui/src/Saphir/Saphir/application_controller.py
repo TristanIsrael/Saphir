@@ -31,22 +31,22 @@ class ApplicationController(QObject):
     __target_name = ""
     __target_ready = False
     __system_state:SystemState = SystemState.SystemStarting
-    __input_files_list = dict()    # Contains the list of files in the source disk currently viewed
-    __queued_files_list = dict()   # Contains the list of files in the queue
+    __input_files_list = {}    # Contains the list of files in the source disk currently viewed
+    __queued_files_list = {}   # Contains the list of files in the queue
     __input_files_listmodel:SafecorInputFilesListModel
     __input_files_listproxymodel:SafecorInputFilesListProxyModel
     __queue_listmodel:QueueListModel
     __queue_listproxymodel:QueueListProxyModel
     __components_helper = ComponentsHelper()
     __analysis_ready = False
-    __analysis_components = list()
+    __analysis_components = []
     __analysis_controller:AnalysisController
-    __files_to_enqueue = list()
-    __current_folder = "/"    
+    __files_to_enqueue = []
+    __current_folder = "/"
     __is_enqueuing = False
     __log_listmodel:LogListModel
     __analysis_mode = AnalysisMode.AnalyseSelection
-    __analysis_start_time = datetime.now()    
+    __analysis_start_time = datetime.now()
     __queue_files_list_lock = threading.Lock()
     __folders_to_query = 1
     __queue_files_size = 0
