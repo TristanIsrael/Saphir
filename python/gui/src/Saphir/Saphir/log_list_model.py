@@ -1,5 +1,5 @@
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal, Slot
-from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray, qDebug
+from PySide6.QtCore import qDebug
 from safecor import Api, Topics, Logger
 import logging
 from datetime import datetime
@@ -38,11 +38,11 @@ class LogListModel(QAbstractTableModel):
         txt = None
 
         if index.column() == 0:
-            txt = log.get("datetime", self.tr("inconnue"))
+            txt = log.get("datetime", self.tr("unknown"))
         elif index.column() == 1:
-            txt = log.get("module", self.tr("inconnu"))
+            txt = log.get("module", self.tr("unknown"))
         elif index.column() == 2:
-            txt = log.get("description", self.tr("inconnu"))
+            txt = log.get("description", self.tr("unknown"))
 
         return txt
 
@@ -55,9 +55,9 @@ class LogListModel(QAbstractTableModel):
             rows = len(self.__logs)
             self.beginInsertRows(QModelIndex(), rows, rows)
             self.__logs.insert(0, {
-                "module": payload.get("module", "inconnu"),
+                "module": payload.get("module", "unknown"),
                 "datetime": self.__to_datetime(payload.get("datetime", "")),
-                "description": payload.get("description", "inconnu")
+                "description": payload.get("description", "unknown")
             })
 
             self.endInsertRows()

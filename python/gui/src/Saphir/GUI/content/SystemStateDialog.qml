@@ -55,6 +55,7 @@ SimpleDialog {
                             height: 20
                             text: display
                             visible: column > 0
+                            color: display === "Ready" ? Environment.colorSuccess : Environment.colorText
                             font.bold: column === 1
                         }
 
@@ -103,6 +104,7 @@ SimpleDialog {
                         height: 20
                         text: display
                         font.bold: column === 0
+                        color: display
                     }
                 }
             }

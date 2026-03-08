@@ -11,7 +11,7 @@ QtObject {
     property bool handheld: ApplicationController.handheld
     property bool portrait: false
 
-    property int theme: Constants.lowVisibility
+    property int theme: Constants.dark
 
     property int mainWidth: 1200
     property int mainHeight: 800
@@ -260,6 +260,15 @@ QtObject {
         }
     }
 
+    property color colorSuccess: {
+        switch(root.theme) {
+            case Constants.wireframe : return ThemeWireframe.colorSuccess;
+            case Constants.dark: return ThemeDark.colorSuccess;
+            case Constants.light: return ThemeLight.colorSuccess;
+            case Constants.lowVisibility: return ThemeLowVisibility.colorSuccess;
+        }
+    }
+
     property double panelSaturation: {
         switch(root.theme) {
             case Constants.dark: return ThemeDark.panelSaturation
@@ -320,5 +329,7 @@ QtObject {
             case Constants.lowVisibility: return ThemeLowVisibility.logoBrightness;
         }
     }
+
+
   
 }

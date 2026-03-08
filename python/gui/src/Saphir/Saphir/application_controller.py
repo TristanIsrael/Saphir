@@ -139,7 +139,7 @@ class ApplicationController(QObject):
 
         self.__report_controller = ReportController(self)
         self.__report_controller.reportGenerated.connect(self.__on_report_generated)
-        self.__system_information_model = SystemInformationModel(self.__handheld)        
+        self.__system_information_model = SystemInformationModel(self.__handheld)
 
     def start(self, ready_callback):
         if DEVMODE:

@@ -26,7 +26,6 @@ Window {
 
             function onClicked() {
                 Environment.theme = Constants.dark
-                lytMenuThemes.stackBefore()
                 window.menuThemesOpened = !window.menuThemesOpened
             }
         }

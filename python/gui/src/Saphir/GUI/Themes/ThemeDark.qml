@@ -24,7 +24,7 @@ QtObject {
     readonly property color colorFilterUsed: "#ffa500"
     readonly property color colorFilterInfected: "#ff0000"
 
-    readonly property color colorClean: "#4CAF50"
+    readonly property color colorClean: "#4caf50"
     readonly property color colorInfected: "#F44336"
     readonly property color colorWaiting: "#99dfdfdf"
 
@@ -34,6 +34,7 @@ QtObject {
     readonly property color colorIconFolder: "#FFAEC0"
 
     readonly property color colorWarning: "#fc7304"
+    readonly property color colorSuccess: "#4caf50"
 
     readonly property color colorNotProtected: "#4caf50"
     readonly property color colorRestricted: "#ffc107"

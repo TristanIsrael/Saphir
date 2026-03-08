@@ -14,7 +14,7 @@ QtObject {
     readonly property color colorButtonDisabled: "#333333"
     readonly property color colorPanelEnabled: '#1f1f3a'
     readonly property color colorPanelDisabled: "#666666"
-    readonly property color colorShadowEnabled: '#44a08e8e'
+    readonly property color colorShadowEnabled: '#44616060'
     readonly property color colorShadowDisabled: '#002c2c2c'
     readonly property color colorButtonTextEnabled: "#333333"
     readonly property color colorButtonTextDisabled: "#222222"
@@ -34,6 +34,7 @@ QtObject {
     readonly property color colorIconFolder: '#461822'
 
     readonly property color colorWarning: '#893f02'
+    readonly property color colorSuccess: '#163617'
 
     readonly property color colorNotProtected: '#1c441d'
     readonly property color colorRestricted: '#493701'
