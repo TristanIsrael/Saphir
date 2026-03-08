@@ -61,7 +61,7 @@
         <file>qtquickcontrols2.conf</file>
         <file>Saphir.qmlproject</file>
         <file>Saphir/qmldir</file>
-        <file>themes/qmldir</file>
+        <file>Themes/qmldir</file>
         <file>wireframe/Analysis.qml</file>
         <file>wireframe/Analysis_finished.qml</file>
         <file>wireframe/Connected_storage.qml</file>

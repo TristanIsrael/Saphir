@@ -190,38 +190,7 @@ Item {
                         width: fileListListView.width - scrollbar.width
                         height: fileListListView.rowHeight
                         spacing: 10
-
-                        /*CheckBox
-                        {
-                            //visible: status === Enums.FileStatus.FileClean
-                            Layout.preferredHeight: parent.height
-                            Layout.preferredWidth: parent.height
-                            checked: status === Enums.FileStatus.FileClean
-                            checkable: false
-
-                            contentItem: Image {
-                                //source: Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherVerte.svg")
-                                source: status === Enums.FileStatus.FileClean ? Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherVerte.svg") : Qt.resolvedUrl(Constants.colorModePath  + "CaseACocherActive.svg")
-                                anchors.fill: parent
-                                fillMode: Image.PreserveAspectFit
-                            }
-
-                            indicator: Image {
-                                visible: parent.checked
-                                source: Qt.resolvedUrl(Constants.colorModePath  + "CocheSain.svg")
-                                fillMode: Image.PreserveAspectFit
-                                width: parent.width*0.6
-                                height: width
-                                anchors.centerIn: parent
-                            }
-                        }
-
-                        Item {
-                            //Spacer pour aligner quand la checkbox n'est pas visible
-                            Layout.preferredWidth: 10
-                            visible: status !== Enums.FileStatus.FileClean
-                        }*/
-
+                        
                         StyledText {
                             Layout.preferredHeight: parent.height
                             Layout.fillWidth: true

@@ -2,7 +2,6 @@
 ### Do not change
 
 add_subdirectory(Saphir)
-add_subdirectory(themes)
 add_subdirectory(App)
 add_subdirectory(Dependencies)
 
@@ -41,5 +40,4 @@ qt6_add_resources(${CMAKE_PROJECT_NAME} MainResource
 
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
     Saphirplugin
-    Themesplugin
     QtQuickDesignerComponents)

@@ -104,7 +104,6 @@ SimpleDialog {
                         height: 20
                         text: display
                         font.bold: column === 0
-                        color: display
                     }
                 }
             }

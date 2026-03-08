@@ -232,7 +232,6 @@ Item {
         y: parent.height - (height * 1.25)
 
         enabled: bindings.analysisReady && bindings.queueSize > 0
-
         icon: bindings.analyzing ? Constants.iconPause : Constants.iconStart
     }
 
