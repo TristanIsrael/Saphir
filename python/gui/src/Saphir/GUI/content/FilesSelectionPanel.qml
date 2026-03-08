@@ -24,20 +24,6 @@ PanelBase {
             Layout.fillWidth: true
             Layout.preferredHeight: lblStorageName.height
 
-            /*StyledText {
-                id: lblStorageName
-                section: Constants.Section.Title1
-
-                text: qsTr("Storage name: ") +bindings.sourceName
-            }
-
-            Icon {
-                text: Constants.iconSelectDisk
-                Layout.preferredHeight: 36
-                Layout.preferredWidth: 36
-                visible: bindings.storagesList.length > 1
-            }*/
-
             StyledText {
                 id: lblStorageName
                 section: Constants.Section.Title1
@@ -119,16 +105,12 @@ PanelBase {
             }
         }
 
-        /*Item {
-            Layout.preferredHeight: 10
-        }*/
-
         ListView
         {
             id: listView
             clip: true
-            property int rowHeight: 40
-            Layout.preferredHeight: 40
+            property int rowHeight: Environment.handheld ? 60 : 40
+            //Layout.preferredHeight: Environment.handheld ? 80 : 40
             Layout.fillWidth: true
             Layout.fillHeight: true
 
@@ -184,7 +166,7 @@ PanelBase {
             }
 
             delegate: Rectangle {                
-                height: visible ? listView.rowHeight : 0
+                height: visible ? listView.rowHeight : 0 //(Environment.handheld ? listView.rowHeight*1.5 : listView.rowHeight) : 0
                 width: listView.width - scrollbar.width *2
                 color: inqueue ? Environment.colorSelected : "transparent"
                 
@@ -217,7 +199,8 @@ PanelBase {
                         horizontalAlignment: Text.AlignLeft
                         elide: Text.ElideRight
                         Layout.fillWidth: true
-                        section: Constants.Section.Title2
+                        //section: Constants.Section.Title2
+                        font.pixelSize: parent.height*0.7
 
                         MouseArea {
                             anchors.fill: parent

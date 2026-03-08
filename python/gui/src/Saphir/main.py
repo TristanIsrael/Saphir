@@ -20,7 +20,7 @@ from safecor import Api, System
 
 api_ready = threading.Event()
 FORCE_FULLSCREEN = False
-VERSION = "3.0.0"
+VERSION = "3.0.1"
 
 def on_ready():
     print("Safecor API is ready")

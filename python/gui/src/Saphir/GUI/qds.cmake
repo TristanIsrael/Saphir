@@ -15,6 +15,7 @@ qt6_add_resources(${CMAKE_PROJECT_NAME} MainResource
         "content/fonts/MaterialIcons-Regular.ttf"
         "content/fonts/MaterialIconsOutlined-Regular.otf"
         "content/images/3535287.jpg"
+        "content/images/3535287_inverted.jpg"
         "content/images/back.jpg"
         "content/images/back.png"
         "content/images/back_orig.png"

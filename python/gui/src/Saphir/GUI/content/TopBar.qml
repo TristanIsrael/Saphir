@@ -1,26 +1,12 @@
 import QtQuick
+import Components
 
 TopBarUi {
     id: root
 
     property bool timeFormatZulu: true
 
-    /* Composition */
-    lines.layer.effect: ShaderEffect {
-
-        //anchors.fill: parent
-        property var colorSource: gradientRect
-
-        //property var maskSource: lines
-        //property color startColor: "#77345878"
-        //property color startColor: "red"
-        //property color endColor: "#ff3a95c3"
-        //property real angle: 45.0
-        fragmentShader: "shaders/gradient.frag.qsb"
-    }
-
-    gradientStart.color: Qt.alpha(bindings.systemStateColor, 0.0)
-    gradientStop.color: Qt.alpha(bindings.systemStateColor, 0.1)
+    /* Composition */ 
     lblRestriction.text: {
         switch (bindings.classificationLevel) {
         case 0:
@@ -38,13 +24,13 @@ TopBarUi {
     lblRestriction.color: {
         switch (bindings.classificationLevel) {
         case 0:
-            return "#4caf50"
+            return Environment.colorNotProtected
         case 1:
-            return "#ffc107"
+            return Environment.colorRestricted
         case 2:
-            return "#ff9800"
+            return Environment.colorSecret
         case 3:
-            return "#d32f2f"
+            return Environment.colorTopSecret
         }
 
         return qsTr("Not protected")

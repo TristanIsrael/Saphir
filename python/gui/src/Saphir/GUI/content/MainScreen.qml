@@ -25,6 +25,8 @@ Window {
             target: window.btnDark
 
             function onClicked() {
+                Environment.theme = Constants.dark
+                lytMenuThemes.stackBefore()
                 window.menuThemesOpened = !window.menuThemesOpened
             }
         }
@@ -33,6 +35,7 @@ Window {
             target: window.btnLight
 
             function onClicked() {
+                Environment.theme = Constants.light
                 window.menuThemesOpened = !window.menuThemesOpened
             }
         }
@@ -41,6 +44,7 @@ Window {
             target: window.btnLowVisibility
 
             function onClicked() {
+                Environment.theme = Constants.lowVisibility
                 window.menuThemesOpened = !window.menuThemesOpened
             }
         }
@@ -221,6 +225,11 @@ Window {
         onSystemStateChanged: {
             if(bindings.systemState === Enums.TransferFinished) {
                 window.pnlFilesCopy.visible = false
+            } else if (bindings.systemState === Enums.SystemResetting) {
+                window.pnlFilesCopy.visible = false
+                window.pnlFileSelection.visible = false
+                window.pnlAn
+                window.pnlMessages.visible = true
             }
         }
     }

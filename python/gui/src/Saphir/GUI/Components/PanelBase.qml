@@ -46,8 +46,8 @@ Item {
                 margins: root.borderWidth
             }
 
-            brightness: root.enabled ? 0.3 : 0.0
-            saturation: root.enabled ? 0.1 : 0.0
+            brightness: root.enabled ? Environment.panelBrightness : 0.0
+            saturation: root.enabled ? Environment.panelSaturation : 0.0
             blurEnabled: true
             blurMax: 45
             blur: 0.8

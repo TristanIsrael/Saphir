@@ -78,7 +78,7 @@ Rectangle {
                     color: "transparent"
                     border {
                         width: 2
-                        color: "#fafafa"
+                        color: Environment.colorBorder
                     }
 
                     StyledText {

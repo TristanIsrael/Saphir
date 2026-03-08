@@ -33,6 +33,8 @@ Item {
     property alias pnlMessages: pnlMessages
     property alias pnlFilesCopy: pnlFilesCopy
     property alias btnCopyFiles: btnCopyFiles
+    property alias pnlAnalysis: pnlAnalysis
+    property alias lytMenuThemes: lytMenuThemes
 
     property bool menuThemesOpened: false
     property bool mainMenuOpened: false
@@ -51,7 +53,7 @@ Item {
         Image {
             id: imgBack
             anchors.fill: parent
-            source: "images/3535287.jpg"
+            source: Environment.backgroundImage
             fillMode: Image.PreserveAspectCrop
         }
 
@@ -61,7 +63,7 @@ Item {
             source: imgBack
             saturation: 0
             colorization: 1.0
-            colorizationColor: Environment.colorFilterNotReady
+            colorizationColor: Environment.colorFilterNotUsed
         }
     }
 
@@ -105,9 +107,6 @@ Item {
                     leftMargin: btnLowVisibility.width * 0.05
                 }
 
-
-                /*height: btnLowVisibility.width * 1.5
-                spacing: btnLowVisibility.height * 0.3*/
                 Item {}
 
                 RoundButton {
@@ -233,7 +232,6 @@ Item {
         y: parent.height - (height * 1.25)
 
         enabled: bindings.analysisReady && bindings.queueSize > 0
-                 && !bindings.used
 
         icon: bindings.analyzing ? Constants.iconPause : Constants.iconStart
     }
@@ -262,10 +260,13 @@ Item {
             bottomMargin: parent.height * 0.05
         }
 
-        visible: !bindings.ready || (bindings.ready
+        visible: !pnlAnalysis.visible && !pnlFileSelection.visible
+                 && !pnlFilesCopy.visible
+
+
+        /*!bindings.ready || (bindings.ready
                                      && bindings.sourceName === "")
-                 || bindings.systemState === Enums.TransferFinished
-        //|| pnlFilesCopy.visible
+                 || bindings.systemState === Enums.TransferFinished*/
         radius: 10
     }
 
@@ -286,7 +287,7 @@ Item {
         id: dlgAnalyseWholeStorage
 
         anchors.centerIn: parent
-        visible: true
+        visible: false
 
         label: qsTr("Do you want to analyze\nthe whole storage?")
         buttonsLabels: [qsTr("Yes"), qsTr("No")]
@@ -348,7 +349,7 @@ Item {
         FilesSelectionPanel {
             id: pnlFileSelection
             anchors.fill: parent
-            visible: false
+            visible: true
         }
 
         /* Analysis */
@@ -359,6 +360,8 @@ Item {
                      && (bindings.analyzing
                          || bindings.systemState === Enums.AnalysisCompleted)
                      && !pnlFilesCopy.visible
+                     && (bindings.systemState !== Enums.SystemResetting)
+                     && (bindings.systemState !== Enums.SystemShuttingDown)
         }
 
         /* Files copy */

@@ -2,7 +2,7 @@
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 pkgname=saphir-gui
 pkgver=3.0
-pkgrel=0
+pkgrel=1
 pkgdesc="Saphir - Graphical User Interface"
 url="https://defense.gouv.fr/"
 arch="noarch"

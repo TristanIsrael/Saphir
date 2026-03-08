@@ -32,8 +32,8 @@ Item {
         source: txt
         anchors.fill: root
         shadowEnabled: true
-        shadowColor: '#cccccc' //root.enabled ? Environment.colorShadowEnabled : Environment.colorShadowDisabled
-        shadowBlur: 1.0 // root.enabled ? 1.0 : 0.2
+        shadowColor: root.enabled ? Environment.colorShadowEnabled : Environment.colorShadowDisabled
+        shadowBlur: 1.0
         shadowScale: 1.5
     }
     

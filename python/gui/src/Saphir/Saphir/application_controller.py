@@ -534,9 +534,14 @@ class ApplicationController(QObject):
             self.__messages_model.addMessage(self.tr("The antiviruses are ready"))
 
     def __handle_disk_state(self, payload:dict):
+        # If the system has been used and the files have been copied we ignore new
+        # notifications for disks state
+        if self.__system_state.value >= SystemState.CopyCleanFiles.value:
+            return
+
         # in version 3.0 we handle multiple partitions on disks
         # Each partition is a storage and we let the user choose the storage
-        # By default we consider the first storage notified as the source 
+        # By default we consider the first storage notified as the source
         disk = payload.get("disk")
         if disk is None:
             Api().error("The disk value is missing")
@@ -546,7 +551,7 @@ class ApplicationController(QObject):
         if state is None:
             Api().error("The state value is missing")
             return
-        
+
         # We put all the storages in the list
         if state == DiskState.CONNECTED.value:
             self.__on_storage_added(disk)
@@ -793,6 +798,7 @@ class ApplicationController(QObject):
         print(f"filepath:{filepath}, endswith:{filepath.endswith("journal.log")}, disk:{disk}, targetName:{self.__target_name}")
         if disk == self.__target_name and filepath.endswith("journal.log"):
             self.__set_system_state(SystemState.TransferFinished)
+            self.__messages_model.clear()
             self.__messages_model.addMessage(self.tr("The report ang log have been copied to the destination storage."))
             self.__messages_model.addMessage(self.tr("You can now remove it."))
             self.__messages_model.addMessage(self.tr("If you want to analyze another storage you will have to reset the system from the menu."))

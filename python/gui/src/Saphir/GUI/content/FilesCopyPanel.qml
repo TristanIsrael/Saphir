@@ -76,13 +76,11 @@ Item {
                 StyledText {
                     Layout.fillWidth: true
                     text: {
-                        if(bindings.targetName === "") {
+                        if(bindings.targetName === "" && bindings.systemState === Enums.AnalysisCompleted) {
                             return qsTr("Please connect a storage...")
                         } else {
                             // Transfer in progress
-                            if(bindings.systemState === Enums.AnalysisCompleted) {
-                                return qsTr("The copy will begin shortly...")
-                            } else if(bindings.systemState === Enums.CopyCleanFiles) {
+                            if(bindings.systemState === Enums.CopyCleanFiles) {
                                 return qsTr("Copy in progress...")
                             } else if (bindings.systemState === Enums.GeneratingReport) {
                                 return qsTr("Generating the report...")

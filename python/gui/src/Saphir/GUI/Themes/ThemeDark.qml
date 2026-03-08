@@ -34,4 +34,13 @@ QtObject {
     readonly property color colorIconFolder: "#FFAEC0"
 
     readonly property color colorWarning: "#fc7304"
+
+    readonly property color colorNotProtected: "#4caf50"
+    readonly property color colorRestricted: "#ffc107"
+    readonly property color colorSecret: "#ff9800"
+    readonly property color colorTopSecret: "#d32f2f"
+
+    readonly property double panelSaturation: 0.1
+    readonly property double panelBrightness: 0.3
+    readonly property double logoBrightness: 0.0
 }

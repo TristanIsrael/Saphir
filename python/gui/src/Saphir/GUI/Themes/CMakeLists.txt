@@ -11,6 +11,16 @@ set_source_files_properties(ThemeDark.qml
         QT_QML_SINGLETON_TYPE true
 )
 
+set_source_files_properties(ThemeLight.qml
+    PROPERTIES
+        QT_QML_SINGLETON_TYPE true
+)
+
+set_source_files_properties(ThemeLowVisibility.qml
+    PROPERTIES
+        QT_QML_SINGLETON_TYPE true
+)
+
 
 
 qt_add_library(Themes STATIC)

@@ -68,3 +68,6 @@ compile_commands.json
 
 ### GitHub Workflows ###
 !.github/**
+/python/gui/src/Saphir/GUI/App
+/python/gui/src/Saphir/GUI/Dependencies
+/python/gui/src/Saphir/GUI/cmake

@@ -5,8 +5,7 @@ from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray, qDebu
 class MessagesListModel(QAbstractItemModel):
     
     # Variables
-    __messages = list()
-
+    __messages = []
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -32,3 +31,8 @@ class MessagesListModel(QAbstractItemModel):
         msg = self.__messages[row]
 
         return msg
+
+    def clear(self):
+        self.beginResetModel()
+        self.__messages.clear()
+        self.endResetModel()
