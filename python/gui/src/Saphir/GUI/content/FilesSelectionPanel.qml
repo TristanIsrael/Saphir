@@ -197,7 +197,7 @@ PanelBase {
                         text: filename
                         verticalAlignment: Text.AlignVCenter
                         horizontalAlignment: Text.AlignLeft
-                        elide: Text.ElideRight
+                        elide: type === "file" || type === "folder" ? Text.ElideLeft : Text.ElideRight
                         Layout.fillWidth: true
                         //section: Constants.Section.Title2
                         font.pixelSize: parent.height*0.7
