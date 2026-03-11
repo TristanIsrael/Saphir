@@ -191,19 +191,19 @@ class ApplicationController(QObject):
         self.__folders_to_query = 1
 
         # On doit récupérer la liste des fichiers de façon intérative
-        # sur l'ensemble du disque source. Pour cela on va mettre en queue 
+        # sur l'ensemble du disque source. Pour cela on va mettre en queue
         # tous les fichiers du répertoire racine, puis demander la liste des
         # fichiers du premier répertoire, et à chaque réponse on recommencera
         # avec le répertoire suivant
-        self.__is_enqueuing = True   
+        self.__is_enqueuing = True
         self.set_long_process_running(True)
 
         #QCoreApplication.processEvents()
         Api().get_files_list(self.__source_name, False, "/",)
 
     @Slot(str, str)
-    def enqueue_file(self, filetype:str, filepath:str):         
-        #print(f"User added {filetype} {filepath} to the queue")        
+    def enqueue_file(self, filetype:str, filepath:str):
+        #print(f"User added {filetype} {filepath} to the queue")
 
         if filetype == "file":
             file = self.__input_files_list[filepath]
@@ -679,7 +679,6 @@ class ApplicationController(QObject):
                         self.__queue_files_size += file["size"]
                         self.__queued_files_list[filepath] = file
                         self.fileUpdated.emit(filepath, ["inqueue"])
-                        #self.queueSizeChanged.emit(self.__queue_size())
                     elif file["type"] == "folder":
                         # Si c'est un dossier on va chercher les fichiers qu'il contient
                         self.__folders_to_query += 1
@@ -700,22 +699,27 @@ class ApplicationController(QObject):
             #print(self.__folders_to_query)
             if self.__folders_to_query == 0:
                 self.set_long_process_running(False)
-                # 
 
-                # Après avoir récupéré la liste de tous les fichiers on met à jour les modèles                
+                # Après avoir récupéré la liste de tous les fichiers on met à jour les modèles
                 if self.__analysis_mode == AnalysisMode.AnalyseSelection:
                     if not self.__is_enqueuing:
                         self.__input_files_listmodel.reset()
                 
+                # If we were enqueing (one or more folders)
                 if self.__is_enqueuing:
                     self.queueSizeChanged.emit(len(self.__queued_files_list))
                     self.queueUpdated.emit()
+
+                    # If we are analyzing the whole storage and we have no
+                    # mor folder to query we start the analysis
+                    self.start_analysis()
 
                 if self.__analysis_mode == AnalysisMode.AnalyseSelection:
                     self.__set_system_state(SystemState.SystemWaitingForUserAction)
 
                 # A la fin on sort du mode de mise en queue
                 self.__is_enqueuing = False
+
 
     def __handle_discover_components(self, payload:dict):
         if not MqttHelper.check_payload(payload, ["components"]):
