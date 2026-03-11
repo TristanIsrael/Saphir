@@ -19,15 +19,16 @@ class EeaAntivirusController(AbstractAntivirusController):
 
     def __init__(self):
         super().__init__(
-            component_name="ESET", 
-            component_description="ESET Endpoint Antivirus controller"
+            component_name="ESET",
+            component_description="ESET Endpoint Antivirus controller",
+            max_workers=1
         )
 
         threading.Timer(0.5, self.__monitor_analysis).start()
 
 
     def _on_api_ready(self) -> None:
-        self.info("ESET antivirus controller is starting.")        
+        self.info("ESET antivirus controller is starting.")
         self.__state = ComponentState.STARTING
 
         # Verify the daemon is ready
@@ -43,7 +44,7 @@ class EeaAntivirusController(AbstractAntivirusController):
         storage_filepath = f"{Constants.DOMU_REPOSITORY_PATH}{filepath}"
 
         if not os.path.exists(storage_filepath):
-            self.error("The file {} does not exist or is not accessible.".format(storage_filepath))
+            self.error(f"The file {storage_filepath} does not exist or is not accessible.")
             return
 
         self.update_status(filepath, FileStatus.FileAnalysing, 0)
@@ -72,7 +73,7 @@ class EeaAntivirusController(AbstractAntivirusController):
                     self.publish_result(filepath, False, msg)
                     return
 
-                self.__analysis_running.append({"log_name": log_name, "filepath": filepath})                
+                self.__analysis_running.append({"log_name": log_name, "filepath": filepath})
             else:
                 # The scan did not complete                
                 self.debug(f"Une erreur s'est produite durant l'exécution de l'analyse du fichier {filepath} : stdout={proc.stdout}, stderr={proc.stderr}")
@@ -80,7 +81,7 @@ class EeaAntivirusController(AbstractAntivirusController):
                 self.publish_result(filepath, False, "Une erreur s'est produite durant l'exécution de l'analyse")
                 return                
                             
-        else:            
+        else:
             msg = f"Une erreur s'est produite : {self.__traduit_retour_odscan(proc.returncode)} ({proc.returncode})."
             self.update_status(filepath, FileStatus.FileAnalysisError, 100)
             self.publish_result(filepath, False, msg)
