@@ -52,7 +52,6 @@ compile_commands.json
 *creator.user*
 
 *_qmlcache.qrc
-.DS_Store
 
 ### VisualStudioCode ###
 !.vscode/settings.json
@@ -60,6 +59,7 @@ compile_commands.json
 
 ### Python venv 
 .venv
+venv.nosync
 /venv
 
 # Python
@@ -71,3 +71,4 @@ compile_commands.json
 /python/gui/src/Saphir/GUI/App
 /python/gui/src/Saphir/GUI/Dependencies
 /python/gui/src/Saphir/GUI/cmake
+.github/.DS_Store

@@ -131,7 +131,7 @@ class AbstractAntivirusController(ABC):
         while self.__can_run:
             if not self.__files_queue.empty() and self.__workers < self.__max_workers: # type: ignore
                 filepath = self.__files_queue.get()
-                print("CLAM start thread for file", filepath)
+                print("Antivirus start thread for file", filepath)
                 threading.Thread(target=self.__analyse_file, args=(filepath,)).start()
 
             time.sleep(0.1)
