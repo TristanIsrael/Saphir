@@ -22,6 +22,7 @@ scan-file.sh
 get-scan-result.sh
 get-eea-version.sh
 get-eea-description.sh
+get-eea-licence.sh
 stop-all-scans.sh
 "
 
@@ -33,6 +34,7 @@ package() {
     install -D -m755 "$srcdir"/get-scan-result.sh "$pkgdir"/usr/lib/saphir/bin/get-scan-result.sh
     install -D -m755 "$srcdir"/get-eea-version.sh "$pkgdir"/usr/lib/saphir/bin/get-eea-version.sh
     install -D -m755 "$srcdir"/get-eea-description.sh "$pkgdir"/usr/lib/saphir/bin/get-eea-description.sh
+    install -D -m755 "$srcdir"/get-eea-licence.sh "$pkgdir"/usr/lib/saphir/bin/get-eea-licence.sh
     install -D -m755 "$srcdir"/stop-all-scans.sh "$pkgdir"/usr/lib/saphir/bin/stop-all-scans.sh
 }
 sha512sums="

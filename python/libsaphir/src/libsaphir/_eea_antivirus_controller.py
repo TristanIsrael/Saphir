@@ -8,13 +8,19 @@ import json
 import re
 
 class EeaAntivirusController(AbstractAntivirusController):
+    """ This is the controller for ESET Endpoint Antivirus 
+    
+    The analysis is made in two synchronous steps:
+    1 - Start the scan (odscan)
+    2 - Verify the log (lslog)
+    """
 
     # lxc-attach -n saphir-container-eset -- /opt/eset/eea/bin/odscan -s --profile='@In-depth scan' /bin; echo EXIT_CODE:$?
     # lxc-attach -n saphir-container-eset -- /opt/eset/eea/bin/odscan -s --profile='@In-depth scan' /mnt/storage/benchfile_100ko_1; echo EXIT_CODE:$?
 
     #__lxc_cmd = ["lxc-attach", "-n", "saphir-container-eset", "--"]
     __state = ComponentState.UNKNOWN
-    __analysis_running = []
+    #__analysis_running = []
 
 
     def __init__(self):
@@ -24,7 +30,7 @@ class EeaAntivirusController(AbstractAntivirusController):
             max_workers=1
         )
 
-        threading.Timer(0.5, self.__monitor_analysis).start()
+        #threading.Timer(0.5, self.__monitor_analysis).start()
 
 
     def _on_api_ready(self) -> None:
@@ -38,6 +44,8 @@ class EeaAntivirusController(AbstractAntivirusController):
     def _analyse_file(self, filepath: str) -> None:
         if self.__state != ComponentState.READY:
             self.error("The component is not ready.")
+            
+            self.analysis_finished(False)
             return
         
         #storage_filepath = "{}{}".format(Parametres().parametre(Cles.STORAGE_PATH_DOMU), filepath)
@@ -45,6 +53,8 @@ class EeaAntivirusController(AbstractAntivirusController):
 
         if not os.path.exists(storage_filepath):
             self.error(f"The file {storage_filepath} does not exist or is not accessible.")
+            
+            self.analysis_finished(False)
             return
 
         self.update_status(filepath, FileStatus.FileAnalysing, 0)
@@ -67,51 +77,63 @@ class EeaAntivirusController(AbstractAntivirusController):
                 log_name = self.__extract_log_name(proc.stdout.decode().strip())
 
                 if log_name == "":
-                    msg = f"Une erreur est survenur lors de l'analyse du fichier {filepath}"
-                    self.debug(f"Une erreur s'est produite durant l'analyse du résultat : {proc.stdout} (log_name est vide)")
+                    msg = f"An error occured during the scan of {filepath}"
+                    self.error(f"An error occured during the analysis of the result: {proc.stdout} (log_name is empty)")
                     self.update_status(filepath, FileStatus.FileAnalysisError, 100)
                     self.publish_result(filepath, False, msg)
-                    return
 
-                self.__analysis_running.append({"log_name": log_name, "filepath": filepath})
+                    self.analysis_finished(False)
+                    return
+                
+                # Now we analyse the log
+                _, success, details = self.__analyse_log(filepath, log_name)
+                status = FileStatus.FileClean if success else FileStatus.FileInfected
+                # What if the analysis has not completed?
+                self.update_status(filepath, status, 100)
+                self.publish_result(filepath, success, details)
+                self.analysis_finished(success)
+                return
             else:
                 # The scan did not complete                
-                self.debug(f"Une erreur s'est produite durant l'exécution de l'analyse du fichier {filepath} : stdout={proc.stdout}, stderr={proc.stderr}")
+                self.error(f"An error occured during the scan of the file {filepath} : stdout={proc.stdout}, stderr={proc.stderr}")
                 self.update_status(filepath, FileStatus.FileAnalysisError, 100)
-                self.publish_result(filepath, False, "Une erreur s'est produite durant l'exécution de l'analyse")
-                return                
-                            
+                self.publish_result(filepath, False, "An error occured during the analysis.")
+
+                self.analysis_finished(False)
+                return
         else:
-            msg = f"Une erreur s'est produite : {self.__traduit_retour_odscan(proc.returncode)} ({proc.returncode})."
+            msg = f"An error occured: {self.__translate_odscan_return(proc.returncode)} ({proc.returncode})."
             self.update_status(filepath, FileStatus.FileAnalysisError, 100)
             self.publish_result(filepath, False, msg)
-        
 
-    def __monitor_analysis(self) -> None:
-        ''' This function monitors ESET with the currently running analysis. 
+            self.analysis_finished(False)
+            return
 
-        When a analysis is finished it gets the information about the status and generates the
-        notification to the system.
-        '''
-
-        # We loop into the list of analysis running
-        # We work on a copy of the list
-        for work in self.__analysis_running[:]:
-            filepath = work.get("filepath", "")
-            log_name = work.get("log_name", "")
-
-            if filepath == "" or log_name == "":
-                print("Error: filepath or log_name is empty")
-                continue
-
-            completed, success, details = self.__analyse_log(filepath, log_name)
-            if completed:
-                # If completed we publish the result
-                self.publish_result(filepath, success, details)
-                # and we remove the analysis from the list
-                self.__analysis_running.remove(work)
-        
-        threading.Timer(0.5, self.__monitor_analysis).start()
+    #def __monitor_analysis(self) -> None:
+    #    ''' This function monitors ESET with the currently running analysis. 
+    #
+    #    When a analysis is finished it gets the information about the status and generates the
+    #    notification to the system.
+    #    '''
+    #
+    #    # We loop into the list of analysis running
+    #    # We work on a copy of the list
+    #    for work in self.__analysis_running[:]:
+    #        filepath = work.get("filepath", "")
+    #        log_name = work.get("log_name", "")
+    #
+    #        if filepath == "" or log_name == "":
+    #            print("Error: filepath or log_name is empty")
+    #            continue
+    #
+    #        completed, success, details = self.__analyse_log(filepath, log_name)
+    #        if completed:
+    #            # If completed we publish the result
+    #            self.publish_result(filepath, success, details)
+    #            # and we remove the analysis from the list
+    #            self.__analysis_running.remove(work)
+    #    
+    #    threading.Timer(0.5, self.__monitor_analysis).start()
 
     def __extract_log_name(self, stdout:str) -> str:
         # Typical stdout:
@@ -150,15 +172,17 @@ class EeaAntivirusController(AbstractAntivirusController):
         # Get the log data
         #eset_cmd = ["/opt/eset/eea/sbin/lslog", "--ods-details={}".format(log_name)]
         #proc = subprocess.run(self.__lxc_cmd + eset_cmd, capture_output=True)
+        print(f"Analyze log of {log_name}")
+
         proc = subprocess.run(["/usr/lib/saphir/bin/get-scan-result.sh", log_name], capture_output=True)
         if proc.returncode > 0:
-            self.debug("Une erreur interne s'est produite : lslog {} {}.".format(proc.stdout, proc.stderr))
+            self.debug(f"An internal error occured with lslog: {proc.stdout} {proc.stderr}.")
             self.update_status(filepath, FileStatus.FileAnalysisError, 100)
             self.publish_result(filepath, False, "Une erreur interne s'est produite")
             return True, False, "Internal error"
         
         if proc.stdout == "":            
-            self.debug("Une erreur interne s'est produite : journal manquant {} {}.".format(proc.stdout, proc.stderr))
+            self.debug(f"An internal error occured: missing log: {proc.stdout} {proc.stderr}.")
             self.update_status(filepath, FileStatus.FileAnalysisError, 100)
             self.publish_result(filepath, False, "Une erreur interne s'est produite.")
             return True, False, "Missing log file"
@@ -169,11 +193,13 @@ class EeaAntivirusController(AbstractAntivirusController):
         re_time_of_completion = re.search(r"Time of completion:\s*(\d+)", log_data)
         if not re_time_of_completion:
             # not completed
+            print("missing time of completion")
             return False, False, ""
         else:
             time_of_completion = str(re_time_of_completion.group(1)).strip()
             if time_of_completion == "":
                 # The analysis is not finished
+                print("not finished")
                 return False, False, ""
 
         re_detections_occurred = re.search(r"Detections occurred:\s*(\d+)", log_data)
@@ -198,13 +224,16 @@ class EeaAntivirusController(AbstractAntivirusController):
         # A file can contain multiple files so scanned can be > 1
         if scanned >= 1:
             success = detections_occurred == 0
+            print(success)
             return True, success, f"Scanned files: {scanned}, Not scanned: {not_scanned}, Detections: {detections_occurred}"
-        elif scanned == 0: 
-            self.debug("Une erreur interne s'est produite : aucun fichier analysé {} {}.".format(proc.stdout, proc.stderr))
+        elif scanned == 0:
+            print("error") 
+            self.debug(f"An internal error occured. No file analysed {proc.stdout} {proc.stderr}.")
             self.update_status(filepath, FileStatus.FileAnalysisError, 100)
             self.publish_result(filepath, False, "Une erreur interne s'est produite.")
             return True, False, "Internal error"
         
+        print("non handled")
         return True, False, "Unhandled case"
 
 
@@ -227,12 +256,23 @@ class EeaAntivirusController(AbstractAntivirusController):
 
 
     def _get_component_description(self) -> str:
+        description = "No information"
+        licence = "No licence"
+
+        # Get information about the binary
         proc = subprocess.run(["/usr/lib/saphir/bin/get-eea-description.sh"], capture_output=True)
         if proc.returncode == 0:
             if proc.stdout is not None:
-                return proc.stdout.decode().strip()
+                description = proc.stdout.decode().strip()
+                #return proc.stdout.decode().strip()
 
-        return "#err"
+        # Get information about the licence
+        proc = subprocess.run(["/usr/lib/saphir/bin/get-eea-licence.sh"], capture_output=True)
+        if proc.returncode == 0:
+            if proc.stdout is not None:
+                licence = proc.stdout.decode().strip()
+
+        return f"{description}\nLicence information:\n{licence}"
 
     #######################
     ## Private functions
@@ -250,16 +290,16 @@ class EeaAntivirusController(AbstractAntivirusController):
                 self.debug(f"Antivirus is ready. The storage path is {Constants.DOMU_REPOSITORY_PATH}")
                 self.component_state_changed()
 
-    def __traduit_retour_odscan(self, returncode:int) -> str:
+    def __translate_odscan_return(self, returncode:int) -> str:
         if returncode == 0:
-            return "aucune erreur"
+            return "no error"
         elif returncode == 1:
-            return "malware trouvé"
+            return "malware found"
         elif returncode == 10:
-            return "analyse incomplète"
+            return "imcomplete analysis"
         elif returncode == 50:
-            return "malware détecté"
+            return "malware detected"
         elif returncode == 100:
-            return "erreur générale"
+            return "general error"
         
-        return "erreur inconnue"
+        return "unknown error"

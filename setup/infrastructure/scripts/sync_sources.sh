@@ -19,9 +19,9 @@ if [ "$3" != "out" ] && [ "$3" != "OUT" ] && [ "$3" != "in" ] && [ "$3" != "IN" 
 fi
 
 if [ "$3" == "out" ] || [ "$3" == "OUT" ]; then     
-    rsync -avz --progress --exclude "._*" --exclude ".DS_Store" --exclude "__pycache__" --exclude ".venv" --exclude "venv.nosync" --delete-before $1 $2
+    rsync -avz --progress --exclude ".git*" --exclude ".DS_Store" --exclude "__pycache__" --exclude ".venv" --exclude "venv.nosync" --delete-excluded --delete-before $1 $2
 else
-    rsync -avz --progress --exclude "._*" --exclude ".DS_Store" --exclude "__pycache__" --exclude ".venv" --exclude "venv.nosync" --delete-before $2 $1
+    rsync -avz --progress --exclude ".git*" --exclude ".DS_Store" --exclude "__pycache__" --exclude ".venv" --exclude "venv.nosync" --delete-excluded --delete-before $2 $1
 fi
 
 echo "Synchronization finished"
