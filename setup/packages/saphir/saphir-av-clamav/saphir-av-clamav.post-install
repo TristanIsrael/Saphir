@@ -11,4 +11,7 @@ rc-service clamav start
 rc-update add av-controller
 rc-service av-controller start
 
+# Remount the storage read-only
+mount -o remount,ro,trans=xen,version=9p2000.L,cache=none,nosuid,noexec,nodev,misze=131072 storage /mnt/storage
+
 exit 0

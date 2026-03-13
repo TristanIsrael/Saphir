@@ -21,7 +21,7 @@ can_mount() {
 if can_mount; then
     # Mount the squash image
     sudo mkdir -p "$mntdir"/rootfs
-    sudo mount -t squashfs /var/lib/saphir/"$pkgname".sqfs "$mntdir"/rootfs -o loop
+    sudo mount -t squashfs /var/lib/saphir/"$pkgname".sqfs "$mntdir"/rootfs -o loop,ro
 
     # Create an overlay
     sudo mkdir -p "$mntdir"/upper
@@ -32,3 +32,6 @@ else
     echo Running in a Github workflow...
     # No-op        
 fi
+
+# Remount the storage read-only
+mount -o remount,ro,trans=xen,version=9p2000.L,cache=none,nosuid,noexec,nodev,misze=131072 storage /mnt/storage
