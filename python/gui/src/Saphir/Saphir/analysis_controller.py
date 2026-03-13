@@ -1,6 +1,6 @@
 from PySide6.QtCore import QObject, Property, Signal
 from . import AnalysisState, AnalysisMode, AnalysisHelper
-from libsaphir import TOPIC_ANALYSIS, FileStatus
+from libsaphir import TOPIC_ANALYSIS, FileStatus, BIG_FILE_SIZE_IN_MB
 from safecor import Api, Topics, MqttHelper, Constants, FileHelper, DiskState
 import threading
 from threading import Lock
@@ -30,7 +30,6 @@ class AnalysisController(QObject):
     __archive_file = {}
     __queue_lock = Lock()
     __repository_lock = Lock()
-    BIG_FILE_SIZE_IN_MB = 20*1024*1024 # 20 MB
 
     # Signals
     stateChanged = Signal(AnalysisState)
@@ -377,7 +376,7 @@ class AnalysisController(QObject):
                     if filepath is None:
                         continue
                     
-                    if file.get("size", 0) > self.BIG_FILE_SIZE_IN_MB and FileHelper.is_archive_file(file["name"]):
+                    if file.get("size", 0) > BIG_FILE_SIZE_IN_MB and FileHelper.is_archive_file(file["name"]):
                         # If the file is big and is an archive we mount it
                         # If there is an archive inside an archive there will be problems...
                         file["status"] = FileStatus.FileAnalysing

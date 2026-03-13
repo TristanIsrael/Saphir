@@ -9,6 +9,7 @@ Item {
     id: mainWindow
 
     property alias back: back
+    property alias imgBack: imgBack
     property alias backFilter: backFilter
     property alias pnlMenuThemes: pnlMenuThemes
     property alias btnLowVisibility: btnLowVisibility
@@ -60,6 +61,7 @@ Item {
         MultiEffect {
             id: backFilter
             anchors.fill: parent
+            visible: Environment.theme !== Constants.light
             source: imgBack
             saturation: 0
             colorization: 1.0

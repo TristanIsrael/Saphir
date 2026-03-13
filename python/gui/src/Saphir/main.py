@@ -80,6 +80,7 @@ if __name__ == "__main__":
     install_font("MaterialIcons-Regular.ttf")
     install_font("Inter-VariableFont_opsz_wght.ttf")
     install_font("Inter-Italic-VariableFont_opsz_wght.ttf")
+    install_font("LED Dot-Matrix.ttf")
 
     # Set the default font
     font = QFont("Inter", 12)

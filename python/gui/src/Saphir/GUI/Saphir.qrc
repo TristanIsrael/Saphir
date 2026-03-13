@@ -27,11 +27,6 @@
         <file>content/fonts/MaterialIcons-Regular.ttf</file>
         <file>content/fonts/MaterialIconsOutlined-Regular.otf</file>
         <file>content/GlobalProgress.qml</file>
-        <file>content/images/3535287.jpg</file>
-        <file>content/images/3535287_inverted.jpg</file>
-        <file>content/images/back.jpg</file>
-        <file>content/images/back.png</file>
-        <file>content/images/back_orig.png</file>
         <file>content/images/battery_android_2_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg</file>
         <file>content/images/battery_android_3_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg</file>
         <file>content/images/battery_android_4_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg</file>
@@ -39,8 +34,13 @@
         <file>content/images/battery_android_6_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg</file>
         <file>content/images/battery_android_alert_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg</file>
         <file>content/images/battery_android_full_24dp_E3E3E3_FILL0_wght400_GRAD0_opsz24.svg</file>
+        <file>content/images/dark.jpg</file>
         <file>content/images/icn_antivirus.png</file>
         <file>content/images/icn_disk.png</file>
+        <file>content/images/light.jpg</file>
+        <file>content/images/light_infected.png</file>
+        <file>content/images/light_ready.png</file>
+        <file>content/images/light_used.png</file>
         <file>content/images/Logo.png</file>
         <file>content/LogDialog.qml</file>
         <file>content/MainScreen.qml</file>
@@ -48,13 +48,12 @@
         <file>content/MessagesPanel.qml</file>
         <file>content/Progress.qml</file>
         <file>content/shaders/blur.frag</file>
-        <file>content/shaders/blur.frag.qsb</file>
         <file>content/shaders/colorize.frag</file>
-        <file>content/shaders/colorize.frag.qsb</file>
+        <file>content/shaders/colorize_back.frag</file>
         <file>content/shaders/gradient.frag</file>
-        <file>content/shaders/gradient.frag.qsb</file>
         <file>content/shaders/invert_alpha.frag</file>
-        <file>content/shaders/invert_alpha.frag.qsb</file>
+        <file>content/shaders/invert_colors.frag</file>
+        <file>content/shaders/test.frag</file>
         <file>content/SystemStateDialog.qml</file>
         <file>content/TopBar.qml</file>
         <file>content/TopBarUi.ui.qml</file>

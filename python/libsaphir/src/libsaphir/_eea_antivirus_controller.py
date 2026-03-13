@@ -94,11 +94,10 @@ class EeaAntivirusController(AbstractAntivirusController):
                 self.analysis_finished(success)
                 return
             else:
-                # The scan did not complete                
+                # The scan did not complete
                 self.error(f"An error occured during the scan of the file {filepath} : stdout={proc.stdout}, stderr={proc.stderr}")
                 self.update_status(filepath, FileStatus.FileAnalysisError, 100)
                 self.publish_result(filepath, False, "An error occured during the analysis.")
-
                 self.analysis_finished(False)
                 return
         else:
@@ -227,7 +226,7 @@ class EeaAntivirusController(AbstractAntivirusController):
             print(success)
             return True, success, f"Scanned files: {scanned}, Not scanned: {not_scanned}, Detections: {detections_occurred}"
         elif scanned == 0:
-            print("error")
+            print("error") 
             self.debug(f"An internal error occured. No file analysed {proc.stdout} {proc.stderr}.")
             self.update_status(filepath, FileStatus.FileAnalysisError, 100)
             self.publish_result(filepath, False, "Une erreur interne s'est produite.")

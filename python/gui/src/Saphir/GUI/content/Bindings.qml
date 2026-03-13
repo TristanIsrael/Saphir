@@ -10,7 +10,7 @@ Item {
     property bool ready: ApplicationController.ready
     property bool analysisReady: ApplicationController.analysisReady 
     property bool analyzing: ApplicationController.systemState === Enums.SystemAnalysisRunning
-    property bool infected: nbInfected > 0
+    property bool infected: nbInfected > 1
     property bool used: nbFinished > 0
     property int batteryLevel: ApplicationController.batteryLevel
     property bool plugged: ApplicationController.plugged

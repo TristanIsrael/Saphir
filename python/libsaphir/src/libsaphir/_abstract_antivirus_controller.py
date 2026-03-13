@@ -19,21 +19,20 @@ class AbstractAntivirusController(ABC):
     __component_description = ""
     __files_queue = Queue()
     __max_workers = 1
-    __workers = 0
+    __workers = 0 
     __can_run = True
     __mqtt_client = None
+    __main_lock = threading.Event()
+    __workers_lock = threading.Lock()
 
     def __init__(self, component_name:str, component_description:str, max_workers:int = -1):
         self.__component_name = component_name
-        self.__component_description = component_description        
+        self.__component_description = component_description                
 
         if max_workers == -1:
-            if os.cpu_count() is not None:
-                self.__max_workers = os.cpu_count()
+            self.__max_workers = 1 if os.cpu_count() is None else os.cpu_count()
         else:
             self.__max_workers = max_workers
-
-        self.__commands_thread = threading.Thread(target= self.__commands_loop)
 
     def start(self):
         if not DEVMODE:
@@ -44,9 +43,7 @@ class AbstractAntivirusController(ABC):
         Api().add_message_callback(self.__on_message_received)
         Api().add_ready_callback(self.__on_api_ready)
         Api().start(mqtt_client=self.__mqtt_client)
-        
-        # Start the commands thread        
-        self.__commands_thread.start()
+        self.__main_lock.wait()
 
     def stop(self):
         Api().stop()
@@ -59,7 +56,7 @@ class AbstractAntivirusController(ABC):
             "details": details
         }
 
-        Api().publish(f"{TOPIC_ANALYSIS}/response", payload)
+        Api().publish(f"{TOPIC_ANALYSIS}/response", payload)        
 
     def update_status(self, filepath:str, status:FileStatus, progress:int):
         payload = {
@@ -84,6 +81,13 @@ class AbstractAntivirusController(ABC):
         
         Api().publish_components(components)
 
+    def analysis_finished(self, success:bool):
+        with self.__workers_lock:
+            print(f"AV controller says that the analysis is finished {"without" if success else "with"} error")
+            self.__workers -= 1
+
+        self.__analyse_next_file()
+
     def __on_api_ready(self):
         self.debug(f"Current CPU count is {os.cpu_count()}. Using {self.__max_workers} workers.")
         Api().subscribe(f"{Topics.DISCOVER_COMPONENTS}/request")
@@ -104,13 +108,14 @@ class AbstractAntivirusController(ABC):
             
             filepath = payload.get("filepath")
             self.__files_queue.put(filepath)
-
+            self.__analyse_next_file()
+            
         elif topic == f"{TOPIC_ANALYSIS}/stop":
             self.__can_run = False
 
         elif topic == f"{TOPIC_ANALYSIS}/resume":
             self.__can_run = True
-            self.__commands_thread.start()
+            self.__analyse_next_file()
             
         elif topic == f"{TOPIC_ANALYSIS}/reset":
             self.__can_run = False
@@ -127,19 +132,18 @@ class AbstractAntivirusController(ABC):
             self.info("The files queue has been cleared")
             self.__can_run = True
 
-    def __commands_loop(self):
-        while self.__can_run:
-            if not self.__files_queue.empty() and self.__workers < self.__max_workers: # type: ignore
+    def __analyse_next_file(self):
+        with self.__workers_lock:
+            if not self.__files_queue.empty() and self.__can_run and self.__workers < self.__max_workers:
+                # If there is a file to scan we start the analysis in a new thread
                 filepath = self.__files_queue.get()
+
+                self.__workers += 1
                 print("Antivirus start thread for file", filepath)
-                threading.Thread(target=self.__analyse_file, args=(filepath,)).start()
-
-            time.sleep(0.1)
-
-    def __analyse_file(self, filepath:str):
-        self.__workers += 1
-        self._analyse_file(filepath)
-        self.__workers -= 1
+                threading.Thread(target=self._analyse_file, args=(filepath,)).start()
+            else:
+                # If there is no file to scan we schedule a timer
+                threading.Timer(0.5, self.__analyse_next_file).start()
 
     def debug(self, message:str):
         Api().debug(message, self.__component_name)
@@ -163,8 +167,10 @@ class AbstractAntivirusController(ABC):
 
     @abstractmethod
     def _analyse_file(self, filepath:str) -> None:
-        """ This function must be synchronous as the caller manages a workers count.
-        It is ran in a thread so it can be blocked until the work is terminated.
+        """ This function starts the analysis.
+
+        The state of the scan is returned with the function publish_result.
+        The next file is scanned when the result has been sent.
         """
         pass
 

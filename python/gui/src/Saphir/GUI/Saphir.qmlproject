@@ -60,6 +60,7 @@ Project {
     }
 
     Files {
+        directory: "shaders"
         filter: "*.qsb"
     }
 

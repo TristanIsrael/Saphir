@@ -19,9 +19,33 @@ QtObject {
     /** Images */
     property string backgroundImage: {
         switch(root.theme) {
-            case Constants.dark: return "images/3535287.jpg"
-            case Constants.light: return "images/3535287_inverted.jpg"
-            case Constants.lowVisibility: return "images/3535287.jpg"
+            case Constants.dark: return "images/dark.jpg"
+            case Constants.light: return "images/light.jpg"
+            case Constants.lowVisibility: return "images/dark.jpg"
+        }
+    }
+
+    property string systemReadyImage: {
+        switch(root.theme) {
+            case Constants.dark: return "images/dark.jpg"
+            case Constants.light: return "images/light_ready.png"
+            case Constants.lowVisibility: return "images/dark.jpg"
+        }
+    }
+
+    property string systemUsedImage: {
+        switch(root.theme) {
+            case Constants.dark: return "images/dark.jpg"
+            case Constants.light: return "images/light_used.png"
+            case Constants.lowVisibility: return "images/dark.jpg"
+        }
+    }
+
+    property string systemInfectedImage: {
+        switch(root.theme) {
+            case Constants.dark: return "images/dark.jpg"
+            case Constants.light: return "images/light_infected.png"
+            case Constants.lowVisibility: return "images/dark.jpg"
         }
     }
 

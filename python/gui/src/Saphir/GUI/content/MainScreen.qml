@@ -11,14 +11,27 @@ Window {
     width: 1200
     height: 700
     visible: true
-    title: "SAPHIR"
+    title: "SAPHIR"    
 
     MainScreenUi {
         id: window
 
-        anchors.fill: parent        
+        anchors.fill: parent
 
         backFilter.colorizationColor: bindings.systemStateColor
+        imgBack.source: {
+            if(Environment.theme === Constants.light) {
+                if(bindings.infected) {
+                    return Environment.systemInfectedImage
+                } else if(bindings.used) {
+                    return Environment.systemUsedImage
+                } else if(bindings.ready) {
+                    return Environment.systemReadyImage
+                }
+            }
+
+            return Environment.backgroundImage
+        }
 
         /* Slots */
         Connections {
