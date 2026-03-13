@@ -22,13 +22,13 @@
             {
                 "name": "saphir-av-clamav",
                 "app-package": "saphir-av-clamav",
-                "memory": 3000,
+                "memory": 2000,
                 "vcpu_group": "antivirus"
             },
             {
                 "name": "saphir-av-eset",
                 "app-package": "saphir-av-eset",
-                "memory": 1500,
+                "memory": 2000,
                 "vcpu_group": "antivirus"
             }
         ]
