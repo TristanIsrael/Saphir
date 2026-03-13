@@ -72,3 +72,5 @@ venv.nosync
 /python/gui/src/Saphir/GUI/Dependencies
 /python/gui/src/Saphir/GUI/cmake
 .github/.DS_Store
+python/gui/src/Saphir/GUI/qds.cmake
+python/gui/src/Saphir/GUI/Saphir.qmlproject.qtds
