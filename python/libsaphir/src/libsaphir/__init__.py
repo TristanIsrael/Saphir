@@ -1,7 +1,7 @@
 __author__ = "Tristan Israël (tristan.israel@alefbet.net)"
 __version__ = '1.0'
 
-from ._constants import TOPIC_ANALYSIS, TOPIC_ERROR, ANTIVIRUS_NEEDED, DEVMODE, BIG_FILE_SIZE_IN_MB
+from ._constants import TOPIC_ANALYSIS, TOPIC_ERROR, ANTIVIRUS_NEEDED, DEVMODE, BIG_FILE_SIZE_IN_MB, MOUNT_ARCHIVES
 from ._enums import FileStatus
 from ._abstract_antivirus_controller import AbstractAntivirusController
 from ._clam_antivirus_controller import ClamAntivirusController
@@ -15,7 +15,7 @@ __all__ = [
     "EeaAntivirusController",
     "FileStatus",
     "ANTIVIRUS_NEEDED", "DEVMODE", "BIG_FILE_SIZE_IN_MB",
-    "TOPIC_ANALYSIS", "TOPIC_ERROR"
+    "TOPIC_ANALYSIS", "TOPIC_ERROR", "MOUNT_ARCHIVES"
 ]
 
 logging.getLogger(__name__).addHandler(NullHandler())

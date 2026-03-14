@@ -1,6 +1,6 @@
 from PySide6.QtCore import QObject, Property, Signal
 from . import AnalysisState, AnalysisMode, AnalysisHelper
-from libsaphir import TOPIC_ANALYSIS, FileStatus, BIG_FILE_SIZE_IN_MB
+from libsaphir import TOPIC_ANALYSIS, FileStatus, BIG_FILE_SIZE_IN_MB, MOUNT_ARCHIVES
 from safecor import Api, Topics, MqttHelper, Constants, FileHelper, DiskState
 import threading
 from threading import Lock
@@ -376,7 +376,7 @@ class AnalysisController(QObject):
                     if filepath is None:
                         continue
                     
-                    if BIG_FILE_SIZE_IN_MB > -1 and file.get("size", 0) > BIG_FILE_SIZE_IN_MB and FileHelper.is_archive_file(file["name"]):
+                    if MOUNT_ARCHIVES and BIG_FILE_SIZE_IN_MB > -1 and file.get("size", 0) > BIG_FILE_SIZE_IN_MB and FileHelper.is_archive_file(file["name"]):
                         # If the file is big and is an archive we mount it
                         # If there is an archive inside an archive there will be problems...
                         file["status"] = FileStatus.FileAnalysing
@@ -421,24 +421,26 @@ class AnalysisController(QObject):
         files_list = self.__files if self.__archive_mounted_name is None else self.__archive_file.get("content", {})
 
         # First of all we filter the files
-        #filtered = {k:f for k,f in files_list.items() if not AnalysisHelper.is_file_completed(f) and f.get("status", FileStatus.FileStatusUndefined) != FileStatus.FileAnalysing and not f.get("locked", False)}
         filtered = {k:f for k,f in files_list.items() if not f.get("locked", False) and f.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileStatusUndefined}
-
+        
         for f in filtered.values():
             # First we get the next non-archive files that is not currently being analyzed
-            if not FileHelper.is_archive_file(f.get("name", "")):
+            if MOUNT_ARCHIVES and not FileHelper.is_archive_file(f.get("name", "")):
+                group.append(f)
+            else:
+                # If we don't mount archives, we simply add the file
                 group.append(f)
                         
             if len(group) >= size_limit:
                 break
 
-        # If the group is empty and we still have archives we put them 
+        # If the group is empty and we still have archives we put them
         # one by one after their analysis is completed
         # The repository size is not reliable because the file may be
         # being read when the function is called again. So we use
-        # another property that indicates that the analysis is ongoing 
+        # another property that indicates that the analysis is ongoing
         # on that file.
-        if len(group) == 0 and self.get_repository_size() == 0 and self.get_working_files_count() == 0:
+        if MOUNT_ARCHIVES and len(group) == 0 and self.get_repository_size() == 0 and self.get_working_files_count() == 0:
             for f in filtered.values():
                 if FileHelper.is_archive_file(f.get("name", "")) and not AnalysisHelper.is_file_completed(f):
                     group.append(f)

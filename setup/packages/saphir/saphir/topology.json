@@ -8,7 +8,7 @@
     },
     "gui": {
         "use": 1,
-        "memory": 2000,
+        "memory": 1800,
         "app-package": "saphir-gui"        
     },
     "vcpu": {
@@ -28,7 +28,7 @@
             {
                 "name": "saphir-av-eset",
                 "app-package": "saphir-av-eset",
-                "memory": 2000,
+                "memory": 2500,
                 "vcpu_group": "antivirus"
             }
         ]
