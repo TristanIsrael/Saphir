@@ -30,6 +30,7 @@ class ClamAntivirusController(AbstractAntivirusController):
             errstr = f"The file {storage_filepath} does not exist or is not accessible."
             self.error(errstr)
             self.publish_result(filepath, False, errstr)
+            self.analysis_finished(False)
             return
 
         self.update_status(filepath, FileStatus.FileAnalysing, 0)
@@ -55,6 +56,7 @@ class ClamAntivirusController(AbstractAntivirusController):
             details = proc.stderr.decode()
         
         self.publish_result(filepath, success, details)
+        self.analysis_finished(True)
         
 
     def _get_component_state(self):
