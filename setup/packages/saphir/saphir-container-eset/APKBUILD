@@ -6,7 +6,7 @@
 #
 pkgname=saphir-container-eset
 pkgver=2.0
-pkgrel=2
+pkgrel=3
 pkgdesc="Saphir - LXC Container for ESET Antivirus"
 url="https://defense.gouv.fr/"
 arch="x86_64"
