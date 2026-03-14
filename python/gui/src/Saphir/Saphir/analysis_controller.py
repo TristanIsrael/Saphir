@@ -376,7 +376,7 @@ class AnalysisController(QObject):
                     if filepath is None:
                         continue
                     
-                    if file.get("size", 0) > BIG_FILE_SIZE_IN_MB and FileHelper.is_archive_file(file["name"]):
+                    if BIG_FILE_SIZE_IN_MB > -1 and file.get("size", 0) > BIG_FILE_SIZE_IN_MB and FileHelper.is_archive_file(file["name"]):
                         # If the file is big and is an archive we mount it
                         # If there is an archive inside an archive there will be problems...
                         file["status"] = FileStatus.FileAnalysing
