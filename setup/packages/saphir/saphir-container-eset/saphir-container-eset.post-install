@@ -28,10 +28,11 @@ if can_mount; then
     sudo mkdir -p "$mntdir"/work
     sudo mkdir -p "$mntdir"/merged
     sudo mount -t overlay overlay -o lowerdir="$mntdir"/rootfs,upperdir="$mntdir"/upper,workdir="$mntdir"/work "$mntdir"/merged
+
+    # Remount the storage read-only
+    mount -o remount,ro,trans=xen,version=9p2000.L,cache=none,nosuid,noexec,nodev,misze=131072 storage /mnt/storage
 else
     echo Running in a Github workflow...
     # No-op        
 fi
 
-# Remount the storage read-only
-mount -o remount,ro,trans=xen,version=9p2000.L,cache=none,nosuid,noexec,nodev,misze=131072 storage /mnt/storage
