@@ -72,8 +72,54 @@ Item {
                     margins: parent.height * 0.05
                 }
 
+                /* Filters on tablet */
                 RowLayout {
                     Layout.fillWidth: true
+                    visible: Environment.handheld
+
+                    Item { Layout.fillWidth: true }
+
+                    TwoStatesButton {
+                        text: qsTr("Clean")
+                        checked: true
+
+                        onClicked: function() {
+                            checked = !checked
+                            fileListListView.model.filterClean = checked
+                        }
+                    }
+
+                    Item { Layout.preferredWidth: 10 }
+
+                    TwoStatesButton {
+                        text: qsTr("Infected")
+                        checked: true
+
+                        onClicked: function() {
+                            checked = !checked
+                            fileListListView.model.filterInfected = checked
+                        }
+                    }
+
+                    Item { Layout.preferredWidth: 10 }
+
+                    TwoStatesButton {
+                        text: qsTr("Others")
+                        checked: true
+
+                        onClicked: function() {
+                            checked = !checked
+                            fileListListView.model.filterOther = checked
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
+                }
+
+                /* Filters on PC */
+                RowLayout {
+                    Layout.fillWidth: true
+                    visible: !Environment.handheld
 
                     Item { Layout.fillWidth: true }
 
@@ -125,6 +171,7 @@ Item {
 
                     Item { Layout.fillWidth: true }
                 }
+
 
                 ListView {
                     id: fileListListView
