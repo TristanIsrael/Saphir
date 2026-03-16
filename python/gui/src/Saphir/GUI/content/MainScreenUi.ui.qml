@@ -263,11 +263,8 @@ Item {
 
         visible: !pnlAnalysis.visible && !pnlFileSelection.visible
                  && !pnlFilesCopy.visible
+        height: visible ? implicitHeight : 0
 
-
-        /*!bindings.ready || (bindings.ready
-                                     && bindings.sourceName === "")
-                 || bindings.systemState === Enums.TransferFinished*/
         radius: 10
     }
 
@@ -350,7 +347,7 @@ Item {
         FilesSelectionPanel {
             id: pnlFileSelection
             anchors.fill: parent
-            visible: true
+            visible: false
         }
 
         /* Analysis */

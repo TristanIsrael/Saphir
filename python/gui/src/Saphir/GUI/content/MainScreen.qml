@@ -240,7 +240,6 @@ Window {
             } else if (bindings.systemState === Enums.SystemResetting) {
                 window.pnlFilesCopy.visible = false
                 window.pnlFileSelection.visible = false
-                window.pnlAn
                 window.pnlMessages.visible = true
             }
         }

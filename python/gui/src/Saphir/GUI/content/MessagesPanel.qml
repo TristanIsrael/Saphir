@@ -5,7 +5,7 @@ PanelBase {
     id: root
 
     implicitWidth: Environment.mainWidth * 0.5
-    implicitHeight: Environment.mainHeight * 0.1
+    implicitHeight: Environment.mainHeight * 0.7
 
     Item {
         id: wrapper
@@ -19,7 +19,7 @@ PanelBase {
 
             anchors {
                 fill: parent
-                margins: parent.height * 0.1
+                margins: 16
             }
 
             model: bindings.messages
@@ -31,10 +31,9 @@ PanelBase {
                 }
             }
 
-            delegate: Text {
+            delegate: StyledText {
                 text: display
-                color: Environment.colorText
-                font.pixelSize: wrapper.height/(wrapper.lines+1)
+                color: Environment.colorText                
             }
 
             Behavior on contentY {
