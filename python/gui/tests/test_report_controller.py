@@ -2,7 +2,10 @@ import unittest
 import os
 from datetime import datetime
 from copy import deepcopy
-from Saphir import ReportController
+try:
+    from Saphir import ReportController
+except Exception:
+    pass
 from libsaphir import TOPIC_ANALYSIS, FileStatus
 
 class TestReportController(unittest.TestCase):

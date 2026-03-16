@@ -817,6 +817,17 @@ class TestAnalysisController(unittest.TestCase):
         files = self.__analysis_controller._AnalysisController__get_next_group_of_files(2)        
         self.assertEqual(len(files), 0)
 
+        # Make a test with multiple calls
+        queue = deepcopy(self.STORAGE_FILES.get("files", []))
+        self.__update_queue(queue)
+        files = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
+        files2 = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
+        files3 = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
+        self.assertEqual(len(files), 2)
+        self.assertEqual(len(files2), 0)
+        self.assertEqual(len(files3), 0)
+
+
         # Now we test mixed content
         queue = deepcopy(self.STORAGE_MIXED_FILES.get("files", []))
         self.__update_queue(queue)
@@ -889,6 +900,7 @@ class TestAnalysisController(unittest.TestCase):
         files = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
         self.assertEqual(len(files), 1) # The group should only contain the next archive
         self.assertEqual(files[0].get("name", ""), "Test2.iso")
+
         
         
     def test_reset(self):

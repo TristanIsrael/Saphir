@@ -8,7 +8,11 @@ from . import AnalysisController
 from . import DevModeHelper
 from . import ComponentsModel, MessagesListModel, SystemInformationModel
 from . import SafecorInputFilesListModel, SafecorInputFilesListProxyModel
-from . import ReportController, EMAETAEstimator
+from . import EMAETAEstimator
+try:
+    from . import ReportController
+except Exception:
+    pass
 from libsaphir import ANTIVIRUS_NEEDED, DEVMODE
 from pathlib import Path
 import threading
@@ -710,9 +714,10 @@ class ApplicationController(QObject):
                     self.queueSizeChanged.emit(len(self.__queued_files_list))
                     self.queueUpdated.emit()
 
-                    # If we are analyzing the whole storage and we have no
-                    # mor folder to query we start the analysis
-                    self.start_analysis()
+                    if self.__analysis_mode == AnalysisMode.AnalyseWholeSource:
+                        # If we are analyzing the whole storage and we have no
+                        # more folder to query we start the analysis                    
+                        self.start_analysis()
 
                 if self.__analysis_mode == AnalysisMode.AnalyseSelection:
                     self.__set_system_state(SystemState.SystemWaitingForUserAction)

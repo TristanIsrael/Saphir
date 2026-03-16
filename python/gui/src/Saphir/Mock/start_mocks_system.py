@@ -7,7 +7,7 @@ import threading
 
 
 if __name__ == "__main__":
-    print("Démarrage desx mocks...")
+    print("Starting system mocks...")
 
     verrou_synchro = threading.Event()
 
@@ -21,16 +21,7 @@ if __name__ == "__main__":
     mockUSB.start(DevModeHelper.DISKS, DevModeHelper.get_storage_path(), DevModeHelper.get_mocked_destination_disk_path())
     verrou_synchro.wait()
 
-    # Pour les antivirus on se synchronise avec l'API
-    print("... Starting Mock ClamAV controller")
-    mockAV = MockClamAntivirusController()
-    mockAV.start()
-
-    print("... Starting Mock ESET controller")
-    mockEEA = MockEeaAntivirusController()
-    mockEEA.start()
-
-    print("Démarrage des mocks terminé")
+    print("System mocks started")
 
     lock = threading.Event()
     lock.wait()

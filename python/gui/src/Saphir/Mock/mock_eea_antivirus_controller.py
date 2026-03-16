@@ -11,7 +11,7 @@ class MockEeaAntivirusController(AbstractAntivirusController):
     RATE = 2 # Analysis rate in megabytes per second
 
     def __init__(self):
-        super().__init__("Mock ESET", "Mock ESET antivirus")
+        super().__init__("Mock ESET", "Mock ESET antivirus", 1)
         Constants.DOMU_REPOSITORY_PATH = DevModeHelper.get_storage_path()
 
     def _on_api_ready(self) -> None:
@@ -37,6 +37,7 @@ class MockEeaAntivirusController(AbstractAntivirusController):
 
         result = random.choices([0, 1], weights=[10, 90])[0]
         self.publish_result(filepath, result == 1, "")
+        self.analysis_finished(result)
 
     def _stop_immediately(self):
         pass

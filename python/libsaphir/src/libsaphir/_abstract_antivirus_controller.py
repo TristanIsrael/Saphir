@@ -43,7 +43,9 @@ class AbstractAntivirusController(ABC):
         Api().add_message_callback(self.__on_message_received)
         Api().add_ready_callback(self.__on_api_ready)
         Api().start(mqtt_client=self.__mqtt_client)
-        self.__main_lock.wait()
+
+        if not DEVMODE:
+            self.__main_lock.wait()
 
     def stop(self):
         Api().stop()

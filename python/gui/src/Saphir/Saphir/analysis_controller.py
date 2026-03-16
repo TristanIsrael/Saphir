@@ -18,7 +18,7 @@ class AnalysisController(QObject):
     __files:dict
     __analysis_components = []
     __repository_capacity = 1
-    __repository_size = 0
+    #__repository_size = 0
     __files_copy_queue_size = 0
     __start_times = {}
     __clean_files_count = 0
@@ -180,8 +180,7 @@ class AnalysisController(QObject):
 
 
     def __on_file_available(self, filepath:str, fingerprint:str) -> None:
-        with self.__queue_lock:
-            self.inc_repository_size()
+        with self.__queue_lock:            
             self.__files_copy_queue_size -= 1
 
             try:
@@ -205,7 +204,10 @@ class AnalysisController(QObject):
 
     def __on_deleted_file(self, disk:str, filepath:str):
         print(f"The file {filepath} has been removed from the repository")
-        self.dec_repository_size()
+
+        with self.__queue_lock:
+            file = self.__files[filepath]
+            file["locked"] = False
 
     def __on_list_files_received(self, disk:str, files:list):
         with self.__queue_lock:
@@ -240,7 +242,7 @@ class AnalysisController(QObject):
         Api().get_files_list(disk, True)
 
     def __handle_sysinfo(self, payload:dict):
-        # L'information est dans system.machine.cpu.count
+        # We look at the CPU count in the system information
         system_info = payload.get("system", {})
         machine_info = system_info.get("machine", {})
         cpu_info = machine_info.get("cpu", {})
@@ -332,11 +334,11 @@ class AnalysisController(QObject):
 
                     start_time = self.__start_times.get(filepath, time.time())
                     duration = time.time() - start_time
-                    self.iterationDone.emit(duration)
+                    self.iterationDone.emit(duration)                
 
                 # Free the slot in the repository for the archive
                 #Api().delete_file(self.__archive_mounted_filepath, Constants.STR_REPOSITORY)
-                #self.__repository_size = self.__repository_size - 1 # TODO: asynchronously after the file has been deleted        
+                #self.__repository_size = self.__repository_size - 1 # TODO: asynchronously after the file has been deleted                    
 
             #print(f"File {filepath}, status={"clean" if clean else "infected"}, success={success}, component={component}")        
 
@@ -363,8 +365,14 @@ class AnalysisController(QObject):
         # We copy files in the repository until it is full (__repository_size)
         # We handle a local value to avoid sending queries to Safecor
         limit = self.__get_repository_free_slots()
+
+        if limit <= 0:
+            threading.Timer(0.5, self.__do_copy_files_into_repository).start()
+            return
+
         files = self.__get_next_group_of_files(limit)
-        #print("next group:", files)
+        print("group limit", limit)
+        print("next group:", files)
 
         with self.__queue_lock:
             for file in files:
@@ -399,12 +407,19 @@ class AnalysisController(QObject):
                         self.__files_copy_queue_size += 1
                             
         if self.__analysis_state == AnalysisState.AnalysisRunning and (len(self.__files) > 0 or len(self.__archive_file.get("content", {})) > 0):
-            threading.Timer(0.1, self.__do_copy_files_into_repository).start()
+            threading.Timer(0.5, self.__do_copy_files_into_repository).start()
         else:
             print("No more file to analyse... Exiting loop")
 
     def __get_repository_free_slots(self):
-        nb_files = self.__repository_capacity - self.get_repository_size() - self.__files_copy_queue_size
+        """
+        Returns the free slots in the repository, which means the number of files
+        that can be downloaded before the repository is full.
+
+        The goal is to fill the repository but not overflow it.
+        """
+
+        nb_files = self.__repository_capacity - AnalysisHelper.get_repository_size(self.__files)
         #print("free slots=", nb_files)
         return nb_files
 
@@ -414,24 +429,31 @@ class AnalysisController(QObject):
         The quantity of files depends on the argument size_limit provided.
         To avoid unexpected behaviours the single files are provided before the archives
         and only one archive is provided at a time.
-        An archive is returned only when there is no other file currently being analyzed
+        An archive is returned only when there is no other file currently being analyzed        
         """
 
         group = []
         files_list = self.__files if self.__archive_mounted_name is None else self.__archive_file.get("content", {})
 
-        # First of all we filter the files
+        # First of all we filter the files to consider only those whose state 
+        # is "undefined" in the workflow
         filtered = {k:f for k,f in files_list.items() if not f.get("locked", False) and f.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileStatusUndefined}
         
         for f in filtered.values():
             # First we get the next non-archive files that is not currently being analyzed
-            if MOUNT_ARCHIVES and not FileHelper.is_archive_file(f.get("name", "")):
+            if not FileHelper.is_archive_file(f.get("name", "")):
                 group.append(f)
             else:
-                # If we don't mount archives, we simply add the file
-                group.append(f)
+                # If this is an archive
+                if MOUNT_ARCHIVES and f.get("size", 0) > BIG_FILE_SIZE_IN_MB:
+                    # If the file has to be mounted
+                    continue 
+                else:
+                    # If we don't mount archives, we simply add the file
+                    group.append(f)
                         
             if len(group) >= size_limit:
+                # We stop adding files when the queue is full
                 break
 
         # If the group is empty and we still have archives we put them
@@ -440,7 +462,7 @@ class AnalysisController(QObject):
         # being read when the function is called again. So we use
         # another property that indicates that the analysis is ongoing
         # on that file.
-        if MOUNT_ARCHIVES and len(group) == 0 and self.get_repository_size() == 0 and self.get_working_files_count() == 0:
+        if MOUNT_ARCHIVES and len(group) == 0 and AnalysisHelper.get_repository_size(self.__files) == 0 and self.get_working_files_count() == 0:
             for f in filtered.values():
                 if FileHelper.is_archive_file(f.get("name", "")) and not AnalysisHelper.is_file_completed(f):
                     group.append(f)
@@ -491,23 +513,18 @@ class AnalysisController(QObject):
         self.stateChanged.emit(state)
 
     def get_repository_capacity(self):
-        return self.__repository_capacity
-        
-    def set_repository_size(self, val:int):
-        with self.__repository_lock:
-            self.__repository_size = val
+        return self.__repository_capacity    
 
-    def get_repository_size(self):
-        with self.__repository_lock:
-            return self.__repository_size
+        #with self.__repository_lock:
+        #    return self.__repository_size
         
-    def inc_repository_size(self):
-        with self.__repository_lock:
-            self.__repository_size += 1
+    #def inc_repository_size(self):
+    #    with self.__repository_lock:
+    #        self.__repository_size += 1
 
-    def dec_repository_size(self):
-        with self.__repository_lock:
-            self.__repository_size -= 1
+    #def dec_repository_size(self):
+    #    with self.__repository_lock:
+    #        self.__repository_size -= 1
     
     def get_queue_size(self):
         return len(self.__files)

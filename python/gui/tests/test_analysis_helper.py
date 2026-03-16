@@ -5,8 +5,51 @@ from libsaphir import FileStatus
 
 class TestAnalysisHelper(unittest.TestCase):
 
-    STORAGE_FILES = {"disk": "Archives", "files": { ".DS_Store": {"type": "file", "path": "/", "name": ".DS_Store", "size": 6148}, "Test.iso": {"type": "file", "path": "/", "name": "Test.iso", "size": 2772992}}}
-    ARCHIVE_CONTENT = {    "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp":    {        "type": "file",        "path": "/1.3.0/atmosphere/contents/4200000000003103",        "name": "exefs.nsp",        "size": 572907    },        "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag": {        "type": "file",        "path": "/1.3.0/atmosphere/contents/4200000000003103/flags",        "name": "boot2.flag",        "size": 0    },    "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json": {        "type": "file",        "path": "/1.3.0/atmosphere/contents/4200000000003103",        "name": "toolbox.json",        "size": 113    },            "/1.3.0/switch/.overlays/parental_control.ovl": {        "type": "file",        "path": "/1.3.0/switch/.overlays",        "name": "parental_control.ovl",        "size": 1065016    }}
+    STORAGE_FILES = {
+        "disk": "Archives", 
+        "files": { 
+            ".DS_Store": {
+                "type": "file", 
+                "path": "/", 
+                "name": ".DS_Store", 
+                "size": 6148
+            }, 
+            "Test.iso": {
+                "type": "file",
+                "path": "/", 
+                "name": "Test.iso", 
+                "size": 2772992
+            }
+        }
+    }
+    
+    ARCHIVE_CONTENT = {    
+        "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp": {        
+            "type": "file",        
+            "path": "/1.3.0/atmosphere/contents/4200000000003103",        
+            "name": "exefs.nsp",        
+            "size": 572907    
+        },       
+        "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag": {        
+            "type": "file",        
+            "path": "/1.3.0/atmosphere/contents/4200000000003103/flags",        
+            "name": "boot2.flag",        
+            "size": 0    
+        },    
+        "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json": {        
+            "type": "file",        
+            "path": "/1.3.0/atmosphere/contents/4200000000003103",        
+            "name": "toolbox.json",        
+            "size": 113    
+        },            
+        "/1.3.0/switch/.overlays/parental_control.ovl": {        
+            "type": "file",        
+            "path": "/1.3.0/switch/.overlays",        
+            "name": "parental_control.ovl",        
+            "size": 1065016    
+        }
+    }
+
     ANALYSIS_COMPONENTS = [
         {"id": "Mock ESET", "domain_name": "Mac", "label": "Mock ESET antivirus", "type": "antivirus", "state": "ready", "version": "1.0.0-mock", "description": "Version mock"},
         {"id": "ClamAV", "domain_name": "Mac", "label": "ClamAV Antivirus controller", "type": "antivirus", "state": "ready", "version": "ClamAV 1.4.2/27164/Wed Jan 24 10:45:32 2024", "description": ""}
@@ -280,3 +323,49 @@ class TestAnalysisHelper(unittest.TestCase):
         file["progress"] = 10
         file["status"] = FileStatus.FileInfected
         self.assertTrue(AnalysisHelper.is_file_completed(file))
+
+    def test_get_repository_size(self):
+        files= { 
+            "file1": {  "type": "file", "path": "/", "name": "file" },
+            "file2": {  "type": "file", "path": "/", "name": "file2" },
+            "file3": {  "type": "file", "path": "/", "name": "file3" },
+            "file4": {  "type": "file", "path": "/", "name": "file4" },
+            "file5": {  "type": "file", "path": "/", "name": "file5" },
+            "file6": {  "type": "file", "path": "/", "name": "file6" },
+            "file7": {  "type": "file", "path": "/", "name": "file7" },
+            "file8": {  "type": "file", "path": "/", "name": "file8" },
+            "file9": {  "type": "file", "path": "/", "name": "file9" },
+            "file10": {  "type": "file", "path": "/", "name": "file10" }
+        }
+
+        # Initial state: no file in the repository
+        self.assertEqual(AnalysisHelper.get_repository_size(files), 0)
+
+        # Then we select 2 files for download
+        files["file1"]["locked"] = True
+        files["file2"]["locked"] = True
+
+        self.assertEqual(AnalysisHelper.get_repository_size(files), 2)
+
+        # Then the files progress in the workflow
+        files["file1"]["status"] = FileStatus.FileAvailableInRepository
+        files["file1"]["locked"] = True
+        files["file2"]["status"] = FileStatus.FileAnalysing
+        files["file2"]["locked"] = True
+
+        self.assertEqual(AnalysisHelper.get_repository_size(files), 2)
+
+        # Then all the files are finished
+        files["file1"]["status"] = FileStatus.FileInfected
+        files["file1"]["locked"] = False
+        self.assertEqual(AnalysisHelper.get_repository_size(files), 1)
+
+        files["file2"]["status"] = FileStatus.FileClean
+        files["file2"]["locked"] = False
+        self.assertEqual(AnalysisHelper.get_repository_size(files), 0)
+
+        # Then we take a new file
+        files["file3"]["locked"] = True
+        files["file3"]["status"] = FileStatus.FileAvailableInRepository
+        self.assertEqual(AnalysisHelper.get_repository_size(files), 1)
+        

@@ -167,3 +167,14 @@ class AnalysisHelper():
                 FileStatus.FileCopyError,
                 FileStatus.FileInfected
                 ]
+
+    @staticmethod
+    def get_repository_size(files:dict):
+        """ The repository size depends on the files currently locked in and not started 
+        
+        The files that have been requested for download are counted so they are virtually in
+        the repository even when there are not currently downloaded or fully downloaded.
+        """
+        
+        count = sum(1 for d in files.values() if d.get("locked", False))
+        return count

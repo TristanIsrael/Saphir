@@ -14,7 +14,10 @@ from .system_information_model import SystemInformationModel
 from .safecor_input_files_list_model import SafecorInputFilesListModel
 from .safecor_input_files_list_proxy_model import SafecorInputFilesListProxyModel
 from .safecor_output_files_list_proxymodel import SafecorOutputFilesListProxyModel
-from .report_controller import ReportController
+try:
+    from .report_controller import ReportController
+except Exception:
+    print("Report generation is disabled due to a missing dependency")
 from .EMA_ETA_estimator import EMAETAEstimator
 from .application_controller import ApplicationController
 

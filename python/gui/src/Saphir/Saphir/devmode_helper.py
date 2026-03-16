@@ -5,7 +5,7 @@ from pathlib import Path
 class DevModeHelper():
 
     DISKS = {
-        "NO NAME": Path("/Applications/Adobe Acrobat DC/Adobe Acrobat.app/Contents/Frameworks").resolve().as_posix(),
+        "NO NAME": Path("/Applications/Safari.app/Contents/Resources").resolve().as_posix(),
         "Another disk": Path("/System/Applications/Calculator.app/Contents").resolve().as_posix(),
         "Archives": Path("/Users/tristanisrael/Downloads/Temp/Saphir-test").resolve().as_posix()
     }
