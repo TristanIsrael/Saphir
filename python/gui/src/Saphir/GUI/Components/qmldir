@@ -14,3 +14,4 @@ ShadowButton 1.0 ShadowButton.qml
 SimpleDialog 1.0 SimpleDialog.qml
 StyledComboBox 1.0 StyledComboBox.qml
 StyledText 1.0 StyledText.qml
+TwoStatesButton 1.0 TwoStatesButton.qml

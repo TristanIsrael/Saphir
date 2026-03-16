@@ -370,7 +370,8 @@ class AnalysisController(QObject):
             return
 
         files = self.__get_next_group_of_files(limit)
-        print("group limit", limit)
+        print("working:", self.get_working_files_count())
+        print("free slots:", limit)
         print("next group:", files)
 
         with self.__queue_lock:

@@ -8,4 +8,9 @@ rc-service av-controller start
 
 lxc-start -n saphir-container-eset
 
+# Optimize cache and memory
+sysctl vm.vfs_cache_pressure=200
+sysctl vm.compaction_proactiveness=100
+sysctl vm.min_free_kbytes=102400
+
 exit 0
