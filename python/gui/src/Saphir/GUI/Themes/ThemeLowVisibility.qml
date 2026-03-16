@@ -27,8 +27,8 @@ QtObject {
     readonly property color colorClean: '#163617'
     readonly property color colorInfected: '#410101'
     readonly property color colorWaiting: '#99535252'
-
-    readonly property color colorSelected: '#66191b43'
+    readonly property color colorRunning: '#191b43'
+    readonly property color colorSelected: '#191b43'
 
     readonly property color colorIconFile: '#193953'
     readonly property color colorIconFolder: '#461822'
