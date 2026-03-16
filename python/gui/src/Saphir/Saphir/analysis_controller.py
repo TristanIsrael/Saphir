@@ -53,7 +53,6 @@ class AnalysisController(QObject):
         Api().add_message_callback(self.__on_api_message)
         Api().subscribe(Topics.NEW_FILE)
         Api().subscribe(Topics.DELETED_FILE)
-        #Api().subscribe(Topics.ERROR)
         Api().subscribe(f"{TOPIC_ANALYSIS}/response")
         Api().subscribe(f"{TOPIC_ANALYSIS}/status")
         Api().subscribe(f"{TOPIC_ANALYSIS}/error")
@@ -392,7 +391,7 @@ class AnalysisController(QObject):
                         self.__archive_mounted_filepath = file["filepath"]
                         Api().mount_file(self.__source_disk, file["filepath"])
                     else:
-                        file["status"] = FileStatus.FileAnalysing
+                        file["status"] = FileStatus.GettingFile
 
                         if self.__archive_mounted_name is None:
                             self.fileUpdated.emit(filepath, [file["status"]])
@@ -401,7 +400,7 @@ class AnalysisController(QObject):
 
                         source_disk = self.__source_disk if self.__archive_mounted_name is None else self.__archive_mounted_name
 
-                        Api().read_file(source_disk, filepath)
+                        Api().read_file(source_disk, filepath)                        
                         
                         self.__start_times[filepath] = time.time()
                         self.__files_copy_queue_size += 1

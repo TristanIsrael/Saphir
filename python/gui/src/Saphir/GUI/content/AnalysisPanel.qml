@@ -191,6 +191,7 @@ Item {
                         height: fileListListView.rowHeight
                         spacing: 10
                         
+                        // The file name
                         StyledText {
                             Layout.preferredHeight: parent.height
                             Layout.fillWidth: true
@@ -201,6 +202,7 @@ Item {
                             elide: Text.ElideRight
                         }
 
+                        // The progression
                         Rectangle {
                             Layout.preferredHeight: parent.height
                             Layout.preferredWidth: fileListListView.width / 4
@@ -220,7 +222,7 @@ Item {
                                 anchors.centerIn: parent
                                 width: parent.width
                                 height: parent.height
-                                text: Math.round(progress) + "%"
+                                text: getProgressText(status, progress)
                                 color: Environment.colorText
                                 font.pixelSize: Math.min(height * 0.6, width * 0.15)
                                 horizontalAlignment: Text.AlignHCenter
@@ -228,6 +230,7 @@ Item {
                             }
                         }
 
+                        // The result
                         StyledText {
                             Layout.preferredWidth: fileListListView.width / 3
                             Layout.preferredHeight: parent.height
@@ -256,8 +259,12 @@ Item {
     /** Functions */
     function getTextColor(state) {
         switch (state) {
-            case Enums.FileStatus.FileAnalysing:
+            case Enums.FileStatusUndefined:
                 return Environment.colorWaiting
+            case Enums.FileStatus.GettingFile:
+                return Environment.colorRunning
+            case Enums.FileStatus.FileAnalysing:
+                return Environment.colorRunning
             case Enums.FileStatus.FileClean:
                 return Environment.colorClean
             case Enums.FileStatus.FileInfected:
@@ -271,6 +278,14 @@ Item {
 
     function getStatusText(state) {
         switch (state) {
+            case Enums.FileStatusUndefined:
+                return qsTr("In queue")
+            case Enums.FileStatus.GettingFile:
+                return qsTr("Getting the file")
+            case Enums.FileStatus.FileAvailableInRepository:
+                return qsTr("File ready")
+            case Enums.FileStatus.FileAnalysing:
+                return qsTr("Analysis in progress")
             case Enums.FileStatus.FileClean:
                 return qsTr("Clean")
             case Enums.FileStatus.FileInfected:
@@ -283,5 +298,10 @@ Item {
         }
 
         return qsTr("Other") +" ("+state +")";
+    }
+
+    function getProgressText(status, progress) {
+        var txtProgress = Math.round(progress) + "%"
+        return getStatusText(status) + " - " +txtProgress
     }
 }
