@@ -109,8 +109,7 @@ PanelBase {
         {
             id: listView
             clip: true
-            property int rowHeight: Environment.handheld ? 60 : 40
-            //Layout.preferredHeight: Environment.handheld ? 80 : 40
+            property int rowHeight: Environment.handheld ? 50 : 40
             Layout.fillWidth: true
             Layout.fillHeight: true
 
