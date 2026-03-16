@@ -2,8 +2,7 @@ from safecor import Api, MqttFactory, MqttHelper, Topics, ComponentState
 import threading, time, os, platform
 from queue import Queue
 from abc import ABC, abstractmethod
-from libsaphir import TOPIC_ANALYSIS, DEVMODE
-from . import FileStatus
+from . import FileStatus, TOPIC_ANALYSIS, DEVMODE
 
 class AbstractAntivirusController(ABC):
     """ This class manages the antivirus analysis.

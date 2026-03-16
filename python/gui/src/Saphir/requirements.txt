@@ -2,8 +2,15 @@ PySide6
 pyserial
 humanize
 joblib
-paho.mqtt
+paho-mqtt>=2.0.0
 pyudev
 psutil
 jinja2
-weasyprint
+fonttools==4.61.1
+weasyprint==68.1
+pyserial
+msgpack
+joblib
+libvirt-python
+inotify_simple
+evdev

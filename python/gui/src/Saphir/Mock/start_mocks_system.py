@@ -1,9 +1,9 @@
+import threading
+from safecor import MockSysUsbController
 from mock_clam_antivirus_controller import MockClamAntivirusController
 from mock_eea_antivirus_controller import MockEeaAntivirusController
 from mock_dom0_controller import MockDom0Controller
 from Saphir import DevModeHelper
-from safecor import MockSysUsbController
-import threading
 
 
 if __name__ == "__main__":
