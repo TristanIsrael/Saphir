@@ -10,14 +10,14 @@ from libsaphir import DEVMODE
 if DEVMODE:
     from Saphir import DevModeHelper
     DevModeHelper.set_qt_plugins_path()
-from PySide6.QtCore import Qt, QEvent, QObject
+from PySide6.QtCore import Qt, QEvent, QObject, QTranslator
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtGui import QGuiApplication, QFont, QFontDatabase, QPointingDevice
 from PySide6.QtQuick import QQuickWindow
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonType, qmlRegisterUncreatableType, qmlRegisterSingletonInstance
 from safecor import Api, System
 
-
+language = "fr_fr"
 api_ready = threading.Event()
 FORCE_FULLSCREEN = False
 VERSION = "3.0.1"
@@ -81,6 +81,11 @@ if __name__ == "__main__":
     install_font("Inter-VariableFont_opsz_wght.ttf")
     install_font("Inter-Italic-VariableFont_opsz_wght.ttf")
     install_font("LED Dot-Matrix.ttf")
+
+    # Install the translations
+    translator = QTranslator(app)
+    if translator.load(f"{app_root_path}/{language}.qm"):
+        app.installTranslator(translator)
 
     # Set the default font
     font = QFont("Inter", 12)

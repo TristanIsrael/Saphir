@@ -298,7 +298,7 @@ Item {
         anchors.centerIn: parent
         visible: false
 
-        label: qsTr("Do you want to restart the system?")
+        label: qsTr("Do you want to clean the system?")
         buttonsLabels: [qsTr("Yes"), qsTr("No")]
         handheld: bindings.handheld
     }
