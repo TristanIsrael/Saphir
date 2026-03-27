@@ -5,6 +5,10 @@ usermod -aG safecor clamav
 mkdir -p /var/log/clamav
 chmod 777 /var/log/clamav
 
+mkdir -p /run/clamav
+chown clamav:clamav /run/clamav
+chmod 770 /run/clamav
+
 rc-update add clamav
 rc-service clamav start
 

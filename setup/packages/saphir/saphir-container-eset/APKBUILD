@@ -128,6 +128,7 @@ build() {
     echo Add mount points
     echo "" | sudo tee -a config > /dev/null
     echo "lxc.mount.entry = /mnt/storage mnt/storage none bind,optional,create=dir,noexec,nodev,nosuid" | sudo tee -a config > /dev/null
+    echo "lxc.mount.entry = /tmp tmp none bind,optional,create=dir,noexec,nodev,nosuid" | sudo tee -a config > /dev/null
 
     # Add XEN pv channels
     echo Add XEN PV channels

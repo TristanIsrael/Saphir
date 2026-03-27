@@ -10,13 +10,13 @@ depend() {
 start() {
     ebegin "Starting Clam antivirus"
 
-    start-stop-daemon --start --make-pidfile --exec /usr/sbin/clamd --pidfile /var/run/$name.pid --background
+    start-stop-daemon --start --make-pidfile --exec /usr/sbin/clamd --pidfile /var/run/clamav/clamd.pid --background
 }
 
 stop() {
     ebegin "Stopping Clam antivirus"
     
-    kill -9 $(cat /var/run/$name.pid)
+    kill -9 $(cat /var/run/clamav/clamd.pid)
 
     eend $?
 }
