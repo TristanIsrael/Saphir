@@ -95,13 +95,15 @@ build() {
 
         echo *** Update APT
         #sudo chroot "$srcdir/$pkgname"/rootfs -- dhclient
+        sudo chroot "$srcdir/$pkgname"/rootfs apt clean
+        sudo chroot "$srcdir/$pkgname"/rootfs rm -rf /var/lib/apt/lists/*
         sudo chroot "$srcdir/$pkgname"/rootfs apt update
 
         echo Install libcurl
         sudo chroot "$srcdir/$pkgname"/rootfs apt install -y libcurl4    
 
         echo Execute ESET post install script
-        sudo chroot "$srcdir/$pkgname"/rootfs env ESET_DISABLE_WAP=1 /root/postinst configure
+        sudo chroot "$srcdir/$pkgname"/rootfs env ESET_DISABLE_WAP=1 DISABLE_NFTABLES=1 /root/postinst configure
         sudo chroot "$srcdir/$pkgname"/rootfs apt install --fix-missing -y
 
         echo Clean the container to make it smaller
