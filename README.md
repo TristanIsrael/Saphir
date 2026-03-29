@@ -57,6 +57,12 @@ The sheep-dip handles the following use cases:
 | v3.22 | ![Not tested](https://img.shields.io/badge/Not%20tested-ffa500) |
 | v3.23 | ![Not tested](https://img.shields.io/badge/Not%20tested-ffa500) |
 
+## 📚 Documentation
+
+The [Project's Wiki](https://github.com/TristanIsrael/Saphir/wiki) is dedicated to the end users with explanations on how to provision and use this product.
+
+The [Project's documentation](docs/Readme.md) is dedicated to developers who want to contribute to this project.
+
 ## 📜 Product licence
 
 Saphir - Free Usage License
