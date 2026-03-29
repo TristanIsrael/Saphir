@@ -46,6 +46,18 @@ La station blanche gère les cas d’utilisation suivants :
 | v3.22 | ![Non testé](https://img.shields.io/badge/Non%20testé-ffa500) |
 | v3.23 | ![Non testé](https://img.shields.io/badge/Non%20testé-ffa500) |
 
-## 📜 Licences
+## Licence du produit
+
+Saphir - Licence d’utilisation gratuite
+
+Copyright (c) 2026 Tristan Israël - Alefbet
+
+1. Vous êtes libre d'utiliser ce logiciel gratuitement, pour vos besoins personnels ou internes.
+2. Vous pouvez modifier le logiciel pour votre usage interne.
+3. Vous n'êtes pas autorisé à redistribuer, vendre, ou publier ce logiciel modifié ou non, sauf via le dépôt officiel maintenu par Tristan Israël.
+4. Toute contribution ou modification destinée à être partagée doit être proposée via une pull request ou soumise au dépôt officiel.
+5. Ce logiciel est fourni "tel quel", sans aucune garantie explicite ou implicite.
+
+## 📜 Licences tierces
 
 - Police Google Material Design version 3 – Licence Apache version 2.0
