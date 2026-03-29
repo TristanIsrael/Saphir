@@ -102,6 +102,7 @@ build() {
 
         echo Execute ESET post install script
         sudo chroot "$srcdir/$pkgname"/rootfs env ESET_DISABLE_WAP=1 /root/postinst configure
+        sudo chroot "$srcdir/$pkgname"/rootfs apt install --fix-missing -y
 
         echo Clean the container to make it smaller
         sudo chroot "$srcdir"/$pkgname/rootfs apt-get clean
