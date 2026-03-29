@@ -5,8 +5,8 @@
 ![Contribute](https://img.shields.io/badge/Contributions-Repo-blue)
 
 [![platform](https://img.shields.io/badge/platform-Alpine-Linux.svg)](https://gbatemp.net/forums/nintendo-switch.283/?prefix_id=44)
-[![language](https://img.shields.io/badge/language-Python-ba1632.svg)](https://github.com/topics/cpp)
-[![Licence propriétaire](https://img.shields.io/badge/license-Propriétaire-189c11.svg)](https://www.gnu.org/licenses/old-licenses/gpl-3.0.en.html)
+[![langage](https://img.shields.io/badge/langage-Python-ba1632.svg)](https://github.com/topics/cpp)
+[![Licence propriétaire](https://img.shields.io/badge/licence-Propriétaire-189c11.svg)](https://www.gnu.org/licenses/old-licenses/gpl-3.0.en.html)
 [![Latest Version](https://img.shields.io/github/v/release/TristanIsrael/Saphir?label=latest&color=blue)](https://github.com/TristanIsrael/Saphir/releases/latest)
 [![GitHub issues](https://img.shields.io/github/issues/TristanIsrael/Saphir?color=222222)](https://github.com/TristanIsrael/Saphir/issues)
 [![GitHub stars](https://img.shields.io/github/stars/TristanIsrael/Saphir)](https://github.com/TristanIsrael/Saphir/stargazers)

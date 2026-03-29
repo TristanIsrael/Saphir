@@ -12,8 +12,6 @@
 [![GitHub stars](https://img.shields.io/github/stars/TristanIsrael/Saphir)](https://github.com/TristanIsrael/Saphir/stargazers)
 ![Last update](https://img.shields.io/github/last-commit/TristanIsrael/Saphir.svg)
 
-
-
 Saphir is a robust sheep-dip solution. It is free of use.
 
 Saphir is based on [Safecor](https://github.com/TristanIsrael/Safecor), an operating system for security products.
@@ -21,6 +19,8 @@ Saphir is based on [Safecor](https://github.com/TristanIsrael/Safecor), an opera
 ## 🌍 Translations
 
 - 🇫🇷 Français : [Readme.fr.md](Readme.fr.md)
+
+The product is available in 🇬🇧 English and 🇫🇷 French. If you would like tp have another translation please make a request in this [discussion](https://github.com/TristanIsrael/Saphir/discussions/97).
 
 ## 🎯 Goals
 
