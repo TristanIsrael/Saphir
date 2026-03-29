@@ -11,7 +11,11 @@ Saphir is a robust sheep-dip solution. It is free of use.
 
 Saphir is based on [Safecor](https://github.com/TristanIsrael/Safecor), an operating system for security products.
 
-## Goals
+## 🌍 Translations
+
+- 🇫🇷 Français : [README.fr.md](README.fr.md)
+
+## 🎯 Goals
 
 Computer threats are omnipresent and constitute at best an obstacle to a company or an administration by depriving it of resources (human and financial) that could be allocated to its development and at worst a critical risk of blocking its activities.
 
@@ -19,7 +23,7 @@ The sheep-dip is not a solution in itself to this problem, but one of the essent
 
 The sheep-dip intervenes in the reduction of risks related to viral infections whose vectors are digital communication media (Internet, messaging, USB key, CD-ROM, etc.). Its implementation within the company makes it possible to considerably reduce the risk of an infection through an external communication medium and to raise awareness among the company's employees of the risks inherent in the use of these media while educating them in better digital hygiene.
 
-## Typical threat management
+## 🛡️ Typical threat management
 
 Typically company has multiple levels of confidentiality, and the transfer of files between these levels is regulated and requires processing through a secure workstation.
 
@@ -27,7 +31,7 @@ Typically, data coming from outside the company’s network or having been trans
 
 A file coming from the Internet or from a personal USB drive must be checked before being introduced into the company’s IT systems.
 
-## Use cases
+## 💡 Use cases
 
 The sheep-dip handles the following use cases:
 - Scan an external disk connect on USB
@@ -37,7 +41,7 @@ The sheep-dip handles the following use cases:
 - Copy uninfected files on a second external disk
 - Generate a scan report after the analysis.
 
-## Compatibility
+## 🖥️ Compatibility
 
 | Alpine | Status |
 |--|--|
@@ -46,6 +50,6 @@ The sheep-dip handles the following use cases:
 | v3.22 | ![Not tested](https://img.shields.io/badge/Not%20tested-ffa500) |
 | v3.23 | ![Not tested](https://img.shields.io/badge/Not%20tested-ffa500) |
 
-## Licences
+## 📜 Licences
 
 - Google Material Design font font version 3 - Apache Licence version 2.0
