@@ -4,11 +4,12 @@
 [![language](https://img.shields.io/badge/language-Python-ba1632.svg)](https://github.com/topics/cpp)
 [![GPLv3 License](https://img.shields.io/badge/license-Proprietary-189c11.svg)](https://www.gnu.org/licenses/old-licenses/gpl-3.0.en.html)
 [![Latest Version](https://img.shields.io/github/v/release/TristanIsrael/Saphir?label=latest&color=blue)](https://github.com/TristanIsrael/Saphir/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/TristanIsrael/Saphir/total?color=6f42c1)](https://github.com/TristanIsrael/Saphir/graphs/traffic)
 [![GitHub issues](https://img.shields.io/github/issues/TristanIsrael/Saphir?color=222222)](https://github.com/TristanIsrael/Saphir/issues)
 [![GitHub stars](https://img.shields.io/github/stars/TristanIsrael/Saphir)](https://github.com/TristanIsrael/Saphir/stargazers)
 
-Saphir is a robust sheep-dip solution.
+Saphir is a robust sheep-dip solution. It is free of use.
+
+Saphir is based on [Safecor](https://github.com/TristanIsrael/Safecor), an operating system for security products.
 
 ## Goals
 
@@ -30,7 +31,11 @@ A file coming from the Internet or from a personal USB drive must be checked bef
 
 The sheep-dip handles the following use cases:
 - Scan an external disk connect on USB
+- Analyse the whole disk
+- Select the partition on the disk
+- Select the files which will be analyzed
 - Copy uninfected files on a second external disk
+- Generate a scan report after the analysis.
 
 ## Compatibility
 
