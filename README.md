@@ -13,7 +13,7 @@ Saphir is based on [Safecor](https://github.com/TristanIsrael/Safecor), an opera
 
 ## 🌍 Translations
 
-- 🇫🇷 Français : [README.fr.md](README.fr.md)
+- 🇫🇷 Français : [Readme.fr.md](Readme.fr.md)
 
 ## 🎯 Goals
 
