@@ -5,8 +5,8 @@
 # It must be built on a regular virtual machine
 #
 pkgname=saphir-container-eset
-pkgver=2.0
-pkgrel=3
+pkgver=2.1
+pkgrel=0
 pkgdesc="Saphir - LXC Container for ESET Antivirus"
 url="https://defense.gouv.fr/"
 arch="x86_64"
@@ -19,7 +19,10 @@ subpackages=""
 replaces=""
 builddir="$srcdir/"
 options="!check"  # no tests provided
-source="https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/eeau_x86_64.bin"
+#source="https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/$installer_name"
+#installer_name="$installer_name"
+source="https://download.eset.com/com/eset/apps/business/efs/linux/latest/efs.x86_64.bin"
+installer_name="efs.x86_64.bin"
 
 clean() {    
     sudo umount -f -R "$srcdir/$pkgname"/rootfs || true
@@ -51,12 +54,12 @@ build() {
 
     # Extract the debian installer
     echo Extract ESET installer
-    chmod +x "$srcdir"/eeau_x86_64.bin
+    chmod +x "$srcdir/$installer_name"
     cd "$srcdir"
-    ./eeau_x86_64.bin -n -y
+    "./$installer_name" -n -y
     rm "$srcdir"/*.rpm
-    rm "$srcdir"/eeau_x86_64.bin
-    debfile=$(ls "$srcdir" | grep eea | grep .deb | head -n 1)
+    rm "$srcdir/$installer_name"
+    debfile=$(ls "$srcdir" | grep .deb | head -n 1)
 
     # Extract the content of the debfile
     mkdir -p eset-deb
@@ -160,5 +163,5 @@ package() {
     sudo rm -rf "$srcdir/$pkgname"
 }
 sha512sums="
-d640faa749aa50e84140895c39c3e80366ce897ce307b6a107f45aff880001e52c3ed13c5a31e2a9cb284e9138b79fa3622e56db651d116632938ea29566a478  eeau_x86_64.bin
+d640faa749aa50e84140895c39c3e80366ce897ce307b6a107f45aff880001e52c3ed13c5a31e2a9cb284e9138b79fa3622e56db651d116632938ea29566a478  $installer_name
 "
