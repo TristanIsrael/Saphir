@@ -1,4 +1,4 @@
-from safecor import Api, Topics, Constants, MqttClient, ConnectionType, System, NotificationFactory
+from safecor import Api, Topics, Constants, MqttClient, ConnectionType, System, NotificationFactory, ResponseFactory
 from pathlib import Path
 from threading import Event
 
@@ -20,6 +20,7 @@ class MockDom0Controller:
         print("Dom0 MQTT client connected")
         self.__mqtt_client.subscribe(f"{Topics.DELETE_FILE}/request")
         self.__mqtt_client.subscribe(f"{Topics.SYSTEM_INFO}/request")
+        self.__mqtt_client.subscribe(f"{Topics.DEFAULT_LANGUAGE}/request")
         self.__lock.set()
 
 
@@ -28,6 +29,9 @@ class MockDom0Controller:
             self.__handle_delete_file(payload)
         elif topic == f"{Topics.SYSTEM_INFO}/request":
             self.__handle_system_info()
+        elif topic == f"{Topics.DEFAULT_LANGUAGE}/request":
+            payload = ResponseFactory.create_response_language_default("fr")
+            self.__mqtt_client.publish(f"{Topics.DEFAULT_LANGUAGE}/response", payload)
 
 
     def __handle_delete_file(self, payload):

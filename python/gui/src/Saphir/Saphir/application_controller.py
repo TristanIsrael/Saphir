@@ -1,4 +1,4 @@
-from PySide6.QtCore import QObject, Signal, Slot, Property, QTimer, QThread, QPoint, QCoreApplication, QMetaObject
+from PySide6.QtCore import QObject, Signal, Slot, Property, QCoreApplication, QTranslator
 from PySide6.QtWidgets import QWidget
 from safecor import Api, MqttFactory, Topics, MqttHelper, ComponentsHelper, Constants, ComponentState, DiskState
 from libsaphir import FileStatus
@@ -110,6 +110,8 @@ class ApplicationController(QObject):
     cleanFilesSizeChanged = Signal()
     targetAvailableSizeChanged = Signal()
     copiedFilesCountChanged = Signal()
+    languageChanged = Signal()
+    translationInstalled = Signal()
 
     # Energy
     __battery_level = 0
@@ -117,6 +119,9 @@ class ApplicationController(QObject):
 
     __subscriptions = []
     __subscribed_count = 0
+    
+    __language = ""
+    __translator = None
 
     # Fonctions publiques
     def __init__(self, parent=None):
@@ -143,7 +148,7 @@ class ApplicationController(QObject):
 
         self.__report_controller = ReportController(self)
         self.__report_controller.reportGenerated.connect(self.__on_report_generated)
-        self.__system_information_model = SystemInformationModel(self.__handheld)
+        self.__system_information_model = SystemInformationModel(self.__handheld)        
 
     def start(self, ready_callback):
         if DEVMODE:
@@ -428,6 +433,10 @@ class ApplicationController(QObject):
         result, mid = Api().subscribe(f"{Topics.CREATE_FILE}/response")
         if result:
             self.__subscriptions.append(mid)
+
+        result, mid = Api().subscribe(f"{Topics.DEFAULT_LANGUAGE}/response")
+        if result:
+            self.__subscriptions.append(mid)
         
     def __on_subscribed(self, mid):
         if mid in self.__subscriptions:
@@ -438,7 +447,9 @@ class ApplicationController(QObject):
 
     def __app_ready(self):
         Api().info("Saphir is ready")
+
         Api().notify_gui_ready()
+        Api().get_default_language()
 
         if self.__ready_callback is not None:
             self.__ready_callback()
@@ -473,27 +484,24 @@ class ApplicationController(QObject):
         
         if topic == Topics.DISK_STATE:
             self.__handle_disk_state(payload)
-            
         elif topic == f"{Topics.LIST_DISKS}/response":
             self.__handle_list_disks(payload)
-
         elif topic == f"{Topics.LIST_FILES}/response":
             self.__handle_list_files(payload)
-
         elif topic == f"{Topics.DISCOVER_COMPONENTS}/response":
             self.__handle_discover_components(payload)
-
         elif topic == f"{Topics.COPY_FILE}/response":
             self.__handle_copy_file(payload)
-
         elif topic == f"{Topics.ENERGY_STATE}/response":
             self.__handle_energy_state(payload)
-
         elif topic == f"{Topics.SYSTEM_INFO}/response":
             self.__handle_system_info(payload)
-
         elif topic == f"{Topics.CREATE_FILE}/response":
             self.__handle_create_file(payload)
+        elif topic == f"{Topics.DEFAULT_LANGUAGE}/response":
+            if MqttHelper.check_payload(payload, ["language"]):
+                language = payload.get("language", "en")
+                self.__install_translations(language)
 
     def __is_file_in_folder(self, filepath:str, folder:str) -> bool:
         return filepath.startswith(folder) # type: ignore
@@ -501,6 +509,38 @@ class ApplicationController(QObject):
     def __on_iteration_done(self, duration:float):
         self.__eta_estimator.update(duration)
 
+
+    @Slot()
+    def __install_translations(self, language = ""):
+        if(self.__language == language):
+            return
+    
+        self.__language = language
+        self.languageChanged.emit()
+
+        if self.__language == "":
+            Api().info("Using the default language (EN)")
+            if self.__translator is not None:
+                QCoreApplication.instance().removeTranslator(self.__translator)
+                self.__translator.deleteLater()
+                self.__translator = None
+                self.translationInstalled.emit()
+            return
+        
+        # Create a new translator
+        if self.__translator is None:
+            self.__translator = QTranslator(self)
+            QCoreApplication.instance().installTranslator(self.__translator)
+
+        # Install the translations
+        app_root_path = Path(__file__).resolve().parent.parent
+        if self.__translator.load(f"{app_root_path}/i18n/{self.__language}.qm"):
+            Api().info(f"Install the translation for {self.__language}")
+        else:
+            Api().warn(f"No translation found for the language {self.__language}")
+
+        self.translationInstalled.emit()
+        self.languageChanged.emit()
 
     @Slot()
     def shutdown(self):
@@ -1093,6 +1133,12 @@ class ApplicationController(QObject):
     def is_folder_in_queue(self, filepath:str) -> bool:
         return any(filepath in key for key in self.__queued_files_list)
 
+    def __get_language(self):
+        return self.__language
+    
+    @Slot(str)
+    def __set_language(self, lang:str):
+        self.__install_translations(lang)
 
     ready = Property(bool, __is_ready, __set_ready, notify=readyChanged) 
     currentFolder = Property(str, __get_current_folder, notify=currentFolderChanged)
@@ -1136,3 +1182,5 @@ class ApplicationController(QObject):
     systemInformationModel = Property(QObject, __get_system_information_model, constant=True)
     handheld = Property(bool, __get_handheld, constant=True)
     storages = Property(list, __get_storages, notify=storagesChanged)
+
+    language = Property(str, __get_language, __set_language, notify= languageChanged)

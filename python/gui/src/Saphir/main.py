@@ -10,17 +10,16 @@ from libsaphir import DEVMODE
 if DEVMODE:
     from Saphir import DevModeHelper
     DevModeHelper.set_qt_plugins_path()
-from PySide6.QtCore import Qt, QEvent, QObject, QTranslator
+from PySide6.QtCore import Qt, QEvent, QObject
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtGui import QGuiApplication, QFont, QFontDatabase, QPointingDevice
 from PySide6.QtQuick import QQuickWindow
 from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonType, qmlRegisterUncreatableType, qmlRegisterSingletonInstance
 from safecor import Api, System
 
-language = "fr_fr"
 api_ready = threading.Event()
 FORCE_FULLSCREEN = False
-VERSION = "3.0.1"
+VERSION = "3.1.0"
 
 def on_ready():
     print("Safecor API is ready")
@@ -82,11 +81,6 @@ if __name__ == "__main__":
     install_font("Inter-Italic-VariableFont_opsz_wght.ttf")
     install_font("LED Dot-Matrix.ttf")
 
-    # Install the translations
-    translator = QTranslator(app)
-    if translator.load(f"{app_root_path}/{language}.qm"):
-        app.installTranslator(translator)
-
     # Set the default font
     font = QFont("Inter", 12)
     app.setFont(font)
@@ -103,6 +97,7 @@ if __name__ == "__main__":
 
     QQuickStyle.setStyle("Basic")
     engine = QQmlApplicationEngine()
+    applicationController.translationInstalled.connect(engine.retranslate)
     engine.rootContext().setContextProperty("DEVMODE", DEVMODE)
     engine.addImportPath(app_root_path / "GUI")
     qml_file = app_root_path / "GUI/content/MainScreen.qml"

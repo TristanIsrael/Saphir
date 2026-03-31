@@ -1,7 +1,7 @@
 # Contributor:
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 pkgname=saphir
-pkgver=3.0
+pkgver=3.1
 pkgrel=0
 pkgdesc="Saphir is a robust sheep-dip solution"
 url="https://defense.gouv.fr/"

@@ -36,9 +36,14 @@ Item {
     property alias btnCopyFiles: btnCopyFiles
     property alias pnlAnalysis: pnlAnalysis
     property alias lytMenuThemes: lytMenuThemes
+    property alias lytMenuLanguages: lytMenuLanguages
+    property alias btnLanguageEN: btnLanguageEN
+    property alias btnLanguageFR: btnLanguageFR
 
     property bool menuThemesOpened: false
     property bool mainMenuOpened: false
+    property bool menuLanguagesOpened: false
+    property string language: "This is a string"
 
     /* Private properties */
     implicitWidth: 1344
@@ -79,6 +84,59 @@ Item {
         }
 
         height: parent.height * 0.06
+    }
+
+    /* Upper left buttons */
+    Panel {
+        id: pnlMenuLanguages
+
+        x: btnLanguageEN.width * 0.25
+        y: topBar.height * 2
+        z: 99
+        height: lytMenuLanguages.height
+        width: mainWindow.menuLanguagesOpened ? lytMenuLanguages.width : btnLanguageEN.width * 1.2
+        clip: false
+        highlight: false
+        radius: height
+
+        Item {
+            // For clipping
+            width: pnlMenuLanguages.width
+            height: pnlMenuLanguages.height
+            clip: true
+
+            RowLayout {
+                id: lytMenuLanguages
+                height: btnLanguageEN.width * 1.2
+                anchors {
+                    verticalCenter: parent.verticalCenter
+                    left: parent.left
+                    leftMargin: btnLanguageEN.width * 0.05
+                }
+
+                Item {}
+
+                RoundButton {
+                    id: btnLanguageEN
+                    Layout.alignment: Qt.AlignHCenter
+                    icon: "EN"
+                    symbol: false
+                    flat: true
+                    visible: mainWindow.menuLanguagesOpened || language === ""
+                }
+
+                RoundButton {
+                    id: btnLanguageFR
+                    Layout.alignment: Qt.AlignHCenter
+                    icon: "FR"
+                    symbol: false
+                    flat: true
+                    visible: mainWindow.menuLanguagesOpened || language === "fr"
+                }
+
+                Item {}
+            }
+        }
     }
 
     /* Lower left buttons */

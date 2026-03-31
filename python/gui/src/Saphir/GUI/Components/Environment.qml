@@ -11,7 +11,7 @@ QtObject {
     property bool handheld: ApplicationController.handheld
     property bool portrait: false
 
-    property int theme: Constants.dark
+    property int theme: Constants.dark    
 
     property int mainWidth: 1200
     property int mainHeight: 800

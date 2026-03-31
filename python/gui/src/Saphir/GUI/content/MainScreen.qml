@@ -18,6 +18,7 @@ Window {
 
         anchors.fill: parent
 
+        language: ApplicationController.language
         backFilter.colorizationColor: bindings.systemStateColor
         imgBack.source: {
             if(Environment.theme === Constants.light) {
@@ -213,6 +214,27 @@ Window {
                 window.pnlFilesCopy.visible = true
             }
         }
+
+        Connections {
+            target: window.btnLanguageEN
+
+            function onClicked() {
+                if(ApplicationController.language !== "")
+                    ApplicationController.language = ""
+                window.menuLanguagesOpened = !window.menuLanguagesOpened
+            }
+        }
+
+        Connections {
+            target: window.btnLanguageFR
+
+            function onClicked() {
+                if(ApplicationController.language !== "fr")
+                    ApplicationController.language = "fr"
+                window.menuLanguagesOpened = !window.menuLanguagesOpened
+            }
+        }
+
 
         /* Animations */
         Behavior on pnlMenuThemes.width {

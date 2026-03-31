@@ -16,8 +16,9 @@ from .safecor_input_files_list_proxy_model import SafecorInputFilesListProxyMode
 from .safecor_output_files_list_proxymodel import SafecorOutputFilesListProxyModel
 try:
     from .report_controller import ReportController
-except Exception:
+except Exception as e:
     print("Report generation is disabled due to a missing dependency")
+    print(e)
 from .EMA_ETA_estimator import EMAETAEstimator
 from .application_controller import ApplicationController
 

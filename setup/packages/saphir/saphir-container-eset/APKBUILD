@@ -94,7 +94,6 @@ build() {
         sudo chmod 1777 "$srcdir/$pkgname"/rootfs/tmp
 
         echo *** Update APT
-        #sudo chroot "$srcdir/$pkgname"/rootfs -- dhclient
         sudo chroot "$srcdir/$pkgname"/rootfs apt clean
         sudo chroot "$srcdir/$pkgname"/rootfs rm -rf /var/lib/apt/lists/*
         sudo chroot "$srcdir/$pkgname"/rootfs apt update

@@ -10,6 +10,7 @@ Item {
     property int borderWidth: enabled ? 7 : 1
     property bool highlight: true
     property bool flat: false
+    property bool symbol: true
 
     signal clicked()
 
@@ -90,10 +91,12 @@ Item {
         Text {
             id: txt
             anchors.fill: parent
-            font.family: outlined ? "Material Icons Outlined" : "Material Icons"
-            text: Constants.iconHelp
-            font.pixelSize: parent.height
+            font.family: symbol ? (outlined ? "Material Icons Outlined" : "Material Icons") : "Inter"
+            text: symbol ? Constants.iconHelp : "EN"
+            font.pixelSize: symbol ? parent.height : parent.height * 0.7
             color: root.enabled ? Environment.colorButtonTextEnabled : Environment.colorButtonTextDisabled
+            horizontalAlignment: Qt.AlignHCenter
+            verticalAlignment: Qt.AlignVCenter
         }
     }
 
