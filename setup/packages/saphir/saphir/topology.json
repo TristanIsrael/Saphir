@@ -6,10 +6,9 @@
     "usb": {
         "use": 1
     },
-    "gui": {
-        "use": 1,
-        "memory": 1800,
-        "app-package": "saphir-gui"        
+    "screen": {
+        "enabled": 1,
+        "default_focus": "saphir-gui"
     },
     "vcpu": {
         "groups": {
@@ -20,6 +19,12 @@
     "business": {    
         "domains": [
             {
+                "name": "saphir-gui",
+                "app-package": "saphir-gui",
+                "memory": 1800,
+                "has_gui": 1
+            },
+            {
                 "name": "saphir-av-clamav",
                 "app-package": "saphir-av-clamav",
                 "memory": 2500,
@@ -29,7 +34,7 @@
             {
                 "name": "saphir-av-eset",
                 "app-package": "saphir-av-eset",
-                "memory": 2500,
+                "memory": 1500,
                 "vcpu_group": "antivirus",
                 "temp_disk_size": 4096
             }
@@ -43,10 +48,8 @@
 	            "product_name": "R8AA"
             },
             "settings": {
-                "gui": {
-                    "screen": {
-                        "rotation": 90
-                    }
+                "screen": {
+                    "rotation": 90
                 },
                 "pci": {
                     "blacklist": ["00:0d.0"]
