@@ -12,7 +12,7 @@
     },
     "vcpu": {
         "groups": {
-            "sys-gui": 0.2,
+            "gui": 0.2,
             "antivirus": 0.8
         }
     },
@@ -22,7 +22,8 @@
                 "name": "saphir-gui",
                 "app-package": "saphir-gui",
                 "memory": 1800,
-                "has_gui": 1
+                "has_gui": 1,
+                "vcpu_group": "gui"
             },
             {
                 "name": "saphir-av-clamav",
