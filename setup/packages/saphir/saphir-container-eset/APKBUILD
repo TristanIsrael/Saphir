@@ -93,7 +93,7 @@ build() {
         echo Set permisions
         sudo chmod 1777 "$srcdir/$pkgname"/rootfs/tmp
 
-        echo "*** Update APT"
+        echo Update APT
         #sudo chroot "$srcdir/$pkgname"/rootfs apt clean
         #sudo chroot "$srcdir/$pkgname"/rootfs rm -rf /var/lib/apt/lists/*
         sudo chroot "$srcdir/$pkgname"/rootfs apt update
@@ -166,5 +166,5 @@ package() {
     sudo rm -rf "$srcdir/$pkgname"
 }
 sha512sums="
-d640faa749aa50e84140895c39c3e80366ce897ce307b6a107f45aff880001e52c3ed13c5a31e2a9cb284e9138b79fa3622e56db651d116632938ea29566a478  $installer_name
+e8e25832c132584a4423b9bb967b0c5d614a5b05a858504a56da0f86fd1738c36dfcb67c5d616147760fab78920e1953828df5eb743924e6301e3f094024c1f5  efs.x86_64.bin
 "
