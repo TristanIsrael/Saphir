@@ -97,6 +97,7 @@ build() {
         sudo chroot "$srcdir/$pkgname"/rootfs apt clean
         sudo chroot "$srcdir/$pkgname"/rootfs rm -rf /var/lib/apt/lists/*
         sudo chroot "$srcdir/$pkgname"/rootfs apt update
+        sudo chroot "$srcdir/$pkgname"/rootfs apt upgrade -y
 
         echo Install libcurl
         sudo chroot "$srcdir/$pkgname"/rootfs apt install -y libcurl4    
