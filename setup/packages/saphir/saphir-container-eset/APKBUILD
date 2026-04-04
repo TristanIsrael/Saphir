@@ -5,8 +5,8 @@
 # It must be built on a regular virtual machine
 #
 pkgname=saphir-container-eset
-pkgver=2.1
-pkgrel=0
+pkgver=2.0
+pkgrel=3
 pkgdesc="Saphir - LXC Container for ESET Antivirus"
 url="https://defense.gouv.fr/"
 arch="x86_64"
@@ -19,10 +19,7 @@ subpackages=""
 replaces=""
 builddir="$srcdir/"
 options="!check"  # no tests provided
-#source="https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/$installer_name"
-#installer_name="$installer_name"
-source="https://download.eset.com/com/eset/apps/business/efs/linux/latest/efs.x86_64.bin"
-installer_name="efs.x86_64.bin"
+source="https://download.eset.com/com/eset/apps/business/eea/linux/g2/latest/eeau_x86_64.bin"
 
 clean() {    
     sudo umount -f -R "$srcdir/$pkgname"/rootfs || true
@@ -54,12 +51,12 @@ build() {
 
     # Extract the debian installer
     echo Extract ESET installer
-    chmod +x "$srcdir/$installer_name"
+    chmod +x "$srcdir"/eeau_x86_64.bin
     cd "$srcdir"
-    "./$installer_name" -n -y
+    ./eeau_x86_64.bin -n -y
     rm "$srcdir"/*.rpm
-    rm "$srcdir/$installer_name"
-    debfile=$(ls "$srcdir" | grep .deb | head -n 1)
+    rm "$srcdir"/eeau_x86_64.bin
+    debfile=$(ls "$srcdir" | grep eea | grep .deb | head -n 1)
 
     # Extract the content of the debfile
     mkdir -p eset-deb
@@ -93,18 +90,15 @@ build() {
         echo Set permisions
         sudo chmod 1777 "$srcdir/$pkgname"/rootfs/tmp
 
-        echo Update APT
-        #sudo chroot "$srcdir/$pkgname"/rootfs apt clean
-        #sudo chroot "$srcdir/$pkgname"/rootfs rm -rf /var/lib/apt/lists/*
+        echo *** Update APT
+        #sudo chroot "$srcdir/$pkgname"/rootfs -- dhclient
         sudo chroot "$srcdir/$pkgname"/rootfs apt update
-        sudo chroot "$srcdir/$pkgname"/rootfs apt upgrade -y
 
         echo Install libcurl
         sudo chroot "$srcdir/$pkgname"/rootfs apt install -y libcurl4    
 
         echo Execute ESET post install script
-        sudo chroot "$srcdir/$pkgname"/rootfs env ESET_DISABLE_WAP=1 DISABLE_NFTABLES=1 /root/postinst configure
-        sudo chroot "$srcdir/$pkgname"/rootfs apt install --fix-missing -y
+        sudo chroot "$srcdir/$pkgname"/rootfs env ESET_DISABLE_WAP=1 /root/postinst configure
 
         echo Clean the container to make it smaller
         sudo chroot "$srcdir"/$pkgname/rootfs apt-get clean
@@ -166,5 +160,5 @@ package() {
     sudo rm -rf "$srcdir/$pkgname"
 }
 sha512sums="
-e8e25832c132584a4423b9bb967b0c5d614a5b05a858504a56da0f86fd1738c36dfcb67c5d616147760fab78920e1953828df5eb743924e6301e3f094024c1f5  efs.x86_64.bin
+d640faa749aa50e84140895c39c3e80366ce897ce307b6a107f45aff880001e52c3ed13c5a31e2a9cb284e9138b79fa3622e56db651d116632938ea29566a478  eeau_x86_64.bin
 "
