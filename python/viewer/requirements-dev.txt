@@ -1,0 +1,7 @@
+coverage
+black 
+ruff 
+mypy  
+bandit 
+pip-audit
+PySide6-stubs

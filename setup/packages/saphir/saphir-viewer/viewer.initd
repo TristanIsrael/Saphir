@@ -1,0 +1,27 @@
+#!/sbin/openrc-run
+
+name="viewer"
+command_background="yes"
+export DISPLAY=:0
+
+depend() {
+    need xserver
+    after syslog
+}
+
+start() {
+    ebegin "Starting $name"
+
+    chmod +x /usr/lib/saphir/viewer/src/viewer/start.sh
+    mkdir -p /var/log/saphir
+
+    start-stop-daemon --start --make-pidfile --exec /usr/lib/saphir/viewer/src/viewer/start.sh --pidfile /var/run/$name.pid --background    
+}
+
+stop() {
+    ebegin "Stopping $name"
+    
+    kill -9 $(cat /var/run/$name.pid)
+
+    eend $?
+}

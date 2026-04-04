@@ -1,0 +1,6 @@
+module Themes
+
+singleton ThemeWireframe 1.0 ThemeWireframe.qml
+singleton ThemeDark 1.0 ThemeDark.qml
+singleton ThemeLight 1.0 ThemeLight.qml
+singleton ThemeLowVisibility 1.0 ThemeLowVisibility.qml

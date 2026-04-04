@@ -23,3 +23,11 @@ Analysis of the file (pgadmin4-7.8-x64.exe):
 - Original size: 183,4 Mo
 - Uncompressed size: 870,7 Mo
 - 14 527 files
+
+Explanation:
+- The file contains one or more archives that are uncompressed in the temporary disk
+- The memory get saturated by the files extracted and the files they contain
+
+Solution:
+- Add a temporary disk for /tmp
+

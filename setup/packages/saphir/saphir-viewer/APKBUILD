@@ -1,0 +1,42 @@
+# Contributor:
+# Maintainer: Tristan Israël <tristan.israel@icloud.com>
+pkgname=saphir-viewer
+pkgver=1.0
+pkgrel=0
+pkgdesc="Saphir - Viewer app"
+url="https://defense.gouv.fr/"
+arch="noarch"
+license="MIT"
+depends="safecor-lib safecor-gui-base python3 py3-pyside6 qt6-qt5compat fontconfig freetype"
+makedepends="python3-dev py3-build py3-installer"
+checkdepends=""
+install="$pkgname.post-install"
+subpackages=""
+replaces=""
+builddir="$srcdir/"
+options="!check"  # no tests provided
+py_src_dir="../../../../../python"
+source="viewer.initd"
+
+prepare() {
+    echo "Copy source files"
+    cp -r "$py_src_dir"/viewer "$srcdir"
+}
+
+build() {    
+    cd "$srcdir/viewer"
+    python3 -m build
+}
+
+package() {
+    cd "$srcdir/viewer/dist"
+    mkdir -p "$pkgdir/usr/lib/saphir"
+    tar xvzf "viewer-$pkgver.$pkgrel.tar.gz" -C "$pkgdir/usr/lib/saphir"    
+    cd "$pkgdir/usr/lib/saphir"
+    ln -s "viewer-$pkgver.$pkgrel" viewer
+
+    install -D -m755 "$srcdir"/viewer.initd "$pkgdir"/etc/init.d/viewer
+}
+sha512sums="
+2183873188489869c3944929ac5cda7b1f40a55b048ed850b6cf6c32ad8e88528844264b7fa4b4d3051b206f991aa0cc9c0b72fbeb7ba77172c16c53879ee5be  gui.initd
+"

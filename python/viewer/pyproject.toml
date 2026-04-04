@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "viewer"
+version = "1.0.0"
+authors = [ 
+    { name="Tristan Israël", email="tristan.israel@alefbet.net" }, 
+]
+description = "Viewer app for the Saphir sheep-dip"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX :: Linux",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/viewer"]
+
+[project.urls]
+Homepage = "https://github.com/pypa/sampleproject"
+Issues = "https://github.com/pypa/sampleproject/issues"

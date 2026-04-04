@@ -737,7 +737,7 @@ class ApplicationController(QObject):
             
             # On met à jour le compteur car cette opération est peu couteuse
             # et permet à l'utilisateur de voir qu'il se passe quelque chose
-            if self.__is_enqueuing:                
+            if self.__is_enqueuing:
                 self.queueSizeChanged.emit(len(self.__queued_files_list))
 
             #print(self.__folders_to_query)

@@ -1,0 +1,17 @@
+module Components
+
+Circle 1.0 Circle.qml
+singleton Constants 1.0 Constants.qml
+singleton Environment 1.0 Environment.qml
+FlatButton 1.0 FlatButton.qml
+HalfCircle 1.0 HalfCircle.qml
+Icon 1.0 Icon.qml
+MessageDialog 1.0 MessageDialog.qml
+PanelBase 1.0 PanelBase.qml
+Panel 1.0 Panel.qml
+RoundButton 1.0 RoundButton.qml
+ShadowButton 1.0 ShadowButton.qml
+SimpleDialog 1.0 SimpleDialog.qml
+StyledComboBox 1.0 StyledComboBox.qml
+StyledText 1.0 StyledText.qml
+TwoStatesButton 1.0 TwoStatesButton.qml
