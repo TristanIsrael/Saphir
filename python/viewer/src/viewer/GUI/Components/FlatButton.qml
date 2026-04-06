@@ -4,15 +4,17 @@ import Components
 PanelBase {
     id: btn
 
-    property string label: lbl.text
+    property alias label: lbl.text
+    signal clicked()
 
     width: implicitWidth
     height: implicitHeight
-    implicitWidth: lbl.width *1.2
+    implicitWidth: lbl.width *1.4
     implicitHeight: 70
 
     radius: height / 5
     borderWidth: 2
+    shadowColor: Environment.colorShadowEnabled
 
     Text {
         id: lbl
@@ -21,5 +23,14 @@ PanelBase {
         color: btn.enabled ? Environment.colorButtonTextEnabled : Environment.colorButtonTextDisabled
         font.pixelSize: parent.height * 0.6
         fontSizeMode: Text.HorizontalFit
+    }
+
+    MouseArea {
+        id: ma
+
+        anchors.fill: parent 
+        onClicked: function() {
+            btn.clicked()
+        }
     }
 }

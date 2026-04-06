@@ -1,6 +1,7 @@
 import threading
 import os
 import tempfile
+import fnmatch
 from PySide6.QtCore import (
     QObject,
     Signal,
@@ -18,20 +19,23 @@ from safecor import (
     Constants,
     ComponentState,
     ComponentsHelper,
-    DiskState
+    DiskState,
+    Logger
 )
 from pathlib import Path
 from . import (
     DevModeHelper,
-    SafecorInputFilesListModel
-    #SafecorInputFilesListProxyModel
+    SafecorInputFilesListModel,
+    ViewerConstants,
+    FileType,
+    OfficeHelper
 )
 
 class ApplicationController(QObject):
     """ This class is the main controller of the application """
     
     ###
-    # Member variables    
+    # Member variables
     
     # Signaux
     readyChanged = Signal(bool)
@@ -45,6 +49,9 @@ class ApplicationController(QObject):
     sourceReadyChanged = Signal()
     currentDiskChanged = Signal()
     filesListChanged = Signal()
+    currentStepChanged = Signal()
+    currentFilepathChanged = Signal()
+    currentFiletypeChanged = Signal()
 
     # Fonctions publiques
     def __init__(self, parent=None):
@@ -56,9 +63,8 @@ class ApplicationController(QObject):
         self.__subscribed_count = 0
         self.__language = ""
         self.__translator = None
-        self.__components_helper = ComponentsHelper()
-        self.__disk_controller_ready = False
-        self.__analysis_ready = False
+        #self.__components_helper = ComponentsHelper()
+        #self.__disk_controller_ready = False
         self.__ready_callback = None
         self.__mqtt_client = None
         self.__logfile = os.path.join(tempfile.gettempdir(), "saphir.log")
@@ -70,6 +76,8 @@ class ApplicationController(QObject):
         self.__input_files_list = {}
         self.__source_ready = False
         self.__current_disk = ""
+        self.__current_step = ""
+        self.__current_filepath = ""
 
         self.__input_files_listmodel = SafecorInputFilesListModel(self.__input_files_list, self)
         self.filesListChanged.connect(self.__input_files_listmodel.reset)
@@ -92,7 +100,7 @@ class ApplicationController(QObject):
         Api().add_shutdown_callback(self.__on_shutdown)
         
         # Handle the subscriptions
-        result, mid = Api().subscribe(f"{Topics.READ_FILE}/response")
+        result, mid = Api().subscribe(Topics.NEW_FILE)
         if result:
             self.__subscriptions.append(mid)
 
@@ -136,7 +144,9 @@ class ApplicationController(QObject):
         if self.__ready_callback is not None:
             self.__ready_callback()
         
-        Api().discover_components()
+        #Api().discover_components()
+
+        Api().get_disks_list()
 
         # Energy management
         self.__request_energy_state()
@@ -151,10 +161,10 @@ class ApplicationController(QObject):
             self.__handle_list_disks(payload)
         elif topic == f"{Topics.LIST_FILES}/response":
             self.__handle_list_files(payload)
-        elif topic == f"{Topics.DISCOVER_COMPONENTS}/response":
-            self.__handle_discover_components(payload)
-        elif topic == f"{Topics.READ_FILE}/response":
-            self.__handle_read_file(payload)
+        #elif topic == f"{Topics.DISCOVER_COMPONENTS}/response":
+        #    self.__handle_discover_components(payload)
+        elif topic == Topics.NEW_FILE:
+            self.__handle_new_file(payload)
         elif topic == f"{Topics.ENERGY_STATE}/response":
             self.__handle_energy_state(payload)
         elif topic == f"{Topics.DEFAULT_LANGUAGE}/response":
@@ -165,11 +175,11 @@ class ApplicationController(QObject):
     @Slot()
     def update_source_files_list(self):
         # Ask for the list of files
-        Api().get_files_list(self.__current_disk, False)
+        Api().get_files_list(self.__current_disk, True, "", ViewerConstants.FILES_FILTERS)
 
     @Slot(str)
     def go_to_folder(self, folder:str):
-        Api().get_files_list(self.__current_disk, False, folder)
+        Api().get_files_list(self.__current_disk, True, folder, ViewerConstants.FILES_FILTERS)
 
     @Slot()
     def go_to_parent_folder(self):
@@ -212,7 +222,40 @@ class ApplicationController(QObject):
     def shutdown(self):
         Api().shutdown()
 
-    def __check_components_availability(self):
+    @Slot(str)
+    def view_file(self, filepath:str):
+        # First we read the file
+        self.__set_current_step(QObject.tr("Reading the file..."))
+        Api().read_file(self.__current_disk, filepath)
+
+    @Slot()
+    def clear_current_file(self):
+        self.__set_current_filepath("")
+
+    def __get_current_file_type(self) -> int:
+        return self.__get_file_type(self.__current_filepath).value
+
+    def __get_file_type(self, filename:str) -> FileType:
+        if filename is None:
+            return FileType.Unknown
+        
+        if any(fnmatch.fnmatch(filename, p) for p in ViewerConstants.IMAGES_EXTENSIONS):
+            return FileType.Image
+        elif any(fnmatch.fnmatch(filename, p) for p in ViewerConstants.VIDEOS_EXTENSIONS):
+            return FileType.Video
+        elif any(fnmatch.fnmatch(filename, p) for p in ViewerConstants.CALC_EXTENTIONS):
+            return FileType.Office
+        elif any(fnmatch.fnmatch(filename, p) for p in ViewerConstants.WRITER_EXTENSIONS):
+            return FileType.Office
+        elif any(fnmatch.fnmatch(filename, p) for p in ViewerConstants.AUDIO_EXTENSIONS):
+            return FileType.Audio
+        elif filename.endswith(".pdf"):
+            return FileType.Pdf
+        
+        return FileType.Unknown
+        
+
+    '''def __check_components_availability(self):
         states = self.__components_helper.get_states()
 
         ready = True
@@ -233,20 +276,15 @@ class ApplicationController(QObject):
             if av.get("state", ComponentState.UNKNOWN) == ComponentState.READY and av not in self.__analysis_components:
                 self.__analysis_components.append(av)
 
-        # The system is ready when all necessary components are ready
-        # and the number of antiviruses needed is reached
-        self.__analysis_ready = ready
-        self.analysisReadyChanged.emit(self.__analysis_ready)
-
         if ready:
-            self.__messages_model.addMessage(self.tr("The antiviruses are ready"))
+            self.__messages_model.addMessage(self.tr("The antiviruses are ready"))'''
 
     def __handle_disk_state(self, payload:dict):
         disk = payload.get("disk")
         if disk is None:
             Api().error("The disk value is missing")
             return
-        
+
         state = payload.get("state")
         if state is None:
             Api().error("The state value is missing")
@@ -313,7 +351,7 @@ class ApplicationController(QObject):
 
         self.filesListChanged.emit()
 
-    def __handle_discover_components(self, payload:dict):
+    '''def __handle_discover_components(self, payload:dict):
         if not MqttHelper.check_payload(payload, ["components"]):
             Api().error("The response is malformed")
             return
@@ -321,27 +359,45 @@ class ApplicationController(QObject):
         components = payload.get("components", [])
         if len(components) > 0:
             self.__components_helper.update(components)
-            self.__check_components_availability()
-            self.__components_model.components_updated()
+            #self.__check_components_availability()
+            self.__components_model.components_updated()'''
 
-    def __handle_read_file(self, payload:dict):
-        pass
+    def __handle_new_file(self, payload:dict):
+        if not MqttHelper.check_payload(payload, [ "filepath" ]):
+            self.__set_current_step(QObject.tr("An error occured when reading the file."))
+            Logger().error(f"Incorrect response format for {Topics.READ_FILE}")
+            return
+
+        self.__set_current_step(QObject.tr("The file has been read."))
+
+        file_path = payload.get("filepath", "")
+        file_type = self.__get_file_type(file_path)
+
+        # Depending on the file type we may need to convert it
+        if file_type == FileType.Office:
+            # We have to convert this file
+            self.__set_current_step(QObject.tr("Converting the file"))
+            file_path = OfficeHelper.convert_to_pdf(file_path)
+            file_type = FileType.Pdf
+            self.__set_current_step(QObject.tr("File file has been converted"))
+        
+        self.__set_current_filepath(file_path)
 
     def __handle_energy_state(self, payload:dict):
         if not MqttHelper.check_payload(payload, ["battery_level", "plugged"]):
             return
-        
+
         self.__battery_level = payload.get("battery_level", 0)
         self.batteryLevelChanged.emit()
         self.__system_information_model.set_battery_level(self.__battery_level)
         self.__plugged = bool(payload.get("plugged", False))
         self.pluggedChanged.emit()
         self.__system_information_model.set_power_plugged(self.__plugged)
-    
-    def __on_disk_controller_state_changed(self, ready:bool):
+
+    '''def __on_disk_controller_state_changed(self, ready:bool):
         Api().debug(f"Safecor disk controller is {"ready" if ready else "not ready"}")
         if ready:
-            Api().get_disks_list()
+            Api().get_disks_list()'''
 
     def __request_energy_state(self):
         if not self.__monitor_energy:
@@ -416,6 +472,33 @@ class ApplicationController(QObject):
     def __get_current_disk(self):
         return self.__current_disk
 
+    def __get_current_step(self):
+        return self.__current_step
+    
+    def __set_current_step(self, step:str):
+        if self.__current_step == step:
+            return
+        
+        self.__current_step = step
+        self.currentStepChanged.emit()
+
+    def __get_current_filepath(self):
+        return self.__current_filepath
+    
+    def __set_current_filepath(self, filepath:str):
+        if self.__current_filepath == filepath:
+            return
+        
+        self.__current_filepath = filepath
+        self.currentFilepathChanged.emit()
+        self.currentFiletypeChanged.emit()
+
+    def __get_repository_path(self):
+        if DevModeHelper.DEVMODE:
+            return DevModeHelper.get_repository_path()
+        else:
+            return "/mnt/storage"
+
     ready = Property(bool, __is_ready, __set_ready, notify=readyChanged)
     batteryLevel = Property(int, __get_battery_level, notify=batteryLevelChanged)
     plugged = Property(bool, __is_plugged, notify=pluggedChanged)
@@ -427,3 +510,7 @@ class ApplicationController(QObject):
     inputFilesListModel = Property(QObject, __get_input_files_listmodel, constant= True)
     #inputFilesListProxyModel = Property(QObject, __get_input_files_listproxymodel, constant= True)
     sourceReady = Property(bool, __is_source_ready, notify= sourceReadyChanged)
+    currentStep = Property(str, __get_current_step, notify=currentStepChanged)
+    currentFilepath = Property(str, __get_current_filepath, notify=currentFilepathChanged)
+    repositoryPath = Property(str, __get_repository_path, constant=True)
+    currentFiletype = Property(int, __get_current_file_type, notify=currentFiletypeChanged)

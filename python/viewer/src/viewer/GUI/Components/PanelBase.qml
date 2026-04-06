@@ -9,6 +9,7 @@ Item {
     property int borderWidth: 1
     property bool highlight: true
     property bool flat: false
+    property alias shadowColor: shadowRect.color
 
     width: implicitWidth
     height: implicitHeight
@@ -55,6 +56,7 @@ Item {
             maskEnabled: true
             maskSource: ShaderEffectSource {
                 sourceItem: Rectangle {
+                    id: shadowRect
                     color: "white"
                     width: root.width
                     height: root.height

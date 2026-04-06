@@ -7,6 +7,8 @@ import Saphir
 PanelBase {
     id: root
 
+    signal viewFile(string filepath)
+
     width: implicitWidth
     height: implicitHeight
     implicitWidth: Environment.mainWidth * 0.9
@@ -192,7 +194,6 @@ PanelBase {
                         horizontalAlignment: Text.AlignLeft
                         elide: type === "file" || type === "folder" ? Text.ElideMiddle : Text.ElideRight
                         Layout.fillWidth: true
-                        //section: Constants.Section.Title2
                         font.pixelSize: parent.height*0.7
 
                         MouseArea {
@@ -206,7 +207,19 @@ PanelBase {
 
                     Item {
                         Layout.fillWidth: true
-                    }                     
+                    }
+
+                    FlatButton {
+                        id: btnViewFile
+                        label: qsTr("View")
+                        Layout.preferredHeight: parent.height*0.8
+                        
+                        Connections {
+                            function onClicked() {
+                                root.viewFile(filepath)
+                            }
+                        }
+                    }
                 }         
             }
 

@@ -27,6 +27,7 @@ Item {
     property alias lytMenuLanguages: lytMenuLanguages
     property alias btnLanguageEN: btnLanguageEN
     property alias btnLanguageFR: btnLanguageFR
+    property alias pnlViewer: pnlViewer
 
     property bool menuThemesOpened: false
     property bool mainMenuOpened: false
@@ -292,6 +293,12 @@ Item {
             id: pnlFileSelection
             anchors.fill: parent
             visible: true
+        }
+
+        ViewerPanel {
+            id: pnlViewer
+            anchors.fill: parent
+            visible: false
         }
 
     }

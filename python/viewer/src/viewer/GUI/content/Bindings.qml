@@ -17,6 +17,10 @@ Item {
     property string currentFolder: ApplicationController.currentFolder
     property string currentDisk: ApplicationController.currentDisk
     property bool sourceReady: ApplicationController.sourceReady
+    property string currentStep: ApplicationController.currentStep
+    property string currentFilepath: ApplicationController.currentFilepath
+    property string repositoryPath: ApplicationController.repositoryPath
+    property int currentFiletype: ApplicationController.currentFiletype
     
     /** Models */
     property var inputFilesListModel: ApplicationController.inputFilesListModel
@@ -56,6 +60,14 @@ Item {
 
     function shutdown() {
         ApplicationController.shutdown()
+    }
+
+    function viewFile(filepath) {
+        ApplicationController.view_file(filepath)
+    }
+
+    function clearCurrentFile() {
+        ApplicationController.clear_current_file()
     }
 
     /**

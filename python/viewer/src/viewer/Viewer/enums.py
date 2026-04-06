@@ -12,9 +12,13 @@ class Roles():
     RoleInfected = Qt.UserRole  + 7
     RoleId = Qt.UserRole        + 8
 
+class FileType(Enum):
+    Unknown, Image, Video, Audio, Office, Pdf = range(6)
+
 class SystemState(Enum):
-    SystemInactive = range(1)
+    SystemInactive = 0
 
 #@QmlElement
 class Enums(QObject):
-    SystemState
+    QEnum(SystemState)
+    QEnum(FileType)
