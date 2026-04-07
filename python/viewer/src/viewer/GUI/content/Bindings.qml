@@ -70,6 +70,14 @@ Item {
         ApplicationController.clear_current_file()
     }
 
+    function on_disk_selected(disk_name) {
+        ApplicationController.on_disk_selected(comboStorages.currentValue)
+    }
+
+    function back_to_saphir() {
+        ApplicationController.back_to_saphir()
+    }
+
     /**
         For development only
     */

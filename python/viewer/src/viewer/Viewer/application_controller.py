@@ -415,6 +415,10 @@ class ApplicationController(QObject):
         self.currentDiskChanged.emit()
         self.update_source_files_list()
 
+    @Slot()
+    def back_to_saphir(self):
+        Api().switch_gui("saphir-gui")
+
     ###
     # Getters and setters
     #    

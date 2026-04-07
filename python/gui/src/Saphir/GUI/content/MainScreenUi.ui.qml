@@ -39,6 +39,7 @@ Item {
     property alias lytMenuLanguages: lytMenuLanguages
     property alias btnLanguageEN: btnLanguageEN
     property alias btnLanguageFR: btnLanguageFR
+    property alias btnShowViewer: btnShowViewer
 
     property bool menuThemesOpened: false
     property bool mainMenuOpened: false
@@ -282,6 +283,16 @@ Item {
                 Item {}
             }
         }
+    }
+
+    /* Upper right buttons */
+    ShadowButton {
+        id: btnShowViewer
+
+        x: parent.width - (width * 1.25)
+        y: topBar.height * 2
+
+        icon: Constants.iconView
     }
 
     /* Lower right buttons */

@@ -96,6 +96,10 @@ Item {
         ApplicationController.shutdown()
     }
 
+    function switch_to_viewer() {
+        ApplicationController.switch_to_viewer()
+    }
+
     /**
         For development only
     */

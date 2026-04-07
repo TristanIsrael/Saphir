@@ -548,6 +548,10 @@ class ApplicationController(QObject):
         self.__messages_model.addMessage(self.tr("The system is shutting down..."))
         Api().shutdown()
 
+    @Slot()
+    def switch_to_viewer(self):
+        Api().switch_gui("saphir-viewer")
+
     def __check_components_availability(self):
         states = self.__components_helper.get_states()
 

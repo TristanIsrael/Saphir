@@ -33,6 +33,7 @@ QtObject {
     readonly property string iconSelectDisk: "\ue5c6" //"\ue8d4"
     readonly property string iconCopyFiles: "\ue2c6" //"\uf09b"
     readonly property string iconTick: "\ue876"
+    readonly property string iconView: "\ue8f4"
 
     readonly property string battery_0: "\uf306"
     readonly property string battery_15: "\uf30b"

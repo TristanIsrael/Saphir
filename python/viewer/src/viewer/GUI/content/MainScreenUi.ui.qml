@@ -28,6 +28,7 @@ Item {
     property alias btnLanguageEN: btnLanguageEN
     property alias btnLanguageFR: btnLanguageFR
     property alias pnlViewer: pnlViewer
+    property alias btnBackToSaphir: btnBackToSaphir
 
     property bool menuThemesOpened: false
     property bool mainMenuOpened: false
@@ -277,15 +278,27 @@ Item {
         handheld: bindings.handheld
     }
 
+    /* Upper right buttons */
+    ShadowButton {
+        id: btnBackToSaphir
+
+        x: parent.width - (width * 1.25)
+        y: topBar.height * 2
+
+        icon: Constants.iconShield
+    }
+
     /* Main Panel */
     Item {
         anchors {
             top: topBar.bottom
             left: parent.left
             leftMargin: pnlMainMenu.x * 2 + btnMainMenu.width * 1.2
-            right: parent.right
+            right: btnBackToSaphir.left
+            rightMargin: 10
             bottom: parent.bottom
-            margins: mainWindow.height * 0.05
+            topMargin: mainWindow.height * 0.05
+            bottomMargin: mainWindow.height * 0.05
         }
 
         /* File selection */

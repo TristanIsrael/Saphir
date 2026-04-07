@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import Components
-import Saphir
 
 PanelBase {
     id: root
@@ -38,11 +37,11 @@ PanelBase {
                 model: bindings.disksList                   
 
                 onActivated: {                    
-                    ApplicationController.on_disk_selected(comboStorages.currentValue)
+                    bindings.on_disk_selected(comboStorages.currentValue)
                 }
 
                 Component.onCompleted: {
-                    currentIndex = comboStorages.indexOfValue(ApplicationController.currentDisk)
+                    currentIndex = comboStorages.indexOfValue(bindings.currentDisk)
                 }
             }
 
@@ -236,23 +235,14 @@ PanelBase {
 
     /** Slots */
     function onVisibleChanged() {
-        if(visible && ApplicationController.sourceReady) {
-            ApplicationController.update_source_files_list()
+        if(visible && bindings.sourceReady) {
+            bindings.update_source_files_list()
         }
-    }
-
-    Connections {
-        target: ApplicationController
-
-        /*function onCurrentDiskChanged() {
-            console.debug("current disk=", ApplicationController.currentDisk)
-            comboStorages.currentIndex = comboStorages.indexOfValue(ApplicationController.currentDisk)
-        }*/
     }
 
     /** Functions */
     function goToFolder(folderName) {
-        const currentFolder = ApplicationController.currentFolder
+        const currentFolder = bindings.currentFolder
         bindings.goToFolder((currentFolder === "/" ? "" : currentFolder) +"/" +folderName)
     }
 }

@@ -147,6 +147,14 @@ Window {
             }
         }
 
+        Connections {
+            target: window.btnBackToSaphir
+
+            function onClicked() {
+                console.debug("Back to Saphir")
+                bindings.back_to_saphir()
+            }
+        }
 
         /* Animations */
         Behavior on pnlMenuThemes.width {
@@ -167,8 +175,6 @@ Window {
 
     Bindings {
         id: bindings
-
-        
     }
 
     Component.onCompleted: {
