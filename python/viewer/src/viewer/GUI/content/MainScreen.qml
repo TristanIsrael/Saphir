@@ -141,7 +141,6 @@ Window {
             target: window.pnlFileSelection
 
             function onViewFile(filepath) {
-                console.debug("Show the file", filepath)
                 bindings.clearCurrentFile()
                 window.pnlViewer.visible = true
                 bindings.viewFile(filepath)

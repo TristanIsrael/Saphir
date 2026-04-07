@@ -48,17 +48,7 @@ PanelBase {
 
 
             Item { Layout.fillWidth: true }            
-        }
-
-        /* Breadcrumbs */
-        StyledText
-        {            
-            Layout.fillWidth: true
-            text: qsTr("Current folder: ") +bindings.currentFolder
-            horizontalAlignment: Text.AlignLeft
-            verticalAlignment: Text.AlignVCenter
-            elide: Text.ElideLeft
-        }
+        }        
 
         /** Back to the parent folder */
         RowLayout {

@@ -58,6 +58,18 @@ PanelBase {
                 source: pdf.visible ? root.filePath : ""
             }
         }
+
+        MediaViewer {
+            id: mediaViewer
+
+            anchors {
+                fill: parent
+            }
+
+            visible: root.fileType === Enums.Video || root.fileType === Enums.Audio
+            filePath: root.filePath
+        }
+        
     }
 
     StyledText {
