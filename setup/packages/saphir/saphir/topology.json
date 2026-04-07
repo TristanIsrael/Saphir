@@ -38,6 +38,13 @@
                 "memory": 1500,
                 "vcpu_group": "antivirus",
                 "temp_disk_size": 4096
+            },
+            {
+                "name": "saphir-viewer",
+                "app-package": "saphir-viewer",
+                "memory": 1000,
+                "has_gui": 1,
+                "vcpu_group": "gui"
             }
         ]
     },

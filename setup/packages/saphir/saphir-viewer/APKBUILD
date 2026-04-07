@@ -3,7 +3,7 @@
 pkgname=saphir-viewer
 pkgver=1.0
 pkgrel=0
-pkgdesc="Saphir - Viewer app"
+pkgdesc="Saphir - Viewer module"
 url="https://defense.gouv.fr/"
 arch="noarch"
 license="MIT"
@@ -38,5 +38,5 @@ package() {
     install -D -m755 "$srcdir"/viewer.initd "$pkgdir"/etc/init.d/viewer
 }
 sha512sums="
-2183873188489869c3944929ac5cda7b1f40a55b048ed850b6cf6c32ad8e88528844264b7fa4b4d3051b206f991aa0cc9c0b72fbeb7ba77172c16c53879ee5be  gui.initd
+8cb557e76ee4aad513645d86802096d8a81f62df74d89ae91b3ff6cae0804cb75817c7d1a76f4fdc224217ae18e38bc6a98ef560aa01c53220f7387f0a6a3cef  viewer.initd
 "
