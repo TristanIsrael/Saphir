@@ -3,10 +3,10 @@ from safecor import MqttClient, ConnectionType
 from pathlib import Path
 
 class DevModeHelper():
-    DEVMODE = True
+    DEVMODE = os.getenv("DEVMODE", "") != ""    
 
     @staticmethod
-    def create_mqtt_client(identifier:str) -> MqttClient:
+    def create_mqtt_client(identifier:str) -> MqttClient:        
         return MqttClient(identifier, ConnectionType.TCP_DEBUG, "localhost")
     
     @staticmethod

@@ -42,9 +42,10 @@
             {
                 "name": "saphir-viewer",
                 "app-package": "saphir-viewer",
-                "memory": 1500,
+                "memory": 1000,
                 "has_gui": 1,
-                "vcpu_group": "gui"
+                "vcpu_group": "gui",
+                "temp_disk_size": 1024
             }
         ]
     },

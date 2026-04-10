@@ -4,7 +4,7 @@ pkgname=saphir
 pkgver=3.1
 pkgrel=0
 pkgdesc="Saphir is a robust sheep-dip solution"
-url="https://defense.gouv.fr/"
+url="https://alefbet.net/"
 arch="noarch"
 license="MIT"
 depends="safecor-core safecor-lib safecor-sys-gui"
@@ -32,6 +32,6 @@ package() {
 }
 
 sha512sums="
-63c07ff036294b7ad611bdcf81754394845a093b76786073e03e5cde19898bd6386d9fd82277919fceddcfbe5a5ee695959431eff0298d90e01439b712404812  topology.json
+8e612b888106ff6685d0f832cc79485d7b994c2cacbdb81acc06ae4278ae43a2b479da76842b87d540a4a507853bc6079645f34a588aa2a8191a60593e405721  topology.json
 97496a85945a98737a4b78eb0f7f56ce44712b7f4c4f45e038f990b77de1a665bdc0fda99dc90b28efecb2c8525f5912ffff41cbe022c36eb64dbd75f70b74e3  splash.png
 "

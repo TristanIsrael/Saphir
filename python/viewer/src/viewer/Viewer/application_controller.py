@@ -83,6 +83,7 @@ class ApplicationController(QObject):
         self.filesListChanged.connect(self.__input_files_listmodel.reset)
 
     def start(self, ready_callback):
+        print(f"DEVMODE is {DevModeHelper.DEVMODE}")
         if DevModeHelper.DEVMODE:
             self.__mqtt_client = DevModeHelper.create_mqtt_client("Saphir")
         else:

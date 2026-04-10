@@ -2,12 +2,12 @@
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 pkgname=saphir-gui
 pkgver=3.1
-pkgrel=0
+pkgrel=1
 pkgdesc="Saphir - Graphical User Interface"
-url="https://defense.gouv.fr/"
+url="https://alefbet.net/"
 arch="noarch"
 license="MIT"
-depends="safecor-lib saphir-lib safecor-gui-base python3 py3-pyside6 qt6-qt5compat py3-psutil py3-humanize py3-jinja2 weasyprint fontconfig freetype"
+depends="safecor-lib saphir-lib safecor-gui-base fontconfig freetype" # py3-psutil py3-humanize py3-jinja2 weasyprint fontconfig freetype"
 makedepends="python3-dev py3-build py3-installer"
 checkdepends=""
 install="$pkgname.post-install"
@@ -21,22 +21,25 @@ source="gui.initd"
 prepare() {
     echo "Copy source files"
     cp -r "$py_src_dir"/gui "$srcdir"
+
+    # We don't have the Alpine package for pyinstaller yet so we install it from pip
+    echo "Install py3installer from PIP"    
+    pip install pyinstaller --break-system-package
 }
 
 build() {    
-    cd "$srcdir/gui"
-    python3 -m build
+    cd "$srcdir/viewer"    
+    python3 -m PyInstaller saphir-gui.spec --noconfirm 
 }
 
 package() {
     cd "$srcdir/gui/dist"
     mkdir -p "$pkgdir/usr/lib/saphir"
-    tar xvzf "saphir_gui-$pkgver.$pkgrel.tar.gz" -C "$pkgdir/usr/lib/saphir"    
-    cd "$pkgdir/usr/lib/saphir"
-    ln -s "saphir_gui-$pkgver.$pkgrel" gui
-
+    cp -r "$pkgname" "$pkgdir/usr/lib/saphir" 
+    
     install -D -m755 "$srcdir"/gui.initd "$pkgdir"/etc/init.d/gui
 }
+
 sha512sums="
 2183873188489869c3944929ac5cda7b1f40a55b048ed850b6cf6c32ad8e88528844264b7fa4b4d3051b206f991aa0cc9c0b72fbeb7ba77172c16c53879ee5be  gui.initd
 "

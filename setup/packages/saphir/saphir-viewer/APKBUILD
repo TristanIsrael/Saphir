@@ -2,13 +2,13 @@
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 pkgname=saphir-viewer
 pkgver=1.0
-pkgrel=0
+pkgrel=1
 pkgdesc="Saphir - Viewer module"
-url="https://defense.gouv.fr/"
-arch="noarch"
+url="https://alefbet.net/"
+arch="x86_64"
 license="MIT"
-depends="safecor-lib safecor-gui-base python3 py3-pyside6 qt6-qt5compat fontconfig freetype"
-makedepends="python3-dev py3-build py3-installer"
+depends="safecor-lib safecor-domu-base safecor-gui-base fontconfig freetype"
+makedepends="python3-dev py3-build python3 py3-pyside6 qt6-qt5compat"
 checkdepends=""
 install="$pkgname.post-install"
 subpackages=""
@@ -21,22 +21,24 @@ source="viewer.initd"
 prepare() {
     echo "Copy source files"
     cp -r "$py_src_dir"/viewer "$srcdir"
+
+    # We don't have the Alpine package for pyinstaller yet so we install it from pip
+    echo "Install py3installer from PIP"    
+    pip install pyinstaller --break-system-package
 }
 
 build() {    
-    cd "$srcdir/viewer"
-    python3 -m build
+    cd "$srcdir/viewer"    
+    python3 -m PyInstaller saphir-viewer.spec --noconfirm 
 }
 
 package() {
     cd "$srcdir/viewer/dist"
     mkdir -p "$pkgdir/usr/lib/saphir"
-    tar xvzf "viewer-$pkgver.$pkgrel.tar.gz" -C "$pkgdir/usr/lib/saphir"    
-    cd "$pkgdir/usr/lib/saphir"
-    ln -s "viewer-$pkgver.$pkgrel" viewer
-
+    cp -r "$pkgname" "$pkgdir/usr/lib/saphir" 
+    
     install -D -m755 "$srcdir"/viewer.initd "$pkgdir"/etc/init.d/viewer
 }
 sha512sums="
-8cb557e76ee4aad513645d86802096d8a81f62df74d89ae91b3ff6cae0804cb75817c7d1a76f4fdc224217ae18e38bc6a98ef560aa01c53220f7387f0a6a3cef  viewer.initd
+fbe1141389542c1fbc9628f17511c23de75375c0a96dfdf3c931f1b5de55a4d6f933bcf458a3d234e03106e86d68316d0fac529e4dc9f5c59baafc26f47314b4  viewer.initd
 "

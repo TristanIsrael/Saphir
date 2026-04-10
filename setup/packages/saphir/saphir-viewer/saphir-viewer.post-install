@@ -1,12 +1,8 @@
 #!/bin/sh
 
-chmod +x /usr/lib/saphir/gui/src/Viewer/start.sh
 mkdir -p /var/log/saphir
 
 rc-update add viewer
 rc-service viewer start
-
-# Remove unneeded big files
-rm /usr/lib/libQt6WebEngineCore*
 
 exit 0
