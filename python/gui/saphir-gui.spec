@@ -21,7 +21,9 @@ a = Analysis(
         "PySide6.QtGui",
         "PySide6.QtQuick",
         "PySide6.QtQml",
-        "PySide6.QtNetwork"
+        "PySide6.QtNetwork",
+        "PySide6.QtWidgets",
+        "jinja2"
     ],
     hookspath=[],
     hooksconfig={},
@@ -53,7 +55,6 @@ a.binaries = [
         "QtTest",
         "QtTextToSpeech",
         "QtWeb",
-        "QtWidgets",
         "Qt63D",
         "Qt6Bluetooth",                
         "Qt6DataVisualization",
@@ -77,8 +78,7 @@ a.binaries = [
         "Qt6Svg",
         "Qt6Test",
         "Qt6TextToSpeech",
-        "Qt6Web",
-        "Qt6Widgets"
+        "Qt6Web"
     ])
 ]
 
