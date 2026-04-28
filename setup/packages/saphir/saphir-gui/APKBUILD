@@ -5,10 +5,10 @@ pkgver=3.1
 pkgrel=1
 pkgdesc="Saphir - Graphical User Interface"
 url="https://alefbet.net/"
-arch="noarch"
+arch="x86_64"
 license="MIT"
 depends="safecor-lib saphir-lib safecor-gui-base fontconfig freetype" # py3-psutil py3-humanize py3-jinja2 weasyprint fontconfig freetype"
-makedepends="python3-dev py3-build py3-installer"
+makedepends="python3-dev py3-build py3-installer py3-pyside6"
 checkdepends=""
 install="$pkgname.post-install"
 subpackages=""
@@ -28,7 +28,7 @@ prepare() {
 }
 
 build() {    
-    cd "$srcdir/viewer"    
+    cd "$srcdir/gui"    
     python3 -m PyInstaller saphir-gui.spec --noconfirm 
 }
 
@@ -41,5 +41,5 @@ package() {
 }
 
 sha512sums="
-2183873188489869c3944929ac5cda7b1f40a55b048ed850b6cf6c32ad8e88528844264b7fa4b4d3051b206f991aa0cc9c0b72fbeb7ba77172c16c53879ee5be  gui.initd
+6f21dbf85490733f0e3f28a2df1ad4f1d625000f58bf2cd5a34c05960f1a3623550cff1aa49d59f47fc9a59f4aab139eebe16ce59f571b377c58080b06696c15  gui.initd
 "

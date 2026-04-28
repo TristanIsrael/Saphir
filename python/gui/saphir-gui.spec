@@ -20,7 +20,8 @@ a = Analysis(
         "PySide6.QtCore",
         "PySide6.QtGui",
         "PySide6.QtQuick",
-        "PySide6.QtQml"
+        "PySide6.QtQml",
+        "PySide6.QtNetwork"
     ],
     hookspath=[],
     hooksconfig={},
@@ -39,7 +40,6 @@ a.binaries = [
         "QtCharts",
         "QtLocation",
         "QtMultimedia",
-        "QtNetwork",
         "QtPositioning",
         "QtQuick3D",
         "QtScxml",
@@ -60,7 +60,6 @@ a.binaries = [
         "Qt6Charts",
         "Qt6Location",
         "Qt6Multimedia",
-        "Qt6Network",
         "Qt6Positioning",
         "Qt6Quick3D",
         "Qt6Quick3DUtils",
