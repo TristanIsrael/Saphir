@@ -21,7 +21,7 @@
             {
                 "name": "saphir-gui",
                 "app-package": "saphir-gui",
-                "memory": 1800,
+                "memory": 1200,
                 "has_gui": 1,
                 "vcpu_group": "gui",
                 "temp_disk_size": 1024
@@ -36,14 +36,14 @@
             {
                 "name": "saphir-av-eset",
                 "app-package": "saphir-av-eset",
-                "memory": 1500,
+                "memory": 2500,
                 "vcpu_group": "antivirus",
                 "temp_disk_size": 4096
             },
             {
                 "name": "saphir-viewer",
                 "app-package": "saphir-viewer",
-                "memory": 1000,
+                "memory": 1200,
                 "has_gui": 1,
                 "vcpu_group": "gui",
                 "temp_disk_size": 1024
