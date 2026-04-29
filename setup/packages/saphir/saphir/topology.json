@@ -23,7 +23,8 @@
                 "app-package": "saphir-gui",
                 "memory": 1800,
                 "has_gui": 1,
-                "vcpu_group": "gui"
+                "vcpu_group": "gui",
+                "temp_disk_size": 1024
             },
             {
                 "name": "saphir-av-clamav",

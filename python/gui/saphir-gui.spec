@@ -23,7 +23,8 @@ a = Analysis(
         "PySide6.QtQml",
         "PySide6.QtNetwork",
         "PySide6.QtWidgets",
-        "jinja2"
+        "jinja2",
+        "weasyprint"
     ],
     hookspath=[],
     hooksconfig={},
