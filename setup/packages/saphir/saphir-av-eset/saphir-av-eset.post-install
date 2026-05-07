@@ -6,6 +6,11 @@ rc-service cgroups start
 rc-update add av-controller
 rc-service av-controller start
 
+# Patch the container configuration to mount the local
+# temporary directory
+echo "lxc.mount.entry = /tmp tmp none bind,optional,create=dir,noexec,nodev,nosuid" | sudo tee -a /var/lib/lxc/saphir-container-eset/config > /dev/null
+echo "lxc.mount.entry = /tmp var/tmp none bind,optional,create=dir,noexec,nodev,nosuid" | sudo tee -a /var/lib/lxc/saphir-container-eset/config > /dev/null
+
 lxc-start -n saphir-container-eset
 
 # Optimize cache and memory
