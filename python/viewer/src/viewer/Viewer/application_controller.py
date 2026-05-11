@@ -85,14 +85,14 @@ class ApplicationController(QObject):
     def start(self, ready_callback):
         print(f"DEVMODE is {DevModeHelper.DEVMODE}")
         if DevModeHelper.DEVMODE:
-            self.__mqtt_client = DevModeHelper.create_mqtt_client("Saphir")
+            self.__mqtt_client = DevModeHelper.create_mqtt_client("Viewer")
         else:
-            self.__mqtt_client = MqttFactory.create_mqtt_client_domu("Saphir")
+            self.__mqtt_client = MqttFactory.create_mqtt_client_domu("Viewer")
         
         self.__ready_callback = ready_callback
 
         Api().add_ready_callback(self.__on_api_ready)
-        Api().start(mqtt_client=self.__mqtt_client, domain_identifier="GUI", recording=True, logfile=self.__logfile)        
+        Api().start(mqtt_client=self.__mqtt_client, domain_identifier="Viewer", recording=True, logfile=self.__logfile)        
 
 
     def __on_api_ready(self):

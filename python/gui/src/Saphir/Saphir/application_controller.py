@@ -152,9 +152,9 @@ class ApplicationController(QObject):
 
     def start(self, ready_callback):
         if DEVMODE:
-            self.__mqtt_client = DevModeHelper.create_mqtt_client("Saphir")
+            self.__mqtt_client = DevModeHelper.create_mqtt_client("GUI")
         else:
-            self.__mqtt_client = MqttFactory.create_mqtt_client_domu("Saphir")
+            self.__mqtt_client = MqttFactory.create_mqtt_client_domu("GUI")
 
         self.__logfile = os.path.join(tempfile.gettempdir(), "saphir.log")
         self.__ready_callback = ready_callback
