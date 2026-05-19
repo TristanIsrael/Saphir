@@ -31,6 +31,7 @@ Item {
     property var storagesList: ApplicationController.storages
     property int cleanFilesSize: ApplicationController.cleanFilesSize
     property int targetAvailableSize: ApplicationController.targetAvailableSize
+    property real systemLoadingProgress: ApplicationController.systemLoadingProgress
 
     /** Models */
     property var sourceFilesListModel: ApplicationController.inputFilesListProxyModel

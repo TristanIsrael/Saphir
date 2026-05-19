@@ -62,6 +62,7 @@ class ApplicationController(QObject):
     __messages_model = MessagesListModel()
     __handheld = True
     __eta_estimator = EMAETAEstimator()
+    __system_loading_progress = 0.0
     
     #__interfaceInputs = None
     #__main_window:QWidget
@@ -112,6 +113,7 @@ class ApplicationController(QObject):
     copiedFilesCountChanged = Signal()
     languageChanged = Signal()
     translationInstalled = Signal()
+    systemLoadingProgressChanged = Signal()
 
     # Energy
     __battery_level = 0
@@ -374,6 +376,12 @@ class ApplicationController(QObject):
 
         self.__messages_model.addMessage(self.tr("The system is resetting, please wait..."))
 
+        # Set the system in starting mode
+        self.__system_state = SystemState.SystemStarting
+        self.systemStateChanged.emit(self.__system_state)
+        self.__analysis_ready = False
+        self.analysisReadyChanged.emit()
+
     @Slot()
     def set_long_process_running(self, running:bool):
         self.__long_process_running = running
@@ -456,6 +464,7 @@ class ApplicationController(QObject):
 
         self.__set_system_state(SystemState.SystemReady)
         Api().discover_components()
+        self.__set_system_loading_progress(0.25)
         Api().request_system_info()
 
         # Energy management
@@ -577,6 +586,20 @@ class ApplicationController(QObject):
         # and the number of antiviruses needed is reached
         self.__analysis_ready = ready
         self.analysisReadyChanged.emit(self.__analysis_ready)
+
+        # Update the loading progress
+        progress = 0.0
+        
+        if ready:
+            progress = 1.0
+        elif len(self.__analysis_components) == 2:
+            progress = 0.66
+        elif len(self.__analysis_components) == 1:
+            progress = 0.5
+        elif self.__components_helper.is_ready(Constants.SAFECOR_DISK_CONTROLLER) and self.__components_helper.is_ready(Constants.SAFECOR_INPUT_CONTROLLER) and self.__components_helper.is_ready(Constants.SAFECOR_SYSTEM_CONTROLLER):
+            progress = 0.33
+
+        self.__set_system_loading_progress(progress)
 
         if ready:
             self.__messages_model.addMessage(self.tr("The antiviruses are ready"))
@@ -1144,6 +1167,16 @@ class ApplicationController(QObject):
     def __set_language(self, lang:str):
         self.__install_translations(lang)
 
+    def __set_system_loading_progress(self, val:float):
+        if self.__system_loading_progress == val:
+            return
+        
+        self.__system_loading_progress = val
+        self.systemLoadingProgressChanged.emit()
+
+    def __get_system_loading_progress(self):
+        return self.__system_loading_progress
+
     ready = Property(bool, __is_ready, __set_ready, notify=readyChanged) 
     currentFolder = Property(str, __get_current_folder, notify=currentFolderChanged)
     idCurrentFolder = Property(str, __get_current_folder, notify=idCurrentFolderChanged)
@@ -1186,5 +1219,6 @@ class ApplicationController(QObject):
     systemInformationModel = Property(QObject, __get_system_information_model, constant=True)
     handheld = Property(bool, __get_handheld, constant=True)
     storages = Property(list, __get_storages, notify=storagesChanged)
+    systemLoadingProgress = Property(float, __get_system_loading_progress, notify=systemLoadingProgressChanged)
 
     language = Property(str, __get_language, __set_language, notify= languageChanged)

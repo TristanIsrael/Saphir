@@ -293,6 +293,7 @@ Item {
         y: topBar.height * 2
 
         icon: Constants.iconView
+        visible: false // Hidden until 3.2
     }
 
     /* Lower right buttons */
@@ -330,11 +331,20 @@ Item {
             bottomMargin: parent.height * 0.05
         }
 
-        visible: !pnlAnalysis.visible && !pnlFileSelection.visible
-                 && !pnlFilesCopy.visible
+
+        /*visible: !pnlAnalysis.visible && !pnlFileSelection.visible
+                 && !pnlFilesCopy.visible*/
+        visible: false
         height: visible ? implicitHeight : 0
 
         radius: 10
+    }
+
+    SystemLoadingPanel {
+        id: pnlLoading
+
+        anchors.centerIn: parent
+        visible: !bindings.analysisReady
     }
 
     /* Dialogs */

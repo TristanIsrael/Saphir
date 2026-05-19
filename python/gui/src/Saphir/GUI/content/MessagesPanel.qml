@@ -33,7 +33,7 @@ PanelBase {
 
             delegate: StyledText {
                 text: display
-                color: Environment.colorText                
+                color: Environment.colorText
             }
 
             Behavior on contentY {
