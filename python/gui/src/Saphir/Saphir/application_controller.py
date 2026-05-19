@@ -464,7 +464,7 @@ class ApplicationController(QObject):
 
         self.__set_system_state(SystemState.SystemReady)
         Api().discover_components()
-        self.__set_system_loading_progress(0.25)
+        self.__set_system_loading_progress(0.15)
         Api().request_system_info()
 
         # Energy management

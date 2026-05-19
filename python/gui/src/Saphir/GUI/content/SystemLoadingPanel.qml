@@ -25,8 +25,15 @@ PanelBase {
             z: 0.1
 
             height: 5
-            width: rctReady.x * progress
-            color: Environment.colorRunning.alpha(0.25)
+            width: 0
+            color: Environment.colorRunning.alpha(0.75)
+
+            Behavior on width {
+                NumberAnimation {
+                    easing.type: Easing.InOutCubic
+                    duration: 5000
+                }
+            }
         }
 
         StyledText {
@@ -108,5 +115,15 @@ PanelBase {
 
     Bindings {
         id: bindings
+    }
+
+    // Slots
+    onProgressChanged: function() {
+        rctProgress.width = rctReady.x * progress
+    }
+
+    Component.onCompleted: function() {
+        console.debug("progress:", progress)
+        rctProgress.width = rctReady.x * progress
     }
 }

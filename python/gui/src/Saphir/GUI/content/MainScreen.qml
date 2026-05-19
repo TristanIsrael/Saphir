@@ -177,7 +177,8 @@ Window {
             function onAccepted() {
                 bindings.reset()
                 window.dlgRestart.visible = false
-                window.pnlMessages.visible = true
+                //window.pnlLoading.visible = true
+                //window.pnlMessages.visible = true
             }
 
             function onRejected() {

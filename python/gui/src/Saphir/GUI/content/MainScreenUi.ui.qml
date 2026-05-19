@@ -31,6 +31,7 @@ Item {
     property alias dlgLog: dlgLog
     property alias dlgShutdown: dlgShutdown
     property alias dlgRestart: dlgRestart
+    property alias pnlLoading: pnlLoading
     property alias pnlMessages: pnlMessages
     property alias pnlFilesCopy: pnlFilesCopy
     property alias btnCopyFiles: btnCopyFiles
