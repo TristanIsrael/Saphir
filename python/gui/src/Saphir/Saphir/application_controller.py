@@ -271,15 +271,15 @@ class ApplicationController(QObject):
             self.set_long_process_running(True)
 
             # C'est un dossier
-            # ... il faut parcourir toutes les entrées de la liste et retirer chaque fichier 
+            # ... il faut parcourir toutes les entrées de la liste et retirer chaque fichier
             threading.Thread(target=self.__dequeue_folder, args=(filepath,)).start()
 
     @Slot()
-    def start_stop_analysis(self):        
+    def start_stop_analysis(self):
         if self.__analysis_controller.state == AnalysisState.AnalysisStopped:
             Api().debug("User asked to start the analysis")
             self.__analysis_start_time = datetime.now()
-            self.__eta_estimator.update(len(self.__queued_files_list))
+            self.__eta_estimator.setup(self.__queue_files_size)
             self.__analysis_controller.start_analysis()
         elif self.__analysis_controller.state == AnalysisState.AnalysisRunning:
             Api().debug("User asked to stop the analysis")
@@ -290,7 +290,7 @@ class ApplicationController(QObject):
         if self.__analysis_controller.state == AnalysisState.AnalysisStopped and self.__analysis_ready:
             Api().debug("User asked to start the analysis")
             self.__analysis_start_time = datetime.now()
-            self.__eta_estimator.update(len(self.__queued_files_list))
+            self.__eta_estimator.setup(self.__queue_files_size)
             self.__analysis_controller.start_analysis()
         
     @Slot()
@@ -515,8 +515,19 @@ class ApplicationController(QObject):
     def __is_file_in_folder(self, filepath:str, folder:str) -> bool:
         return filepath.startswith(folder) # type: ignore
 
-    def __on_iteration_done(self, duration:float):
-        self.__eta_estimator.update(duration)
+    def __on_iteration_done(self, duration:float, filesize:int):
+        """ Called when a file has been treated
+
+        @param duration The duration of the step in minutes
+
+        During this step the ETA is updated. 
+        """        
+        self.__eta_estimator.update(duration, filesize)
+
+        with open("/tmp/data.txt", "a") as f:
+            f.write(f"{duration}, {filesize}, {self.__eta_estimator.remaining_time()}\n")
+
+        self.remainingTimeChanged.emit()
 
 
     @Slot()
@@ -883,8 +894,7 @@ class ApplicationController(QObject):
         self.cleanFilesCountChanged.emit(self.__get_clean_files_count())
         self.cleanFilesSizeChanged.emit()
         self.infectedFilesCountChanged.emit(self.__get_infected_files_count())
-        self.globalProgressChanged.emit(self.__get_global_progress())
-        self.remainingTimeChanged.emit()
+        self.globalProgressChanged.emit(self.__get_global_progress())        
         
         if self.__get_infected_files_count() + self.__get_clean_files_count() == self.__get_queue_size():
             print("results changed. queue_size=", self.__get_queue_size(), ", infected=", self.__get_infected_files_count(), ", clean=", self.__get_clean_files_count())
@@ -944,11 +954,12 @@ class ApplicationController(QObject):
         return self.__storages
 
     def __get_remaining_time(self):
-        # Calcul de la durée de l'itération
+        """ Returns the time remaining for the complete scan, in minutes """
+
         if self.__eta_estimator is not None:
             return self.__eta_estimator.remaining_time()
-        else:
-            return 0
+        
+        return 0
 
     def __on_shutdown(self, accepted:bool, reason:str=""):
         if accepted:

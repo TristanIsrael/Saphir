@@ -36,7 +36,7 @@ class AnalysisController(QObject):
     resultsChanged = Signal()
     fileUpdated = Signal(str, list)
     systemUsed = Signal()
-    iterationDone = Signal(float)
+    iterationDone = Signal(float, int) # duration in minutes, file size
 
     def __init__(self, files:dict, analysis_components:list, source_disk:str, analysis_mode_:AnalysisMode, parent:QObject|None=None) -> None:
         """ Instanciates a new Analysis controller
@@ -300,8 +300,9 @@ class AnalysisController(QObject):
                         self.__infected_files_size += file_size
                     
                     start_time = self.__start_times.get(filepath, time.time())
-                    duration = time.time() - start_time
-                    self.iterationDone.emit(duration)
+                    duration_in_secs = time.time() - start_time
+                    filesize = self.__files[filepath].get("size", 0)
+                    self.iterationDone.emit(duration_in_secs / 60, filesize)
 
                     self.resultsChanged.emit()
 
@@ -333,7 +334,8 @@ class AnalysisController(QObject):
 
                     start_time = self.__start_times.get(filepath, time.time())
                     duration = time.time() - start_time
-                    self.iterationDone.emit(duration)                
+                    filesize = self.__files[filepath].get("size", 0)
+                    self.iterationDone.emit(duration / 60, filesize)
 
                 # Free the slot in the repository for the archive
                 #Api().delete_file(self.__archive_mounted_filepath, Constants.STR_REPOSITORY)
@@ -370,9 +372,9 @@ class AnalysisController(QObject):
             return
 
         files = self.__get_next_group_of_files(limit)
-        print("working:", self.get_working_files_count())
-        print("free slots:", limit)
-        print("next group:", files)
+        #print("working:", self.get_working_files_count())
+        #print("free slots:", limit)
+        #print("next group:", files)
 
         with self.__queue_lock:
             for file in files:

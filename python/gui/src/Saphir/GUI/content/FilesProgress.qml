@@ -84,7 +84,7 @@ Item {
         Text {
             Layout.maximumWidth: root.width - root.thickness*2
             Layout.alignment: Qt.AlignHCenter
-            text: qsTr("ETA: %1 mn").arg(root.remainingTimeInMinutes)
+            text: qsTr("ETA: %1").arg(minutesToHumanReadable(remainingTimeInMinutes))
             font.pixelSize: parent.height * 0.1
             color: Environment.colorText
         }
@@ -94,6 +94,29 @@ Item {
 
     Bindings {
         id: bindings
+    }
+
+    /** Functions */
+    function minutesToHumanReadable(totalMinutes)
+    {
+        totalMinutes = Math.floor(totalMinutes)
+
+        var days = Math.floor(totalMinutes / 1440)
+        var hours = Math.floor((totalMinutes % 1440) / 60)
+        var minutes = totalMinutes % 60
+
+        var parts = []
+
+        if (days > 0)
+            parts.push(days + " j")
+
+        if (hours > 0)
+            parts.push(hours + " h")
+
+        if (minutes > 0 || parts.length === 0)
+            parts.push(minutes + " min")
+
+        return parts.join(" ")
     }
 
 }
