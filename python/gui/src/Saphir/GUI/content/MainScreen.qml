@@ -243,8 +243,7 @@ Window {
                 console.debug("Switch to the viewer")
                 bindings.switch_to_viewer()
             }
-        }
-
+        }        
 
         /* Animations */
         Behavior on pnlMenuThemes.width {

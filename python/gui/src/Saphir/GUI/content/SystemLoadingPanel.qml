@@ -5,15 +5,24 @@ PanelBase {
     id: root
 
     property real progress: bindings.systemLoadingProgress
+    property bool big: height > 100
 
     implicitWidth: Environment.mainWidth * 0.5
     implicitHeight: Environment.mainHeight * 0.2
     radius: 10
+    visible: opacity > 0
+
+    StyledText {
+        text: qsTr("Starting...")
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: 5
+        section: root.big ? Constants.Section.Paragraph : Constants.Section.SuperTiny
+    }
 
     Item {
         id: wrapper
         width: parent.width
-        height: parent.height/2
+        height: root.big ? parent.height/2 : parent.height*0.8
         y: (parent.height - height) /2
         clip: true
 
@@ -24,23 +33,26 @@ PanelBase {
             y: rctBegin.y + rctBegin.height/2 - height/2
             z: 0.1
 
-            height: 5
-            width: 0
-            color: Environment.colorRunning.alpha(0.75)
+            height: root.big ? 5 : 2.5
+            width: rctReady.x * root.progress
+            color: Environment.colorClear.alpha(0.75)
 
             Behavior on width {
                 NumberAnimation {
                     easing.type: Easing.InOutCubic
-                    duration: 5000
+                    duration: 1500
                 }
             }
         }
 
         StyledText {
-            text: qsTr("GUI\nready")
+            text: qsTr("GUI")
             horizontalAlignment: Qt.AlignHCenter
             x: rctBegin.x
             width: rctBegin.width
+            height: parent.height - rctBegin.height - 5
+            verticalAlignment: Text.AlignBottom
+            section: root.big ? Constants.Section.Paragraph : Constants.Section.SuperTiny
         }
 
         Circle {
@@ -48,17 +60,20 @@ PanelBase {
 
             y: parent.height - height
             z: 0.2
-            height: 30
+            height: root.big ? 30 : 15
             borderWidth: 2
             borderColor: Environment.colorDark
             color: Environment.colorClean
         }
 
         StyledText {
-            text: qsTr("Core\nready")
+            text: qsTr("Core")
             horizontalAlignment: Qt.AlignHCenter
             x: rctStateCore.x
             width: rctStateCore.width
+            height: parent.height - rctBegin.height - 5
+            verticalAlignment: Text.AlignBottom
+            section: root.big ? Constants.Section.Paragraph : Constants.Section.SuperTiny
         }
 
         Circle {
@@ -66,17 +81,20 @@ PanelBase {
             x: (parent.width-width)/3
             y: parent.height - height
             z: 0.2
-            height: 30
+            height: root.big ? 30 : 15
             borderWidth: 2
             borderColor: Environment.colorDark
-            color: progress >= 0.33 ? Environment.colorClean : Environment.colorWaiting
+            color: root.progress >= 0.33 ? Environment.colorClean : Environment.colorWaiting
         }
 
         StyledText {
-            text: qsTr("Antiviruses\nready")
+            text: qsTr("Antiviruses")
             horizontalAlignment: Qt.AlignHCenter
             x: rctStateAntiviruses.x
             width: rctStateAntiviruses.width
+            height: parent.height - rctBegin.height - 5
+            verticalAlignment: Text.AlignBottom
+            section: root.big ? Constants.Section.Paragraph : Constants.Section.SuperTiny
         }
 
         Circle {
@@ -86,17 +104,20 @@ PanelBase {
             y: parent.height - height
             z: 0.2
 
-            height: 30
+            height: root.big ? 30 : 15
             borderWidth: 2
             borderColor: Environment.colorDark
-            color: progress >= 0.66 ? Environment.colorClean : Environment.colorWaiting
+            color: root.progress >= 0.66 ? Environment.colorClean : Environment.colorWaiting
         }
 
         StyledText {
-            text: qsTr("Saphir\nready")
+            text: qsTr("Complete")
             horizontalAlignment: Qt.AlignHCenter
             x: rctReady.x
             width: rctReady.width
+            height: parent.height - rctBegin.height - 5
+            verticalAlignment: Text.AlignBottom
+            section: root.big ? Constants.Section.Paragraph : Constants.Section.SuperTiny
         }
 
         Circle {
@@ -106,10 +127,16 @@ PanelBase {
             y: parent.height - height
             z: 0.2
 
-            height: 30
+            height: root.big ? 30 : 15
             borderWidth: 2
             borderColor: Environment.colorDark
-            color: progress === 1 ? Environment.colorClean : Environment.colorWaiting
+            color: root.progress === 1 ? Environment.colorClean : Environment.colorWaiting
+        }
+    }
+
+    Behavior on opacity {
+        NumberAnimation {
+            duration: 1000
         }
     }
 
@@ -123,7 +150,16 @@ PanelBase {
     }
 
     Component.onCompleted: function() {
-        console.debug("progress:", progress)
         rctProgress.width = rctReady.x * progress
     }
+
+    // Functions
+    function show() {
+        root.opacity = 1.0
+    }
+
+    function hide() {
+        root.opacity = 0.0
+    }
+
 }

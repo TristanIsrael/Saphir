@@ -12,10 +12,10 @@ class MockEeaAntivirusController(AbstractAntivirusController):
 
     def __init__(self):
         super().__init__("Mock ESET", "Mock ESET antivirus", 1)
-        Constants.DOMU_REPOSITORY_PATH = DevModeHelper.get_storage_path()
+        Constants.DOMU_REPOSITORY_PATH = DevModeHelper.get_storage_path()                
 
     def _on_api_ready(self) -> None:
-        pass
+        self.component_state_changed()
     
     def _get_component_state(self) -> ComponentState:
         return ComponentState.READY

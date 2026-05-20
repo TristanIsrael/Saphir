@@ -48,6 +48,7 @@ QtObject {
         Title1,
         Title2,
         Title3,
-        Tiny
+        Tiny,
+        SuperTiny
     }
 }

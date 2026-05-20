@@ -16,6 +16,7 @@ Text {
         case Constants.Section.Title3: return 20
         case Constants.Section.Paragraph: return 18
         case Constants.Section.Tiny: return 16
+        case Constants.Section.SuperTiny: return 14
         }
 
         return 18

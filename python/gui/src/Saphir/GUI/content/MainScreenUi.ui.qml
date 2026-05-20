@@ -344,8 +344,15 @@ Item {
     SystemLoadingPanel {
         id: pnlLoading
 
-        anchors.centerIn: parent
-        visible: !bindings.analysisReady
+        anchors.horizontalCenter: parent.horizontalCenter
+
+        y: bindings.systemState < Enums.SafecorReady ? (parent.height - height) / 2 : 10
+        height: bindings.systemState < Enums.SafecorReady ? implicitHeight : 60
+        taint: "#cccccc"
+
+        opacity: !bindings.analysisReady ? 1.0 : 0.0
+
+        z: 1.0
     }
 
     /* Dialogs */

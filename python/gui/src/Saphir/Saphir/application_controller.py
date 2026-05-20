@@ -462,7 +462,6 @@ class ApplicationController(QObject):
         if self.__ready_callback is not None:
             self.__ready_callback()
 
-        self.__set_system_state(SystemState.SystemReady)
         Api().discover_components()
         self.__set_system_loading_progress(0.15)
         Api().request_system_info()
@@ -583,6 +582,7 @@ class ApplicationController(QObject):
             if ready and not self.__disk_controller_ready:
                 self.__disk_controller_ready = True
                 self.__on_disk_controller_state_changed(ready)
+                self.__set_system_state(SystemState.SafecorReady)
 
         # Verify antiviruses availability
         ids = self.__components_helper.get_ids_by_type("antivirus")
@@ -597,6 +597,7 @@ class ApplicationController(QObject):
         # and the number of antiviruses needed is reached
         self.__analysis_ready = ready
         self.analysisReadyChanged.emit(self.__analysis_ready)
+        self.__set_system_state(SystemState.SystemReady)
 
         # Update the loading progress
         progress = 0.0

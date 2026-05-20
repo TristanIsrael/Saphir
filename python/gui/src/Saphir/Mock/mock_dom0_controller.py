@@ -1,4 +1,4 @@
-from safecor import Api, Topics, Constants, MqttClient, ConnectionType, System, NotificationFactory, ResponseFactory
+from safecor import Api, Topics, Constants, MqttClient, ConnectionType, System, NotificationFactory, ResponseFactory, ComponentState
 from pathlib import Path
 from threading import Event
 
@@ -21,6 +21,7 @@ class MockDom0Controller:
         self.__mqtt_client.subscribe(f"{Topics.DELETE_FILE}/request")
         self.__mqtt_client.subscribe(f"{Topics.SYSTEM_INFO}/request")
         self.__mqtt_client.subscribe(f"{Topics.DEFAULT_LANGUAGE}/request")
+        self.__mqtt_client.subscribe(f"{Topics.DISCOVER_COMPONENTS}/request")
         self.__lock.set()
 
 
@@ -32,6 +33,16 @@ class MockDom0Controller:
         elif topic == f"{Topics.DEFAULT_LANGUAGE}/request":
             payload = ResponseFactory.create_response_language_default("fr")
             self.__mqtt_client.publish(f"{Topics.DEFAULT_LANGUAGE}/response", payload)
+        elif topic == f"{Topics.DISCOVER_COMPONENTS}/request":
+            response = {
+                "components": [
+                    { "id": Constants.SAFECOR_DISK_CONTROLLER, "label": "Mock disk controller", "type": "core", "state": "ready" },
+                    { "id": Constants.SAFECOR_INPUT_CONTROLLER, "label": "Mock input controller", "type": "core", "state": "ready" },
+                    { "id": Constants.SAFECOR_SYSTEM_CONTROLLER, "label": "Mock Dom0 controller", "type": "core", "state": "ready" }
+                ]
+            }
+
+            self.__mqtt_client.publish(f"{Topics.DISCOVER_COMPONENTS}/response", response)
 
 
     def __handle_delete_file(self, payload):
