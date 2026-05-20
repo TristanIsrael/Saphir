@@ -39,6 +39,8 @@ class ComponentsModel(QAbstractTableModel):
                 return self.tr("Ready")
             elif state == ComponentState.ERROR:
                 return self.tr("Error")
+            elif state == ComponentState.OFF:
+                return self.tr("Off")
             else:
                 return self.tr("Unknown")
         

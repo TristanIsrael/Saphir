@@ -192,7 +192,7 @@ Window {
             function onAccepted() {
                 bindings.shutdown()
                 window.dlgShutdown.visible = false
-                window.pnlMessages.visible = true
+                //window.pnlMessages.visible = true
             }
 
             function onRejected() {
@@ -271,7 +271,7 @@ Window {
             } else if (bindings.systemState === Enums.SystemResetting) {
                 window.pnlFilesCopy.visible = false
                 window.pnlFileSelection.visible = false
-                window.pnlMessages.visible = true
+                //window.pnlMessages.visible = true
             }
         }
     }

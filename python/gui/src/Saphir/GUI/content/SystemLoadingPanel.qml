@@ -1,11 +1,13 @@
 import QtQuick
 import Components
+import Saphir
 
 PanelBase {
     id: root
 
     property real progress: bindings.systemLoadingProgress
     property bool big: height > 100
+    property bool resetting: bindings.systemState === Enums.SystemResetting
 
     implicitWidth: Environment.mainWidth * 0.5
     implicitHeight: Environment.mainHeight * 0.2
@@ -13,7 +15,7 @@ PanelBase {
     visible: opacity > 0
 
     StyledText {
-        text: qsTr("Starting...")
+        text: root.resetting ? qsTr("Cleaning...") : qsTr("Starting...")
         anchors.horizontalCenter: parent.horizontalCenter
         y: 5
         section: root.big ? Constants.Section.Paragraph : Constants.Section.SuperTiny
@@ -151,15 +153,6 @@ PanelBase {
 
     Component.onCompleted: function() {
         rctProgress.width = rctReady.x * progress
-    }
-
-    // Functions
-    function show() {
-        root.opacity = 1.0
-    }
-
-    function hide() {
-        root.opacity = 0.0
-    }
+    }    
 
 }

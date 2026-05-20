@@ -80,6 +80,13 @@ class ClamAntivirusController(AbstractAntivirusController):
             return proc.stdout.decode().strip()
         else:
             return "#err"
+        
+    def _restart(self, domain_name: str):
+        if domain_name != "saphir-av-clamav":
+            return
+
+        self.component_state_changed(ComponentState.OFF)
+        subprocess.run("reboot", check=False)
 
     #######################
     ## Private functions

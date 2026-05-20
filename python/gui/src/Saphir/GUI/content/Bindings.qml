@@ -6,7 +6,7 @@ Item {
     id: root
 
     /* Bindings */
-    property bool handheld: ApplicationController.handheld
+    property bool handheld: true //ApplicationController.handheld
     property bool ready: ApplicationController.ready
     property bool analysisReady: ApplicationController.analysisReady 
     property bool analyzing: ApplicationController.systemState === Enums.SystemAnalysisRunning

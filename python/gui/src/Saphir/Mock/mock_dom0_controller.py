@@ -22,6 +22,7 @@ class MockDom0Controller:
         self.__mqtt_client.subscribe(f"{Topics.SYSTEM_INFO}/request")
         self.__mqtt_client.subscribe(f"{Topics.DEFAULT_LANGUAGE}/request")
         self.__mqtt_client.subscribe(f"{Topics.DISCOVER_COMPONENTS}/request")
+        self.__mqtt_client.subscribe(f"{Topics.RESTART_DOMAIN}/request")
         self.__lock.set()
 
 
@@ -36,14 +37,25 @@ class MockDom0Controller:
         elif topic == f"{Topics.DISCOVER_COMPONENTS}/request":
             response = {
                 "components": [
-                    { "id": Constants.SAFECOR_DISK_CONTROLLER, "label": "Mock disk controller", "type": "core", "state": "ready" },
-                    { "id": Constants.SAFECOR_INPUT_CONTROLLER, "label": "Mock input controller", "type": "core", "state": "ready" },
-                    { "id": Constants.SAFECOR_SYSTEM_CONTROLLER, "label": "Mock Dom0 controller", "type": "core", "state": "ready" }
+                    { "id": Constants.SAFECOR_DISK_CONTROLLER, "label": "Mock disk controller", "type": "core", "state": ComponentState.READY.value },
+                    { "id": Constants.SAFECOR_INPUT_CONTROLLER, "label": "Mock input controller", "type": "core", "state": ComponentState.READY.value },
+                    { "id": Constants.SAFECOR_SYSTEM_CONTROLLER, "label": "Mock Dom0 controller", "type": "core", "state": ComponentState.READY.value }
                 ]
             }
 
             self.__mqtt_client.publish(f"{Topics.DISCOVER_COMPONENTS}/response", response)
+        elif topic == f"{Topics.RESTART_DOMAIN}/request":
+            domain_name = payload.get("domain_name", "")
 
+            if domain_name == "sys-usb":
+                response = {
+                    "components": [
+                        { "id": Constants.SAFECOR_DISK_CONTROLLER, "label": "Mock disk controller", "type": "core", "state": ComponentState.OFF.value },
+                        { "id": Constants.SAFECOR_INPUT_CONTROLLER, "label": "Mock input controller", "type": "core", "state": ComponentState.OFF.value }
+                    ]
+                }
+
+                self.__mqtt_client.publish(f"{Topics.DISCOVER_COMPONENTS}/response", response)
 
     def __handle_delete_file(self, payload):
         disk = payload.get("disk", "")

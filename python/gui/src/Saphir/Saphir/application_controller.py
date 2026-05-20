@@ -373,19 +373,22 @@ class ApplicationController(QObject):
         self.remainingTimeChanged.emit()
         self.__long_process_running = False
         self.longProcessRunningChanged.emit()
+        self.__system_loading_progress = 0.0
+        self.systemLoadingProgressChanged.emit()
 
         self.__messages_model.addMessage(self.tr("The system is resetting, please wait..."))
 
         # Set the system in starting mode
-        self.__system_state = SystemState.SystemStarting
-        self.systemStateChanged.emit(self.__system_state)
+        #self.__system_state = SystemState.SystemStarting
+        #self.systemStateChanged.emit(self.__system_state)
+        
         self.__analysis_ready = False
-        self.analysisReadyChanged.emit()
+        self.analysisReadyChanged.emit(self.__analysis_ready)
 
     @Slot()
     def set_long_process_running(self, running:bool):
         self.__long_process_running = running
-        self.longProcessRunningChanged.emit()        
+        self.longProcessRunningChanged.emit()
 
     @Slot(str)
     def debug(self, message:str):
@@ -592,6 +595,8 @@ class ApplicationController(QObject):
             ready &= av.get("state", ComponentState.UNKNOWN) == ComponentState.READY
             if av.get("state", ComponentState.UNKNOWN) == ComponentState.READY and av not in self.__analysis_components:
                 self.__analysis_components.append(av)
+            elif av.get("state", ComponentState.UNKNOWN) == ComponentState.OFF and av in self.__analysis_components:
+                self.__analysis_components.remove(av)
 
         # The system is ready when all necessary components are ready
         # and the number of antiviruses needed is reached
@@ -809,8 +814,9 @@ class ApplicationController(QObject):
         if not MqttHelper.check_payload(payload, ["components"]):
             Api().error("The response is malformed")
             return
-        
+
         components = payload.get("components", [])
+
         if len(components) > 0:
             self.__components_helper.update(components)
             self.__check_components_availability()

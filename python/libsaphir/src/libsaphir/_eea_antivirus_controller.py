@@ -257,6 +257,13 @@ class EeaAntivirusController(AbstractAntivirusController):
 
         return f"{description}\nLicence information:\n{licence}"
 
+    def _restart(self, domain_name: str):
+        if domain_name != "saphir-av-eset":
+            return
+
+        self.component_state_changed(ComponentState.OFF)
+        subprocess.run("reboot", check=False)
+
     #######################
     ## Private functions
     #

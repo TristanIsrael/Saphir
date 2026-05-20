@@ -5,6 +5,7 @@ import threading
 import os
 import time
 import random
+import platform
 
 class MockEeaAntivirusController(AbstractAntivirusController):
 
@@ -12,7 +13,7 @@ class MockEeaAntivirusController(AbstractAntivirusController):
 
     def __init__(self):
         super().__init__("Mock ESET", "Mock ESET antivirus", 1)
-        Constants.DOMU_REPOSITORY_PATH = DevModeHelper.get_storage_path()                
+        Constants.DOMU_REPOSITORY_PATH = DevModeHelper.get_storage_path()
 
     def _on_api_ready(self) -> None:
         self.component_state_changed()
@@ -47,6 +48,12 @@ class MockEeaAntivirusController(AbstractAntivirusController):
 
     def _get_component_description(self) -> str:
         return "Version mock"
+    
+    def _restart(self, domain_name: str):
+        if domain_name != platform.node():
+            return
+
+        self.component_state_changed(ComponentState.OFF)
 
 if __name__ == "__main__":
     mock = MockEeaAntivirusController()
