@@ -8,7 +8,7 @@ Rectangle {
     property bool handheld: true
     property alias label: txt.text
     property var buttonsLabels: [ labelOk, labelCancel ]
-    property var buttonsColors: [ Environment.colorSuccess, Environment.colorInfected ]
+    property var buttonsColors: [ Environment.colorClean, Environment.colorInfected ]
 
     readonly property string labelOk: qsTr("Ok")
     readonly property string labelAccept: qsTr("Yes")
