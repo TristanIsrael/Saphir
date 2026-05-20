@@ -8,6 +8,7 @@ Rectangle {
     property bool handheld: true
     property alias label: txt.text
     property var buttonsLabels: [ labelOk, labelCancel ]
+    property var buttonsColors: [ Environment.colorSuccess, Environment.colorInfected ]
 
     readonly property string labelOk: qsTr("Ok")
     readonly property string labelAccept: qsTr("Yes")
@@ -75,7 +76,7 @@ Rectangle {
                     width: 100
                     height: 50
 
-                    color: "transparent"
+                    color: buttonsColors[index]
                     border {
                         width: 2
                         color: Environment.colorBorder
@@ -129,9 +130,10 @@ Rectangle {
             radius: height
 
             RoundButton {
-                flat: true
+                flat: false
                 borderWidth: 2
                 anchors.fill: parent
+                taint: buttonsColors[index]
 
                 icon: ""
 

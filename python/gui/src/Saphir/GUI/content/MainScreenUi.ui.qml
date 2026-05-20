@@ -372,7 +372,7 @@ Item {
         id: dlgAnalyseWholeStorage
 
         anchors.centerIn: parent
-        visible: false
+        visible: true
 
         label: qsTr("Do you want to analyze\nthe whole storage?")
         buttonsLabels: [qsTr("Yes"), qsTr("No")]
