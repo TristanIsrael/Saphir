@@ -16,28 +16,42 @@ replaces=""
 builddir="$srcdir/"
 options="!check"  # no tests provided
 py_src_dir="../../../../../python"
-source="gui.initd"
+source="
+gui-bundle.initd
+gui-folder.initd
+"
+bundle="yes" # if yes the package will contain a python bundle (PyInstaller) otherwise it will be packaged as a folder
 
 prepare() {
     echo "Copy source files"
     cp -r "$py_src_dir"/gui "$srcdir"
 
-    # We don't have the Alpine package for pyinstaller yet so we install it from pip
-    echo "Install py3installer from PIP"    
-    pip install pyinstaller --break-system-package
+    if [ "$bundle" = "yes" ]; then
+        # We don't have the Alpine package for pyinstaller yet so we install it from pip
+        echo "Install py3installer from PIP"    
+        pip install pyinstaller --break-system-package
+    fi
 }
 
 build() {    
     cd "$srcdir/gui"    
-    python3 -m PyInstaller saphir-gui.spec --noconfirm 
+
+    if [ "$bundle" = "yes" ]; then
+        python3 -m PyInstaller saphir-gui.spec --noconfirm 
+    fi
 }
 
 package() {
     cd "$srcdir/gui/dist"
-    mkdir -p "$pkgdir/usr/lib/saphir"
-    cp -r "$pkgname" "$pkgdir/usr/lib/saphir" 
+    mkdir -p "$pkgdir/usr/lib/saphir"    
     
-    install -D -m755 "$srcdir"/gui.initd "$pkgdir"/etc/init.d/gui
+    if [ "$bundle" = "yes" ]; then
+        cp -r "$pkgname" "$pkgdir/usr/lib/saphir" 
+        install -D -m755 "$srcdir"/gui-bundle.initd "$pkgdir"/etc/init.d/gui
+    else
+        cp -r "$srcdir/gui/src/Saphir/*" "$pkgdir"/usr/lib/saphir
+        install -D -m755 "$srcdir"/gui-folder.initd "$pkgdir"/etc/init.d/gui
+    fi
 }
 
 sha512sums="
