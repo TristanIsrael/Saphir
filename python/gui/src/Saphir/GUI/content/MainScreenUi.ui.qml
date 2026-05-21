@@ -304,7 +304,7 @@ Item {
         x: parent.width - (width * 1.25)
         y: parent.height - (height * 1.25)
 
-        enabled: bindings.analysisReady && bindings.queueSize > 0
+        enabled: bindings.analysisReady && bindings.queueSize > 0 && bindings.systemState < Enums.AnalysisCompleted
         icon: bindings.analyzing ? Constants.iconPause : Constants.iconStart
     }
 
