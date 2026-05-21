@@ -272,6 +272,8 @@ Window {
                 window.pnlFilesCopy.visible = false
                 window.pnlFileSelection.visible = false
                 //window.pnlMessages.visible = true
+            } else if (bindings.systemState === Enums.SystemReady) {
+                window.dlgAnalyseWholeStorage.visible = true
             }
         }
     }

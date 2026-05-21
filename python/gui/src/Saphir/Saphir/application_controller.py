@@ -334,8 +334,7 @@ class ApplicationController(QObject):
    
     @Slot()
     def reset(self):
-        self.__system_state = SystemState.SystemResetting
-        self.systemStateChanged.emit(self.__system_state)
+        self.__set_system_state(SystemState.SystemResetting)
         self.stop_analysis()
 
         # Reset the environment means destroying and re-creating dirty VMs:
@@ -589,7 +588,6 @@ class ApplicationController(QObject):
 
         # Verify antiviruses availability
         ids = self.__components_helper.get_ids_by_type("antivirus")
-        ready &= len(ids) >= ANTIVIRUS_NEEDED
         for comp_id in ids:
             av = self.__components_helper.get_by_id(comp_id)
             ready &= av.get("state", ComponentState.UNKNOWN) == ComponentState.READY
@@ -598,16 +596,19 @@ class ApplicationController(QObject):
             elif av.get("state", ComponentState.UNKNOWN) == ComponentState.OFF and av in self.__analysis_components:
                 self.__analysis_components.remove(av)
 
+        # Now we check again the antiviruses
+        ready &= len(self.__analysis_components) >= ANTIVIRUS_NEEDED
+
         # The system is ready when all necessary components are ready
         # and the number of antiviruses needed is reached
         self.__analysis_ready = ready
         self.analysisReadyChanged.emit(self.__analysis_ready)
-        self.__set_system_state(SystemState.SystemReady)
 
         # Update the loading progress
         progress = 0.0
         
         if ready:
+            self.__set_system_state(SystemState.SystemReady)
             progress = 1.0
         elif len(self.__analysis_components) == 2:
             progress = 0.66
