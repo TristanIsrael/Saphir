@@ -81,17 +81,6 @@ class SafecorInputFilesListModel(QAbstractListModel):
             #return inQueue if inQueue is not None else False
         
         return None
-
-    '''def get(self, index:QModelIndex):
-        return self.fichiers_[index.row()]
-
-    def setData(self, index, value, role = Qt.DisplayRole) -> bool:
-        if role == Roles.RoleInQueue:            
-            file = self.fichiers_[index.row()]
-            file["inqueue"] = True
-            self.dataChanged.emit(index, index, [Roles.RoleInQueue])
-
-        return True'''
     
     def roleNames(self) -> dict:
         roles = {
@@ -108,35 +97,8 @@ class SafecorInputFilesListModel(QAbstractListModel):
         }
         return roles
     
-    '''def set_selected(self, index:QModelIndex):
-        if len(self.fichiers_) > index.row():            
-            file = list(self.fichiers_.values())[index.row()]
-            self.selection_ = [ file ]
-            self.selectionChanged.emit()
-
-            idxBegin = self.index(0, 0)
-            idxEnd = self.index(self.rowCount()-1, 0)
-            self.dataChanged.emit(idxBegin, idxEnd, [Roles.RoleSelected])
-            
-    def set_file_in_queue(self, filepath:str, inqueue:bool = True):
-        for row in range(len(self.fichiers_)):
-            file = self.fichiers_[row]
-            if file["filepath"] == filepath:
-                file["inqueue"] = inqueue
-                index = self.index(row, 0)
-                self.dataChanged.emit(index, index, Roles.RoleInQueue)
-                return'''
-    
-    '''def reset_selection(self):
-        self.selection_.clear()
-
-        idxBegin = self.index(0, 0)
-        idxEnd = self.index(self.rowCount()-1, 0)
-        self.dataChanged.emit(idxBegin, idxEnd, [Roles.RoleSelected])'''
-
     def reset(self):
-        self.beginResetModel()
-        #self.selection_.clear()
+        self.beginResetModel()    
         self.__lastRowCount = 0
         self.__rowCount = len(self.__files)
         self.endResetModel()

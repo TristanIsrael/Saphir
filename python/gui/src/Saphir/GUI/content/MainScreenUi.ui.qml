@@ -41,6 +41,7 @@ Item {
     property alias btnLanguageEN: btnLanguageEN
     property alias btnLanguageFR: btnLanguageFR
     property alias btnShowViewer: btnShowViewer
+    property alias dlgSystemMustBeReset: dlgSystemMustBeReset
 
     property bool menuThemesOpened: false
     property bool mainMenuOpened: false
@@ -398,6 +399,19 @@ Item {
 
         label: qsTr("Do you want to shutdown the system?")
         buttonsLabels: [qsTr("Yes"), qsTr("No")]
+        handheld: bindings.handheld
+    }
+
+    MessageDialog {
+        id: dlgSystemMustBeReset
+
+        anchors.centerIn: parent
+        visible: false
+        modal: false
+        z: 0.5
+
+        label: qsTr("The system must be reset\nor shut down.")
+        buttonsLabels: []
         handheld: bindings.handheld
     }
 

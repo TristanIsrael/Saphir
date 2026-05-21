@@ -66,37 +66,37 @@
 <context>
     <name>ApplicationController</name>
     <message>
-        <location filename="../Saphir/application_controller.py" line="371"/>
+        <location filename="../Saphir/application_controller.py" line="354"/>
         <source>The system is resetting, please wait...</source>
         <translation>Le système est en cours de nettoyage, veuillez attendre...</translation>
     </message>
     <message>
-        <location filename="../Saphir/application_controller.py" line="472"/>
+        <location filename="../Saphir/application_controller.py" line="491"/>
         <source>Saphir has started... Waiting for the components to be ready.</source>
         <translation>Saphir a démarré... En attente du démarrage des composants.</translation>
     </message>
     <message>
-        <location filename="../Saphir/application_controller.py" line="529"/>
+        <location filename="../Saphir/application_controller.py" line="574"/>
         <source>The system is shutting down...</source>
         <translation>Le système est en cours d&apos;extinction...</translation>
     </message>
     <message>
-        <location filename="../Saphir/application_controller.py" line="559"/>
+        <location filename="../Saphir/application_controller.py" line="628"/>
         <source>The antiviruses are ready</source>
         <translation>Les antivirus sont prêts</translation>
     </message>
     <message>
-        <location filename="../Saphir/application_controller.py" line="832"/>
+        <location filename="../Saphir/application_controller.py" line="903"/>
         <source>The report ang log have been copied to the destination storage.</source>
         <translation>Le rapport et le journal ont été copiés sur le stockage de destination.</translation>
     </message>
     <message>
-        <location filename="../Saphir/application_controller.py" line="833"/>
+        <location filename="../Saphir/application_controller.py" line="904"/>
         <source>You can now remove it.</source>
         <translation>Vous pouvez à présent le retirer.</translation>
     </message>
     <message>
-        <location filename="../Saphir/application_controller.py" line="834"/>
+        <location filename="../Saphir/application_controller.py" line="905"/>
         <source>If you want to analyze another storage you will have to reset the system from the menu.</source>
         <translation>Si vous voulez analyser un autre support de stockage, vous devrez nettoyer le système depuis le menu principal.</translation>
     </message>
@@ -120,6 +120,11 @@
     </message>
     <message>
         <location filename="../Saphir/components_model.py" line="43"/>
+        <source>Off</source>
+        <translation>Eteint</translation>
+    </message>
+    <message>
+        <location filename="../Saphir/components_model.py" line="45"/>
         <source>Unknown</source>
         <translation>Inconnu</translation>
     </message>
@@ -200,9 +205,13 @@
 <context>
     <name>FilesProgress</name>
     <message>
-        <location filename="../GUI/content/FilesProgress.qml" line="87"/>
         <source>ETA: %1 mn</source>
-        <translation>ETA : %1 mn</translation>
+        <translation type="vanished">ETA : %1 mn</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/FilesProgress.qml" line="87"/>
+        <source>ETA: %1</source>
+        <translation>ETA</translation>
     </message>
 </context>
 <context>
@@ -262,66 +271,72 @@
 <context>
     <name>MainScreenUi.ui</name>
     <message>
-        <location filename="../GUI/content/MainScreenUi.ui.qml" line="279"/>
+        <location filename="../GUI/content/MainScreenUi.ui.qml" line="367"/>
         <source>Please connect a storage</source>
         <translation>Veuillez connecter un stockage</translation>
     </message>
     <message>
-        <location filename="../GUI/content/MainScreenUi.ui.qml" line="280"/>
+        <location filename="../GUI/content/MainScreenUi.ui.qml" line="368"/>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
     <message>
-        <location filename="../GUI/content/MainScreenUi.ui.qml" line="290"/>
+        <location filename="../GUI/content/MainScreenUi.ui.qml" line="378"/>
         <source>Do you want to analyze
 the whole storage?</source>
         <translation>Voulez-vous analyser
 le stockage entier ?</translation>
     </message>
     <message>
-        <location filename="../GUI/content/MainScreenUi.ui.qml" line="291"/>
-        <location filename="../GUI/content/MainScreenUi.ui.qml" line="302"/>
-        <location filename="../GUI/content/MainScreenUi.ui.qml" line="313"/>
+        <location filename="../GUI/content/MainScreenUi.ui.qml" line="379"/>
+        <location filename="../GUI/content/MainScreenUi.ui.qml" line="390"/>
+        <location filename="../GUI/content/MainScreenUi.ui.qml" line="401"/>
         <source>Yes</source>
         <translation>Oui</translation>
     </message>
     <message>
-        <location filename="../GUI/content/MainScreenUi.ui.qml" line="291"/>
-        <location filename="../GUI/content/MainScreenUi.ui.qml" line="302"/>
-        <location filename="../GUI/content/MainScreenUi.ui.qml" line="313"/>
+        <location filename="../GUI/content/MainScreenUi.ui.qml" line="379"/>
+        <location filename="../GUI/content/MainScreenUi.ui.qml" line="390"/>
+        <location filename="../GUI/content/MainScreenUi.ui.qml" line="401"/>
         <source>No</source>
         <translation>Non</translation>
     </message>
     <message>
-        <location filename="../GUI/content/MainScreenUi.ui.qml" line="301"/>
+        <location filename="../GUI/content/MainScreenUi.ui.qml" line="389"/>
         <source>Do you want to clean the system?</source>
         <translation>Voulez-vous nettoyer le système ?</translation>
     </message>
     <message>
-        <location filename="../GUI/content/MainScreenUi.ui.qml" line="312"/>
+        <location filename="../GUI/content/MainScreenUi.ui.qml" line="400"/>
         <source>Do you want to shutdown the system?</source>
         <translation>Voulez-vous éteindre le système ?</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/MainScreenUi.ui.qml" line="413"/>
+        <source>The system must be reset
+or shut down.</source>
+        <translation>Le système doit être réinitialisé\ou éteint.</translation>
     </message>
 </context>
 <context>
     <name>MessageDialog</name>
     <message>
-        <location filename="../GUI/Components/MessageDialog.qml" line="12"/>
+        <location filename="../GUI/Components/MessageDialog.qml" line="14"/>
         <source>Ok</source>
         <translation>Ok</translation>
     </message>
     <message>
-        <location filename="../GUI/Components/MessageDialog.qml" line="13"/>
+        <location filename="../GUI/Components/MessageDialog.qml" line="15"/>
         <source>Yes</source>
         <translation>Oui</translation>
     </message>
     <message>
-        <location filename="../GUI/Components/MessageDialog.qml" line="14"/>
+        <location filename="../GUI/Components/MessageDialog.qml" line="16"/>
         <source>No</source>
         <translation>Non</translation>
     </message>
     <message>
-        <location filename="../GUI/Components/MessageDialog.qml" line="15"/>
+        <location filename="../GUI/Components/MessageDialog.qml" line="17"/>
         <source>Cancel</source>
         <translation>Annuler</translation>
     </message>
@@ -395,6 +410,39 @@ le stockage entier ?</translation>
         <location filename="../Saphir/system_information_model.py" line="77"/>
         <source>Sensors</source>
         <translation>Capteurs</translation>
+    </message>
+</context>
+<context>
+    <name>SystemLoadingPanel</name>
+    <message>
+        <location filename="../GUI/content/SystemLoadingPanel.qml" line="18"/>
+        <source>Cleaning...</source>
+        <translation>Nettoyage...</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/SystemLoadingPanel.qml" line="18"/>
+        <source>Starting...</source>
+        <translation>Démarrage...</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/SystemLoadingPanel.qml" line="51"/>
+        <source>GUI</source>
+        <translation>IHM</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/SystemLoadingPanel.qml" line="72"/>
+        <source>Core</source>
+        <translation>Coeur</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/SystemLoadingPanel.qml" line="93"/>
+        <source>Antiviruses</source>
+        <translation>Antivirus</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/SystemLoadingPanel.qml" line="116"/>
+        <source>Complete</source>
+        <translation>Terminé</translation>
     </message>
 </context>
 <context>

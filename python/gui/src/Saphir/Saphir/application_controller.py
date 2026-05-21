@@ -108,6 +108,7 @@ class ApplicationController(QObject):
     #systemInformationChanged = Signal()
     transferStartedChanged = Signal()
     storagesChanged = Signal()
+    storagesCountChanged = Signal()
     cleanFilesSizeChanged = Signal()
     targetAvailableSizeChanged = Signal()
     copiedFilesCountChanged = Signal()
@@ -349,18 +350,29 @@ class ApplicationController(QObject):
             if domain_name != "":
                 Api().restart_domain(domain_name)
 
+        self.__reset_states()
+        self.__messages_model.addMessage(self.tr("The system is resetting, please wait..."))
+
+        self.__analysis_ready = False
+        self.analysisReadyChanged.emit(self.__analysis_ready)
+
+        self.__system_loading_progress = 0.0
+        self.systemLoadingProgressChanged.emit()
+
+    def __reset_states(self):
         # Reset all models
         self.__current_folder = "/"
         self.__input_files_list.clear()
+        self.__input_files_listmodel.reset()
         self.__queued_files_list.clear()
+        self.__queue_listmodel.reset()
         self.__queue_files_size = 0
         self.__folders_to_query = 0
         self.__current_folder = "/"
         self.currentFolderChanged.emit()
         self.__analysis_controller.reset()
-        self.__queue_listmodel.reset()
-        self.__input_files_listmodel.reset()
         self.__source_name = ""
+        self.sourceNameChanged.emit("")
         self.__analysis_controller.set_source_disk("")
         self.__target_name = ""
         self.totalFilesCountChanged.emit(0)
@@ -372,17 +384,10 @@ class ApplicationController(QObject):
         self.remainingTimeChanged.emit()
         self.__long_process_running = False
         self.longProcessRunningChanged.emit()
-        self.__system_loading_progress = 0.0
-        self.systemLoadingProgressChanged.emit()
+        #self.__set_system_state(SystemState.SystemReady)
 
-        self.__messages_model.addMessage(self.tr("The system is resetting, please wait..."))
-
-        # Set the system in starting mode
-        #self.__system_state = SystemState.SystemStarting
-        #self.systemStateChanged.emit(self.__system_state)
-        
-        self.__analysis_ready = False
-        self.analysisReadyChanged.emit(self.__analysis_ready)
+        # The storages come from a single disk so we clean all of them
+        self.__reset_storages()
 
     @Slot()
     def set_long_process_running(self, running:bool):
@@ -651,7 +656,7 @@ class ApplicationController(QObject):
             if self.__system_used:
                 # If the system has already been used and the user is trying
                 # to start over we prevent it
-                self.__system_state = SystemState.SystemMustBeReset
+                self.__set_system_state(SystemState.SystemMustBeReset)
                 self.systemMustBeReset.emit()
             else:
                 # otherwise we set the first storage as the source
@@ -661,14 +666,15 @@ class ApplicationController(QObject):
                 self.__analysis_controller.set_source_disk(disk)
                 self.sourceNameChanged.emit(self.__source_name)
         elif self.__source_name != "" and self.__source_name == disk and state == DiskState.DISCONNECTED.value:
-            # The source was disconnected
-            self.__source_ready = False
-            self.sourceReadyChanged.emit(self.__source_ready)
-            self.__source_name = ""
-            self.__analysis_controller.set_source_disk("")
-            self.__input_files_list.clear()
-            self.__input_files_listmodel.reset()
-            self.sourceNameChanged.emit(self.__source_name)
+            # The source has been disconnected
+            # If the system has been used the user must reset it
+            # Otherwise we let go
+            if self.__system_used:
+                self.__set_system_state(SystemState.SystemMustBeReset)
+                self.systemMustBeReset.emit()
+                return
+            
+            self.__reset_states()
         elif self.__source_name != "" and self.__source_name != disk and state == DiskState.CONNECTED.value:
             # The target has been connected
             self.__target_ready = True
@@ -676,7 +682,7 @@ class ApplicationController(QObject):
             self.__target_name = disk
             self.targetNameChanged.emit(disk)
 
-            # Verify whether the disk has enough space
+            # TODO: Verify whether the disk has enough space
             if True:
                 self.start_transfer()
         elif self.__target_name != "" and self.__target_name == disk and state == DiskState.DISCONNECTED.value:
@@ -726,9 +732,9 @@ class ApplicationController(QObject):
             self.sourceReadyChanged.emit(self.__source_ready)
             self.__source_name = disk
             self.__analysis_controller.set_source_disk(disk)
-            self.sourceNameChanged.emit(self.__source_name)            
+            self.sourceNameChanged.emit(self.__source_name)
             Api().info(f"The source disk name is {self.__source_name}")
-            self.__set_system_state(SystemState.SystemGettingFilesList)
+            #self.__set_system_state(SystemState.SystemGettingFilesList)
 
     def __handle_list_files(self, payload:dict) -> None:
         # If the analysis is running we don't care about this message
@@ -952,14 +958,23 @@ class ApplicationController(QObject):
         if disk not in self.__storages:
             self.__storages.append(disk)
             self.storagesChanged.emit()
+            self.storagesCountChanged.emit()
 
     def __on_storage_removed(self, disk):
         if disk in self.__storages:
             self.__storages.remove(disk)
-            self.storagesChanged.emit()
+            self.storagesCountChanged.emit()
+            
+    def __reset_storages(self):
+        self.__storages.clear()
+        self.storagesChanged.emit()
+        self.storagesCountChanged.emit()
 
     def __get_storages(self):
         return self.__storages
+    
+    def __get_storages_count(self):
+        return len(self.__storages)
 
     def __get_remaining_time(self):
         """ Returns the time remaining for the complete scan, in minutes """
@@ -1238,6 +1253,7 @@ class ApplicationController(QObject):
     systemInformationModel = Property(QObject, __get_system_information_model, constant=True)
     handheld = Property(bool, __get_handheld, constant=True)
     storages = Property(list, __get_storages, notify=storagesChanged)
+    storagesCount = Property(int, __get_storages_count, notify=storagesCountChanged)
     systemLoadingProgress = Property(float, __get_system_loading_progress, notify=systemLoadingProgressChanged)
 
     language = Property(str, __get_language, __set_language, notify= languageChanged)

@@ -29,6 +29,7 @@ Item {
     property int remainingTimeInMinutes: ApplicationController.remainingTime
     property int systemState: ApplicationController.systemState
     property var storagesList: ApplicationController.storages
+    property var storagesCount: ApplicationController.storagesCount
     property int cleanFilesSize: ApplicationController.cleanFilesSize
     property int targetAvailableSize: ApplicationController.targetAvailableSize
     property real systemLoadingProgress: ApplicationController.systemLoadingProgress

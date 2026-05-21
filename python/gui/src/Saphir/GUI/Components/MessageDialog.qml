@@ -9,6 +9,7 @@ Rectangle {
     property alias label: txt.text
     property var buttonsLabels: [ labelOk, labelCancel ]
     property var buttonsColors: [ Environment.colorClean, Environment.colorInfected ]
+    property bool modal: true
 
     readonly property string labelOk: qsTr("Ok")
     readonly property string labelAccept: qsTr("Yes")
@@ -21,8 +22,8 @@ Rectangle {
 
     implicitWidth: handheld ? Environment.mainWidth : root.implicitWidth
     implicitHeight: handheld ? Environment.mainHeight : root.implicitHeight
-    color: handheld ? Environment.colorOverlay : "transparent"
-    z: 100
+    color: !modal ? "transparent" : (handheld ? Environment.colorOverlay : "transparent")
+    z: 1.0
 
     PanelBase {
         id: root

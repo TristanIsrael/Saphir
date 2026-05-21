@@ -129,7 +129,7 @@ Window {
 
             function onRejected() {
                 bindings.setAnalysisMode(Enums.AnalyseSelection)
-                window.pnlFileSelection.visible = true
+                window.pnlFileSelection.visible = bindings.sourceName !== ""
                 window.dlgAnalyseWholeStorage.visible = false
             }
 
@@ -198,6 +198,15 @@ Window {
             function onRejected() {
                 window.dlgShutdown.visible = false
             }
+        }
+
+        Connections {
+            target: window.dlgSystemMustBeReset
+
+            function onAccepted() {
+                window.dlgSystemMustBeReset.visible = false
+            }
+
         }
 
         Connections {
@@ -271,10 +280,16 @@ Window {
             } else if (bindings.systemState === Enums.SystemResetting) {
                 window.pnlFilesCopy.visible = false
                 window.pnlFileSelection.visible = false
-                //window.pnlMessages.visible = true
-            } else if (bindings.systemState === Enums.SystemReady) {
-                window.dlgAnalyseWholeStorage.visible = true
+                window.dlgSystemMustBeReset.visible = false
+            } else if(bindings.systemState === Enums.SystemMustBeReset) {
+                window.pnlFilesCopy.visible = false
+                window.pnlFileSelection.visible = false
+                window.dlgSystemMustBeReset.visible = true
             }
+        }
+
+        onStoragesCountChanged: {
+            window.pnlFileSelection.visible = bindings.storagesCount > 0
         }
     }
 
