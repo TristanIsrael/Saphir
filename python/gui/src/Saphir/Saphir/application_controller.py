@@ -361,6 +361,7 @@ class ApplicationController(QObject):
 
     def __reset_states(self):
         # Reset all models
+        self.__system_used = False
         self.__current_folder = "/"
         self.__input_files_list.clear()
         self.__input_files_listmodel.reset()
