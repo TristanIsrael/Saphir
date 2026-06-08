@@ -334,7 +334,7 @@ Item {
             case Enums.FileStatus.FileAnalysing:
                 return qsTr("Analysis in progress")
             case Enums.FileStatus.FileClean:
-                return qsTr("Clean")
+                return qsTr("Clean", "One single file")
             case Enums.FileStatus.FileInfected:
                 return qsTr("Infected")
             case Enums.FileStatus.FileCopyError:

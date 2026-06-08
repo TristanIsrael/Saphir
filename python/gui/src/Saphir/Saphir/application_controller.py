@@ -1135,9 +1135,11 @@ class ApplicationController(QObject):
         with self.__queue_files_list_lock:
             clean_files = sum(1 for item in self.__queued_files_list.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean)
             copy_success = sum(1 for item in self.__queued_files_list.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileCopySuccess) 
+            copy_failed = sum(1 for item in self.__queued_files_list.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileCopyError)
+            copy_total = copy_failed + copy_success
 
-            if copy_success > 0:
-                return copy_success / (copy_success + clean_files)
+            if copy_total > 0:
+                return clean_files / copy_total
             else:
                 return 0
 

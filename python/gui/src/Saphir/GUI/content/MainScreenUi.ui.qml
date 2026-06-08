@@ -386,7 +386,7 @@ Item {
         anchors.centerIn: parent
         visible: false
 
-        label: qsTr("Do you want to clean the system?")
+        label: qsTr("Do you want to clean the system?\nThe inputs won't be available\nduring the process")
         buttonsLabels: [qsTr("Yes"), qsTr("No")]
         handheld: bindings.handheld
     }
@@ -411,7 +411,7 @@ Item {
         z: 0.5
 
         label: qsTr("The system must be reset\nor shut down.")
-        buttonsLabels: []
+        buttonsLabels: [qsTr("Clean", "Clean the system"), qsTr("Shutdown")]
         handheld: bindings.handheld
     }
 

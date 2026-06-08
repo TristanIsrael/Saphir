@@ -289,7 +289,8 @@ Window {
         }
 
         onStoragesCountChanged: {
-            window.pnlFileSelection.visible = bindings.storagesCount > 0
+            window.pnlFileSelection.visible = bindings.storagesCount === 1
+            window.pnlFilesCopy.visible = bindings.storagesCount === 2
         }
     }
 
