@@ -854,7 +854,7 @@ class ApplicationController(QObject):
         self.fileUpdated.emit(filepath, ["status"])
         self.transferProgressChanged.emit()
 
-        if self.__get_transferred_ratio() == 1:
+        if self.__get_transferred_ratio() >= 1:
             self.__finish_transfer()
 
     def __finish_transfer(self):
@@ -1138,8 +1138,8 @@ class ApplicationController(QObject):
             copy_failed = sum(1 for item in self.__queued_files_list.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileCopyError)
             copy_total = copy_failed + copy_success
 
-            if copy_total > 0:
-                return clean_files / copy_total
+            if clean_files > 0:
+                return copy_total / clean_files
             else:
                 return 0
 
