@@ -144,7 +144,7 @@ Rectangle {
                     anchors.fill: parent
                     font.family: symbols ? "Material Icons" : "Inter"
                     text: modelData
-                    font.pixelSize: parent.height * 0.7
+                    font.pixelSize: symbols ? parent.height * 0.7 : parent.height * 0.4
                     color: root.enabled ? Environment.colorButtonTextEnabled : Environment.colorButtonTextDisabled
                     horizontalAlignment: Qt.AlignHCenter
                     verticalAlignment: Qt.AlignVCenter

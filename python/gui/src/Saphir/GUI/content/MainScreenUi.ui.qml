@@ -406,7 +406,7 @@ Item {
         id: dlgSystemMustBeReset
 
         anchors.centerIn: parent
-        visible: true
+        visible: false
         modal: false
         z: 0.5
 

@@ -336,18 +336,16 @@ durant le processus</translation>
         <location filename="../GUI/content/MainScreenUi.ui.qml" line="413"/>
         <source>The system must be cleaned
 or shut down.</source>
-        <translation type="unfinished">Le système doit être nettoyé\nou éteint.</translation>
+        <translation>Le système doit être nettoyé\nou éteint.</translation>
     </message>
     <message>
-        <location filename="../GUI/content/MainScreenUi.ui.qml" line="414"/>
         <source>Clean</source>
         <comment>Clean the system</comment>
-        <translation>Nettoyer</translation>
+        <translation type="vanished">Nettoyer</translation>
     </message>
     <message>
-        <location filename="../GUI/content/MainScreenUi.ui.qml" line="414"/>
         <source>Shutdown</source>
-        <translation>Eteindre</translation>
+        <translation type="vanished">Eteindre</translation>
     </message>
     <message>
         <source>Do you want to clean the system?</source>
@@ -367,22 +365,22 @@ or shut down.</source>
 <context>
     <name>MessageDialog</name>
     <message>
-        <location filename="../GUI/Components/MessageDialog.qml" line="14"/>
+        <location filename="../GUI/Components/MessageDialog.qml" line="15"/>
         <source>Ok</source>
         <translation>Ok</translation>
     </message>
     <message>
-        <location filename="../GUI/Components/MessageDialog.qml" line="15"/>
+        <location filename="../GUI/Components/MessageDialog.qml" line="16"/>
         <source>Yes</source>
         <translation>Oui</translation>
     </message>
     <message>
-        <location filename="../GUI/Components/MessageDialog.qml" line="16"/>
+        <location filename="../GUI/Components/MessageDialog.qml" line="17"/>
         <source>No</source>
         <translation>Non</translation>
     </message>
     <message>
-        <location filename="../GUI/Components/MessageDialog.qml" line="17"/>
+        <location filename="../GUI/Components/MessageDialog.qml" line="18"/>
         <source>Cancel</source>
         <translation>Annuler</translation>
     </message>
