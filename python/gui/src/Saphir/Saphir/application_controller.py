@@ -335,8 +335,8 @@ class ApplicationController(QObject):
    
     @Slot()
     def reset(self):
-        self.__set_system_state(SystemState.SystemResetting)
         self.stop_analysis()
+        self.__set_system_state(SystemState.SystemResetting)    
 
         # Reset the environment means destroying and re-creating dirty VMs:
         # - sys-usb
@@ -369,13 +369,14 @@ class ApplicationController(QObject):
         self.__queue_listmodel.reset()
         self.__queue_files_size = 0
         self.__folders_to_query = 0
-        self.__current_folder = "/"
+        self.__current_folder = "/"        
         self.currentFolderChanged.emit()
         self.__analysis_controller.reset()
         self.__source_name = ""
         self.sourceNameChanged.emit("")
         self.__analysis_controller.set_source_disk("")
         self.__target_name = ""
+        self.targetNameChanged.emit()
         self.totalFilesCountChanged.emit(0)
         self.cleanFilesCountChanged.emit(0)
         self.infectedFilesCountChanged.emit(0)
@@ -385,7 +386,8 @@ class ApplicationController(QObject):
         self.remainingTimeChanged.emit()
         self.__long_process_running = False
         self.longProcessRunningChanged.emit()
-        #self.__set_system_state(SystemState.SystemReady)
+        self.__copied_files_count = 0
+        self.copiedFilesCountChanged.emit()
 
         # The storages come from a single disk so we clean all of them
         self.__reset_storages()
@@ -899,7 +901,7 @@ class ApplicationController(QObject):
 
         print(f"filepath:{filepath}, endswith:{filepath.endswith("journal.log")}, disk:{disk}, targetName:{self.__target_name}")
         if disk == self.__target_name and filepath.endswith("journal.log"):
-            self.__set_system_state(SystemState.TransferFinished)
+            self.__set_system_state(SystemState.SystemMustBeReset)
             self.__messages_model.clear()
             self.__messages_model.addMessage(self.tr("The report ang log have been copied to the destination storage."))
             self.__messages_model.addMessage(self.tr("You can now remove it."))

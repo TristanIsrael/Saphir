@@ -347,8 +347,8 @@ Item {
 
         anchors.horizontalCenter: parent.horizontalCenter
 
-        y: bindings.systemState < Enums.SafecorReady || bindings.systemState === Enums.SystemResetting ? (parent.height - height) / 2 : 10
-        height: bindings.systemState < Enums.SafecorReady || bindings.systemState === Enums.SystemResetting ? implicitHeight : 60
+        y: bindings.systemState in [ Enums.SystemInactive, Enums.SystemStarting, Enums.SystemResetting ] ? (parent.height - height) / 2 : 10
+        height: bindings.systemState in [ Enums.SystemInactive, Enums.SystemStarting, Enums.SystemResetting ] ? implicitHeight : 60
         taint: "#cccccc"
 
         opacity: !bindings.analysisReady ? 1.0 : 0.0

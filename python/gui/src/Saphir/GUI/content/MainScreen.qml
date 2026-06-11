@@ -177,8 +177,6 @@ Window {
             function onAccepted() {
                 bindings.reset()
                 window.dlgRestart.visible = false
-                //window.pnlLoading.visible = true
-                //window.pnlMessages.visible = true
             }
 
             function onRejected() {
@@ -192,7 +190,6 @@ Window {
             function onAccepted() {
                 bindings.shutdown()
                 window.dlgShutdown.visible = false
-                //window.pnlMessages.visible = true
             }
 
             function onRejected() {
