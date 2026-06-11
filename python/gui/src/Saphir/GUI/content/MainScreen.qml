@@ -188,8 +188,8 @@ Window {
             target: window.dlgShutdown
 
             function onAccepted() {
-                bindings.shutdown()
                 window.dlgShutdown.visible = false
+                bindings.shutdown()                
             }
 
             function onRejected() {
@@ -200,8 +200,14 @@ Window {
         Connections {
             target: window.dlgSystemMustBeReset
 
-            function onAccepted() {
+            function onButtonClicked(label) {
                 window.dlgSystemMustBeReset.visible = false
+
+                if(label === Constants.iconShutdown) {
+                    bindings.shutdown()
+                } else {
+                    bindings.reset()
+                }
             }
 
         }
@@ -278,6 +284,7 @@ Window {
                 window.pnlFilesCopy.visible = false
                 window.pnlFileSelection.visible = false
                 window.dlgSystemMustBeReset.visible = false
+                window.dlgRestart.visible = false
             } else if(bindings.systemState === Enums.SystemMustBeReset) {
                 window.pnlFilesCopy.visible = false
                 window.pnlFileSelection.visible = false

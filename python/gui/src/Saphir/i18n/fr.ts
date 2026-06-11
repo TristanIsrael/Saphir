@@ -333,6 +333,12 @@ Les entrées seront indisponibles
 durant le processus</translation>
     </message>
     <message>
+        <location filename="../GUI/content/MainScreenUi.ui.qml" line="413"/>
+        <source>The system must be cleaned
+or shut down.</source>
+        <translation type="unfinished">Le système doit être nettoyé\nou éteint.</translation>
+    </message>
+    <message>
         <location filename="../GUI/content/MainScreenUi.ui.qml" line="414"/>
         <source>Clean</source>
         <comment>Clean the system</comment>
@@ -353,10 +359,9 @@ durant le processus</translation>
         <translation>Voulez-vous éteindre le système ?</translation>
     </message>
     <message>
-        <location filename="../GUI/content/MainScreenUi.ui.qml" line="413"/>
         <source>The system must be reset
 or shut down.</source>
-        <translation>Le système doit être réinitialisé\ou éteint.</translation>
+        <translation type="vanished">Le système doit être réinitialisé\nou éteint.</translation>
     </message>
 </context>
 <context>

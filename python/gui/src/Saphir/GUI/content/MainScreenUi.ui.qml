@@ -347,8 +347,8 @@ Item {
 
         anchors.horizontalCenter: parent.horizontalCenter
 
-        y: bindings.systemState in [ Enums.SystemInactive, Enums.SystemStarting, Enums.SystemResetting ] ? (parent.height - height) / 2 : 10
-        height: bindings.systemState in [ Enums.SystemInactive, Enums.SystemStarting, Enums.SystemResetting ] ? implicitHeight : 60
+        y: [ Enums.SystemInactive, Enums.SystemStarting, Enums.SystemResetting ].includes(bindings.systemState) ? (parent.height - height) / 2 : 10
+        height: [ Enums.SystemInactive, Enums.SystemStarting, Enums.SystemResetting ].includes(bindings.systemState) ? implicitHeight : 60
         taint: "#cccccc"
 
         opacity: !bindings.analysisReady ? 1.0 : 0.0
@@ -406,12 +406,13 @@ Item {
         id: dlgSystemMustBeReset
 
         anchors.centerIn: parent
-        visible: false
+        visible: true
         modal: false
         z: 0.5
 
-        label: qsTr("The system must be reset\nor shut down.")
-        buttonsLabels: [qsTr("Clean", "Clean the system"), qsTr("Shutdown")]
+        label: qsTr("The system must be cleaned\nor shut down.")
+        buttonsLabels: [ Constants.iconRestart, Constants.iconShutdown ]
+        symbols: true
         handheld: bindings.handheld
     }
 

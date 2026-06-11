@@ -10,6 +10,7 @@ Rectangle {
     property var buttonsLabels: [ labelOk, labelCancel ]
     property var buttonsColors: [ Environment.colorClean, Environment.colorInfected ]
     property bool modal: true
+    property bool symbols: false
 
     readonly property string labelOk: qsTr("Ok")
     readonly property string labelAccept: qsTr("Yes")
@@ -138,16 +139,18 @@ Rectangle {
 
                 icon: ""
 
-                StyledText {
+                Text {
                     id: btnText2
                     anchors.fill: parent
+                    font.family: symbols ? "Material Icons" : "Inter"
                     text: modelData
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
+                    font.pixelSize: parent.height * 0.7
+                    color: root.enabled ? Environment.colorButtonTextEnabled : Environment.colorButtonTextDisabled
+                    horizontalAlignment: Qt.AlignHCenter
+                    verticalAlignment: Qt.AlignVCenter
                     fontSizeMode: Text.HorizontalFit
                     font.bold: true
-                    font.pixelSize: parent.height * 0.4
-                    font.capitalization: Font.SmallCaps
+                    font.capitalization: symbols ? Font.MixedCase : Font.SmallCaps
                 }
 
 
