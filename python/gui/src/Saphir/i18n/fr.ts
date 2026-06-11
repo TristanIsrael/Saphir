@@ -76,32 +76,32 @@
         <translation>Le système est en cours de nettoyage, veuillez attendre...</translation>
     </message>
     <message>
-        <location filename="../Saphir/application_controller.py" line="492"/>
+        <location filename="../Saphir/application_controller.py" line="494"/>
         <source>Saphir has started... Waiting for the components to be ready.</source>
         <translation>Saphir a démarré... En attente du démarrage des composants.</translation>
     </message>
     <message>
-        <location filename="../Saphir/application_controller.py" line="575"/>
+        <location filename="../Saphir/application_controller.py" line="577"/>
         <source>The system is shutting down...</source>
         <translation>Le système est en cours d&apos;extinction...</translation>
     </message>
     <message>
-        <location filename="../Saphir/application_controller.py" line="629"/>
+        <location filename="../Saphir/application_controller.py" line="631"/>
         <source>The antiviruses are ready</source>
         <translation>Les antivirus sont prêts</translation>
     </message>
     <message>
-        <location filename="../Saphir/application_controller.py" line="904"/>
+        <location filename="../Saphir/application_controller.py" line="906"/>
         <source>The report ang log have been copied to the destination storage.</source>
         <translation>Le rapport et le journal ont été copiés sur le stockage de destination.</translation>
     </message>
     <message>
-        <location filename="../Saphir/application_controller.py" line="905"/>
+        <location filename="../Saphir/application_controller.py" line="907"/>
         <source>You can now remove it.</source>
         <translation>Vous pouvez à présent le retirer.</translation>
     </message>
     <message>
-        <location filename="../Saphir/application_controller.py" line="906"/>
+        <location filename="../Saphir/application_controller.py" line="908"/>
         <source>If you want to analyze another storage you will have to reset the system from the menu.</source>
         <translation>Si vous voulez analyser un autre support de stockage, vous devrez nettoyer le système depuis le menu principal.</translation>
     </message>
@@ -137,72 +137,89 @@
 <context>
     <name>FilesCopyPanel</name>
     <message>
-        <location filename="../GUI/content/FilesCopyPanel.qml" line="38"/>
         <source>Only clean files will be copied. The copy will begin as soon as you connect a new storage.</source>
-        <translation>Seuls les fichiers sains seront copiés. La copie débutera dès que vous aurez connecté un nouveau support de stockage.</translation>
+        <translation type="vanished">Seuls les fichiers sains seront copiés. La copie débutera dès que vous aurez connecté un nouveau support de stockage.</translation>
     </message>
     <message>
-        <location filename="../GUI/content/FilesCopyPanel.qml" line="45"/>
         <source>Please keep the source storage connected during the file copy.</source>
-        <translation>Veuillez conserver le support d&apos;origine connecté pendant la copie.</translation>
+        <translation type="vanished">Veuillez conserver le support d&apos;origine connecté pendant la copie.</translation>
     </message>
     <message>
-        <location filename="../GUI/content/FilesCopyPanel.qml" line="54"/>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="55"/>
         <source>Volume of files to copy: %1</source>
         <translation>Volume de fichiers à copier : %1</translation>
     </message>
     <message>
-        <location filename="../GUI/content/FilesCopyPanel.qml" line="65"/>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="66"/>
         <source>Destination: %1</source>
         <translation>Destination : %1</translation>
     </message>
     <message>
-        <location filename="../GUI/content/FilesCopyPanel.qml" line="70"/>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="71"/>
         <source>Available space: Unknown</source>
         <translation>Espace disponible : Inconnu</translation>
     </message>
     <message>
-        <location filename="../GUI/content/FilesCopyPanel.qml" line="80"/>
         <source>Please connect a storage...</source>
-        <translation>Veuillez connecter un stockage...</translation>
+        <translation type="vanished">Veuillez connecter un stockage...</translation>
     </message>
     <message>
-        <location filename="../GUI/content/FilesCopyPanel.qml" line="84"/>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="89"/>
         <source>Copy in progress...</source>
         <translation>Copie en cours...</translation>
     </message>
     <message>
-        <location filename="../GUI/content/FilesCopyPanel.qml" line="86"/>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="91"/>
         <source>Generating the report...</source>
         <translation>Génération du rapport...</translation>
     </message>
     <message>
-        <location filename="../GUI/content/FilesCopyPanel.qml" line="88"/>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="93"/>
         <source>The transfer is finished!</source>
         <translation>Le transfert est terminé !</translation>
     </message>
     <message>
-        <location filename="../GUI/content/FilesCopyPanel.qml" line="92"/>
         <source>Undefined (%1)</source>
-        <translation>Indéfini (%1)</translation>
+        <translation type="vanished">Indéfini (%1)</translation>
     </message>
     <message>
-        <location filename="../GUI/content/FilesCopyPanel.qml" line="158"/>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="32"/>
+        <source>Only the clean files will be copied.</source>
+        <translation>Seuls les fichiers sains seront copiés.</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="40"/>
+        <source>Please keep the source storage connected during the copy.</source>
+        <translation>Veuillez conserver la source connectée durant la copie.</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="85"/>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="95"/>
+        <source>Please connect a target storage...</source>
+        <translation>Veuillez connecter un stockage pour la copie...</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="99"/>
+        <source>Unknown state (%1)</source>
+        <translation>Etat inconnu (%1)</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="169"/>
         <source> B</source>
         <translation> o</translation>
     </message>
     <message>
-        <location filename="../GUI/content/FilesCopyPanel.qml" line="160"/>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="171"/>
         <source> KB</source>
         <translation> Ko</translation>
     </message>
     <message>
-        <location filename="../GUI/content/FilesCopyPanel.qml" line="162"/>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="173"/>
         <source> MB</source>
         <translation> Mo</translation>
     </message>
     <message>
-        <location filename="../GUI/content/FilesCopyPanel.qml" line="164"/>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="175"/>
         <source> GB</source>
         <translation> Go</translation>
     </message>
