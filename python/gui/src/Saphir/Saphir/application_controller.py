@@ -168,6 +168,10 @@ class ApplicationController(QObject):
 
     @Slot()
     def update_source_files_list(self):
+        # First we verify that there is a source
+        if self.__source_name == "":
+            return
+
         # Ask for the list of files
         if self.__analysis_mode == AnalysisMode.AnalyseSelection:
             self.__folders_to_query = 1
@@ -369,7 +373,7 @@ class ApplicationController(QObject):
         self.__queue_listmodel.reset()
         self.__queue_files_size = 0
         self.__folders_to_query = 0
-        self.__current_folder = "/"        
+        self.__current_folder = "/"
         self.currentFolderChanged.emit()
         self.__analysis_controller.reset()
         self.__source_name = ""
