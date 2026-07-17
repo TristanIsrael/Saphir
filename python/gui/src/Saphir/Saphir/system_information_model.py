@@ -70,7 +70,7 @@ class SystemInformationModel(QAbstractTableModel):
 
         str_battery = f"{self.__battery_level} %" +(self.tr(" and charging") if self.__plugged else "")
         self.__system_information.append( (self.tr("Battery"), str_battery) )
-        self.__system_information.append( (self.tr("Debug mode"), "On" if self.__system_information_data["core"]["debug_on"] else "Off") )
+        self.__system_information.append( (self.tr("Debug mode"), "On" if self.__system_information_data.get("core", {}).get("debug_on", False) else "Off") )
 
         self.__system_information.append( (self.tr("Handheld"), self.tr("Yes") if self.__handheld else self.tr("No")))
 
