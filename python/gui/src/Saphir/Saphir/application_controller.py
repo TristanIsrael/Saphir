@@ -1,5 +1,4 @@
 from PySide6.QtCore import QObject, Signal, Slot, Property, QCoreApplication, QTranslator
-from PySide6.QtWidgets import QWidget
 from safecor import Api, MqttFactory, Topics, MqttHelper, ComponentsHelper, Constants, ComponentState, DiskState
 from libsaphir import FileStatus
 from . import SystemState, AnalysisState, AnalysisMode
@@ -65,7 +64,6 @@ class ApplicationController(QObject):
     __system_loading_progress = 0.0
     
     #__interfaceInputs = None
-    #__main_window:QWidget
     #__is_navigating = True
 
     # Signaux
