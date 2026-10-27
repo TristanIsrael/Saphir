@@ -1,0 +1,470 @@
+# Implementation state vs specification
+
+> **Status**: Coverage audit
+> **Last updated**: 2026-10-27
+> **Reference**: `docs/features.md` (F1–F21, NFR-1 to NFR-5)
+
+## Legend
+
+| Symbol | Meaning |
+|---------|---------------|
+| ✅ | Implemented, compliant with the specification |
+| 🟡 | Partially implemented (identified gaps) |
+| ❌ | Not implemented |
+| ⚠️ | Diverges from the specification |
+
+---
+
+## 1. Feature coverage
+
+| Ref. | Feature | Status | Main location |
+|------|----------|--------|------------------------|
+| F1 | Media detection & mode selection | 🟡 | `application_controller.py:637-713` |
+| F2 | Navigation & file selection | 🟡 | `application_controller.py:182-281`, `FilesSelectionPanel.qml` |
+| F3 | Antivirus analysis | 🟡 | `analysis_controller.py`, `analysis_helper.py` |
+| F4 | Copy of clean files | 🟡 | `application_controller.py:307-325, 839-882` |
+| F5 | Event journal | ✅ | `application_controller.py:162, 878-881`, `LogDialog.qml` |
+| F6 | Safety report | 🟡 | `report_controller.py`, `application_controller.py:866-881` |
+| F7 | GUI themes | ⚠️ | `Environment.qml`, `MainScreenUi.ui.qml` |
+| F8 | Status bar (TopBar) | 🟡 | `TopBar.qml`, `application_controller.py:883-938` |
+| F9 | System state dialog | ✅ | `SystemStateDialog.qml`, `application_controller.py:827-837` |
+| F10 | Cleaning (Reset) | 🟡 | `application_controller.py:340-378` |
+| F11 | Startup/cleaning progression | ✅ | `SystemLoadingPanel.qml`, `application_controller.py:619-632` |
+| F12 | Shutdown | ✅ | `application_controller.py:578-582` |
+| F13 | Prompt to plug in a media | ✅ | `MainScreenUi.ui.qml:360-370` |
+| F14 | Language selection | 🟡 | `application_controller.py:546-576`, `MainScreen.qml` |
+| F15 | Switch to the Viewer | ❌ | `application_controller.py:584-586` (hidden button) |
+| F16 | Remaining time estimation (ETA) | 🟡 | `EMA_ETA_estimator.py`, `FilesProgress.qml:87` |
+| F17 | Analysis list filters | 🟡 | `AnalysisPanel.qml:76-173` |
+| F18 | System messages `[deprecated]` | ❌ | `MessagesPanel.qml`, `MessagesListModel` (hidden panel) |
+| F19 | Ambient light indicator `[not ready]` | ❌ | `Brightness.qml` (hardcoded, no backend) |
+| F20 | Fullscreen mode & cursor handling | ✅ | `main.py:34-50` |
+| F21 | Adaptive layout by device type `[backlog]` | 🟡 | `Environment.handheld`, `AnalysisPanel.qml` |
+
+---
+
+### F1 — Media detection & mode selection 🟡
+
+**Implemented**:
+- Detection via `DISK_STATE` (`__handle_disk_state`, line 637) and `LIST_DISKS` (`__handle_list_disks`, line 716).
+- First media = source, second = target (lines 662-711).
+- "Scan the whole media?" dialog (`dlgAnalyseWholeStorage`, `MainScreenUi.ui.qml:372-381`).
+- Choice irreversible without reset.
+- Multi-partitions: `__storages` list + `comboStorages` selector.
+
+**Gaps / divergences**:
+- ⚠️ **Copy trigger**: currently the copy starts **immediately** on target connection (line 692-694), regardless of the analysis state. The spec requires the copy to start only once the analysis is finished.
+- 🟡 **Automatic resume**: no copy resume after re-insertion (see F4).
+- 🟡 `[bug]` "Scan all" mode only analyzes the root `/` of the first disk (lines 218, 207), not all partitions.
+- 🟡 No explicit guard for the return to the initial state if the media is removed before the choice.
+
+---
+
+### F2 — Navigation & selection 🟡
+
+**Implemented**:
+- Navigation: `go_to_folder`, `go_to_parent_folder` (lines 182-200).
+- Partition change via `comboStorages` → `on_storage_selected` (line 1042).
+- File → queue: `enqueue_file` (line 220).
+- Folder → recursive: `__is_enqueuing` + `folders_to_query` (lines 746-824).
+- Deselection: `dequeue_file` (line 254).
+
+**Gaps / divergences**:
+- ❌ **No concurrent enqueue**: no serialization wait queue. Several folders can be enqueued in parallel (spec constraint not met).
+- 🟡 **Queue locked after analysis**: the lock is implicit (via the system state), no explicit guard in `enqueue_file`/`dequeue_file`.
+- 🟡 `[feature]` No full queue drain (backlog).
+
+---
+
+### F3 — Antivirus analysis 🟡
+
+**Implemented**:
+- Manual trigger: `start_stop_analysis` (line 282).
+- File-by-file copy to the repository: `__do_copy_files_into_repository` (line 365), `Api().read_file` (line 406).
+- Files parallelism: `__repository_capacity` + timer (line 80).
+- Engines parallelism: each file sent to all AV (line 199).
+- Consensus: `evaluate_result_consensus` (analysis_helper.py:110) — infected if **one** engine infected.
+- Stop/resume: `stop_analysis`/`start_analysis` + `stop`/`resume` topics (analysis_controller.py:70-86).
+- Progression: `globalProgress`, `FilesProgress.qml`.
+- ETA: `EMAETAEstimator` (see F16).
+
+**Gaps / divergences**:
+- ⚠️ **Hardened parallelism**: `cpu_count = 8` hardcoded (analysis_controller.py:250, "because of bug #54") instead of the real number of cores.
+- ⚠️ **Ternary status**: the spec requires Clean/Infected/Error. The consensus returns a boolean (clean/infected). The `FileAnalysisError` status exists in the enum but the error handler is **disabled** (analysis_controller.py:346-362, commented code).
+- ❌ **Analysis error handling**: `__handle_error` is a no-op (print only).
+- 🟡 **Fingerprint copy**: see NFR-1 (not verified).
+
+---
+
+### F4 — Copy of clean files 🟡
+
+**Implemented**:
+- Only clean files: `__do_start_transfer` (line 322-324).
+- Automatic trigger: on target connection (line 692-694).
+- Progression: `copied_files_count`, `FilesCopyPanel.qml`.
+- Report + journal copied at the end: `__finish_transfer` (line 866).
+
+**Gaps / divergences**:
+- ❌ **Final check (copied == clean)**: `__get_transferred_ratio` compares but does **not** trigger an explicit error if files have failed. The end is determined by `ratio >= 1`.
+- ❌ **Source disconnection during copy**: not handled → uncertain state (known bug). No error message, no resume.
+- ❌ **Cancellation**: no button or cancellation logic for the copy.
+- ⚠️ **Trigger**: immediate on target connection, not conditioned on the end of the analysis (see F1).
+- 🟡 `[feature]` No check of the available space on the target.
+- 🟡 **Available space displayed**: `targetAvailableSize` always 0 and `Property(bool, ...)` instead of `int` (application_controller.py:1242) → permanent "Available space: Unknown".
+
+---
+
+### F5 — Event journal ✅
+
+**Implemented**:
+- Automatic recording: `Api().start(..., recording=True, logfile=...)` (line 162).
+- Mandatory copy onto the target: `__finish_transfer` copies `journal.log` (line 879-881).
+- User viewing: `LogDialog.qml` (`btnLog` button).
+- Native Safecor format.
+- Stateless: no retention between cycles.
+
+Compliant.
+
+---
+
+### F6 — Safety report 🟡
+
+**Implemented**:
+- Automatic generation after copy: `__make_analysis_report` (line 870).
+- Only if a copy took place: called from `__finish_transfer`.
+- PDF Jinja2 + WeasyPrint: `report_controller.py:70-73`.
+- Content: system, Saphir version, antivirus, media, dates, counters, list of files (path, fingerprint, results per AV).
+- Automatic copy onto the target.
+
+**Gaps / divergences**:
+- ❌ **Report language selection**: `report_controller.py:68` **always** uses `scan_report_en.html`. The `scan_report_fr.html` template **exists but is never used** → violation of F14/NFR-5.
+- 🟡 **Incomplete content**: `partitions` = `""` (line 54), "total size analyzed" missing, no partition names.
+- ❌ **Error handling**: no `try/except` around WeasyPrint. A generation failure crashes the workflow instead of ending normally (spec divergence).
+- ⚠️ **Synchronous generation**: the PDF is generated on the MQTT thread (in `__finish_transfer`), risk of blocking.
+
+---
+
+### F7 — GUI themes ⚠️
+
+**Implemented**:
+- Three themes: light, dark, low visibility (`ThemeLight/Dark/LowVisibility.qml`).
+- Change at any time: `btnLight/Dark/LowVisibility` (MainScreen.qml:38-63).
+- No persistence (stateless).
+- Wireframe reserved for design: `ThemeWireframe.qml`.
+
+**Divergences**:
+- ⚠️ **Default theme**: `Environment.qml:14` → `property int theme: Constants.dark`. Spec F7 says "the default theme is **light**". **Spec ↔ implementation divergence.**
+- ⚠️ **Low visibility**: `backgroundImage` and `system*Image` use `dark.jpg` for the low visibility mode (Environment.qml:24,32,40,48). To be verified that the "reduce the light" objective is actually reached.
+
+---
+
+### F8 — Status bar (TopBar) 🟡
+
+**Implemented**:
+- Real-time clock (HH:MM:SS): `TopBar.qml` Timer (line 39-45).
+- No date.
+- Local/Zulu toggle: click on the clock (`maHour`, line 48-54).
+- Battery: `Energy.qml` (polling `ENERGY_STATE` every 5 s, application_controller.py:933-938).
+- Charger: `plugged` (application_controller.py:883-892).
+
+**Gaps / divergences**:
+- ❌ **Classification**: `classificationLevel` **hardcoded to 0** in `Bindings.qml:21`. No backend `classificationLevel` property. The "Restricted distribution" / "Secret" levels are **inaccessible**. The backend (provided by Safecor) is not wired.
+- ⚠️ **Bug**: `TopBar.qml:36` — the `switch` color fallback returns `qsTr("Not protected")` (a **string** where a **color** is expected).
+
+---
+
+### F9 — System state dialog ✅
+
+**Implemented**:
+- Accessible at any time: `btnSystemState`.
+- Component list (Safecor + AV) + state: `SystemStateDialog.qml`, `componentsModel`.
+- States `UNKNOWN/STARTING/READY/ERROR/OFF` (via Safecor `ComponentState`).
+- System information: `systemInformationModel` (Safecor version, etc.).
+- Read-only.
+
+Compliant. **Note**: the DEBUG mode is not explicitly verified as displayed (to be confirmed in `systemInformationModel`).
+
+---
+
+### F10 — Cleaning (Reset) 🟡
+
+**Implemented**:
+- Accessible at any time: `btnRestart` → `reset()` (line 340).
+- Safecor feature + Saphir completion: `Api().restart_domain("sys-usb")` + restart of the AV domains (lines 348-355).
+- Analysis interruption: `stop_analysis()` (line 342).
+- Progression displayed: `SystemLoadingPanel.qml` (title "Cleaning..." in `SystemResetting` state).
+- Return to the initial state: `__reset_states()` (line 366).
+
+**Gaps / divergences**:
+- ⚠️ **Incomplete interruption**: `reset()` stops the analysis but **not the copy** in progress. If a copy is in progress, it is not interrupted cleanly.
+- 🟡 **Media reconnection**: no explicit handling of the media disconnection/reconnection during the reset (the behavior relies on Safecor messages).
+
+---
+
+### F11 — Startup/cleaning progression ✅
+
+**Implemented**:
+- Display: `SystemLoadingPanel.qml` (4-step pipeline: GUI → Core → Antiviruses → Complete).
+- Progress bar + steps: `systemLoadingProgress` (application_controller.py:619-632).
+- 3 semantic steps (core, AV, ready).
+- Auto-close: `opacity = !analysisReady ? 1 : 0` (MainScreenUi.ui.qml:354).
+- Reused for startup and reset.
+
+Compliant. **Note**: the spec says "modal"; it is a panel (not strictly modal), but the functional behavior is equivalent.
+
+---
+
+### F12 — Shutdown ✅
+
+**Implemented**:
+- Accessible at any time: `btnShutdown`.
+- Confirmation: `dlgShutdown`.
+- Immediate interruption: `shutdown()` (line 578).
+- Call to the Safecor API: `Api().shutdown()` (line 582).
+
+Compliant.
+
+---
+
+### F13 — Prompt to plug in a media ✅
+
+**Implemented**:
+- Displayed when `ready && analysisReady && sourceName === ""` (MainScreenUi.ui.qml:364).
+- Non-modal.
+- "Close" button.
+
+Compliant.
+
+---
+
+### F14 — Language selection 🟡
+
+**Implemented**:
+- Change at any time: `btnLanguageEN`/`btnLanguageFR` (MainScreen.qml:231-249).
+- Immediate: `__install_translations` + `engine.retranslate` (main.py:100).
+- Default language = Safecor language: `get_default_language` (line 474).
+
+**Gaps / divergences**:
+- ⚠️ **PDF report**: the report does **not** follow the language (always `scan_report_en.html`, see F6).
+
+---
+
+### F15 — Switch to the Viewer ❌
+
+**Implemented**:
+- Backend: `switch_to_viewer()` → `Api().switch_gui("saphir-viewer")` (line 584-586).
+
+**Gaps (major)**:
+- ❌ **Hidden button**: `btnShowViewer` has `visible: false // Hidden until 3.2` (MainScreenUi.ui.qml:298).
+- ❌ **No unavailability guard**: if the Viewer component is not `READY`, the button should be unavailable + message in F9. Not implemented.
+- ❌ **No disabled-config handling**: the button should not exist + F9 message. Not implemented.
+- ❌ **No "no operation in progress" guard**: the Viewer should only be accessible at idle. Not implemented.
+
+---
+
+### F16 — Remaining time estimation (ETA) 🟡
+
+**Implemented**:
+- Weighted exponential moving average: `EMA_ETA_estimator.py`.
+- Displayed in the analysis gauge as `ETA: <readable duration>`: `FilesProgress.qml:87`.
+- Duration formatted in days / hours / minutes.
+- Reset on each analysis start with the total size of the queue.
+
+**Gaps / divergences**:
+- 🟡 `[fix]` (NFR-5) the displayed duration units (`j`/`h`/`min`) use untranslated French abbreviations.
+
+---
+
+### F17 — Analysis list filters 🟡
+
+**Implemented**:
+- Three toggleable filters (Clean / Infected / Waiting) on the file list: `AnalysisPanel.qml:76-173`.
+- Each filter active by default.
+- Filter applies to the display only (underlying data untouched).
+
+**Gaps / divergences**:
+- 🟡 `[fix]` inconsistent third-filter label ("Waiting" in PC layout, "Other" in tablet layout).
+
+---
+
+### F18 — System messages `[deprecated]` ❌
+
+**Status**: deprecated — code kept during the refactoring, removal/reactivation decision pending.
+
+**Implemented**:
+- Message feed panel: `MessagesPanel.qml`, `MessagesListModel`.
+- Message emission along the workflow.
+
+**Gaps / divergences**:
+- ❌ Permanently hidden panel (`visible: false`, MainScreenUi.ui.qml:339) — feature inert.
+- Pending decision: reactivate or remove (panel + model + emission).
+
+---
+
+### F19 — Ambient light indicator `[not ready]` ❌
+
+**Status**: not ready — Safecor does not provide the light data yet. Code kept.
+
+**Implemented**:
+- Ambient light indicator: `Brightness.qml`, `ambientLight` property.
+
+**Gaps / divergences**:
+- ❌ `ambientLightSensorReady`/`ambientLight` hardcoded, no Safecor backend.
+- ❌ `[fix]` the `Material Symbols Outlined` font is not installed by `main.py`.
+
+---
+
+### F20 — Fullscreen mode & cursor handling ✅
+
+**Implemented**:
+- Runs in fullscreen on a dedicated station (nominal kiosk mode).
+- Cursor hidden in kiosk, reappears on mouse/touch movement: input events filter (`main.py:34-50`).
+- Fullscreen can only be disabled in DevMode.
+
+**Gaps / divergences**:
+- **Note**: may be handled by Safecor; kept here for the moment.
+
+---
+
+### F21 — Adaptive layout by device type `[backlog]` 🟡
+
+**Status**: to be done — the PC layout is currently inert.
+
+**Implemented**:
+- `handheld` property drives the layout (row heights, filter style, panel templates): `Environment.handheld`, `AnalysisPanel.qml`.
+
+**Gaps / divergences**:
+- ❌ `handheld` always `True` (backend constant + hardcoded in `Bindings.qml`) → the PC layout is dead.
+- To do: make `handheld` a genuinely device-configured property; rehabilitate or remove the PC layout.
+
+---
+
+## 2. NFR coverage
+
+| Ref. | NFR | Status |
+|------|-----|--------|
+| NFR-1 | End-to-end integrity (fingerprint) | ❌ |
+| NFR-2 | Source media integrity | ✅ |
+| NFR-3 | Minimum number of antivirus engines | 🟡 |
+| NFR-4 | Dirty state & locking | 🟡 |
+| NFR-5 | Translatability | 🟡 |
+
+### NFR-1 — Fingerprint ❌
+
+- The fingerprint is **retrieved** (in the file dict, `fingerprint`, application_controller.py:846, analysis_controller.py:117) but **never compared**.
+- ❌ No verification at analysis (the AV components do not re-verify the fingerprint).
+- ❌ No verification on the target copy: `__handle_copy_file` receives the `fingerprint` (line 846) but does **not** compare it to the source one.
+- ❌ No error trigger on divergence.
+
+**This is the most critical gap**: the end-to-end integrity guarantee is not effective.
+
+### NFR-2 — Source integrity ✅
+
+- By design, Saphir only does `read_file` on the source. No write. Compliant.
+
+### NFR-3 — Minimum number of AV 🟡
+
+- ✅ Compile-time constant: `ANTIVIRUS_NEEDED = 2` (libsaphir `_constants.py:7`).
+- ✅ Analysis blocked if not reached: `btnStartStop.enabled` depends on `analysisReady` (which requires `len(analysis_components) >= ANTIVIRUS_NEEDED`, application_controller.py:612).
+- ✅ Progression pending.
+- ❌ **AV failure during analysis**: not handled (the error handler is disabled, see F3). The result should switch to error.
+
+### NFR-4 — Dirty state & locking 🟡
+
+- ✅ Contamination: `systemUsed` emitted when the file is available in the repository (analysis_controller.py:187).
+  - ⚠️ The spec says the contamination point is the **read by `disk-controller`**, not the placement in the repository. To be aligned.
+- 🟡 **Locking (different disk names)**: partial. The return to `SystemMustBeReset` exists (application_controller.py:666, 680) but the disk-name comparison logic for "same media → continue" is not explicit.
+- ⚠️ **Numeric gate**: `if self.__system_state.value >= SystemState.CopyCleanFiles.value: return` (line 640) — comparison by integer value, fragile.
+
+### NFR-5 — Translatability 🟡
+
+- ✅ GUI: Qt mechanisms (`tr`, `.qm`, `qsTr`).
+- ⚠️ **Report**: the FR template exists (`scan_report_fr.html`) but is **not used** by `report_controller.py`. The static per-language translation is not wired.
+
+---
+
+## 3. Cross-reference — previously undocumented features (now F16–F21)
+
+These capabilities used to exist in the code without a spec entry. They are now documented in `features.md` and audited above (F16–F21):
+
+| Previous name | Spec ref. | Location | Description |
+|----------|-----------|-------------|-------------|
+| ETA estimation (EMA) | F16 | `EMA_ETA_estimator.py`, `FilesProgress.qml:87` | Remaining time estimation by weighted exponential moving average. Displayed in the analysis gauge. |
+| Analysis list filters | F17 | `AnalysisPanel.qml:76-173` | Clean / Infected / Waiting filters on the file list. |
+| System messages | F18 `[deprecated]` | `MessagesPanel.qml`, `MessagesListModel` | System message feed. **Permanently hidden panel** (MainScreenUi.ui.qml:339). |
+| Light sensor detection | F19 `[not ready]` | `Brightness.qml`, `ambientLight` | Ambient light indicator. **Dead** (hardcoded `false`, no backend, font not installed). |
+| Input events filter | F20 | `main.py:34-50` | Cursor hidden in kiosk, reappears on mouse/touch movement. |
+| Handheld mode | F21 `[backlog]` | `Environment.handheld`, `AnalysisPanel.qml` | Adaptive tablet/PC layout. **Always `True`** hardcoded → the PC layout is dead. |
+| Development mode (DEVMODE) | — (not a product feature) | `devmode_helper.py`, `main.py` | Dev environment without appliance (mock MQTT, simulated disks). Moved to `docs/test-strategy.md` §3.1 (simulation tooling). |
+
+> Remaining open decisions: **F18** (reactivate or remove the message panel) and the removal candidates **F19** (light, dead) and the dead PC layout of **F21**.
+
+---
+
+## 4. Spec ↔ implementation divergences (summary)
+
+| # | Divergence | Spec | Implementation |
+|---|-----------|------|----------------|
+| D1 | Default theme (F7) | Light | `dark` (Environment.qml:14) |
+| D2 | Copy trigger (F1/F4) | After end of analysis | Immediate on target connection |
+| D3 | Multilingual report (F14/NFR-5) | Template per language | Always EN |
+| D4 | Contamination point (NFR-4) | disk-controller read | Placement in the repository |
+| D5 | File status (F3) | Ternary (Clean/Infected/Error) | Binary + disabled error |
+| D6 | F11 progression | "Modal" | Panel (equivalent behavior) |
+
+---
+
+## 5. Consolidated backlog (gaps + identified bugs)
+
+### To fix (spec compliance)
+
+| Type | Ref. | Description |
+|------|------|-------------|
+| `[bug]` | F1 | "Scan all" mode does not analyze all partitions |
+| `[fix]` | F4/NFR-1 | **End-to-end fingerprint verification** (analysis + target copy) — critical gap |
+| `[fix]` | F4 | Final check: error if copied ≠ clean |
+| `[fix]` | F4 | Source disconnection during copy → error + automatic resume |
+| `[fix]` | F4 | Copy cancellation |
+| `[fix]` | F6 | Report template selection according to the language (use `scan_report_fr.html`) |
+| `[fix]` | F6 | PDF generation error handling (end normally) |
+| `[fix]` | F8 | Wire the classification (Safecor) instead of the hardcoded 0 |
+| `[fix]` | F3/NFR-3 | Enable analysis error handling (Error status) |
+| `[fix]` | F15 | Viewer button + guards (unavailability, config, idle) |
+| `[fix]` | F2 | Enqueue serialization (no concurrent) |
+| `[fix]` | F10 | Also interrupt the copy in progress on reset |
+| `[fix]` | F16 | Translate the ETA duration units (`j`/`h`/`min`) — NFR-5 |
+| `[fix]` | F17 | Harmonize the third filter label (Waiting vs Other) |
+| `[fix]` | F19 | Install the `Material Symbols Outlined` font before enabling |
+
+### To decide (divergences)
+
+| Type | Ref. | Description |
+|------|------|-------------|
+| `[decision]` | D1 | Default theme: align spec (light) or implementation (dark)? |
+| `[decision]` | D2 | Copy trigger: align with the spec |
+| `[decision]` | D4 | Contamination point: align with the spec |
+
+### Features (product backlog)
+
+| Type | Ref. | Description |
+|------|------|-------------|
+| `[feature]` | F1 | Undo the mode choice without reset |
+| `[feature]` | F2 | Full queue drain |
+| `[feature]` | F4 | Check the available space on the target before copy |
+| `[dependency]` | F19 | Enable the light indicator when Safecor exposes the sensor state |
+| `[backlog]` | F21 | Make `handheld` device-configured; rehabilitate or remove the PC layout |
+
+### Dead code / technical (debt)
+
+| Type | Location | Description |
+|------|-------------|-------------|
+| `[debt]` | `Bindings.qml:13` | `infected: nbInfected > 1` should be `> 0` |
+| `[debt]` | `analysis_controller.py:250` | `cpu_count = 8` hardcoded (bug #54) |
+| `[debt]` | `Progress.qml` | Unreferenced component |
+| `[debt]` | `Brightness.qml` | Dead feature (F19) |
+| `[debt]` | `MessagesPanel` | Hidden panel (F18) |
+| `[debt]` | `GUI/Saphir/Enums.qml` | Obsolete QML singleton (shadowed by Python) |
+| `[debt]` | `scan_report_fr.html` | Orphan unused template |
+| `[debt]` | `application_controller.py:1242` | `targetAvailableSize` typed `bool` instead of `int` |
+| `[debt]` | `AnalysisPanel.qml:120-173` | Dead PC layout (handheld always true) (F21) |
+| `[debt]` | `devmode_helper.py:8-10` | Hardcoded macOS paths |

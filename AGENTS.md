@@ -14,10 +14,10 @@ Saphir is a **sheep-dip**: a secure workstation that scans external media (USB d
 
 | Layer | Technologies |
 |---|---|
-| Language | Python 3.9+ (core); minimal C++ Qt (Viewer scaffold, 3D test) |
+| Language | Python 3.9+ (core); minimal C++ Qt (Viewer Qt Studio scaffold: `main.cpp` + QML) |
 | GUI | PySide6 (Qt 6) + QML, Material Design, bilingual EN/FR, kiosk mode |
 | Antivirus | ClamAV (`clamdscan`) + ESET Endpoint (in a trimmed LXC container) |
-| Communication | MQTT via the Safecor API; custom protocol `saphir/analysis/{request,response,status,stop,resume,reset}` |
+| Communication | MQTT via the Safecor API (`from safecor import Api, Topics`); custom protocol `saphir/analysis/{request,response,status,error,stop,resume,reset}` |
 | Architecture | Multi-VM isolated domains (GUI, ClamAV, ESET); event-driven; MVVM (QObject signals ↔ QML); Template Method for AV controllers; bounded queue + worker pool |
 | Packaging | Alpine `APKBUILD` packages (abuild), PyInstaller binaries, signed APK repo, bootable ISO (mkimg/apkovl) |
 | CI/CD | GitHub Actions: change detection → `abuild` in an `alpine:3.21` container → rsync publish to the official repo |
@@ -31,9 +31,10 @@ python/
 ├── viewer/      # File viewer app (entry: src/viewer/main.py)
 └── libsaphir/   # Shared library: AV controllers (Clam, ESET), enums, constants
 setup/
-├── packages/    # 8 APKBUILD packages (core, lib, gui, viewer, splash, av-clamav, av-eset, container-eset)
-├── iso/         # Bootable ISO build
-└── docker/      # Local dev environment
+├── packages/       # 8 APKBUILD packages (core, lib, gui, viewer, splash, av-clamav, av-eset, container-eset)
+├── iso/            # Bootable ISO build (mkimg/apkovl)
+├── infrastructure/ # Alpine/Safecor/Saphir repo sync scripts
+└── docker/         # Local dev environment (Alpine + APK repo)
 .github/         # CI/CD (build-all.yml)
 docs/            # Developer + user documentation
 ```
@@ -44,9 +45,19 @@ docs/            # Developer + user documentation
 - Central controller: `python/gui/src/Saphir/Saphir/application_controller.py` (mediator between the Safecor platform and the QML UI, owns the state machine).
 - Analysis orchestration: `python/gui/src/Saphir/Saphir/analysis_controller.py`; consensus rule in `analysis_helper.py`.
 - AV controllers: `python/libsaphir/src/libsaphir/` (`_abstract_antivirus_controller.py`, `_clam_antivirus_controller.py`, `_eea_antivirus_controller.py`).
+- Multi-VM topology: `setup/packages/saphir/saphir/topology.json` (defines the three Safecor domains `saphir-gui`, `saphir-av-clamav`, `saphir-av-eset` + hardware profiles).
+- PDF scan report: `python/gui/src/Saphir/Saphir/report_controller.py` (Jinja2 templates in `Saphir/templates/`, rendered with WeasyPrint).
+- Remaining-time estimate: `python/gui/src/Saphir/Saphir/EMA_ETA_estimator.py` (exponential moving average).
 - Viewer backend: `python/viewer/src/viewer/Viewer/application_controller.py`.
 
 # Project rules
+
+## Build
+
+- Versioning rule (scheme `MAJOR.MINOR.PATCH`, e.g. `2.2.0`):
+  - A bug fix bumps the last digit (patch) only.
+  - A new feature bumps the second digit (minor) and resets the last digit to 0.
+  - The first digit (major) is bumped only by the product maintainer.
 
 ## Coding standards
 
@@ -61,6 +72,7 @@ docs/            # Developer + user documentation
 
 - Write documentation, comments and commits in english language even if the prompt is in another language.
 - Update the documentation in /docs and the Doxygen comments of the source code up to date when applying changes.
-- The Doxygen documentation must be written only in the implementation files unless the function is encoded in the header file.
 - Keep `Readme.md` ("Current features") and `docs/manual.md` in sync with user-visible changes.
 - Keep `README.fr.md` (French language) and `README.md` (English language) in sync together.
+- Use the documentation from **Safecor** to adapt the behaviour of Saphir.
+- All the interactions of Saphir and Safecor must use Safecor's API.
