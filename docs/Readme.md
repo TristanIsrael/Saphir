@@ -30,6 +30,7 @@ This document is an entry point to the documentation of Saphir, the robust sheep
 | Document | Concern |
 |----------|---------|
 | [`plans/refactoring-plan.md`](plans/refactoring-plan.md) | Refactoring phases & effort |
+| [`plans/testing-plan.md`](plans/testing-plan.md) | Pre-refactoring test safety-net plan (phases A–D) |
 | [`plans/context.md`](plans/context.md) | Session context / resume point |
 | [`test-strategy.md`](test-strategy.md) | Validation / test strategy (unit → system, DevMode, simulator) |
 

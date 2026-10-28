@@ -1,6 +1,6 @@
 # Testing Plan — Saphir (pre-refactoring phase)
 
-> **Status**: Draft — execution plan for the pre-refactoring test phase
+> **Status**: Done — all phases A–D complete (PR Saphir #128, PR Safecor #231)
 > **Branch**: `pre-refactoring`
 > **Last updated**: 2026-10-28
 > **Reference**: `docs/test-strategy.md`, `docs/workflow-rules.md` (scenarios §8), `docs/plans/refactoring-plan.md`

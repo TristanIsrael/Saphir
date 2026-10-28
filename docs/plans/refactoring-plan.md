@@ -48,7 +48,7 @@ Saphir/
 ├── api_lifecycle.py               # MQTT client creation, subscription management (NEW)
 ├── enums.py                       # State/analysis enums
 ├── analysis_helper.py             # Consensus evaluation
-├── ema_eta_estimator.py           # ETA calculation
+├── EMA_ETA_estimator.py           # ETA calculation
 └── models/                        # All QAbstractTableModel subclasses
     ├── components_model.py
     ├── messages_list_model.py

@@ -70,7 +70,7 @@ labels: feature
 
 - `test_<name>`: covers <RF-n>, asserts <…>
 - Edge cases to cover: <…>
-- `DEVMODE` / mocks (`Saphir/Mock/`) needed? yes/no + which ones
+- `DEVMODE` / emulator / mock AV (`python/gui/tests/mock_av.py`) needed? yes/no + which ones
 
 ## Verification (how to validate)
 
@@ -92,7 +92,7 @@ labels: feature
 - [ ] RF-1..N satisfied
 - [ ] Tests added and green
 - [ ] Lint / typecheck OK
-- [ ] Docs updated: `/docs` + Doxygen (implementation files) + `README.md` & `README.fr.md` + `docs/manual.md` (if user-visible)
+- [ ] Docs updated: `/docs` (if relevant) + `README.md` & `Readme.fr.md` (if user-visible)
 - [ ] EN/FR bilingual
 - [ ] No commit without approval
 

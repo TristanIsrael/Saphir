@@ -7,8 +7,8 @@
 
 ### Documents created in `docs/plans/`
 
-- **`refactoring-plan.md`** — Plan en 5 phases : Foundation, State Machine, Data Controllers, Transfer, QML Cleanup
-- **`workflow-rules.md`** (moved to `docs/`) — Contrat d'états **v2** : 14 états, 25 transitions, 8 invariants, matrix UI, ownership MQTT
+- **`refactoring-plan.md`** — Plan in 5 phases: Foundation, State Machine, Data Controllers, Transfer, QML Cleanup
+- **`workflow-rules.md`** (moved to `docs/`) — State contract **v2**: 14 states, 25 transitions, 8 invariants, UI matrix, MQTT ownership
 
 ## Reference docs (English, in `docs/`)
 
@@ -20,23 +20,23 @@
 
 ## Current state
 
-- **Priorité**: Workflow → Contrôleurs → Vues
-- **Questions ouvertes**: 4 (voir `workflow-rules.md` §9; single-disk résolue par `SystemWaitingForTarget`)
+- **Priority**: Workflow → Controllers → Views
+- **Open questions**: 4 (see `workflow-rules.md` §9; single-disk resolved by `SystemWaitingForTarget`)
 
 ## Key decisions
 
-- Un seul client MQTT via `Api()` singleton
-- Communication inter-contrôleurs : signaux Qt + `SystemState` uniquement
-- `WorkflowController` seul maître de `SystemState`
-- Vues modifiées en dernier
-- Handshake conservé (dette)
-- Archives désactivées (`MOUNT_ARCHIVES = False`)
+- Single MQTT client via `Api()` singleton
+- Inter-controller communication: Qt signals + `SystemState` only
+- `WorkflowController` is the sole owner of `SystemState`
+- Views modified last
+- Handshake preserved (debt)
+- Archives disabled (`MOUNT_ARCHIVES = False`)
 
 ## Known issues
 
-- God class : `application_controller.py` (1268 lignes)
-- 4 dead states à supprimer
-- Race condition : `storagesCount` vs `systemState` pour visibilité UI
-- Race condition : `__get_transferred_ratio()` sans lock
-- Bug : `infected: nbInfected > 1` devrait être `> 0`
-- Debug leftovers : `/tmp/data.txt`, prints
+- God class: `application_controller.py` (1268 lines)
+- 4 dead states to remove
+- Race condition: `storagesCount` vs `systemState` for UI visibility
+- Race condition: `__get_transferred_ratio()` without lock
+- Bug: `infected: nbInfected > 1` should be `> 0`
+- Debug leftovers: `/tmp/data.txt`, prints

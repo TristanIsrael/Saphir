@@ -21,7 +21,7 @@ Saphir is a **sheep-dip**: a secure workstation that scans external media (USB d
 | Architecture | Multi-VM isolated domains (GUI, ClamAV, ESET); event-driven; MVVM (QObject signals ↔ QML); Template Method for AV controllers; bounded queue + worker pool |
 | Packaging | Alpine `APKBUILD` packages (abuild), PyInstaller binaries, signed APK repo, bootable ISO (mkimg/apkovl) |
 | CI/CD | GitHub Actions: change detection → `abuild` in an `alpine:3.21` container → rsync publish to the official repo |
-| Dev | Local Docker (Alpine + APK repo), `DEVMODE` with mocks (no appliance needed), pytest, Doxygen |
+| Dev | Local Docker (Alpine + APK repo), `DEVMODE` + Safecor emulator + mock AV (no appliance needed), pytest |
 
 ## Repository structure
 
@@ -109,7 +109,7 @@ Naming conventions:
 
 - Write documentation, comments and commits in english language even if the prompt is in another language.
 - Update the documentation in /docs and the Doxygen comments of the source code up to date when applying changes.
-- Keep `Readme.md` ("Current features") and `docs/manual.md` in sync with user-visible changes.
-- Keep `README.fr.md` (French language) and `README.md` (English language) in sync together.
+- Keep `README.md` and `docs/` documentation in sync with user-visible changes.
+- Keep `Readme.fr.md` (French language) and `README.md` (English language) in sync together.
 - Use the documentation from **Safecor** to adapt the behaviour of Saphir.
 - All the interactions of Saphir and Safecor must use Safecor's API.

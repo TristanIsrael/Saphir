@@ -6,9 +6,7 @@ paho-mqtt>=2.0.0
 pyudev
 psutil
 jinja2
-pyserial
 msgpack
-joblib
 libvirt-python
 inotify_simple
 evdev

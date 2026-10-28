@@ -4,9 +4,9 @@
 ![No redistribution](https://img.shields.io/badge/Redistribution-Disallowed-red)
 ![Contribute](https://img.shields.io/badge/Contributions-Repo-blue)
 
-[![platform](https://img.shields.io/badge/platform-Alpine-Linux.svg)](https://gbatemp.net/forums/nintendo-switch.283/?prefix_id=44)
-[![language](https://img.shields.io/badge/language-Python-ba1632.svg)](https://github.com/topics/cpp)
-[![GPLv3 License](https://img.shields.io/badge/license-Proprietary-189c11.svg)](https://www.gnu.org/licenses/old-licenses/gpl-3.0.en.html)
+[![platform](https://img.shields.io/badge/platform-Alpine%20Linux-0D597F.svg)](https://alpinelinux.org/)
+[![language](https://img.shields.io/badge/language-Python-ba1632.svg)](https://github.com/topics/python)
+[![License](https://img.shields.io/badge/license-Proprietary-189c11.svg)](#-product-licence)
 [![Latest Version](https://img.shields.io/github/v/release/TristanIsrael/Saphir?label=latest&color=blue)](https://github.com/TristanIsrael/Saphir/releases/latest)
 [![GitHub issues](https://img.shields.io/github/issues/TristanIsrael/Saphir?color=222222)](https://github.com/TristanIsrael/Saphir/issues)
 [![GitHub stars](https://img.shields.io/github/stars/TristanIsrael/Saphir)](https://github.com/TristanIsrael/Saphir/stargazers)
@@ -67,11 +67,11 @@ The [Project's documentation](docs/Readme.md) is dedicated to developers who wan
 
 Saphir - Free Usage License
 
-Copyright (c) 2026 [Your Name or Organization]
+Copyright (c) 2026 Tristan Israël - Alefbet
 
 1. You are free to use this software at no cost, for personal or internal purposes.
 2. You may modify the software for your internal use.
-3. You are not allowed to redistribute, sell, or publish this software, modified or unmodified, except via the official repository maintained by [Your Name/Organization].
+3. You are not allowed to redistribute, sell, or publish this software, modified or unmodified, except via the official repository maintained by Tristan Israël - Alefbet.
 4. Any contribution or modification intended to be shared must be submitted via a pull request or to the official repository.
 5. This software is provided "as is", without any express or implied warranty.
 

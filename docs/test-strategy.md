@@ -134,7 +134,7 @@ pytest tests/ --ignore=tests/test_workflow_nominal.py --ignore=tests/test_workfl
 | File | Level | Description |
 |------|-------|-------------|
 | `tests/test_analysis_controller.py` | Unit/Component | AnalysisController logic (queue, grouping, scan) |
-| `tests/test_ema_estimator.py` | Unit | EMA remaining-time estimator |
+| `tests/test_eta_ema.py` | Unit | EMA remaining-time estimator |
 | `tests/test_report_controller.py` | Unit | Report generation (Jinja2 + WeasyPrint) |
 | `tests/test_workflow_nominal.py` | **Integration** | Full nominal cycle (C.1): boot → analysis → copy → report → SystemMustBeReset |
 | `tests/test_workflow_bug_target_disconnection.py` | **Integration** | Bug characterization (C.2): target disconnect during copy → **xfail** (documents the bug) |
@@ -178,7 +178,7 @@ The current phase uses **characterization testing** (inverse TDD): tests capture
 
 | Scenario | Ref. | Level | Status |
 |----------|------|--------|--------|
-| Full nominal cycle (boot → analysis → copy → report → reset) | F1–F6 | Integration | ✅ `test_workflow_nominal.py` |
+| Full nominal cycle (boot → analysis → copy → report → SystemMustBeReset) | F1–F6 | Integration | ✅ `test_workflow_nominal.py` |
 | Target disconnection during copy | F4 | Integration | ✅ `test_workflow_bug_target_disconnection.py` (xfail) |
 | File selection + queue (selection mode) | F2 | Integration | ⬜ backlog |
 | Analysis with infected consensus | F3 | Integration | ⬜ backlog |
