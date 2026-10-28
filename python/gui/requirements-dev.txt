@@ -5,3 +5,4 @@ mypy
 bandit 
 pip-audit
 PySide6-stubs
+pytest
