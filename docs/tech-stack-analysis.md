@@ -133,10 +133,10 @@ Key point: **~450–500 MB of the GUI disk is common** (Qt + OpenGL/MESA/LLVM + 
 
 Each point lists the decision, the options, the implications (memory / effort / quality), and a preliminary recommendation. Decisions are recorded in §8.
 
-### D-T1 — GUI tech stack (PySide6 vs C++/Qt)
+### D-T1 — GUI tech stack (PySide6 vs C++/Qt) — ✅ **DECIDED**
 - **Options**: (a) keep PySide6/Python; (b) rewrite the GUI in C++/Qt.
 - **Implications**: (a) no rewrite, keeps the Python ecosystem, **~50–150 MB** more than (b) (interpreter + Python modules + the PDF report); (b) ~50–150 MB saved, **full GUI rewrite** + reworking the **PDF report** (WeasyPrint has no trivial C++ equivalent) + the viewer + the MQTT lib, higher risk/effort. ~450–500 MB of the GUI disk (Qt + OpenGL/MESA/LLVM + fonts) is paid **either way**.
-- **Preliminary**: **keep PySide6/Python** — the gain (~1–2 % of the total) is negligible vs the cost of a full rewrite.
+- **Decision (2026-10-28)**: **Keep PySide6/Python** — the gain (~1–2 % of the total) is negligible vs the cost of a full rewrite. See §8.
 
 ### D-T2 — Strip the GUI VM
 - **Options**: (a) keep the bundle as-is; (b) finish the stripping.
@@ -164,4 +164,5 @@ Each point lists the decision, the options, the implications (memory / effort / 
 
 | ID | Decision | Date | Rationale |
 |----|----------|------|-----------|
-| — | *(none yet — to be filled as each D-Tx is decided)* | | |
+| **D-T1** | **Keep PySide6/Python** for the GUI (no C++ rewrite) | 2026-10-28 | C++ saves only **~1–2 % of the total** RAM (≈50–150 MB; ~450–500 MB of the GUI disk is common to both stacks) while costing a **full rewrite** of the GUI **and** the PDF report (WeasyPrint has no trivial C++ equivalent), the viewer, and the MQTT lib. The gain (imperceptible perf, negligible memory) is not worth the effort/risk; the real levers are elsewhere (D-T2, D-T3, D-T4, D-T5). |
+| — | *(D-T2..D-T5 pending)* | | |
