@@ -29,6 +29,7 @@ class AnalysisController(QObject):
     __archive_mounted_filepath = None
     __archive_file = {}
     __queue_lock = Lock()
+    __copy_timer = None
 
     # Signals
     stateChanged = Signal(AnalysisState)
@@ -76,12 +77,16 @@ class AnalysisController(QObject):
         # Itération sur la liste des fichiers de façon asynchrone
         # pour copier les fichiers dans le dépôt au fur et à mesure
         # à concurrence de la place disponible dans le dépôt
-        threading.Timer(0.5, self.__do_copy_files_into_repository).start()
+        self.__copy_timer = threading.Timer(0.5, self.__do_copy_files_into_repository)
+        self.__copy_timer.start()
 
     def stop_analysis(self) -> None:
         Api().info("Stopping the analysis", "AnalysisController")
         Api().publish(f"{TOPIC_ANALYSIS}/stop", {})
         Api().clear_sys_usb_queues()
+        if self.__copy_timer is not None:
+            self.__copy_timer.cancel()
+            self.__copy_timer = None
         self.__set_analysis_state(AnalysisState.AnalysisStopped)
 
     def reset(self):
@@ -350,7 +355,8 @@ class AnalysisController(QObject):
         limit = self.__get_repository_free_slots()
 
         if limit <= 0:
-            threading.Timer(0.5, self.__do_copy_files_into_repository).start()
+            self.__copy_timer = threading.Timer(0.5, self.__do_copy_files_into_repository)
+            self.__copy_timer.start()
             return
 
         files = self.__get_next_group_of_files(limit)
@@ -391,7 +397,8 @@ class AnalysisController(QObject):
                         self.__files_copy_queue_size += 1
                             
         if self.__analysis_state == AnalysisState.AnalysisRunning and (len(self.__files) > 0 or len(self.__archive_file.get("content", {})) > 0):
-            threading.Timer(0.5, self.__do_copy_files_into_repository).start()
+            self.__copy_timer = threading.Timer(0.5, self.__do_copy_files_into_repository)
+            self.__copy_timer.start()
         else:
             print("No more file to analyse... Exiting loop")
 
@@ -498,6 +505,9 @@ class AnalysisController(QObject):
 
     def get_repository_capacity(self):
         return self.__repository_capacity
+
+    def get_repository_size(self) -> int:
+        return AnalysisHelper.get_repository_size(self.__files)
 
     def get_queue_size(self):
         return len(self.__files)
