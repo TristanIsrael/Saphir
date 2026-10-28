@@ -234,13 +234,13 @@
 
 | Theme | Description |
 |-------|-------------|
-| **Light** | Default theme |
-| **Dark** | For low ambient light |
+| **Dark** | Default theme |
+| **Light** | For high ambient light |
 | **Low visibility** | Reduces the light emitted by the system so it is less visible in a hostile environment |
 
 **Behavior**:
 
-- The default theme is **light** at startup.
+- The default theme is **dark** at startup.
 - The user can **change theme at any time**, including during the analysis or the copy.
 - **No persistence**: the choice is lost after a cycle (stateless system based on Safecor).
 

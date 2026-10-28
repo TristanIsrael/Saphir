@@ -109,7 +109,7 @@
 - ❌ **Final check (copied == clean)**: `__get_transferred_ratio` compares but does **not** trigger an explicit error if files have failed. The end is determined by `ratio >= 1`.
 - ❌ **Source disconnection during copy**: not handled → uncertain state (known bug). No error message, no resume.
 - ✅ **No cancellation (by design)**: there is no cancel button for the copy (neither before nor during); the only exits are insert a target, Reset, or Shutdown. `SystemWaitingForTarget` is a stable terminal-ish state (see workflow v2.2).
-- ⚠️ **Trigger**: immediate on target connection, not conditioned on the end of the analysis (see F1).
+- ⚠️ **Trigger** (D2, resolved): implementation triggers the copy immediately on target connection; the spec/workflow requires the copy **after the analysis ends**, triggered by the 2nd-media insertion (`AnalysisCompleted → CopyCleanFiles` / `SystemWaitingForTarget`). **Implementation to fix** (refactoring).
 - 🟡 `[feature]` No check of the available space on the target.
 - 🟡 **Available space displayed**: `targetAvailableSize` always 0 and `Property(bool, ...)` instead of `int` (application_controller.py:1242) → permanent "Available space: Unknown".
 
@@ -154,7 +154,7 @@ Compliant.
 - Wireframe reserved for design: `ThemeWireframe.qml`.
 
 **Divergences**:
-- ⚠️ **Default theme**: `Environment.qml:14` → `property int theme: Constants.dark`. Spec F7 says "the default theme is **light**". **Spec ↔ implementation divergence.**
+- ✅ **Default theme** (D1, resolved): `Environment.qml:14` → `property int theme: Constants.dark`. Spec F7 updated to **dark** (default) to match the implementation.
 - ⚠️ **Low visibility**: `backgroundImage` and `system*Image` use `dark.jpg` for the low visibility mode (Environment.qml:24,32,40,48). To be verified that the "reduce the light" objective is actually reached.
 
 ---
@@ -372,8 +372,7 @@ Compliant.
 
 ### NFR-4 — Dirty state & locking 🟡
 
-- ✅ Contamination: `systemUsed` emitted when the file is available in the repository (analysis_controller.py:187).
-  - ⚠️ The spec says the contamination point is the **read by `disk-controller`**, not the placement in the repository. To be aligned.
+- ⚠️ Contamination (D4, resolved): implementation emits `systemUsed` when the file is available in the **repository** (analysis_controller.py:187); the spec requires the system to become dirty at the **read by `disk-controller`** (the earliest, safest point). **Implementation to fix** (refactoring).
 - 🟡 **Locking (different disk names)**: partial. The return to `SystemMustBeReset` exists (application_controller.py:666, 680) but the disk-name comparison logic for "same media → continue" is not explicit.
 - ⚠️ **Numeric gate**: `if self.__system_state.value >= SystemState.CopyCleanFiles.value: return` (line 640) — comparison by integer value, fragile.
 
@@ -404,16 +403,16 @@ These capabilities used to exist in the code without a spec entry. They are now 
 
 ## 4. Spec ↔ implementation divergences (summary)
 
-| # | Divergence | Spec | Implementation |
-|---|-----------|------|----------------|
-| D1 | Default theme (F7) | Light | `dark` (Environment.qml:14) |
-| D2 | Copy trigger (F1/F4) | After end of analysis | Immediate on target connection |
-| D3 | Multilingual report (F14/NFR-5) | Template per language | Always EN |
-| D4 | Contamination point (NFR-4) | disk-controller read | Placement in the repository |
-| D5 | File status (F3) | Ternary (Clean/Infected/Error) | Binary + disabled error |
-| D6 | F11 progression | "Modal" | Panel (equivalent behavior) |
-| D7 | File selection vs AV readiness (F1/F2) | Selection possible dès disk-controller prêt + disque, **sans** attendre les AV; the analysis trigger is separately gated by ready-to-analyze (AV + core + queue) | `SystemReady` gated behind `len(analysis_components) >= ANTIVIRUS_NEEDED` (application_controller.py:612-623) → selection blocked until the AV engines are ready |
-| D8 | System visual status "Dirty" (F7) | A single infected file flips the visual status to *Dirty* (`nbInfected > 0`) | `Bindings.qml:13` uses `infected: nbInfected > 1` → one infected file is not enough |
+| # | Divergence | Spec | Implementation | Resolution |
+|---|-----------|------|----------------|------------|
+| D1 | Default theme (F7) | Light | `dark` (Environment.qml:14) | **Resolved**: keep `dark`; spec F7 updated to match |
+| D2 | Copy trigger (F1/F4) | After end of analysis | Immediate on target connection | **Resolved**: copy runs **after** the analysis, triggered by the 2nd-media insertion (workflow); implementation to fix |
+| D3 | Multilingual report (F14/NFR-5) | Template per language | Always EN | — (to fix) |
+| D4 | Contamination point (NFR-4) | disk-controller read | Placement in the repository | **Resolved**: dirty at **disk-controller read**; implementation to fix |
+| D5 | File status (F3) | Ternary (Clean/Infected/Error) | Binary + disabled error | — (to fix) |
+| D6 | F11 progression | "Modal" | Panel (equivalent behavior) | — (equivalent behavior, accepted) |
+| D7 | File selection vs AV readiness (F1/F2) | Selection possible dès disk-controller prêt + disque, **sans** attendre les AV; the analysis trigger is separately gated by ready-to-analyze (AV + core + queue) | `SystemReady` gated behind `len(analysis_components) >= ANTIVIRUS_NEEDED` (application_controller.py:612-623) → selection blocked until the AV engines are ready | — (to fix) |
+| D8 | System visual status "Dirty" (F7) | A single infected file flips the visual status to *Dirty* (`nbInfected > 0`) | `Bindings.qml:13` uses `infected: nbInfected > 1` → one infected file is not enough | — (to fix) |
 
 ---
 
@@ -434,6 +433,8 @@ These capabilities used to exist in the code without a spec entry. They are now 
 | `[fix]` | F15 | Viewer button + guards (unavailability, config, idle) |
 | `[fix]` | F2 | Enqueue serialization (no concurrent) |
 | `[fix]` | F1/F2 (D7) | Decouple file selection from AV readiness — reach `SystemReady` when the disk-controller is ready (no AV requirement); gate the analysis trigger on ready-to-analyze (AV + core + queue) |
+| `[fix]` | F4 (D2) | Copy trigger: run **after** the analysis ends, triggered by the 2nd-media insertion (not immediate on target connection) |
+| `[fix]` | NFR-4 (D4) | Contamination point: the system becomes dirty at the **disk-controller read** (not at the repository placement) |
 | `[fix]` | F10 | Also interrupt the copy in progress on reset |
 | `[fix]` | F16 | Translate the ETA duration units (`j`/`h`/`min`) — NFR-5 |
 | `[fix]` | F17 | Harmonize the third filter label (Waiting vs Other) |
@@ -441,11 +442,7 @@ These capabilities used to exist in the code without a spec entry. They are now 
 
 ### To decide (divergences)
 
-| Type | Ref. | Description |
-|------|------|-------------|
-| `[decision]` | D1 | Default theme: align spec (light) or implementation (dark)? |
-| `[decision]` | D2 | Copy trigger: align with the spec |
-| `[decision]` | D4 | Contamination point: align with the spec |
+_(none — D1/D2/D4 resolved; the remaining divergences D3/D5/D7/D8 are tracked as fixes in "To fix")_
 
 ### Features (product backlog)
 

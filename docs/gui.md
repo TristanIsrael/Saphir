@@ -138,8 +138,7 @@ color and image across `ThemeDark` / `ThemeLight` / `ThemeLowVisibility` / `Them
 - `lowVisibility`
 - `wireframe`
 
-> **Divergence (D1)**: the spec (F7) default theme is **light**, the implementation default is
-> **dark** (`Environment.qml`).
+> **Default theme** (D1, resolved): **dark** (`Environment.qml`). Spec F7 updated to match.
 
 ### 5.2 System images
 
