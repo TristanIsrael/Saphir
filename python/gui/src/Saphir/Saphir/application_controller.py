@@ -670,6 +670,9 @@ class ApplicationController(QObject):
                 self.__source_name = disk
                 self.__analysis_controller.set_source_disk(disk)
                 self.sourceNameChanged.emit(self.__source_name)
+
+                if DEVMODE:
+                    self.start_full_analysis()
         elif self.__source_name != "" and self.__source_name == disk and state == DiskState.DISCONNECTED.value:
             # The source has been disconnected
             # If the system has been used the user must reset it
