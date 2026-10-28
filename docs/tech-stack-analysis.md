@@ -11,9 +11,10 @@
 
 - **Target hardware**: tablet (primary), smartphone (future). **8 Go RAM** (typical), 16 Go (eventual).
 - **Safecor**: strong isolation via **VMs** (one domain per component). The memory footprint is dominated by the **VMs**, not by the individual applications.
+- **No memory ballooning**: each VM's memory is **allocated up front** (at boot). A VM that must reach N MB *at some point* (e.g. during a scan) must be **allocated N MB from the start**. Consequence: **reducing the *used* RAM does not free the *allocation*** — only a smaller **VM allocation** saves system RAM. So the **VM allocation** (`topology.json`), not the instantaneous usage, is the figure that matters.
 - **Stateless goal**: boot + install packages in RAM without modifying the disk (Alpine *diskless*) — but this is **very RAM-hungry**.
-- **ClamAV**: ~**3 Go** (signatures + engine).
-- **ESET**: **not available for Alpine** (not MUSL-linked) → it runs in a **minimal Debian LXC** inside an Alpine VM. This is a large, avoidable cost.
+- **ClamAV**: ~**3 Go** — this allocation is **structural**: with less RAM ClamAV **crashes** while scanning certain files, so it cannot be reduced without a stability/quality risk.
+- **ESET**: **not available for Alpine** (not MUSL-linked) → it runs in a **minimal Debian LXC** inside an Alpine VM (2 100 MB allocated).
 
 ---
 
@@ -112,7 +113,7 @@ Key point: **~450–500 MB of the GUI disk is common** (Qt + OpenGL/MESA/LLVM + 
 
 ## 5. The real memory levers (by impact)
 
-1. **ClamAV (3 000 MB)** — the biggest. Levers: *FRESH* (minimal) signatures instead of *full*; load signatures **only during the scan**; **on-demand** (`clamdscan`) instead of a resident daemon.
+1. **ClamAV (3 000 MB)** — the biggest, but **structural** (no ballooning + ClamAV crashes below 3 000 MB on some files). **No major lever** (D-T4): on-demand frees nothing, reducing signatures is off the table. Follow-up: measure the real minimum.
 2. **ESET/LXC (2 100 MB)** — the Debian LXC exists **only** because ESET is not MUSL-linked. Structural lever: replace ESET with a **2nd Alpine/MUSL-compatible engine** to reach the consensus (`ANTIVIRUS_NEEDED = 2`) **without the LXC** → removes ~2 100 MB + the LXC. **Biggest structural lever** (but loses ESET's detection quality).
 3. **GUI VM** — the PyInstaller spec **already strips** the unused Qt modules (WebEngine, multimedia, Qt3D, …); only **QtNetwork** remains to drop (**~15–25 MB**, without changing the stack). **MESA/LLVM are kept** (OpenGL).
 4. **Diskless mode** — if everything is in RAM (tmpfs/overlay), the footprint is huge. Weigh: **read-only base disk** + RAM overlay only for the session (or a persistent disk). It is a **goal**, not a hard requirement.
@@ -124,7 +125,7 @@ Key point: **~450–500 MB of the GUI disk is common** (Qt + OpenGL/MESA/LLVM + 
 1. **Keep PySide6/Python** for the GUI (gain of C++ ≈ 1–2 % of the total, not worth a full rewrite).
 2. **Finish the GUI stripping**: the PyInstaller spec **already** strips the unused Qt modules; only **QtNetwork** remains to drop (GUI uses MQTT). **Keep MESA/LLVM** (OpenGL hardware acceleration, needed on the tablet).
 3. **Re-evaluate the 2nd engine**: an Alpine/MUSL-compatible engine instead of ESET/LXC is the **biggest structural lever** (~2 100 MB).
-4. **Optimize ClamAV** (minimal signatures, on-demand).
+4. **Keep ClamAV as-is** (3 000 MB is structural — no ballooning + crash below it); no major lever, only measure the real minimum (D-T4).
 5. **Weigh the diskless mode** against the statelessness goal.
 
 ---
@@ -148,10 +149,10 @@ Each point lists the decision, the options, the implications (memory / effort / 
 - **Implications**: (b) removes **~2 100 MB + the LXC**, but **no quality AV engine exists in MUSL/Alpine** (all commercial engines are glibc; YARA is a pattern matcher, not a real AV engine) → would erode the consensus. (a) keeps ESET quality, pays the LXC cost. (c) is a follow-up optimization (measure ESET's real RAM, shrink the allocation).
 - **Decision (2026-10-28)**: **Keep ESET/LXC** — detection quality > saving ~2 100 MB. **Plan (c)** as a follow-up: measure ESET's real RAM (an OOM is documented in `docs/old/analysis.md`) and reduce the VM allocation if safe; watch for a future MUSL-compatible quality engine. See §8.
 
-### D-T4 — ClamAV optimization
-- **Options**: (a) current (full signatures, resident daemon); (b) *FRESH*/minimal signatures + **on-demand** (`clamdscan`) + load signatures **only during the scan**.
-- **Implications**: (b) reduces the ClamAV VM footprint (toward the 3 000 MB) and the boot time. Risk: detection coverage (*FRESH* vs *full*) and scan latency.
-- **Preliminary**: **optimize** (FRESH signatures, on-demand) — keep an eye on detection coverage.
+### D-T4 — ClamAV optimization — ✅ **DECIDED**
+- **Options**: (a) keep `clamd` resident (3 000 MB, full signatures, `Bytecode true`); (b) on-demand (start/stop `clamd` around the scan); (c) reduce signatures (*FRESH*, `Bytecode false`).
+- **Implications**: with **no ballooning**, the 3 000 MB allocation is **up front** — ClamAV **reaches 3 000 MB during a scan** and **crashes below it**, so (b) on-demand **frees nothing** (the VM is allocated 3 000 MB from the start either way), and (c) is **off the table** (crash risk + detection loss, as D-T3). The 3 000 MB is **structural**, not waste.
+- **Decision (2026-10-28)**: **Keep ClamAV as-is** (3 000 MB resident, full signatures, `Bytecode true`). **No major lever.** Follow-up: **measure** the real RAM to confirm 3 000 MB is the minimum and document it. See §8.
 
 ### D-T5 — Diskless / stateless mode
 - **Options**: (a) full diskless (everything in RAM); (b) **read-only base disk** + RAM overlay for the session; (c) persistent disk.
@@ -167,4 +168,5 @@ Each point lists the decision, the options, the implications (memory / effort / 
 | **D-T1** | **Keep PySide6/Python** for the GUI (no C++ rewrite) | 2026-10-28 | C++ saves only **~1–2 % of the total** RAM (≈50–150 MB; ~450–500 MB of the GUI disk is common to both stacks) while costing a **full rewrite** of the GUI **and** the PDF report (WeasyPrint has no trivial C++ equivalent), the viewer, and the MQTT lib. The gain (imperceptible perf, negligible memory) is not worth the effort/risk; the real levers are elsewhere (D-T2, D-T3, D-T4, D-T5). |
 | **D-T2** | **Finish the GUI stripping**: drop **QtNetwork**; **keep MESA/LLVM** (OpenGL) | 2026-10-28 | The PyInstaller spec already strips the unused Qt modules. QtNetwork (~15–25 MB) is the last residual — the GUI talks over MQTT/paho-mqtt, not QtNetwork → remove it from `hiddenimports` + the strip filter (test first). MESA/LLVM back OpenGL hardware acceleration (needed on the tablet) → keep. Modest gain (~15–25 MB) but free and shrinks the attack surface. Action scheduled in the refactor (packaging phase). |
 | **D-T3** | **Keep ESET in the Debian LXC** (no MUSL replacement); **plan a follow-up** to measure ESET's real RAM and shrink the VM allocation if possible | 2026-10-28 | Detection quality is the priority over saving ~2 100 MB. There is **no quality AV engine available in MUSL/Alpine** (all commercial engines are glibc; YARA is a pattern matcher, not a real AV engine) — replacing ESET would erode the consensus, the core of the product. ESET requires glibc → the trimmed Debian LXC (squashfs) is the only workable host. Follow-up (option c): measure ESET's real RAM (`docs/old/analysis.md` documents an ESET OOM on some files, so 2 100 MB is not necessarily slack) and reduce the allocation if safe. Track a MUSL-compatible quality engine as a future option to watch. |
-| — | *(D-T4..D-T5 pending)* | | |
+| **D-T4** | **Keep ClamAV as-is** (3 000 MB resident, full signatures, `Bytecode true`); follow-up = **measure** the real RAM to confirm the minimum | 2026-10-28 | With **no ballooning**, the VM allocation is up front: ClamAV **reaches 3 000 MB during a scan** and **crashes below it**, so on-demand (start/stop `clamd`) **frees nothing** (the VM is allocated 3 000 MB from the start either way) and reducing signatures is off the table (crash risk + detection loss, as D-T3). The 3 000 MB is **structural**, not waste. |
+| — | *(D-T5 pending)* | | |
