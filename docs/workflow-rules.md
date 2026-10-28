@@ -271,9 +271,11 @@ A **Reset** always returns the system to its **initial state**: state `SystemRea
 | AV **engine panic** (component `ERROR`/`OFF`) | Not handled | **Abort** analysis immediately → `SystemWaitingForUserAction` (NFR-3) |
 | Copy fails for a clean file | Counted in `copiedFilesCount` failure, continues | Log error, mark file, continue, report failure in PDF; final check `copied == clean_count` (F4) |
 | Source disk disconnected during copy | Not handled (uncertain state) | Stay in `CopyCleanFiles` with an **error flag** (no dedicated state); pause the copy and prompt to re-insert; on re-insertion, run a **coherence check** (source state + integrity/fingerprint) and clear the flag → **auto-resume**. No reset, no re-analysis (F4) |
+| **Target** disk disconnected during copy | Not handled | Same as the source: **error flag** on `CopyCleanFiles`, pause, prompt to re-insert, **coherence check** on re-insertion, **auto-resume** (F4) |
 | Report generation fails | Exception crashes transfer | Log error, enter a **permanent error state** (dedicated state, to be added to §2/§3); **Reset required**, no automatic retry (F6/NFR-1) |
 | Target disk full | Not checked | Detect before copy, show error dialog |
-| MQTT subscription fails | Silent | Retry (3x), show error, fallback to dev mode |
+| MQTT subscription fails | Silent | Retry (3x), show error. **No fallback** — the transport is environment-specific and exclusive (production: **serial port**; dev: **TCP**) |
+| Power loss / crash | Not handled | The system is **stateless**: a reboot returns it to the **initial state** (Ready); no dedicated recovery state |
 
 ### 6.2 Recovery Paths
 
@@ -282,8 +284,10 @@ Per-file analysis error  → stays in SystemAnalysisRunning (file → Error), co
 AV engine panic          → SystemWaitingForUserAction (abort, user retries)
 Copy error (single file) → continue, log in report (CopyCleanFiles → GeneratingReport)
 Source disconnected      → stays in CopyCleanFiles with an error flag; on re-insertion, coherence check (state + integrity) then auto-resume
+Target disconnected      → stays in CopyCleanFiles with an error flag; on re-insertion, coherence check then auto-resume
 Report error             → permanent error state (reset required, no auto-retry)
 Reset failed             → SystemMustBeReset (display error message)
+Power loss / crash       → reboot → initial state (Ready); stateless, no recovery state
 ```
 
 ---
@@ -405,7 +409,7 @@ where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infecte
 3. → SystemResetting → SystemReady
 ```
 
-### 8.6 Source Disconnection During Copy
+### 8.6 Source / Target Disconnection During Copy
 
 ```
 1. CopyCleanFiles in progress
@@ -415,6 +419,8 @@ where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infecte
 4. Coherence check: source state + integrity (fingerprint) of the already-copied data are verified
 5. If OK → the error flag is cleared and the copy resumes automatically → continues to GeneratingReport
 ```
+
+> The **same** handling applies to the **target** disk: unplugging it sets the error flag, and re-insertion (with a coherence check) resumes the copy (§6.1).
 
 ---
 
