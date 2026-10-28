@@ -164,14 +164,22 @@ class WorkflowController:
 
 #### 1.3 Fix `__handle_disk_state` gate (line 640)
 ```python
-# CURRENT: Blocks disk notifications too early
+# CURRENT: numeric comparison, blocks too early, no disk-name awareness
 if self.__system_state.value >= SystemState.CopyCleanFiles.value:
     return
 
-# PROPOSED: Use explicit workflow phase
-if self.workflow_controller.in_phase("post_transfer"):
-    return
+# PROPOSED: explicit rules based on workflow state + disk name
+if state == SystemWaitingForTarget:
+    # the TARGET must be detectable here (that is the purpose of the state)
+    if disk_name == source_name:
+        return              # same disk as source: ignore
+    assign_target(disk_name)  # start the copy
+elif system_used and disk_name != source_name:
+    lock_into(SystemMustBeReset)  # NFR-4: a different disk after use locks the system
+elif state in (SystemMustBeReset, SystemResetting):
+    return                  # locked: ignore new disks until reset
 ```
+> The numeric gate must be replaced by state + disk-name logic. In particular, `SystemWaitingForTarget` must **not** be blocked, or the copy could never start.
 
 **Validation**: Full workflow test from boot to shutdown. All state transitions logged.
 
@@ -316,7 +324,7 @@ These rules must hold throughout refactoring:
 1. **Should `SystemWaitingForDevice` be removed or activated?** - Currently dead code.
 2. **Should archive mounting be fully removed or kept as a dormant feature?** - Currently disabled but code path exists.
 3. **Should `handheld` property be made configurable or removed?** - Hardcoded to `True`.
-4. **What is the intended behavior when user connects only one disk?** - System auto-assigns it as source (line 701-713), but this could conflict with reset state.
+4. **Single-disk mode** — **Resolved** (see `docs/workflow-rules.md` §8.4): analysis works on one disk; copy and report require a second disk, modelled by the `SystemWaitingForTarget` state.
 5. **Should `__on_analysis_state_changed` also drive state machine transitions?** - Currently it sets `SystemState` directly, bypassing `WorkflowController`.
 
 ---

@@ -8,13 +8,20 @@
 ### Documents created in `docs/plans/`
 
 - **`refactoring-plan.md`** — Plan en 5 phases : Foundation, State Machine, Data Controllers, Transfer, QML Cleanup
-- **`workflow-rules.md`** — Contrat d'états : automate complet, 16 transitions, 7 invariants, matrix UI, ownership MQTT
+- **`workflow-rules.md`** (moved to `docs/`) — Contrat d'états **v2** : 14 états, 25 transitions, 8 invariants, matrix UI, ownership MQTT
+
+## Reference docs (English, in `docs/`)
+
+- **`features.md`** — F1–F21 + NFR-1–5 (reference spec)
+- **`implementation-coverage.md`** — spec↔code audit
+- **`test-strategy.md`** — test strategy
+- **`architecture.md`** — target architecture (validated)
+- **`workflow-rules.md`** — v2: added `SystemWaitingForTarget` (waiting for 2nd target), Stop/Reset/Cancel transitions, AV error-vs-panic distinction
 
 ## Current state
 
-- **En attente de**: Description des fonctions du système → document de features pour référence du refactoring
 - **Priorité**: Workflow → Contrôleurs → Vues
-- **Questions ouvertes**: 5 (voir `workflow-rules.md` §10)
+- **Questions ouvertes**: 4 (voir `workflow-rules.md` §9; single-disk résolue par `SystemWaitingForTarget`)
 
 ## Key decisions
 

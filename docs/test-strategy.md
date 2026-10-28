@@ -2,7 +2,7 @@
 
 > **Status**: Draft (v1) — to be completed iteratively
 > **Last updated**: 2026-10-27
-> **Reference**: `docs/features.md` (F1–F21), `docs/plans/workflow-rules.md` (state machine), `docs/plans/refactoring-plan.md`
+> **Reference**: `docs/features.md` (F1–F21), `docs/workflow-rules.md` (state machine), `docs/plans/refactoring-plan.md`
 
 ---
 
@@ -66,7 +66,7 @@ This document is the container of the **validation strategy**; the simulation ca
 - **Simulated disks**: file contents, partitions, fingerprints, on-demand disconnection.
 - **Heating / injected failures**: an AV that fails during the analysis, a disk disconnected during the copy, a failing report generation, etc.
 
-**Benefit**: deterministically cover the **workflow scenarios** (`docs/plans/workflow-rules.md` §9) and the **NFRs** (AV failure — NFR-3, disconnection — F4, fingerprint integrity — NFR-1) without an appliance.
+**Benefit**: deterministically cover the **workflow scenarios** (`docs/workflow-rules.md` §8) and the **NFRs** (AV failure — NFR-3, disconnection — F4, fingerprint integrity — NFR-1) without an appliance.
 
 **To decide**:
 
