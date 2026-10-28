@@ -61,7 +61,22 @@ docs/            # Developer + user documentation
 
 ## Coding standards
 
-- Follow the existing naming conventions
+- Follow the existing naming conventions. The codebase is the reference; when in doubt, match the surrounding code.
+
+Naming conventions:
+
+| Domain | Convention | Examples |
+|---|---|---|
+| Python — classes | `PascalCase` | `ApplicationController`, `EMAETAEstimator` |
+| Python — methods / variables | `snake_case` | `start_transfer`, `remaining_time` |
+| Python — private methods | double-underscore (name mangling) | `__set_system_state`, `__handle_disk_state` |
+| Python — constants | `UPPER_SNAKE` | `ANTIVIRUS_NEEDED`, `TOPIC_ANALYSIS`, `DEVMODE` |
+| Python — enums | `PascalCase` (no underscores) | `SystemAnalysisRunning`, `FileClean` |
+| QML — components | `PascalCase` | `AnalysisPanel`, `FilesSelectionPanel` |
+| QML — properties / bindings | `camelCase` | `systemState`, `queueSize`, `nbClean` |
+| MQTT topics | `saphir/analysis/{request,response,status,error,stop,resume,reset}`; `system/...` | — |
+
+- Comments, documentation and commits are in **English** (see *Documentation standards*).
 
 ## Chat rules
 
