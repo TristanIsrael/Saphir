@@ -213,10 +213,10 @@ if system_used:
 ```
 
 ### I2: Queue Completeness
-Analysis cannot start until all files in the queue have been processed (status != Undefined).
+The analysis **completes** only when every file in the queue has a final status (`Clean` / `Infected` / `Error`).
 ```python
 # Guard: analysis completion check
-if clean_count + infected_count == queue_size:
+if clean_count + infected_count + error_count == queue_size:
     stop_analysis()
     transition_to(AnalysisCompleted)
 ```
@@ -234,7 +234,7 @@ for file in queued_files:
 Transfer starts automatically when analysis completes **and a target disk is available**; otherwise the system waits in `SystemWaitingForTarget`. The user cannot trigger a second transfer without a reset.
 
 ### I5: Report Generation is Atomic
-Report + journal are generated sequentially. If report generation fails, the system enters an error state (to be defined).
+Report + journal are generated sequentially. If report generation fails, the system enters a **permanent error state**; a **Reset** is required (no automatic retry — decision #4).
 
 ### I6: Locking After Use (dirty state)
 Once the system is dirty (a file has been read), connecting a **different** storage locks the system into `SystemMustBeReset`; reconnecting the **same** storage (same disk name) is allowed to continue. This applies from `AnalysisCompleted` onward, not only from `SystemMustBeReset`.
@@ -249,11 +249,15 @@ if system_used and disk_name != source_name:
 A file is infected if **any** antivirus engine flags it. A file is clean only when **all** engines agree. A file whose analysis returned an **error** is "not clean" (not copyable), but its error does not abort the analysis.
 ```python
 # Defined in: analysis_helper.py evaluate_result_consensus()
-infected = sum(result.success for result in results) < ANTIVIRUS_NEEDED
+clean = all(entry["result"] != "Infected" for entry in results.values())
+infected = not clean
 ```
 
 ### I8: Reset Only When Idle
 Reset is allowed **only when no operation is running**. It is blocked from `SystemAnalysisRunning`, `CopyCleanFiles`, and `GeneratingReport`; the user must pause the running operation first (F10).
+
+### I9: Reset is Idempotent
+A **Reset** always returns the system to its **initial state**: state `SystemReady`, queue empty, all counters zero, and the visual status back to **Ready** (§7.2). Resetting an already-clean system is a no-op.
 
 ---
 
