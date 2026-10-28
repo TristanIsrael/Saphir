@@ -266,8 +266,8 @@ Reset is allowed **only when no operation is running**. It is blocked from `Syst
 | Per-file analysis error (one engine errors) | Not handled (`__handle_error` is a no-op) | File → `Error` status (not clean); analysis **continues** (NFR-3) |
 | AV **engine panic** (component `ERROR`/`OFF`) | Not handled | **Abort** analysis immediately → `SystemWaitingForUserAction` (NFR-3) |
 | Copy fails for a clean file | Counted in `copiedFilesCount` failure, continues | Log error, mark file, continue, report failure in PDF; final check `copied == clean_count` (F4) |
-| Source disk disconnected during copy | Not handled (uncertain state) | Interrupt copy, prompt to re-insert; **auto-resume** after match verification (F4) |
-| Report generation fails | Exception crashes transfer | Log error, enter error state, allow retry |
+| Source disk disconnected during copy | Not handled (uncertain state) | Stay in `CopyCleanFiles` with an **error flag** (no dedicated state); pause the copy and prompt to re-insert; on re-insertion, run a **coherence check** (source state + integrity/fingerprint) and clear the flag → **auto-resume**. No reset, no re-analysis (F4) |
+| Report generation fails | Exception crashes transfer | Log error, enter a **permanent error state** (dedicated state, to be added to §2/§3); **Reset required**, no automatic retry (F6/NFR-1) |
 | Target disk full | Not checked | Detect before copy, show error dialog |
 | MQTT subscription fails | Silent | Retry (3x), show error, fallback to dev mode |
 
@@ -277,8 +277,8 @@ Reset is allowed **only when no operation is running**. It is blocked from `Syst
 Per-file analysis error  → stays in SystemAnalysisRunning (file → Error), completes to AnalysisCompleted
 AV engine panic          → SystemWaitingForUserAction (abort, user retries)
 Copy error (single file) → continue, log in report (CopyCleanFiles → GeneratingReport)
-Source disconnected      → pause CopyCleanFiles, auto-resume on re-insertion (match verified)
-Report error             → Error Dialog (user decides: retry or abort)
+Source disconnected      → stays in CopyCleanFiles with an error flag; on re-insertion, coherence check (state + integrity) then auto-resume
+Report error             → permanent error state (reset required, no auto-retry)
 Reset failed             → SystemMustBeReset (display error message)
 ```
 
@@ -405,9 +405,11 @@ where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infecte
 
 ```
 1. CopyCleanFiles in progress
-2. User unplugs the source → copy interrupted, error prompt shown
-3. User re-inserts the source (same disk name, match verified)
-4. Copy resumes automatically → continues to GeneratingReport
+2. User unplugs the source (by mistake) → copy paused, an error flag is set on CopyCleanFiles
+   (the system STAYS in CopyCleanFiles — no dedicated state, no reset, no re-analysis)
+3. User re-inserts the source (same disk)
+4. Coherence check: source state + integrity (fingerprint) of the already-copied data are verified
+5. If OK → the error flag is cleared and the copy resumes automatically → continues to GeneratingReport
 ```
 
 ---
@@ -415,10 +417,10 @@ where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infecte
 ## 9. Open Questions
 
 1. **Single-disk mode** — **Resolved** by `SystemWaitingForTarget` (scenario 8.4): analysis works on one disk; copy and report require a second disk.
-2. **Archive mounting**: Code exists but is disabled. Should it be removed entirely or kept as dormant code?
-3. **SystemNotClean state**: The concept exists (infected files detected) but is represented by UI color, not a state. Should a dedicated state be added?
-4. **Recovery from report failure**: Currently unhandled. Should the system retry, allow manual generation, or enter a permanent error state?
-5. **Source disconnection during copy**: Scenario 8.6 defines the target behavior (pause + auto-resume on re-insertion). To decide: model it as a sub-state of `CopyCleanFiles` or a dedicated state.
+2. **Archive mounting** — **Resolved**: the dormant archive-mounting code is **removed**; a backlog feature is added to re-introduce it later as a new, specified capability.
+3. **SystemNotClean state** — **Resolved**: it is **not** a workflow state; it is the *Dirty* visual status (§7.2) driven by the derived conditions (§3.3).
+4. **Recovery from report failure** — **Resolved**: a report-generation failure enters a **permanent error state** (dedicated state, to be added to §2/§3); **Reset required**, no automatic retry.
+5. **Source disconnection during copy** — **Resolved**: modelled as an **error flag** on `CopyCleanFiles` (no dedicated state). On re-insertion, a **coherence check** (source state + integrity/fingerprint) clears the flag and the copy auto-resumes. See scenario 8.6.
 
 ---
 

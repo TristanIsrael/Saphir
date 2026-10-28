@@ -107,10 +107,10 @@
   - `Not clean`: status = infected **or** error
 - Only `Clean` files will be copied to the target media (F4).
 
-**Stop and resume**:
+**Pause and resume**:
 
-- The user can **interrupt** the analysis in progress.
-- The analysis can **resume** if the user requests it.
+- The user can **pause** the analysis in progress (there is no hard stop).
+- The analysis can **resume** if the user requests it (remaining files are picked up).
 - Once the analysis has started, it is impossible to go back to file selection (workflow).
 - The system is considered **dirty** as soon as a file has been analyzed → a reset is required for a new cycle (see NFR-4).
 
@@ -682,3 +682,4 @@
 | `[feature]` | F2 | Mechanism for a full queue drain (clear queue) |
 | `[feature]` | F4 | Check the available space on the target before starting the copy |
 | `[bug]` | F4 | Media disconnection during the workflow → uncertain state |
+| `[feature]` | F3 | Archive mounting: re-introduce as a new, specified capability (dormant code removed — workflow §9.2) |

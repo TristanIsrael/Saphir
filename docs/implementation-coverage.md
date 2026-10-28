@@ -454,6 +454,7 @@ These capabilities used to exist in the code without a spec entry. They are now 
 | `[feature]` | F1 | Undo the mode choice without reset |
 | `[feature]` | F2 | Full queue drain |
 | `[feature]` | F4 | Check the available space on the target before copy |
+| `[feature]` | F3 | Archive mounting (re-introduce as a new, specified capability — dormant code removed, workflow §9.2) |
 | `[dependency]` | F19 | Enable the light indicator when Safecor exposes the sensor state |
 | `[backlog]` | F21 | Make `handheld` device-configured; rehabilitate or remove the PC layout |
 
