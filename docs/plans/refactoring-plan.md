@@ -1,6 +1,6 @@
 # Refactoring Plan - Saphir v3.x
 
-> **Status**: In progress — Phases 0-6 complete, Phases 7-11 pending
+> **Status**: In progress — Phases 0-6 complete, Phases 7-12 pending
 > **Last updated**: 2026-10-28
 > **Branch**: `refactoring` (based on `main` post-merge #128)
 
@@ -375,6 +375,7 @@ These rules must hold throughout refactoring:
 | 9 Documentation debt | ⏳ Pending | — | — | French→English, docstrings, dead code removal |
 | 10 Missing features & NFRs | ⏳ Pending | — | — | Fingerprint, ReportFailed, disconnect handlers, AV failure |
 | 11 Functional coverage | ⏳ Pending | — | — | Error paths, NFRs, disconnection scenarios |
+| 12 GUI (QML) test coverage | ⏳ Pending | — | — | QML bindings, panel visibility, signal integration |
 
 **Test baseline**: 91 passed, 3 skipped (MOUNT_ARCHIVES disabled), 0 failed, 0 xfailed
 
@@ -389,7 +390,8 @@ These rules must hold throughout refactoring:
 | Phase 9 | -250 / +100 | Medium | Phases 0-8 |
 | Phase 10 | +400 / +100 | High | Phases 3-6 ✅ |
 | Phase 11 | +300 / +200 | High | Phase 10 |
-| **Remaining** | **0 / +850** | **~10 days** | — |
+| Phase 12 | +200 / +150 | Medium | Phases 5-6, 10 |
+| **Remaining** | **0 / +1050** | **~14 days** | — |
 
 > **Note**: Phases 6 and 7 are independent and can be parallelized.
 
@@ -771,3 +773,152 @@ These rules must hold throughout refactoring:
 - Functional coverage recalculated ≥ 80% (strict formula)
 - Code coverage remains ≥ 85%
 - `test_workflow_nominal.py` still passes (no regression)
+
+---
+
+### Phase 12: GUI (QML) Test Coverage ⏳ PENDING
+
+**Goal**: Add automated tests for the QML layer — bindings, panel visibility, state-driven UI transitions, and Python↔QML signal integration. The QML code is currently **untested** (0% coverage); regressions in visibility logic or bindings are only caught manually.
+
+**Scope**: The GUI consists of:
+- `MainScreen.qml` — layout container, panel switching
+- `MainScreenUi.ui.qml` — declarative panel visibility bindings (Phase 5 output)
+- `Bindings.qml` — derived properties (systemStateColor, status, etc.)
+- `AnalysisPanel.qml` — analysis progress, ETA, pause button
+- `FilesSelectionPanel.qml` — file browser, queue, filters
+- `FilesCopyPanel.qml` — copy progress, target prompt
+- `SystemLoadingPanel.qml` — boot/reset progress
+- `TopBar.qml` — clock, battery, classification
+- `LogDialog.qml`, `SystemInfoDialog.qml` — informational dialogs
+
+#### 12.1 [P0] QML binding tests (panel visibility)
+
+**Gap**: Phase 5 made panel visibility 100% declarative (bindings on `systemState`), but there is **no automated test** verifying that the correct panel is shown for each state.
+
+**Approach**: Use `PySide6.QtTest` + `QQmlApplicationEngine` to load the QML, set `systemState` via the Python controller, and assert `visible` properties.
+
+**Work**:
+- Create `tests/test_qml_bindings.py`
+- Fixture: load `MainScreenUi.ui.qml` with a mock `ApplicationController` (same pattern as handler tests)
+- For each `SystemState` value: set state → assert which panel is `visible: true`
+- Expected mapping:
+  | State | Visible panel |
+  |-------|--------------|
+  | `SystemStarting`, `SafecorReady`, `SystemResetting` | `SystemLoadingPanel` |
+  | `SystemReady`, `SystemWaitingForUserAction`, `SystemGettingFilesList` | `FilesSelectionPanel` |
+  | `SystemAnalysisRunning`, `AnalysisCompleted` | `AnalysisPanel` |
+  | `SystemWaitingForTarget`, `CopyCleanFiles`, `GeneratingReport` | `FilesCopyPanel` |
+  | `SystemMustBeReset`, `ReportFailed` | `SystemMustBeReset` dialog |
+
+**Files**: `tests/test_qml_bindings.py` (new)
+
+**Effort**: Medium (1 day)
+
+#### 12.2 [P0] Bindings.qml derived properties
+
+**Gap**: `Bindings.qml` computes `systemStateColor`, status (Ready/Used/Dirty), and other derived values. **No tests** verify these computations.
+
+**Work**:
+- In `tests/test_qml_bindings.py`: load `Bindings.qml` with controlled inputs
+- Test `systemStateColor` for each state
+- Test status priority: Dirty > Used > Ready > Not ready
+- Test the D8 bug fix: `infected: nbInfected > 0` (not `> 1`)
+- Test `analysisReady` / `readyToAnalyze` derived conditions
+
+**Files**: `tests/test_qml_bindings.py` (extend)
+
+**Effort**: Low (half day)
+
+#### 12.3 [P1] Python↔QML signal integration
+
+**Gap**: Signals like `systemStateChanged`, `queueSizeChanged`, `infectedChanged`, `cleanChanged` are emitted by Python and consumed by QML. **No test** verifies the end-to-end signal path.
+
+**Work**:
+- In `tests/test_qml_signals.py`:
+  - Load QML with a real `ApplicationController` (Api mocked)
+  - Trigger a state change in Python → assert QML property updated
+  - Enqueue a file → assert `queueSize` in QML updated
+  - Simulate analysis result → assert `infectedFilesCount` / `cleanFilesCount` in QML updated
+  - Simulate transfer progress → assert `transferProgress` in QML updated
+
+**Files**: `tests/test_qml_signals.py` (new)
+
+**Effort**: Medium (1 day)
+
+#### 12.4 [P1] AnalysisPanel state transitions
+
+**Gap**: The analysis panel shows different UI elements depending on analysis state (progress bar, ETA, pause button). **No test** verifies these transitions.
+
+**Work**:
+- In `tests/test_qml_bindings.py`:
+  - State `SystemAnalysisRunning` → progress bar visible, pause button enabled, ETA visible
+  - State `AnalysisCompleted` → progress bar at 100%, pause button hidden
+  - `analysisReady == false` → start button disabled
+  - `queueSize == 0` → start button disabled
+
+**Files**: `tests/test_qml_bindings.py` (extend)
+
+**Effort**: Low (half day)
+
+#### 12.5 [P2] TopBar elements
+
+**Gap**: Clock, battery level, plugged state, classification label. **No test** verifies these bindings.
+
+**Work**:
+- In `tests/test_qml_signals.py`:
+  - Set `batteryLevel` → assert QML display updated
+  - Set `plugged` → assert charger icon visible/hidden
+  - Verify clock updates (timer-based, may need `QSignalSpy` with timeout)
+
+**Files**: `tests/test_qml_signals.py` (extend)
+
+**Effort**: Low (2h)
+
+#### 12.6 [P2] SystemLoadingPanel progression
+
+**Gap**: The loading panel shows progress (0→1.0) with step indicators. **No test** verifies the progression bindings.
+
+**Work**:
+- In `tests/test_qml_bindings.py`:
+  - `systemLoadingProgress = 0.15` → step 1 active
+  - `systemLoadingProgress = 0.5` → step 1 done, step 2 active
+  - `systemLoadingProgress = 1.0` → all steps done, panel hidden
+  - `systemState == SystemReady` → panel hidden
+
+**Files**: `tests/test_qml_bindings.py` (extend)
+
+**Effort**: Low (2h)
+
+#### 12.7 [P2] Filter toggles (F17)
+
+**Gap**: The three filter toggles (Clean, Infected, Waiting) in `FilesSelectionPanel`. **No test** verifies they correctly filter the proxy model.
+
+**Work**:
+- In `tests/test_qml_signals.py`:
+  - Set filter `Clean = false` → assert proxy model excludes clean files
+  - Set all filters to `true` → assert all files visible
+  - Set all filters to `false` → assert no files visible
+
+**Files**: `tests/test_qml_signals.py` (extend)
+
+**Effort**: Low (2h)
+
+#### GUI coverage target
+
+| Layer | Before | After (target) |
+|-------|:------:|:--------------:|
+| Panel visibility bindings | 0% | 100% |
+| Bindings.qml derived properties | 0% | 100% |
+| Signal integration (Python→QML) | 0% | 80% |
+| Panel state transitions | 0% | 80% |
+| **Overall QML** | **0%** | **≥ 70%** |
+
+**Prerequisites**:
+- `PySide6` must support offscreen QML rendering (`QT_QPA_PLATFORM=offscreen`)
+- QML files must be loadable in test environment (path setup in `conftest.py`)
+- No display required (offscreen platform plugin)
+
+**Validation**:
+- All QML tests pass with `QT_QPA_PLATFORM=offscreen pytest tests/test_qml_*.py -q`
+- No regression on existing tests
+- Panel visibility is correct for all 15 `SystemState` values
