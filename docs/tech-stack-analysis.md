@@ -138,10 +138,10 @@ Each point lists the decision, the options, the implications (memory / effort / 
 - **Implications**: (a) no rewrite, keeps the Python ecosystem, **~50–150 MB** more than (b) (interpreter + Python modules + the PDF report); (b) ~50–150 MB saved, **full GUI rewrite** + reworking the **PDF report** (WeasyPrint has no trivial C++ equivalent) + the viewer + the MQTT lib, higher risk/effort. ~450–500 MB of the GUI disk (Qt + OpenGL/MESA/LLVM + fonts) is paid **either way**.
 - **Decision (2026-10-28)**: **Keep PySide6/Python** — the gain (~1–2 % of the total) is negligible vs the cost of a full rewrite. See §8.
 
-### D-T2 — Strip the GUI VM
+### D-T2 — Strip the GUI VM — ✅ **DECIDED**
 - **Options**: (a) keep the bundle as-is; (b) finish the stripping.
 - **Implications**: the PyInstaller spec **already strips** the unused Qt modules (Qt3D, QtCharts, QtMultimedia, QtWeb/WebEngine, QtSensors, …), so the main bloat is **gone** in the current bundle. What remains: **QtNetwork** (~15–25 MB, to remove — GUI uses MQTT, not QtNetwork; test first) and **MESA/LLVM** (~236 MB, **keep** — OpenGL hardware acceleration, needed on the tablet). **Without changing the stack.**
-- **Preliminary**: **drop QtNetwork** (verify the GUI still runs); **keep** MESA/LLVM (OpenGL). Tracked in `gui-backlog.md`.
+- **Decision (2026-10-28)**: **drop QtNetwork** (remove from `hiddenimports` + strip filter, test first); **keep MESA/LLVM** (OpenGL). Tracked in `gui-backlog.md`; action in the refactor (packaging phase). See §8.
 
 ### D-T3 — 2nd antivirus engine (ESET/LXC vs Alpine-compatible)
 - **Options**: (a) keep ESET in the Debian LXC; (b) replace it with an **Alpine/MUSL-compatible** engine to reach the consensus without the LXC.
@@ -165,4 +165,5 @@ Each point lists the decision, the options, the implications (memory / effort / 
 | ID | Decision | Date | Rationale |
 |----|----------|------|-----------|
 | **D-T1** | **Keep PySide6/Python** for the GUI (no C++ rewrite) | 2026-10-28 | C++ saves only **~1–2 % of the total** RAM (≈50–150 MB; ~450–500 MB of the GUI disk is common to both stacks) while costing a **full rewrite** of the GUI **and** the PDF report (WeasyPrint has no trivial C++ equivalent), the viewer, and the MQTT lib. The gain (imperceptible perf, negligible memory) is not worth the effort/risk; the real levers are elsewhere (D-T2, D-T3, D-T4, D-T5). |
-| — | *(D-T2..D-T5 pending)* | | |
+| **D-T2** | **Finish the GUI stripping**: drop **QtNetwork**; **keep MESA/LLVM** (OpenGL) | 2026-10-28 | The PyInstaller spec already strips the unused Qt modules. QtNetwork (~15–25 MB) is the last residual — the GUI talks over MQTT/paho-mqtt, not QtNetwork → remove it from `hiddenimports` + the strip filter (test first). MESA/LLVM back OpenGL hardware acceleration (needed on the tablet) → keep. Modest gain (~15–25 MB) but free and shrinks the attack surface. Action scheduled in the refactor (packaging phase). |
+| — | *(D-T3..D-T5 pending)* | | |
