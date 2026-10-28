@@ -278,6 +278,7 @@ A **Reset** always returns the system to its **initial state**: state `SystemRea
 | Copy fails for a clean file | Counted in `copiedFilesCount` failure, continues | Log error, mark file, continue, report failure in PDF; final check `copied == clean_count` (F4) |
 | Source disk disconnected during copy | Not handled (uncertain state) | Stay in `CopyCleanFiles` with an **error flag** (no dedicated state); pause the copy and prompt to re-insert; on re-insertion, run a **coherence check** (source state + integrity/fingerprint) and clear the flag → **auto-resume**. No reset, no re-analysis (F4) |
 | **Target** disk disconnected during copy | Not handled | Same as the source: **error flag** on `CopyCleanFiles`, pause, prompt to re-insert, **coherence check** on re-insertion, **auto-resume** (F4) |
+| Source disk disconnected during **analysis** | Not handled | Analysis **continues** on files already in the repository (AV engines are **not** interrupted); an **error flag** is set and a dialog prompts the user to re-connect the source. The analysis loop is **held** (waiting) so it does not exit prematurely; it resumes when the source is re-connected (F1/NFR-3) |
 | Report generation fails | Exception crashes transfer | Log error, enter the **`ReportFailed`** state (§2); **Reset required**, no automatic retry (F6/NFR-1) |
 | Target disk full | Not checked | Detect before copy, show error dialog |
 | MQTT subscription fails | Silent | Retry (3x), show error. **No fallback** — the transport is environment-specific and exclusive (production: **serial port**; dev: **TCP**) |
@@ -288,8 +289,9 @@ A **Reset** always returns the system to its **initial state**: state `SystemRea
 ```
 Per-file analysis error  → stays in SystemAnalysisRunning (file → Error), completes to AnalysisCompleted
 AV engine panic          → SystemWaitingForUserAction (abort, user retries)
+Source disconnected (analysis) → stays in SystemAnalysisRunning (AV continues on the repository); error flag + dialog; held until the source is re-connected, then resumes
 Copy error (single file) → continue, log in report (CopyCleanFiles → GeneratingReport)
-Source disconnected      → stays in CopyCleanFiles with an error flag; on re-insertion, coherence check (state + integrity) then auto-resume
+Source disconnected (copy) → stays in CopyCleanFiles with an error flag; on re-insertion, coherence check (state + integrity) then auto-resume
 Target disconnected      → stays in CopyCleanFiles with an error flag; on re-insertion, coherence check then auto-resume
 Report error             → ReportFailed (reset required, no auto-retry)
 Reset failed             → SystemMustBeReset (display error message)
@@ -427,9 +429,10 @@ where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infecte
 3. User re-inserts the source (same disk)
 4. Coherence check: source state + integrity (fingerprint) of the already-copied data are verified
 5. If OK → the error flag is cleared and the copy resumes automatically → continues to GeneratingReport
+6. If the check FAILS (e.g. a different disk was re-plugged) → SystemMustBeReset (NFR-4, I6)
 ```
 
-> The **same** handling applies to the **target** disk: unplugging it sets the error flag, and re-insertion (with a coherence check) resumes the copy (§6.1).
+> The **same** handling applies to the **target** disk: unplugging it sets the error flag, and re-insertion (with a coherence check) resumes the copy; a failed check (different disk) leads to `SystemMustBeReset` (§6.1).
 
 ### 8.7 Report Generation Failure
 
@@ -439,6 +442,18 @@ where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infecte
 3. → ReportFailed (permanent error state, #4) — the user is informed, Reset is required
 4. No automatic retry; the system stays in ReportFailed until the user acts
 5. User clicks Reset → SystemResetting → back to SystemReady (I9: counters/queue cleared)
+```
+
+### 8.8 Source Disconnection During Analysis
+
+```
+1. SystemAnalysisRunning (files already in the repository are being scanned by the AV engines)
+2. User unplugs the source (by mistake)
+3. Analysis CONTINUES on the files already in the repository (AV engines are NOT interrupted);
+   an error flag is set and a dialog prompts the user to re-connect the source
+4. The analysis loop is HELD (waiting) so it does not exit prematurely while files remain to be copied
+5. User re-inserts the source → the flag is cleared, the remaining files are copied, and the analysis resumes
+6. All files analyzed → AnalysisCompleted (→ copy / report as usual)
 ```
 
 ---
