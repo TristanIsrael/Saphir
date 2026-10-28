@@ -11,6 +11,7 @@
 |---------|----------|
 | What the system must do (behaviour) | [`docs/features.md`](features.md) (F1–F21, NFR-1 to NFR-5) |
 | State machine contract (states, transitions, invariants) | [`docs/workflow-rules.md`](workflow-rules.md) |
+| User interface (principles, screens, visual status, theming) | [`docs/gui.md`](gui.md) |
 | Refactoring phases & effort | [`docs/plans/refactoring-plan.md`](plans/refactoring-plan.md) |
 | Spec ↔ implementation gap audit | [`docs/implementation-coverage.md`](implementation-coverage.md) |
 | Validation / test strategy | [`docs/test-strategy.md`](test-strategy.md) |
@@ -181,6 +182,8 @@ Both report over the same `saphir/analysis/*` topics, so the GUI treats them ide
 **View-state rule (MVVM)** — the QML views are **stateless projections of the workflow**. What is shown — the active panel, enabled/disabled buttons, open dialogs, editable fields — is **derived directly from `SystemState`** and the published bindings. A view must not *decide* visibility or enablement with its own business conditionals: bind it to a property that already encodes the state (e.g. `enabled: viewModel.canStartAnalysis`) and push any non-trivial derivation into the controller/ViewModel, exposed as a single property. Only **trivially presentational** logic with no workflow meaning (hover highlight, slider clamping, `width > 0 ? a : b`) may live in a view. This keeps the UI deterministic and testable by driving `SystemState` alone.
 
 **Form & responsiveness rule** — the views must be **responsive** and **input-agnostic**. The **primary deployment target** is an **8-inch touch tablet** (touch-first), but the application must also be usable on a **desktop PC with keyboard and mouse**. For now, a **single interface** is used for both, with **different input handling** (touch vs. mouse/keyboard); it must not hard-code the tablet assumption. The layout must tolerate a range of screen sizes so the UI can later **specialise** per target — large screens / desktop, and, if that target becomes viable, smartphone — **without a redesign**. Any view that hard-codes a fixed size, assumes touch-only, or breaks on a non-tablet form factor is **rule-debt** and must be logged in [`gui-backlog.md`](gui-backlog.md).
+
+> **Consolidated UI reference**: the principles above, the QML structure, the screens, the system visual status, theming, and localization are centralised in [`gui.md`](gui.md).
 
 ### 3.5 UI data models
 

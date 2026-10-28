@@ -169,6 +169,20 @@ Each transition has a **trigger** (event) and a **guard** (condition).
 >
 > **No cancel**: there is **no cancel button** for the copy — neither before (from `SystemWaitingForTarget`) nor during (from `CopyCleanFiles`). The only exits from those states are: insert a target disk (→ `CopyCleanFiles`), **Reset**, or **Shutdown**. `SystemWaitingForTarget` is therefore a **stable terminal-ish state** the user may stay in (the summary screen `FilesCopyPanel` is shown, prompting to insert a target).
 
+### 3.3 Derived conditions (not states)
+
+These are **not** workflow states. They are **derived booleans** computed from the live component states and the queue; they *gate* transitions and drive UI bindings, but they are never stored as the system state and are never changed by the `WorkflowController`.
+
+| Condition | Definition | Gates / drives |
+|-----------|------------|----------------|
+| `coreReady` | The core Safecor components (incl. the disk-controller) are ready | Enables file **selection** (a disk can be browsed) |
+| `analysisReady` | `coreReady` **and** `len(analysis_components) >= ANTIVIRUS_NEEDED` (all required AV engines connected & ready) | `SystemLoadingPanel` opacity (1.0 → 0.0), "Start Analysis" `enabled` |
+| `readyToAnalyze` | `analysisReady` **and** `queue_size > 0` | Guard of `SystemWaitingForUserAction → SystemAnalysisRunning` |
+
+> **Why not a state?** Component readiness (especially the AV VMs) is **asynchronous and parallel** — it becomes true at a moment with no guaranteed order relative to the sequential cycle (the AVs may be ready *before* a disk is plugged, or *while* the user is selecting). Modelling it as a sequential state would impose a false order and add an async components→state transition without benefit. The **state** describes *where in the cycle* the system is; a **condition** *enables* a transition from that state. This is also what the v2.1 decoupling relies on: selection needs `coreReady` + a disk only; analysis additionally needs `analysisReady`.
+>
+> **Refactoring note (D7)**: the current code reaches `SystemReady` only when `analysisReady` (core **and** AV) is true (`application_controller.py:622-623`). After the refactor, `SystemReady` is reached as soon as **`coreReady`** holds; `analysisReady` remains a distinct derived condition that gates analysis.
+
 ---
 
 ## 4. Phase Definitions
@@ -272,23 +286,27 @@ Reset failed             → SystemMustBeReset (display error message)
 
 ## 7. UI State Mapping
 
-The following table defines which panels/dialogs are visible per state. This should be the **sole** source of truth for UI visibility.
+The following table defines which panels/dialogs are visible per state. This should be the **sole** source of truth for UI visibility. Columns are ordered by **chronological appearance** (boot → shutdown). The broader UI reference (principles, theming, system visual status, localization) is centralised in [`gui.md`](gui.md).
 
-| State | File Selection | File Copy | Report | Reset Dialog | Shutdown Dialog | Analysis Panel |
-|-------|---------------|-----------|--------|-------------|-----------------|----------------|
-| `SystemStarting` | hidden | hidden | hidden | hidden | hidden | hidden |
-| `SafecorReady` | hidden | hidden | hidden | hidden | hidden | hidden |
-| `SystemReady` | **visible** | hidden | hidden | hidden | hidden | hidden |
-| `SystemGettingFilesList` | visible (loading) | hidden | hidden | hidden | hidden | hidden |
-| `SystemWaitingForUserAction` | **visible** | hidden | hidden | hidden | hidden | hidden |
-| `SystemAnalysisRunning` | hidden | hidden | hidden | hidden | hidden | **visible** |
-| `AnalysisCompleted` | hidden | **visible** | hidden | hidden | hidden | visible (finished / paused) |
-| `SystemWaitingForTarget` | hidden | **prompt (insert target)** | hidden | hidden | hidden | hidden |
-| `CopyCleanFiles` | hidden | **visible** | hidden | hidden | hidden | hidden |
-| `GeneratingReport` | hidden | visible (done) | **visible** | hidden | hidden | hidden |
-| `SystemMustBeReset` | hidden | hidden | hidden | **visible** | hidden | hidden |
-| `SystemResetting` | hidden | hidden | hidden | visible (loading) | hidden | hidden |
-| `SystemShuttingDown` | hidden | hidden | hidden | hidden | **visible** | hidden |
+**One screen at a time** — at most **one** of the screen columns (File Selection, Analysis Panel, File Copy, Shutdown Dialog) is visible per state. The `SystemLoadingPanel` is an **overlay** (see §7.1), not a screen, so it may be shown on top of a screen. The **Report** is not an on-screen element (it is a generated PDF file), and the **Reset** confirmation is a transient dialog (not a per-state view), so neither is a column.
+
+> **`AnalysisCompleted` is transient**: it immediately auto-transitions to `CopyCleanFiles` (target available) or `SystemWaitingForTarget` (no target). The screen shown is the **copy screen** (`FilesCopyPanel`), which prompts to **insert a target** to start the copy — so `AnalysisCompleted` and `SystemWaitingForTarget` show the **same** screen. The analysis progress panel is **not** shown once the analysis is finished.
+
+| State | SystemLoadingPanel | File Selection | Analysis Panel | File Copy | Shutdown Dialog |
+|-------|--------------------|---------------|---------------|-----------|-----------------|
+| `SystemStarting` | **visible (large)** | hidden | hidden | hidden | hidden |
+| `SafecorReady` | visible (small) | hidden | hidden | hidden | hidden |
+| `SystemReady` | visible (small) | **visible** | hidden | hidden | hidden |
+| `SystemGettingFilesList` | hidden | visible (loading) | hidden | hidden | hidden |
+| `SystemWaitingForUserAction` | hidden | **visible** | hidden | hidden | hidden |
+| `SystemAnalysisRunning` | hidden | hidden | **visible** | hidden | hidden |
+| `AnalysisCompleted` | hidden | hidden | hidden | **visible (insert target)** | hidden |
+| `SystemWaitingForTarget` | hidden | hidden | hidden | **prompt (insert target)** | hidden |
+| `CopyCleanFiles` | hidden | hidden | hidden | **visible** | hidden |
+| `GeneratingReport` | hidden | hidden | hidden | visible (done) | hidden |
+| `SystemMustBeReset` | hidden | hidden | hidden | hidden | hidden |
+| `SystemResetting` | **visible (large)** | hidden | hidden | hidden | hidden |
+| `SystemShuttingDown` | hidden | hidden | hidden | hidden | **visible** |
 
 ### 7.1 Boot/start dialog (SystemLoadingPanel) — size & visibility
 
@@ -300,6 +318,29 @@ The **`SystemLoadingPanel`** is an overlay (not a panel) shown while the system 
 Both are pure functions of the workflow state + the `analysisReady` binding, so they stay within the view-state rule (the view binds to a derived property, it does not compute it).
 
 > **Intention vs. as-is**: the intended sizing is “large until a disk is detected, small once a disk is connected”. The as-is implementation keys the size on the **state** (large during `SystemStarting`, small from `SafecorReady`), which is functionally equivalent because a disk is only reachable once the core is ready. Requiring exact “disk-detected” sizing can be a follow-up (see `gui-backlog.md`).
+
+### 7.2 System visual status (not a workflow state)
+
+Beyond the per-state screens, the **whole application** carries a *visual status* of the system, expressed through the **background image** (`imgBack`) and a **color filter** (`backFilter`). This status tells the user **whether the system is clean, has been used, or has found a threat**. It is about the *content* of the system, not *where in the cycle* it is, so it is **orthogonal to the workflow states** — it is a derived visual (like the §3.3 conditions), not a `SystemState`.
+
+There are **three** system statuses (plus the *not-ready* boot phase):
+
+| Visual status | Meaning | Condition (derived) | Background image (light theme) | Color filter |
+|---------------|---------|---------------------|--------------------------------|--------------|
+| **Not ready** | System coming up (boot) | `!ready` | `dark.jpg` (background) | `colorFilterNotReady` |
+| **Ready** (Prêt) | Operational, nothing scanned yet | `ready ∧ ¬used ∧ ¬infected` | `light_ready.png` | `colorFilterReady` |
+| **Used** (Utilisé) | At least one file read, no threat | `ready ∧ used ∧ ¬infected` | `light_used.png` | `colorFilterUsed` |
+| **Dirty** (Sale) — currently “Infected” in the code | At least one infected file detected | `ready ∧ infected` | `light_infected.png` | `colorFilterInfected` |
+
+where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infected = nbInfected > 0`.
+
+> **Precedence** (highest wins): **Dirty > Used > Ready > Not ready** — this is exactly the order of the `imgBack.source` / `systemStateColor` bindings (`MainScreen.qml`, `Bindings.qml`).
+>
+> **Workflow relation**: the status is driven by the analysis results. It goes *Ready → Used* as soon as the first file is read (`systemUsed`, `analysis_controller.py:186`) and *Used → Dirty* the moment an infected file is detected. A **Reset** returns it to **Ready** (counters and `systemUsed` are cleared, `application_controller.py:368`). It is independent of `SystemState`: e.g. during `SystemAnalysisRunning` the status becomes **Dirty** as soon as the first infected file is found.
+>
+> **Bug (D8)**: `Bindings.qml` computes `infected: nbInfected > 1` (line 13) — it should be `> 0`, so a single infected file does not currently flip the status to *Dirty*.
+>
+> **Theming**: the concrete images and color filters per theme are documented in [`gui.md` §4–5](gui.md).
 
 ---
 

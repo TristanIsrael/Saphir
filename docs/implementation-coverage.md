@@ -413,6 +413,7 @@ These capabilities used to exist in the code without a spec entry. They are now 
 | D5 | File status (F3) | Ternary (Clean/Infected/Error) | Binary + disabled error |
 | D6 | F11 progression | "Modal" | Panel (equivalent behavior) |
 | D7 | File selection vs AV readiness (F1/F2) | Selection possible dès disk-controller prêt + disque, **sans** attendre les AV; the analysis trigger is separately gated by ready-to-analyze (AV + core + queue) | `SystemReady` gated behind `len(analysis_components) >= ANTIVIRUS_NEEDED` (application_controller.py:612-623) → selection blocked until the AV engines are ready |
+| D8 | System visual status "Dirty" (F7) | A single infected file flips the visual status to *Dirty* (`nbInfected > 0`) | `Bindings.qml:13` uses `infected: nbInfected > 1` → one infected file is not enough |
 
 ---
 
