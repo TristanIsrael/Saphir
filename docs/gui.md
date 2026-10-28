@@ -102,7 +102,7 @@ Plus the **`SystemLoadingPanel`** overlay (size/visibility driven by the workflo
 
 ---
 
-## 4. System visual status (Prêt / Utilisé / Sale)
+## 4. System visual status (Ready / Used / Dirty)
 
 Beyond the per-state screens, the **whole application** carries a *visual status* of the system,
 expressed through the **background image** (`imgBack`) and a **color filter** (`backFilter`). It
@@ -115,9 +115,9 @@ The contract (conditions, precedence, workflow relation) is in
 | Visual status | Meaning | Condition (derived) | Image (light theme) | Color filter |
 |---------------|---------|---------------------|---------------------|--------------|
 | **Not ready** | boot | `!ready` | `dark.jpg` | `colorFilterNotReady` |
-| **Ready** (Prêt) | operational, nothing scanned | `ready ∧ ¬used ∧ ¬infected` | `light_ready.png` | `colorFilterReady` |
-| **Used** (Utilisé) | a file read, no threat | `ready ∧ used ∧ ¬infected` | `light_used.png` | `colorFilterUsed` |
-| **Dirty** (Sale) — currently "Infected" | an infected file detected | `ready ∧ infected` | `light_infected.png` | `colorFilterInfected` |
+| **Ready** | operational, nothing scanned | `ready ∧ ¬used ∧ ¬infected` | `light_ready.png` | `colorFilterReady` |
+| **Used** | a file read, no threat | `ready ∧ used ∧ ¬infected` | `light_used.png` | `colorFilterUsed` |
+| **Dirty** — currently "Infected" in the code | an infected file detected | `ready ∧ infected` | `light_infected.png` | `colorFilterInfected` |
 
 where `used = nbFinished > 0` and `infected = nbInfected > 0`. Precedence: **Dirty > Used >
 Ready > Not ready**. A **Reset** returns the status to **Ready**.

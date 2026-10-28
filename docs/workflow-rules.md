@@ -328,9 +328,9 @@ There are **three** system statuses (plus the *not-ready* boot phase):
 | Visual status | Meaning | Condition (derived) | Background image (light theme) | Color filter |
 |---------------|---------|---------------------|--------------------------------|--------------|
 | **Not ready** | System coming up (boot) | `!ready` | `dark.jpg` (background) | `colorFilterNotReady` |
-| **Ready** (Prêt) | Operational, nothing scanned yet | `ready ∧ ¬used ∧ ¬infected` | `light_ready.png` | `colorFilterReady` |
-| **Used** (Utilisé) | At least one file read, no threat | `ready ∧ used ∧ ¬infected` | `light_used.png` | `colorFilterUsed` |
-| **Dirty** (Sale) — currently “Infected” in the code | At least one infected file detected | `ready ∧ infected` | `light_infected.png` | `colorFilterInfected` |
+| **Ready** | Operational, nothing scanned yet | `ready ∧ ¬used ∧ ¬infected` | `light_ready.png` | `colorFilterReady` |
+| **Used** | At least one file read, no threat | `ready ∧ used ∧ ¬infected` | `light_used.png` | `colorFilterUsed` |
+| **Dirty** — currently “Infected” in the code | At least one infected file detected | `ready ∧ infected` | `light_infected.png` | `colorFilterInfected` |
 
 where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infected = nbInfected > 0`.
 
