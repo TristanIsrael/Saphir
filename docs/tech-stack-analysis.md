@@ -33,12 +33,22 @@
 ### 2.2 GUI footprint (`docs/old/optimization.md`)
 
 - PySide6/QML GUI: **~389 MB RAM** (with MESA); ~99 MB base.
-- GUI VM disk: **1.1 GB** — inflated by **unused** dependencies pulled by `py3-pyside6`:
-  - **QtWebEngine** (`libQt6WebEngineCore` 168 MB) + locales/resources (34.9 + 12.5 MB)
-  - **LLVM** (`libLLVM` 153 MB)
-  - **MESA / gallium** (83 MB)
-  - **Multimedia** (`libx265` 18.8, `libavcodec` 15.7, `libSvtAv1Enc` 6.5, …)
-  - **Qt3D / QtQuick3D** (3.4 MB, …)
+- **Two packaging modes** (`saphir-gui/APKBUILD`, `bundle` flag):
+  - **Folder mode** (`bundle="no"`, what `optimization.md` measured): `py3-pyside6` is
+    installed in the VM → the disk is **1.1 GB**, inflated by **unused** Qt modules:
+    QtWebEngine (`libQt6WebEngineCore` 168 MB + locales/resources 34.9 + 12.5 MB),
+    LLVM (153 MB), MESA/gallium (83 MB), multimedia (x265/avcodec/SvtAv1…), Qt3D/QtQuick3D.
+  - **Bundle mode** (`bundle="yes"`, **current**): the app is a **PyInstaller bundle**.
+    `safecor-gui-base` installs **only** the X server (no Qt). The Qt native libs are
+    carried **inside the bundle**, and `saphir-gui.spec` **already strips** the unused
+    Qt modules (Qt3D, QtCharts, QtMultimedia, QtWeb/WebEngine, QtSensors, QtSql, QtSvg,
+    …). So the current bundle is **much smaller** than the 1.1 GB folder-mode figure.
+    Two items are **not** stripped: **QtNetwork** (a `hiddenimport`) and **MESA/LLVM**
+    (OpenGL — see below).
+
+> **MESA/LLVM (~236 MB)** are **not** bloat: they back **OpenGL hardware acceleration**,
+> required on the target tablet for GPU rendering. They are paid by **both** PySide6 and
+> C++ and are **kept** (only removable with software rendering).
 
 ---
 
@@ -50,11 +60,42 @@ Is **PySide6/Python** the right choice for the GUI, or should we move to a **com
 
 ## 4. Analysis
 
-### 4.1 Memory
+### 4.1 Memory (re-estimated, dependencies included, bundle mode)
 
-- The GUI is **not** the dominant consumer: the GUI VM (1 200 MB) is **2.5× smaller than ClamAV** (3 000 MB) and the GUI **application itself** is only **~389 MB** — a third of its VM. There is headroom.
-- C++/Qt would remove the **Python interpreter + shiboken** overhead (**~30–80 MB**). That is **~3–6 % of the GUI VM** and **~0.5 % of the total**. Negligible.
-- The **Qt libraries** (the bulk of the GUI footprint) are **the same** in Python and C++ — they are **not** saved by switching to C++.
+> Sizes are orders of magnitude (the exact `.so` sizes vary); measure precisely when acting.
+
+**A. Common to both stacks** (the minimal "cage" of the GUI VM, independent of Python/C++):
+
+| Component | Disk |
+|-----------|------|
+| Required Qt libs (Core, Gui, Quick, Qml, Network, Widgets, QmlMeta/Models, QuickControls2, QuickEffects/Layouts/Shapes/Templates2, DBus, PDF) | ~150–200 MB |
+| **MESA + LLVM** (OpenGL hardware acceleration, needed on the tablet) | ~236 MB |
+| fontconfig + freetype + icu | ~60 MB |
+| **Subtotal (paid either way)** | **~450–500 MB** |
+
+**B. Stack-specific** (where Python/C++ differ):
+
+| Component | PySide6 (bundle) | C++/Qt |
+|-----------|------------------|--------|
+| App binary | ~80–150 MB (Python interpreter + PySide6 bindings + shiboken) | ~10–50 MB |
+| Python modules (weasyprint, jinja2, paho-mqtt, PIL, psutil, msgpack, …) | ~50–100 MB | 0 |
+| **Report (PDF)** — WeasyPrint + fonttools + tinycss2 + pyphen | ~30–60 MB | C++ equivalent to develop, **or** WeasyPrint as a subprocess (→ same ~30–60 MB) |
+| **Subtotal** | **~160–310 MB** | **~10–50 MB** (report reworked) / **~40–110 MB** (WeasyPrint subprocess) |
+
+**C. Residual "unused" Qt still bundled**: **QtNetwork** (~15–25 MB) — kept (hiddenimport, not in the strip filter) although the GUI talks over **MQTT/paho-mqtt**, not QtNetwork → **to remove** (test first). See `gui-backlog.md`.
+
+**D. Balance (GUI VM disk, current bundle mode)**:
+
+| Configuration | Est. disk |
+|---------------|-----------|
+| PySide6 bundle **as-is** (unused modules already stripped) | **~600–800 MB** |
+| PySide6 bundle + drop QtNetwork | **~575–775 MB** |
+| C++/Qt stripped (report **reworked** in C++) | **~500–600 MB** |
+| C++/Qt stripped (WeasyPrint **subprocess**) | **~575–750 MB** |
+
+**PySide6 vs C++ gap: ~50–150 MB** (≈ 8–15 % of the GUI VM, ≈ 1–2 % of the total); it shrinks to **~20–50 MB** if the report stays WeasyPrint (subprocess). The initial 30–80 MB estimate was **low** (it omitted the Python modules + the PDF report).
+
+Key point: **~450–500 MB of the GUI disk is common** (Qt + OpenGL/MESA/LLVM + fonts) and is **independent** of the language. The real levers are the **stripping** (mostly done; QtNetwork left) and the **big consumers** (ClamAV, ESET/LXC) — **not** the GUI language.
 
 ### 4.2 Global performance
 
@@ -65,7 +106,7 @@ Is **PySide6/Python** the right choice for the GUI, or should we move to a **com
 
 - The **whole codebase** (gui, libsaphir, viewer, AV controllers) is **Python**, communicating over **MQTT**. MVVM (signals/slots) is natural in Python.
 - C++/Qt = a **full rewrite** of the GUI: high effort + risk, long compile cycle, low-level bugs, smaller dev pool.
-- The **effort/benefit** ratio of C++ is **strongly unfavorable**: rewriting the whole GUI to save ~0.5 % of total RAM.
+- The **effort/benefit** ratio of C++ is **strongly unfavorable**: rewriting the whole GUI (and the PDF report, viewer, MQTT lib) to save **~1–2 % of the total** RAM.
 
 ---
 
@@ -73,15 +114,15 @@ Is **PySide6/Python** the right choice for the GUI, or should we move to a **com
 
 1. **ClamAV (3 000 MB)** — the biggest. Levers: *FRESH* (minimal) signatures instead of *full*; load signatures **only during the scan**; **on-demand** (`clamdscan`) instead of a resident daemon.
 2. **ESET/LXC (2 100 MB)** — the Debian LXC exists **only** because ESET is not MUSL-linked. Structural lever: replace ESET with a **2nd Alpine/MUSL-compatible engine** to reach the consensus (`ANTIVIRUS_NEEDED = 2`) **without the LXC** → removes ~2 100 MB + the LXC. **Biggest structural lever** (but loses ESET's detection quality).
-3. **GUI VM bloat** — **strip** the unused dependencies (QtWebEngine, MESA, multimedia, Qt3D, LLVM) → saves disk + RAM **without changing the stack**.
+3. **GUI VM** — the PyInstaller spec **already strips** the unused Qt modules (WebEngine, multimedia, Qt3D, …); only **QtNetwork** remains to drop (**~15–25 MB**, without changing the stack). **MESA/LLVM are kept** (OpenGL).
 4. **Diskless mode** — if everything is in RAM (tmpfs/overlay), the footprint is huge. Weigh: **read-only base disk** + RAM overlay only for the session (or a persistent disk). It is a **goal**, not a hard requirement.
 
 ---
 
 ## 6. Preliminary recommendation
 
-1. **Keep PySide6/Python** for the GUI.
-2. **Strip** the GUI VM (WebEngine, MESA, multimedia, Qt3D, LLVM).
+1. **Keep PySide6/Python** for the GUI (gain of C++ ≈ 1–2 % of the total, not worth a full rewrite).
+2. **Finish the GUI stripping**: the PyInstaller spec **already** strips the unused Qt modules; only **QtNetwork** remains to drop (GUI uses MQTT). **Keep MESA/LLVM** (OpenGL hardware acceleration, needed on the tablet).
 3. **Re-evaluate the 2nd engine**: an Alpine/MUSL-compatible engine instead of ESET/LXC is the **biggest structural lever** (~2 100 MB).
 4. **Optimize ClamAV** (minimal signatures, on-demand).
 5. **Weigh the diskless mode** against the statelessness goal.
@@ -94,13 +135,13 @@ Each point lists the decision, the options, the implications (memory / effort / 
 
 ### D-T1 — GUI tech stack (PySide6 vs C++/Qt)
 - **Options**: (a) keep PySide6/Python; (b) rewrite the GUI in C++/Qt.
-- **Implications**: (a) no rewrite, keeps the Python ecosystem, ~30–80 MB more than (b); (b) ~30–80 MB saved, **full GUI rewrite**, higher risk/effort.
-- **Preliminary**: **keep PySide6/Python** — the gain is negligible vs the cost.
+- **Implications**: (a) no rewrite, keeps the Python ecosystem, **~50–150 MB** more than (b) (interpreter + Python modules + the PDF report); (b) ~50–150 MB saved, **full GUI rewrite** + reworking the **PDF report** (WeasyPrint has no trivial C++ equivalent) + the viewer + the MQTT lib, higher risk/effort. ~450–500 MB of the GUI disk (Qt + OpenGL/MESA/LLVM + fonts) is paid **either way**.
+- **Preliminary**: **keep PySide6/Python** — the gain (~1–2 % of the total) is negligible vs the cost of a full rewrite.
 
 ### D-T2 — Strip the GUI VM
-- **Options**: (a) keep all `py3-pyside6` dependencies; (b) strip the unused ones (QtWebEngine, MESA, multimedia, Qt3D, LLVM).
-- **Implications**: (b) saves ~0.5 GB disk + RAM in the GUI VM, **without changing the stack**. Risk: breaking the GUI if a stripped dependency is actually used — the **minimal dependency set must be verified** first.
-- **Preliminary**: **strip** (verify the minimal dependency set first).
+- **Options**: (a) keep the bundle as-is; (b) finish the stripping.
+- **Implications**: the PyInstaller spec **already strips** the unused Qt modules (Qt3D, QtCharts, QtMultimedia, QtWeb/WebEngine, QtSensors, …), so the main bloat is **gone** in the current bundle. What remains: **QtNetwork** (~15–25 MB, to remove — GUI uses MQTT, not QtNetwork; test first) and **MESA/LLVM** (~236 MB, **keep** — OpenGL hardware acceleration, needed on the tablet). **Without changing the stack.**
+- **Preliminary**: **drop QtNetwork** (verify the GUI still runs); **keep** MESA/LLVM (OpenGL). Tracked in `gui-backlog.md`.
 
 ### D-T3 — 2nd antivirus engine (ESET/LXC vs Alpine-compatible)
 - **Options**: (a) keep ESET in the Debian LXC; (b) replace it with an **Alpine/MUSL-compatible** engine to reach the consensus without the LXC.

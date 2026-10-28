@@ -43,6 +43,31 @@
   keeping the single interface.
 - **Status**: open
 
+## Dependencies & packaging (to review)
+
+> Tracking of the GUI VM dependencies: what is needed, what is bloat, and what the
+> packaging (PyInstaller bundle) already handles.
+
+### [2026-10-28] GUI dependencies cleanup — drop QtNetwork, document OpenGL deps
+- **Type**: optimization / dependencies
+- **Where**: `python/gui/saphir-gui.spec` (stripping filter + hiddenimports), `saphir-gui/APKBUILD`
+- **Description**:
+  - The PyInstaller spec **already strips** the unused Qt modules (Qt3D, QtCharts,
+    QtMultimedia, QtWeb/WebEngine, QtSensors, QtSql, QtSvg, …) — so the **bundle**
+    (`bundle="yes"`) is already much smaller than the *folder* mode measured in
+    `docs/old/optimization.md` (1.1 GB).
+  - **QtNetwork** is **still bundled** (it is a `hiddenimport` and not in the strip
+    filter), but the GUI communicates over **MQTT (paho-mqtt)**, not QtNetwork →
+    **candidate for removal** (verify the GUI still runs first; it may be a transitive
+    load of QtQuick/QtQml).
+  - **MESA + LLVM (~236 MB)** are **not** bloat: they are tied to **OpenGL hardware
+    acceleration**, which is **needed on the target tablet** for GPU rendering → **keep**
+    (only removable if we drop to software rendering).
+- **Proposed fix**: remove `PySide6.QtNetwork` from `hiddenimports` and add it to the
+  strip filter (test first); document MESA/LLVM as required for OpenGL in the tech-stack
+  analysis.
+- **Status**: open
+
 ## GUI feature backlog
 
 > Future GUI features / enhancements, not yet scheduled.
