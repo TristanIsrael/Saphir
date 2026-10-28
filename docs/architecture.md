@@ -1,7 +1,7 @@
 # Saphir — Architecture Reference
 
 > **Status**: Draft v1 — for review
-> **Last updated**: 2026-10-27
+> **Last updated**: 2026-10-28
 > **Audience**: developers working on the Saphir codebase (refactoring and future features)
 > **Scope**: this is the **architecture** reference — the "what" and "how" of the system. It is the single place that ties the whole design together and points to the specialised documents for the details.
 
@@ -131,7 +131,7 @@ Entry point: `python/gui/src/Saphir/main.py`.
 - The Qt app **blocks on `api_ready.wait()`** until the API reports ready, then loads `GUI/content/MainScreen.qml`.
 - `ApplicationController` is registered to QML as a **singleton instance** (`qmlRegisterSingletonInstance(..., "Saphir", 1, 0, "ApplicationController", ...)`), so QML refers to it directly as `ApplicationController.<member>`.
 - The Python `Enums` QEnum holder is registered as `Saphir.Enums` (the QML panels use `Enums.SystemAnalysisRunning`, `Enums.FileStatus*`, …).
-- Fonts, kiosk cursor handling (`InputEventFilter` + `BlankCursor`), and screen sizing are set up here. DevMode handling (Qt plugins path) lives at the top of the file.
+- Fonts, screen sizing, and **cursor / input handling** are set up here. **Input model**: Safecor abstracts physical input devices (a USB vector of attack) and exposes **virtual inputs** to the product, injecting the signals transparently. On top of that the app is **touch-first**: the cursor is hidden by default and **re-appears on first mouse movement** (`InputEventFilter` switches `Qt.BlankCursor` → `Qt.ArrowCursor`) — i.e. **automatic environment discovery**, not a configured flag. DevMode handling (Qt plugins path) lives at the top of the file.
 
 **`ApplicationController` (god class)** — the central mediator between the Safecor platform and the QML UI. It currently owns, in a single class:
 
@@ -175,8 +175,12 @@ Both report over the same `saphir/analysis/*` topics, so the GUI treats them ide
 - **`MainScreen.qml`** — the window root; composes `MainScreenUi` + a top-level `Bindings`.
 - **`MainScreenUi.ui.qml`** — the actual layout: `TopBar`, language/theme menus, the swappable content item (three panels: `FilesSelectionPanel` / `AnalysisPanel` / `FilesCopyPanel`), `SystemLoadingPanel`, and all the dialogs (`dlgConnectStorage`, `dlgAnalyseWholeStorage`, `dlgRestart`, `dlgShutdown`, `dlgSystemMustBeReset`, `SystemStateDialog`, `LogDialog`).
 - **`Bindings.qml`** — the **single indirection layer** between views and `ApplicationController`: scalar bindings (`ready`, `analysisReady`, `analyzing`, `systemState`, `nbClean`, `nbInfected`, `queueSize`, `remainingTimeInMinutes`, …), model bindings (`sourceFilesListModel`, `queueListModel`, `componentsModel`, …), and method bridges (`startStopAnalysis`, `reset`, `shutdown`, …).
-- **`Environment.qml`** — theming singleton: `theme` (default `Constants.dark`) switches every color/image across `ThemeDark` / `ThemeLight` / `ThemeLowVisibility` / `ThemeWireframe`. Also mirrors `handheld` (currently always `True`).
+- **`Environment.qml`** — theming singleton: `theme` (default `Constants.dark`) switches every color/image across `ThemeDark` / `ThemeLight` / `ThemeLowVisibility` / `ThemeWireframe`. Also exposes `handheld`, the **form-factor selector**: `handheld` means *medium screen + touch* (a mouse may still be attached) and is meant to drive the UI variant (small "PC" buttons vs. large "touch" buttons, per-screen-size layout). It is currently **forced** (always `True`) and not yet wired to environment discovery — see the form rule (§3.4) and `gui-backlog.md`.
 - **`Constants.qml`** — theme ids, Material-icon codes, `enum Section`. (Note: `GUI/Saphir/Enums.qml` is a legacy partial QML singleton shadowed by the Python-registered `Enums`.)
+
+**View-state rule (MVVM)** — the QML views are **stateless projections of the workflow**. What is shown — the active panel, enabled/disabled buttons, open dialogs, editable fields — is **derived directly from `SystemState`** and the published bindings. A view must not *decide* visibility or enablement with its own business conditionals: bind it to a property that already encodes the state (e.g. `enabled: viewModel.canStartAnalysis`) and push any non-trivial derivation into the controller/ViewModel, exposed as a single property. Only **trivially presentational** logic with no workflow meaning (hover highlight, slider clamping, `width > 0 ? a : b`) may live in a view. This keeps the UI deterministic and testable by driving `SystemState` alone.
+
+**Form & responsiveness rule** — the views must be **responsive** and **input-agnostic**. The **primary deployment target** is an **8-inch touch tablet** (touch-first), but the application must also be usable on a **desktop PC with keyboard and mouse**. For now, a **single interface** is used for both, with **different input handling** (touch vs. mouse/keyboard); it must not hard-code the tablet assumption. The layout must tolerate a range of screen sizes so the UI can later **specialise** per target — large screens / desktop, and, if that target becomes viable, smartphone — **without a redesign**. Any view that hard-codes a fixed size, assumes touch-only, or breaks on a non-tablet form factor is **rule-debt** and must be logged in [`gui-backlog.md`](gui-backlog.md).
 
 ### 3.5 UI data models
 
@@ -338,6 +342,8 @@ All inter-controller communication is via (1) **Qt signals** and (2) **`SystemSt
 | D-arch-5 | Consensus = OR on "infected" | Conservative security posture (any hit ⇒ not clean) |
 | D-arch-6 | Stateless system (no persistence between cycles) | Driven by Safecor; reset destroys disposable domains |
 | D-arch-7 | Central `WorkflowController` as the only state mutator | Removes the as-is scattered-transition anti-pattern |
+| D-arch-8 | Views are a pure projection of `SystemState` — no business logic in QML | UI stays deterministic & testable by driving workflow state alone (see §3.4 view-state rule) |
+| D-arch-9 | Responsive, input-agnostic views — 8-inch touch tablet primary, desktop PC (keyboard + mouse) also supported | One interface for now (different input handling); layout tolerates screen sizes for future per-target specialisation; deviations = rule-debt in `gui-backlog.md` (§3.4 form rule) |
 
 ---
 
@@ -362,5 +368,6 @@ Update this document when any of the following change:
 - The communication pattern or topic ownership changes (§4).
 - A new state or phase is introduced (update `workflow-rules.md` **and** the §5 summary here).
 - A key design decision (§8) is made or overturned.
+- A GUI rule (§3.4) is added or changed — keep [`gui-backlog.md`](gui-backlog.md) in sync.
 
 Keep §3 (**as-is**) and §7 (**to-be**) in sync as the refactoring progresses: as each phase lands, move the affected responsibility from "as-is" notes to the target layout and mark it done.
