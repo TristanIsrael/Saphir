@@ -32,9 +32,10 @@ Saphir follows a deterministic state machine workflow from boot to shutdown. Thi
 | 8 | `SystemWaitingForTarget` | Analysis done; **stable terminal-ish state** — wait for a target disk, or the user resets / shuts down (no cancel) | Post-analysis |
 | 9 | `CopyCleanFiles` | Copying clean files to target disk | Transfer |
 | 10 | `GeneratingReport` | PDF report + journal being written | Report |
-| 11 | `SystemMustBeReset` | Workflow complete, reset required before reuse | Post-transfer |
-| 12 | `SystemResetting` | VMs being destroyed/recreated | Reset |
-| 13 | `SystemShuttingDown` | System powering off | Shutdown |
+| 11 | `ReportFailed` | Report generation failed — **permanent error state**, reset required (no auto-retry, #4) | Error |
+| 12 | `SystemMustBeReset` | Workflow complete, reset required before reuse | Post-transfer |
+| 13 | `SystemResetting` | VMs being destroyed/recreated | Reset |
+| 14 | `SystemShuttingDown` | System powering off | Shutdown |
 
 ### 2.2 Deprecated / Removed States
 
@@ -105,22 +106,25 @@ These states are defined in `enums.py` but are **unreachable** and should be rem
       +---------------------+
                |  all copies done
                v
-      +---------------------+
-      |   GeneratingReport  |
-      +---------------------+
-               |  journal copied
-               v
-      +---------------------+
-      |   SystemMustBeReset |
-      +---------------------+
-               |  user Reset
-               v
-      +---------------------+
-      |    SystemResetting  |
-      +---------------------+
-               |  complete
-               v
-         (back to SystemReady)
+       +---------------------+
+       |   GeneratingReport  |
+       +---------------------+
+                |  journal copied
+                v
+       +---------------------+
+       |   SystemMustBeReset |
+       +---------------------+
+                |  user Reset
+                v
+       +---------------------+
+       |    SystemResetting  |
+       +---------------------+
+                |  complete
+                v
+          (back to SystemReady)
+
+   Error branch (#4):
+   GeneratingReport --report failed--> ReportFailed --user Reset--> SystemResetting
 ```
 
 **Cross-cutting transitions** — these leave or enter states from several points, so they are listed rather than drawn:
@@ -130,7 +134,7 @@ These states are defined in `enums.py` but are **unreachable** and should be rem
 | target already available (skip the wait) | `AnalysisCompleted` | `CopyCleanFiles` |
 | user Pause / AV engine panic | `SystemAnalysisRunning` | `SystemWaitingForUserAction` |
 | a different disk is plugged in (system already used) — NFR-4 | `SystemReady` | `SystemMustBeReset` |
-| user Reset (only when no operation is running) | `SystemWaitingForUserAction`, `AnalysisCompleted`, `SystemWaitingForTarget`, `SystemMustBeReset` | `SystemResetting` |
+| user Reset (only when no operation is running) | `SystemWaitingForUserAction`, `AnalysisCompleted`, `SystemWaitingForTarget`, `SystemMustBeReset`, `ReportFailed` | `SystemResetting` |
 | user Shutdown | **any state** | `SystemShuttingDown` |
 
 ### 3.2 Transition Rules
@@ -157,6 +161,8 @@ Each transition has a **trigger** (event) and a **guard** (condition).
 | `SystemWaitingForTarget` | `SystemResetting` | User clicks Reset | Always (no op running) |
 | `CopyCleanFiles` | `GeneratingReport` | All clean files copied | `copied == clean_count` |
 | `GeneratingReport` | `SystemMustBeReset` | Journal.log copied to target | `disk == target_name && path == journal.log` |
+| `GeneratingReport` | `ReportFailed` | Report generation fails | Permanent error state, reset required (#4) |
+| `ReportFailed` | `SystemResetting` | User clicks Reset | Always |
 | `SystemWaitingForUserAction` | `SystemResetting` | User clicks Reset | Always (no op running) |
 | `AnalysisCompleted` | `SystemResetting` | User clicks Reset | Always (no op running) |
 | `SystemMustBeReset` | `SystemResetting` | User clicks Reset | Always |
@@ -234,7 +240,7 @@ for file in queued_files:
 Transfer starts automatically when analysis completes **and a target disk is available**; otherwise the system waits in `SystemWaitingForTarget`. The user cannot trigger a second transfer without a reset.
 
 ### I5: Report Generation is Atomic
-Report + journal are generated sequentially. If report generation fails, the system enters a **permanent error state**; a **Reset** is required (no automatic retry — decision #4).
+Report + journal are generated sequentially. If report generation fails, the system enters the **`ReportFailed`** state (§2); a **Reset** is required (no automatic retry — decision #4).
 
 ### I6: Locking After Use (dirty state)
 Once the system is dirty (a file has been read), connecting a **different** storage locks the system into `SystemMustBeReset`; reconnecting the **same** storage (same disk name) is allowed to continue. This applies from `AnalysisCompleted` onward, not only from `SystemMustBeReset`.
@@ -272,7 +278,7 @@ A **Reset** always returns the system to its **initial state**: state `SystemRea
 | Copy fails for a clean file | Counted in `copiedFilesCount` failure, continues | Log error, mark file, continue, report failure in PDF; final check `copied == clean_count` (F4) |
 | Source disk disconnected during copy | Not handled (uncertain state) | Stay in `CopyCleanFiles` with an **error flag** (no dedicated state); pause the copy and prompt to re-insert; on re-insertion, run a **coherence check** (source state + integrity/fingerprint) and clear the flag → **auto-resume**. No reset, no re-analysis (F4) |
 | **Target** disk disconnected during copy | Not handled | Same as the source: **error flag** on `CopyCleanFiles`, pause, prompt to re-insert, **coherence check** on re-insertion, **auto-resume** (F4) |
-| Report generation fails | Exception crashes transfer | Log error, enter a **permanent error state** (dedicated state, to be added to §2/§3); **Reset required**, no automatic retry (F6/NFR-1) |
+| Report generation fails | Exception crashes transfer | Log error, enter the **`ReportFailed`** state (§2); **Reset required**, no automatic retry (F6/NFR-1) |
 | Target disk full | Not checked | Detect before copy, show error dialog |
 | MQTT subscription fails | Silent | Retry (3x), show error. **No fallback** — the transport is environment-specific and exclusive (production: **serial port**; dev: **TCP**) |
 | Power loss / crash | Not handled | The system is **stateless**: a reboot returns it to the **initial state** (Ready); no dedicated recovery state |
@@ -285,7 +291,7 @@ AV engine panic          → SystemWaitingForUserAction (abort, user retries)
 Copy error (single file) → continue, log in report (CopyCleanFiles → GeneratingReport)
 Source disconnected      → stays in CopyCleanFiles with an error flag; on re-insertion, coherence check (state + integrity) then auto-resume
 Target disconnected      → stays in CopyCleanFiles with an error flag; on re-insertion, coherence check then auto-resume
-Report error             → permanent error state (reset required, no auto-retry)
+Report error             → ReportFailed (reset required, no auto-retry)
 Reset failed             → SystemMustBeReset (display error message)
 Power loss / crash       → reboot → initial state (Ready); stateless, no recovery state
 ```
@@ -299,6 +305,8 @@ The following table defines which panels/dialogs are visible per state. This sho
 **One screen at a time** — at most **one** of the screen columns (File Selection, Analysis Panel, File Copy, Shutdown Dialog) is visible per state. The `SystemLoadingPanel` is an **overlay** (see §7.1), not a screen, so it may be shown on top of a screen. The **Report** is not an on-screen element (it is a generated PDF file), and the **Reset** confirmation is a transient dialog (not a per-state view), so neither is a column.
 
 > **`AnalysisCompleted` is transient**: it immediately auto-transitions to `CopyCleanFiles` (target available) or `SystemWaitingForTarget` (no target). The screen shown is the **copy screen** (`FilesCopyPanel`), which prompts to **insert a target** to start the copy — so `AnalysisCompleted` and `SystemWaitingForTarget` show the **same** screen. The analysis progress panel is **not** shown once the analysis is finished.
+>
+> **`ReportFailed`** is a **permanent error state** (#4): the report generation failed and the system requires a **Reset** (no automatic retry). All screen columns are hidden; the user sees an error indication (transient dialog) prompting a Reset, as with `SystemMustBeReset`.
 
 | State | SystemLoadingPanel | File Selection | Analysis Panel | File Copy | Shutdown Dialog |
 |-------|--------------------|---------------|---------------|-----------|-----------------|
@@ -312,6 +320,7 @@ The following table defines which panels/dialogs are visible per state. This sho
 | `SystemWaitingForTarget` | hidden | hidden | hidden | **prompt (insert target)** | hidden |
 | `CopyCleanFiles` | hidden | hidden | hidden | **visible** | hidden |
 | `GeneratingReport` | hidden | hidden | hidden | visible (done) | hidden |
+| `ReportFailed` | hidden | hidden | hidden | hidden | hidden |
 | `SystemMustBeReset` | hidden | hidden | hidden | hidden | hidden |
 | `SystemResetting` | **visible (large)** | hidden | hidden | hidden | hidden |
 | `SystemShuttingDown` | hidden | hidden | hidden | hidden | **visible** |
@@ -422,6 +431,16 @@ where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infecte
 
 > The **same** handling applies to the **target** disk: unplugging it sets the error flag, and re-insertion (with a coherence check) resumes the copy (§6.1).
 
+### 8.7 Report Generation Failure
+
+```
+1. GeneratingReport in progress
+2. Report generation fails (e.g. WeasyPrint exception, disk full, I/O error)
+3. → ReportFailed (permanent error state, #4) — the user is informed, Reset is required
+4. No automatic retry; the system stays in ReportFailed until the user acts
+5. User clicks Reset → SystemResetting → back to SystemReady (I9: counters/queue cleared)
+```
+
 ---
 
 ## 9. Open Questions
@@ -429,7 +448,7 @@ where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infecte
 1. **Single-disk mode** — **Resolved** by `SystemWaitingForTarget` (scenario 8.4): analysis works on one disk; copy and report require a second disk.
 2. **Archive mounting** — **Resolved**: the dormant archive-mounting code is **removed**; a backlog feature is added to re-introduce it later as a new, specified capability.
 3. **SystemNotClean state** — **Resolved**: it is **not** a workflow state; it is the *Dirty* visual status (§7.2) driven by the derived conditions (§3.3).
-4. **Recovery from report failure** — **Resolved**: a report-generation failure enters a **permanent error state** (dedicated state, to be added to §2/§3); **Reset required**, no automatic retry.
+4. **Recovery from report failure** — **Resolved**: a report-generation failure enters the **`ReportFailed`** state (§2, scenario 8.7); **Reset required**, no automatic retry.
 5. **Source disconnection during copy** — **Resolved**: modelled as an **error flag** on `CopyCleanFiles` (no dedicated state). On re-insertion, a **coherence check** (source state + integrity/fingerprint) clears the flag and the copy auto-resumes. See scenario 8.6.
 
 ---
