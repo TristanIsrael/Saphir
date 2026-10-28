@@ -1,7 +1,8 @@
 # Refactoring Plan - Saphir v3.x
 
-> **Status**: Draft — execution plan; open questions resolved (§7)
+> **Status**: In progress — Phases 0-2 complete, Phase 3-5 pending
 > **Last updated**: 2026-10-28
+> **Branch**: `refactoring` (based on `main` post-merge #128)
 
 ---
 
@@ -95,9 +96,10 @@ Saphir/
 
 ## 3. Refactoring Phases
 
-### Phase 0: Foundation (No behavior changes)
+### Phase 0: Foundation (No behavior changes) ✅ DONE
 
 **Goal**: Extract leaf controllers that have no dependencies on each other.
+**Status**: Complete — commit `0ed848a`, issue #129 (In review)
 
 #### 0.1 `EnergyMonitor` (NEW)
 - Extract from `application_controller.py` lines ~883-893, ~933-938
@@ -127,9 +129,10 @@ Saphir/
 
 ---
 
-### Phase 1: Stabilize State Machine
+### Phase 1: Stabilize State Machine ✅ DONE
 
 **Goal**: Replace scattered state transitions with a unified `WorkflowController`.
+**Status**: Complete — commits `13cf8d7` (1.1), `8f49c1a` (1.2), `2742d26` (1.3); issues #130-132 (In review)
 
 #### 1.1 `WorkflowController` (NEW)
 - Define explicit state transitions as methods: `transition_to(state)`, `on_enter(state)`, `on_exit(state)`
@@ -191,9 +194,11 @@ elif state in (SystemMustBeReset, SystemResetting):
 
 ---
 
-### Phase 2: Extract Data-Heavy Controllers
+### Phase 2: Extract Data-Heavy Controllers ✅ DONE
 
 **Goal**: Move file/queue management out of `ApplicationController`.
+**Status**: Complete — commits `d22987b` (extraction), `2026c90` (unit tests); issue #133 (In review)
+**Notes**: `FileQueue` encapsulates the lock (invariant I4). `StorageManager` is the sole owner of source/target state. `ApplicationController` delegates while keeping the QML `@Property` surface unchanged.
 
 #### 2.1 `FileQueue` (NEW)
 - Extract `__queued_files_list`, `__queue_files_size`, `__queue_files_list_lock`
@@ -217,9 +222,10 @@ elif state in (SystemMustBeReset, SystemResetting):
 
 ---
 
-### Phase 3: Extract Transfer Logic
+### Phase 3: Extract Transfer Logic ⏳ PENDING
 
 **Goal**: Create dedicated `TransferController` for file copying.
+**Status**: Not started — depends on Phase 2
 
 #### 3.1 `TransferController` (NEW)
 - Extract `start_transfer()`, `__do_start_transfer()`, `__handle_copy_file()`, `__finish_transfer()`
@@ -244,9 +250,10 @@ if self.__get_transferred_ratio() >= 1:
 
 ---
 
-### Phase 4: Clean Up Existing Controllers
+### Phase 4: Clean Up Existing Controllers ⏳ PENDING
 
 **Goal**: Improve `AnalysisController` and `ReportController`.
+**Status**: Not started — depends on Phase 2
 
 #### 4.1 `AnalysisController` Cleanup
 - Remove archive mounting code (defer to future feature)
@@ -263,9 +270,11 @@ if self.__get_transferred_ratio() >= 1:
 
 ---
 
-### Phase 5: QML Cleanup (Views Last)
+### Phase 5: QML Cleanup (Views Last) ⏳ PENDING
 
 **Goal**: Simplify QML visibility logic to rely on `WorkflowController` signals.
+**Status**: Not started — depends on Phase 1
+**Note**: Phase 1.2 already removed dead `TransferFinished` references from QML (§5.2 partially done).
 
 #### 5.1 Remove `storagesCount`-driven visibility
 **Current issue** (`MainScreen.qml` lines 295-298):
@@ -327,25 +336,49 @@ These rules must hold throughout refactoring:
 
 ## 7. TODO / Open Questions
 
-1. **Remove `SystemWaitingForDevice`** — **Resolved**: dead code, to be removed (see `docs/workflow-rules.md` §2.2).
+1. **Remove `SystemWaitingForDevice`** — **Resolved**: dead code, removed in Phase 1.2.
 2. **Archive mounting** — **Resolved**: the dormant code is **removed**; re-introduction is a backlog feature (see `docs/workflow-rules.md` §9, `docs/features.md` backlog).
 3. **`handheld` property** — **Resolved**: kept, always `True` (not configurable for now); a form-factor adaptation is tracked in `docs/gui-backlog.md`.
 4. **Single-disk mode** — **Resolved** (see `docs/workflow-rules.md` §8.4): analysis works on one disk; copy and report require a second disk, modelled by the `SystemWaitingForTarget` state.
-5. **`__on_analysis_state_changed` driving state transitions** — **Open**: today it sets `SystemState` directly, bypassing `WorkflowController`. During the refactor it must be routed through the `WorkflowController` (single-writer rule, I1). To be settled when Phase 1–2 is implemented.
+5. **`__on_analysis_state_changed` driving state transitions** — **Resolved**: now routed through `WorkflowController.force_state()` (Phase 1.1).
+6. **Target disconnect during copy (bug C.2)** — **Open**: the gate fix (Phase 1.3) allows the event to be received, but the handling logic (what state to transition to) is not yet implemented. Tracked separately.
 
 ---
 
-## 8. Estimated Effort
+## 8. Progress Summary
+
+| Phase | Status | Commits | Issues | Notes |
+|-------|--------|---------|--------|-------|
+| 0.1 EnergyMonitor | ✅ Done | `0ed848a` | #129 | Battery/plugged polling |
+| 0.2 TranslationManager | ✅ Done | `0ed848a` | #129 | QTranslator lifecycle |
+| 0.3 ApiLifecycle | ✅ Done | `0ed848a` | #129 | Direct callback (not Qt signal) |
+| 0.4 QtNetwork strip | ✅ Done | `0ed848a` | #129 | Packaging only |
+| 1.1 WorkflowController | ✅ Done | `13cf8d7` | #130 | `force_state()` used; `transition_to()` with validation available but not activated |
+| 1.2 Dead states | ✅ Done | `8f49c1a` | #131 | Gaps at 3, 8, 12 preserved for QML |
+| 1.3 Disk-state gate | ✅ Done | `2742d26` | #132 | Numeric → explicit locked-state set |
+| 2.1 FileQueue | ✅ Done | `d22987b` | #133 | Lock encapsulated (I4) |
+| 2.2 FileBrowser | ✅ Done | `d22987b` | #133 | Folder nav, enqueuing state |
+| 2.3 StorageManager | ✅ Done | `d22987b` | #133 | Sole DISK_STATE owner |
+| 2.x Unit tests | ✅ Done | `2026c90` | #133 | 48 tests, all passing |
+| 3.1 TransferController | ⏳ Pending | — | — | |
+| 3.2 Transfer race fix | ⏳ Pending | — | — | |
+| 4.1 AnalysisController cleanup | ⏳ Pending | — | — | |
+| 4.2 ReportController improvement | ⏳ Pending | — | — | |
+| 5.1 Remove storagesCount visibility | ⏳ Pending | — | — | |
+| 5.2 Remove dead TransferFinished handler | ✅ Partial | `8f49c1a` | #131 | QML refs removed; `onStoragesCountChanged` still present |
+| 5.3 Move rules to Bindings.qml | ⏳ Pending | — | — | |
+
+**Test baseline**: 73 passed, 4 failed (pre-existing), 1 xfailed (C.2 target disconnect bug)
+
+---
+
+## 9. Estimated Remaining Effort
 
 | Phase | Lines Changed | Effort | Dependencies |
 |-------|--------------|--------|--------------|
-| Phase 0 | +400 / -200 | Low | None |
-| Phase 1 | +300 / -150 | Medium | Phase 0 |
-| Phase 2 | +350 / -400 | High | Phase 1 |
-| Phase 3 | +200 / -150 | Medium | Phase 2 |
-| Phase 4 | +100 / -100 | Low | Phase 2 |
-| Phase 5 | -50 / +50 | Low | Phase 1 |
-| **Total** | **+1400 / -1000** | **~3-4 weeks** | Sequential |
+| Phase 3 | +200 / -150 | Medium | Phase 2 ✅ |
+| Phase 4 | +100 / -100 | Low | Phase 2 ✅ |
+| Phase 5 | -50 / +50 | Low | Phase 1 ✅ |
+| **Remaining** | **+350 / -300** | **~1-1.5 weeks** | — |
 
-> **Note**: Effort assumes one developer familiar with the codebase. Pair programming recommended for Phase 1-2.
-> Phase 0.4 (D-T2, remove QtNetwork from the bundle) is a packaging-only task, negligible effort, no dependency.
+> **Note**: Phases 3-5 can be partially parallelized (Phase 4 and 5 are independent of Phase 3).
