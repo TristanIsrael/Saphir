@@ -51,14 +51,14 @@ class MockAntivirusController(AbstractAntivirusController):
         return ComponentState.READY
 
     def _analyse_file(self, filepath: str) -> None:
-        self.update_status(filepath, FileStatus.Scanning, 0)
+        self.update_status(filepath, FileStatus.FileAnalysing, 0)
         time.sleep(self._scan_delay)
 
         if filepath in self._infected or self._default == "infected":
-            self.update_status(filepath, FileStatus.InfectionFound, 100)
+            self.update_status(filepath, FileStatus.FileInfected, 100)
             self.publish_result(filepath, False, "Mock infection detected")
         else:
-            self.update_status(filepath, FileStatus.Clean, 100)
+            self.update_status(filepath, FileStatus.FileClean, 100)
             self.publish_result(filepath, True, "Clean")
 
         self.analysis_finished(True)
