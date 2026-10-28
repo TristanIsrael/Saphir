@@ -87,6 +87,18 @@ Naming conventions:
 - One commit = one issue (atomic commits). A single issue may span multiple commits if they are tightly coupled, but the default is 1:1.
 - All work that modifies existing code happens on a **dedicated branch** (never directly on `main`).
 - Label every issue at creation time. Use component labels (e.g. `emulator`, `gui`, `libsaphir`) plus a type label (`bug`, `feature`, `technical-debt`, `testing`, etc.).
+- Every issue must be added to the **"Saphir Kanban"** project.
+- The issue's project status must reflect the actual state of the work:
+  | Status | Meaning |
+  |---|---|
+  | **Backlog** | The issue is mentioned but needs refinement before it can be worked on. |
+  | **Ready** | The issue is fully specified and ready to be worked on. |
+  | **Not ready** | The issue has an unresolved dependency (another issue, external block). |
+  | **In progress** | Work is actively being done on this issue. |
+  | **In review** | Implementation and tests are complete; awaiting validation. |
+- **Never commit** before running:
+  1. The tests specific to the issue being worked on.
+  2. The project's non-regression test suite (full `pytest` run).
 
 ## Chat rules
 
