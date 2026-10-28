@@ -367,6 +367,9 @@ These rules must hold throughout refactoring:
 | 5.1 Remove storagesCount visibility | ⏳ Pending | — | — | |
 | 5.2 Remove dead TransferFinished handler | ✅ Partial | `8f49c1a` | #131 | QML refs removed; `onStoragesCountChanged` still present |
 | 5.3 Move rules to Bindings.qml | ⏳ Pending | — | — | |
+| 6 Unit test coverage | ⏳ Pending | — | — | Target: ≥ 85% |
+| 7 Linting & static analysis | ⏳ Pending | — | — | Ruff + type check |
+| 8 Alpine package validation | ⏳ Pending | — | — | Docker local build |
 
 **Test baseline**: 73 passed, 4 failed (pre-existing), 1 xfailed (C.2 target disconnect bug)
 
@@ -379,6 +382,80 @@ These rules must hold throughout refactoring:
 | Phase 3 | +200 / -150 | Medium | Phase 2 ✅ |
 | Phase 4 | +100 / -100 | Low | Phase 2 ✅ |
 | Phase 5 | -50 / +50 | Low | Phase 1 ✅ |
-| **Remaining** | **+350 / -300** | **~1-1.5 weeks** | — |
+| Phase 6 | +300 / 0 | Medium | Phases 3-5 |
+| Phase 7 | -50 / +50 | Low | Phases 3-5 |
+| Phase 8 | 0 / 0 | Low | Phases 3-5 |
+| **Remaining** | **+500 / -200** | **~2-3 weeks** | — |
 
 > **Note**: Phases 3-5 can be partially parallelized (Phase 4 and 5 are independent of Phase 3).
+> Phases 6-8 are sequential after 3-5 and can be partially parallelized (6 and 7 are independent).
+
+---
+
+### Phase 6: Unit Test Coverage ⏳ PENDING
+
+**Goal**: Ensure all refactored code has adequate unit test coverage (≥ 85%).
+
+#### 6.1 Coverage audit
+- Run `pytest --cov` on the full suite
+- Identify modules below the 85% threshold
+- Document gaps per module
+
+#### 6.2 Fill coverage gaps
+- Add tests for `WorkflowController` transition validation (`transition_to()` guards)
+- Add tests for `AnalysisController` error paths
+- Add tests for `ReportController` (PDF generation, edge cases)
+- Add tests for `TransferController` (Phase 3 output)
+- Add integration-style tests for cross-controller signal flows
+
+#### 6.3 CI integration
+- Verify `pytest --cov` gate in CI (reject PRs below 85%)
+- Ensure coverage report is generated and uploaded
+
+**Validation**: `pytest --cov` reports ≥ 85% on all refactored modules.
+
+---
+
+### Phase 7: Linting & Static Analysis ⏳ PENDING
+
+**Goal**: Resolve all linting and static analysis issues introduced or exposed by the refactoring.
+
+#### 7.1 Ruff audit
+- Run `ruff check` on all Python files in `python/gui/` and `python/libsaphir/`
+- Categorize findings: pre-existing vs. introduced by refactoring
+- Fix all issues in new/modified files (no suppressions without justification)
+
+#### 7.2 Type checking
+- Run `mypy` (or `pyright`) on refactored modules
+- Resolve type errors in `FileQueue`, `FileBrowser`, `StorageManager`, `WorkflowController`, `TransferController`
+- Add type annotations where missing
+
+#### 7.3 Code style consistency
+- Verify `ruff format` compliance on all modified files
+- Ensure naming conventions match the project rules (PascalCase classes, snake_case methods, etc.)
+- Remove leftover `print()` debugging statements in production code
+
+**Validation**: `ruff check` and `ruff format --check` pass with zero errors on all modified files.
+
+---
+
+### Phase 8: Alpine Package Validation ⏳ PENDING
+
+**Goal**: Verify that the refactored code builds and packages correctly in the Alpine Linux environment.
+
+#### 8.1 APKBUILD update
+- Update `setup/packages/saphir-gui/APKBUILD` if new dependencies are introduced
+- Verify `requirements.txt` and `requirements-dev.txt` are consistent with the refactored imports
+- Ensure `saphir-gui.spec` (PyInstaller) includes the new modules
+
+#### 8.2 Local Docker build
+- Build the `saphir-gui` package in the local Docker dev environment (`setup/docker/`)
+- Verify the package installs and the GUI boots in DEVMODE
+- Confirm no missing imports or runtime errors
+
+#### 8.3 Local package build verification
+- Build all 8 APKBUILD packages in the local Docker dev environment
+- Verify no build errors, missing dependencies, or import failures
+- Confirm the `saphir-gui` binary launches in DEVMODE after install
+
+**Validation**: All packages build successfully in Docker, GUI boots and completes a full scan cycle in DEVMODE.
