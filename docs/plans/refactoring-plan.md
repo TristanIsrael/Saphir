@@ -117,6 +117,12 @@ Saphir/
 - Dependencies: None
 - QML bindings: none (pure backend)
 
+#### 0.4 Remove QtNetwork from the bundle (D-T2)
+- **Context** (D-T2, `docs/tech-stack-analysis.md` §7/§8): the GUI talks over **MQTT/paho-mqtt**, not QtNetwork. `QtNetwork` is still bundled (hiddenimport, not in the PyInstaller strip filter) for ~15–25 MB.
+- **Action**: remove `PySide6.QtNetwork` from the `hiddenimports` of `python/gui/saphir-gui.spec` and add it to the strip filter; verify the GUI builds and runs (no QtNetwork usage at runtime).
+- **Dependencies**: none (packaging only, no behaviour change).
+- **Validation**: PyInstaller build succeeds; GUI boots and works (MQTT unaffected).
+
 **Validation**: Run `pytest` + manual test - no observable behavior change.
 
 ---
@@ -342,3 +348,4 @@ These rules must hold throughout refactoring:
 | **Total** | **+1400 / -1000** | **~3-4 weeks** | Sequential |
 
 > **Note**: Effort assumes one developer familiar with the codebase. Pair programming recommended for Phase 1-2.
+> Phase 0.4 (D-T2, remove QtNetwork from the bundle) is a packaging-only task, negligible effort, no dependency.
