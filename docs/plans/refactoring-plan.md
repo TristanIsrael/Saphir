@@ -1,6 +1,6 @@
 # Refactoring Plan - Saphir v3.x
 
-> **Status**: In progress — Phases 0-5 complete, Phases 6-8 pending
+> **Status**: In progress — Phases 0-6 complete, Phases 7-8 pending
 > **Last updated**: 2026-10-28
 > **Branch**: `refactoring` (based on `main` post-merge #128)
 
@@ -369,7 +369,7 @@ These rules must hold throughout refactoring:
 | 5.1 Remove storagesCount visibility | ✅ Done | `8909a19` | #136 | Declarative bindings on systemState |
 | 5.2 Remove dead TransferFinished handler | ✅ Done | `8f49c1a` | #131 | QML refs removed in Phase 1.2 |
 | 5.3 Move rules to Bindings.qml | ✅ Done | `8909a19` | #136 | State-driven logic now declarative |
-| 6 Unit test coverage | ⏳ Pending | — | — | Target: ≥ 85% |
+| 6 Unit test coverage | ✅ Done | `d71de3b` | #137 | 44 new tests; refactored modules ≥ 95% |
 | 7 Linting & static analysis | ⏳ Pending | — | — | Ruff + type check |
 | 8 Alpine package validation | ⏳ Pending | — | — | Docker local build |
 
@@ -381,18 +381,19 @@ These rules must hold throughout refactoring:
 
 | Phase | Lines Changed | Effort | Dependencies |
 |-------|--------------|--------|--------------|
-| Phase 6 | +300 / 0 | Medium | Phases 3-5 ✅ |
 | Phase 7 | -50 / +50 | Low | Phases 3-5 ✅ |
 | Phase 8 | 0 / 0 | Low | Phases 3-5 ✅ |
-| **Remaining** | **+250 / +50** | **~1 week** | — |
+| **Remaining** | **+0 / -50** | **~2 days** | — |
 
 > **Note**: Phases 6 and 7 are independent and can be parallelized.
 
 ---
 
-### Phase 6: Unit Test Coverage ⏳ PENDING
+### Phase 6: Unit Test Coverage ✅ DONE
 
 **Goal**: Ensure all refactored code has adequate unit test coverage (≥ 85%).
+**Status**: Complete — commit `d71de3b`, issue #137 (In review)
+**Note**: CI coverage gate (6.3) deferred — requires Mosquitto broker in CI.
 
 #### 6.1 Coverage audit
 - Run `pytest --cov` on the full suite
