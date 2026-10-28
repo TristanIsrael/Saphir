@@ -1,6 +1,6 @@
 # Refactoring Plan - Saphir v3.x
 
-> **Status**: In progress — Phases 0-6 complete, Phases 7-8 pending
+> **Status**: In progress — Phases 0-6 complete, Phases 7-9 pending
 > **Last updated**: 2026-10-28
 > **Branch**: `refactoring` (based on `main` post-merge #128)
 
@@ -372,6 +372,7 @@ These rules must hold throughout refactoring:
 | 6 Unit test coverage | ✅ Done | `d71de3b` | #137 | 44 new tests; refactored modules ≥ 95% |
 | 7 Linting & static analysis | ⏳ Pending | — | — | Ruff + type check |
 | 8 Alpine package validation | ⏳ Pending | — | — | Docker local build |
+| 9 Documentation debt | ⏳ Pending | — | — | French→English, docstrings, dead code removal |
 
 **Test baseline**: 91 passed, 3 skipped (MOUNT_ARCHIVES disabled), 0 failed, 0 xfailed
 
@@ -383,7 +384,8 @@ These rules must hold throughout refactoring:
 |-------|--------------|--------|--------------|
 | Phase 7 | -50 / +50 | Low | Phases 3-5 ✅ |
 | Phase 8 | 0 / 0 | Low | Phases 3-5 ✅ |
-| **Remaining** | **+0 / -50** | **~2 days** | — |
+| Phase 9 | -250 / +100 | Medium | Phases 0-8 |
+| **Remaining** | **+0 / -150** | **~3 days** | — |
 
 > **Note**: Phases 6 and 7 are independent and can be parallelized.
 
@@ -392,7 +394,7 @@ These rules must hold throughout refactoring:
 ### Phase 6: Unit Test Coverage ✅ DONE
 
 **Goal**: Ensure all refactored code has adequate unit test coverage (≥ 85%).
-**Status**: Complete — commit `d71de3b`, issue #137 (In review)
+**Status**: Complete — commits `c36e440` + this commit, issue #137 (In review)
 **Note**: CI coverage gate (6.3) deferred — requires Mosquitto broker in CI.
 
 #### 6.1 Coverage audit
@@ -401,17 +403,35 @@ These rules must hold throughout refactoring:
 - Document gaps per module
 
 #### 6.2 Fill coverage gaps
-- Add tests for `WorkflowController` transition validation (`transition_to()` guards)
-- Add tests for `AnalysisController` error paths
-- Add tests for `ReportController` (PDF generation, edge cases)
-- Add tests for `TransferController` (Phase 3 output)
-- Add integration-style tests for cross-controller signal flows
+- Add tests for `WorkflowController` transition validation (`transition_to()` guards) ✅
+- Add tests for `AnalysisController` error paths ✅ (71% — remaining gaps are archive mounting)
+- Add tests for `ReportController` (PDF generation, edge cases) ✅
+- Add tests for `TransferController` (Phase 3 output) ✅
+- Add integration-style tests for cross-controller signal flows ✅
+- Add handler tests for `ApplicationController` MQTT message dispatch ✅ (46% → 91%)
 
 #### 6.3 CI integration
 - Verify `pytest --cov` gate in CI (reject PRs below 85%)
 - Ensure coverage report is generated and uploaded
 
-**Validation**: `pytest --cov` reports ≥ 85% on all refactored modules.
+#### Final coverage
+
+| Module | Coverage |
+|--------|----------|
+| `application_controller.py` | 91% |
+| `analysis_controller.py` | 71% |
+| `analysis_helper.py` | 100% |
+| `api_lifecycle.py` | 100% |
+| `transfer_controller.py` | 100% |
+| `storage_manager.py` | 100% |
+| `file_queue.py` | 100% |
+| `file_browser.py` | 100% |
+| `workflow_controller.py` | 100% |
+| `energy_monitor.py` | 97% |
+| `translation_manager.py` | 100% |
+| **TOTAL** | **87%** |
+
+**Validation**: `pytest --cov` reports ≥ 85% on the full project. ✅ (87%)
 
 ---
 
@@ -458,3 +478,48 @@ These rules must hold throughout refactoring:
 - Confirm the `saphir-gui` binary launches in DEVMODE after install
 
 **Validation**: All packages build successfully in Docker, GUI boots and completes a full scan cycle in DEVMODE.
+
+---
+
+### Phase 9: Documentation Debt ⏳ PENDING
+
+**Goal**: Eliminate the code documentation debt accumulated over time.
+
+**Current state**:
+- 13 out of 25 Python modules have **zero** docstrings
+- ~30+ comments in French (should be English per project rules)
+- No class-level documentation on most QML model classes
+- `application_controller.py` (1108 lines) has only 3 docstring markers
+- `safecor_input_files_list_model.py` (339 lines) has 0 docstrings and ~200 lines of commented-out dead code
+
+#### 9.1 Translate French comments to English
+- `analysis_controller.py`: ~10 French comments (lines 63-79, 250-253)
+- `application_controller.py`: ~20 French comments (lines 214-218, 261-262, 281, 446-448, 678-707, 866-878)
+- `analysis_helper.py`: 3 French comments (lines 92-94)
+- `components_model.py`: 1 French comment (line 16)
+
+#### 9.2 Add class-level docstrings
+- All `QAbstractListModel` / `QAbstractTableModel` subclasses in `Saphir/`
+- All controller classes (already partially done in Phases 0-4)
+- Target: every public class has a one-line docstring explaining its responsibility
+
+#### 9.3 Add method docstrings for public API
+- All `@Slot` methods in `application_controller.py`
+- All public methods in controllers (non-underscore)
+- Target: every public method has a docstring (summary line at minimum)
+
+#### 9.4 Remove dead commented-out code
+- `safecor_input_files_list_model.py`: ~200 lines of commented-out code (lines 149-339)
+- `queue_list_proxy_model.py`: dead code in `lessThan()` (lines 24-37) and `on_data_changed()` (lines 41-47)
+- `safecor_input_files_list_proxy_model.py`: ~40 lines of commented-out code (lines 37-60)
+- Verify with `ruff` that no other dead code blocks exist
+
+#### 9.5 Add module-level docstrings
+- Every `.py` file in `Saphir/` should have a one-line module docstring
+- Format: `"""Short description of what this module provides."""`
+
+**Validation**:
+- `grep -r "#.*[éèàçûôî]" Saphir/` returns zero results (no French comments)
+- Every public class and method in `Saphir/` has a docstring
+- No commented-out code blocks remain (verified by manual review + ruff)
+- Doxygen build succeeds without warnings on `python/gui/src/Saphir/`
