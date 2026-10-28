@@ -1,102 +1,150 @@
-# Testing Plan — Saphir (pre-refactoring phase)
+# Testing Plan — Saphir
 
-> **Status**: Draft — execution plan for the pre-refactoring test phase
-> **Branch**: `pre-refactoring`
+> **Status**: Active — refactoring Phases 0-6 complete, testing validates the refactored architecture
+> **Branch**: `refactoring`
 > **Last updated**: 2026-10-28
-> **Reference**: `docs/test-strategy.md`, `docs/workflow-rules.md` (scenarios §8), `docs/plans/refactoring-plan.md`
+> **Reference**: `docs/plans/refactoring-plan.md`, `docs/test-strategy.md`
 
 ---
 
 ## 1. Objective
 
-Build a **safety net** of integration / functional tests (**characterization**) **before** the refactoring. The tests capture the **current behaviour, bugs included**, so that the refactoring can be validated against them: a test that encodes a current bug keeps failing until the refactoring fixes it; a test that encodes correct behaviour must keep passing throughout the refactoring.
+Validate the refactored architecture through a layered test strategy:
+- **Unit tests** — cover individual modules in isolation (mocked dependencies)
+- **Handler tests** — invoke MQTT message handlers directly with crafted payloads
+- **Integration tests** — full workflow cycles driven through the Safecor emulator + real MQTT
 
-Scope: **no new unit tests** for the sub-modules to be extracted (they would be partly useless after the refactor). The focus is on **end-to-end workflow** driven through the **Safecor emulator**.
-
----
-
-## 2. Decisions (2026-10-28)
-
-| # | Decision |
-|---|----------|
-| **D-1** | **Mock antivirus** lives in **Saphir** (`python/gui/tests/`), **not** in the Safecor emulator (AV analysis is a Saphir feature, not a Safecor one). It **inherits `AbstractAntivirusController`**, runs in a **subprocess** (the `Api()` singleton forbids in-process sharing with the GUI), and is driven **statically** (results fixed at launch). Dynamic driving → backlog. |
-| **D-2** | **Bug target** of the first functional test: **target disconnection at the end of the copy** → the GUI goes to an **incoherent waiting state** instead of `SystemMustBeReset`. Root cause: `SystemMustBeReset` is only emitted in `__handle_create_file` (when `journal.log` is copied); a target disconnect is handled by `__handle_disk_state` which does **not** emit it. |
-| **D-3** | **Environment**: a venv is **created** for Saphir (none exists yet). `safecor` + `safecor-emulator` are exposed via **`.pth` files** pointing at the local Safecor repos (no packaging — their transitive dependencies are already in Saphir's `requirements.txt`). `pytest` is added to `requirements-dev.txt`. |
+Quality gate: **≥ 85% code coverage** on the full `Saphir` package.
 
 ---
 
-## 3. Phases
+## 2. Current State (2026-10-28)
 
-### Phase A — Extend the Safecor emulator (`safecor_emulator`, **Safecor repo**)
+### 2.1 Coverage
 
-Add only the **generic** Safecor capabilities that Saphir consumes and that the emulator does not yet provide.
+| Module | Coverage |
+|--------|----------|
+| `application_controller.py` | 91% |
+| `analysis_controller.py` | 71% |
+| `analysis_helper.py` | 100% |
+| `api_lifecycle.py` | 100% |
+| `transfer_controller.py` | 100% |
+| `storage_manager.py` | 100% |
+| `file_queue.py` | 100% |
+| `file_browser.py` | 100% |
+| `workflow_controller.py` | 100% |
+| `energy_monitor.py` | 97% |
+| `translation_manager.py` | 100% |
+| `report_controller.py` | 95% |
+| `queue_list_model.py` | 92% |
+| `safecor_input_files_list_model.py` | 91% |
+| `queue_list_proxy_model.py` | 74% |
+| **TOTAL** | **87%** ✅ |
 
-- **A.1. Mock Dom0 extension** (`peers/mock_dom0.py`):
-  - `ENERGY_STATE/response` — `set_energy(battery_level, plugged)`.
-  - `DEFAULT_LANGUAGE/response` — `set_default_language(lang)`.
-  - `RESTART_DOMAIN/response` — `restart_domain(domain_name)`.
-- **A.2. Scenario API** (extension of `emulator.py`):
-  - `em.set_energy(battery_level, plugged)`
-  - `em.set_default_language(lang)`
-  - `em.restart_domain(domain_name)`
-  - (`attach_disk` / `detach_disk` already exist.)
-- **A.3. Pytest plugin** (`pytest_plugin.py`): keep the `emulator` fixture; document the new scenario methods.
+### 2.2 Test inventory (350 tests, 3 skipped)
 
-> The **mock AV is NOT part of Phase A** (see D-1) — it belongs to Phase B (Saphir).
+| File | Tests | Scope |
+|------|-------|-------|
+| `test_workflow_controller.py` | 18 | State machine transitions, guards |
+| `test_energy_monitor.py` | 8 | Battery/plugged state polling |
+| `test_translation_manager.py` | 7 | Language switching, QTranslator |
+| `test_api_lifecycle.py` | 11 | Subscription tracking, all-ready callback |
+| `test_file_queue.py` | 12 | Queue data structure, enqueue/dequeue |
+| `test_file_browser.py` | 10 | Folder navigation, file listing |
+| `test_storage_manager.py` | 14 | Source/target management, storages |
+| `test_transfer_controller.py` | 12 | Copy orchestration, progress, completion |
+| `test_analysis_controller.py` | 28 | Full analysis cycle via MQTT (integration) |
+| `test_analysis_helper.py` | 16 | Consensus rule, file classification |
+| `test_report_controller.py` | 8 | Report generation, file operations |
+| `test_ema_eta_estimator.py` | 10 | ETA calculation, exponential moving average |
+| `test_application_controller.py` | 51 | Property getters, slots, state management |
+| `test_application_controller_handlers.py` | 76 | MQTT message handlers (disk state, list files/disks, components, copy, energy, system info, create file, results, transfer, reset, shutdown) |
+| `test_models.py` | 74 | All QML models (QueueList, Components, SystemInfo, LogList, MessagesList, InputFilesList, proxy models, DevModeHelper) |
+| `test_workflow_nominal.py` | 1 | Full nominal cycle via Safecor emulator (integration) |
 
-### Phase B — Saphir: mock AV + remove local mocks
+### 2.3 Resolved bugs (validated by tests)
 
-- **B.1. Mock antivirus** (`python/gui/tests/`):
-  - `MockAntivirusController(AbstractAntivirusController)` — implements the abstract hooks; **pilotable** (a `filepath → result` map, a default result, a delay).
-  - Runs in a **subprocess** (its own `Api()` singleton), launched with the driving config (args / JSON file).
-  - Test-side driver: launch/stop the subprocesses, pass the config.
-- **B.2. Remove local mocks**: delete `python/gui/src/Saphir/Mock/` (all files); clean imports.
-- **B.3. `devmode_helper.py`**: make the hardcoded macOS paths portable (or simplify, the emulator now owns the disks).
-
-### Phase C — Saphir: functional tests (`python/gui/tests/`)
-
-- **`conftest.py`**: `pytest_plugins = ["safecor_emulator.pytest_plugin"]` + fixtures (emulator, mock-AV driver, GUI harness).
-- **`test_workflow_nominal.py`** — scenario **8.1** (full cycle):
-  boot + 2 AV ready → `attach_disk(source)` → LIST_FILES → selection → analysis (2 AV, all clean) → `AnalysisCompleted` → `attach_disk(target)` → `CopyCleanFiles` → `GeneratingReport` → report+journal copied → `SystemMustBeReset` → reset → `SystemReady`.
-- **`test_workflow_bug_target_disconnection.py`** — **bug target (D-2)**:
-  nominal cycle up to `CopyCleanFiles` (copy running) → `detach_disk(target)` (user removes the target) → **assert state == `SystemMustBeReset`** → **the test FAILS** (current incoherent state) → documents the bug, will be validated by the refactoring.
-
-### Phase D — Config
-
-- **`requirements-dev.txt`**: add `pytest` (and note the `.pth` requirement).
-- **`setup_dev_env.sh`**: create the venv, install `requirements.txt` + `requirements-dev.txt`, create the two `.pth` files pointing at `/home/onyxia/work/Safecor/python/lib/src` and `/home/onyxia/work/Safecor/python/emulator/src`.
-- **pytest config** (`pyproject.toml` `[tool.pytest.ini_options]`): `addopts = "-p safecor_emulator.pytest_plugin"`, `testpaths = tests`.
-
----
-
-## 4. Milestones (execution order)
-
-1. **A.1 + A.2** → a minimal test (boot + energy) passes.
-2. **B.1** → the mock AV works (an analysis test passes with it).
-3. **B.2 + B.3** → no reference to the local mocks.
-4. **C.1** → the nominal cycle passes.
-5. **C.2** → the bug test **fails** (documents the bug).
-6. **D** → `pytest` runs cleanly from a fresh venv.
+| Bug | Fix commit | Validating test |
+|-----|-----------|-----------------|
+| Target disconnection during copy → incoherent state | `d7df95b` | `test_handle_disk_state_disconnected_target_during_copy` |
+| Broken analysis controller tests (deepcopy, state assertions) | `814f8a8` | `test_analysis_controller.py` (full suite) |
 
 ---
 
-## 5. Test backlog (future increments)
+## 3. Test Architecture
 
-- **Dynamic mock-AV driving** (change per-file results on the fly; needed for "one AV flags a file").
-- Scenario **8.2** (pause / resume during analysis).
-- Scenario **8.4** (single-disk mode, target inserted later).
-- Scenario **8.6** (source/target disconnection **during** copy + auto-resume — blocked by the `>= CopyCleanFiles` gate).
-- Scenario **8.7** (report generation failure → `ReportFailed`).
-- Scenario **8.8** (source disconnection during analysis).
-- AV failure (NFR-3 — minimum number of engines).
-- Fingerprint integrity (NFR-1 — injected alteration).
-- `storagesCount` / `systemState` visibility race (plan §1.2).
-- Thread-safety checks (plan §1.2).
+### 3.1 Layers
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Integration (emulator + real MQTT)                     │
+│  test_workflow_nominal.py, test_analysis_controller.py │
+├─────────────────────────────────────────────────────────┤
+│  Handler (mocked Api, direct method invocation)         │
+│  test_application_controller_handlers.py               │
+├─────────────────────────────────────────────────────────┤
+│  Unit (mocked dependencies, isolated modules)           │
+│  test_workflow_controller.py, test_file_queue.py, etc. │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 3.2 Key patterns
+
+- **Api mocking**: `patch("Saphir.<module>.Api")` — each module that imports `Api` must be patched separately.
+- **Mock AnalysisController**: `_make_mock_analysis_controller()` provides the interface without a real MQTT subscription.
+- **Emulator integration**: `safecor_emulator.pytest_plugin` provides the `emulator` fixture with a real Mosquitto broker + mock peers.
+- **DEVMODE**: set via environment variable (`DEVMODE=1`) to activate the dev MQTT client path.
+
+### 3.3 Running tests
+
+```bash
+cd python/gui
+DEVMODE=1 .venv/bin/python -m pytest tests/ -v
+
+# Coverage
+DEVMODE=1 .venv/bin/coverage run --source=src/Saphir -m pytest tests/ -q
+.venv/bin/coverage report
+```
 
 ---
 
-## 6. Notes
+## 4. Remaining Gaps & Backlog
 
-- All work that **modifies existing code** is done on the **`pre-refactoring`** branch.
-- The emulator extension (Phase A) is done in the **Safecor** repo (separate branch there if needed).
-- The bug test (C.2) is expected to **fail** on the current code — that is intentional (characterization). It must be tracked and only pass once the refactoring (or a targeted fix) addresses D-2.
+### 4.1 Coverage gaps (below 85%)
+
+| Module | Coverage | Gap | Effort |
+|--------|----------|-----|--------|
+| `analysis_controller.py` | 71% | Archive mounting, error paths, multi-iteration analysis | Medium |
+| `queue_list_proxy_model.py` | 74% | `lessThan()` comparison logic, `on_data_changed()` | Low |
+| `main.py` | 0% | Entry point (intentionally excluded from coverage target) | N/A |
+
+### 4.2 Functional test backlog
+
+| Scenario | Description | Priority |
+|----------|-------------|----------|
+| 8.2 | Pause / resume during analysis | Medium |
+| 8.4 | Single-disk mode, target inserted later | Medium |
+| 8.6 | Source/target disconnection during copy + auto-resume | High |
+| 8.7 | Report generation failure → `ReportFailed` | Medium |
+| 8.8 | Source disconnection during analysis | Medium |
+| AV failure | Minimum number of engines (NFR-3) | High |
+| Fingerprint integrity | Injected alteration detection (NFR-1) | Low |
+| Dynamic mock-AV driving | Change per-file results on the fly | Low |
+
+### 4.3 CI integration (deferred)
+
+- Add a `pytest` job to `.github/workflows/build-all.yml`
+- Requires a Mosquitto broker service container
+- Coverage gate: reject PRs below 85%
+
+---
+
+## 5. Decisions (historical)
+
+| # | Decision | Date |
+|---|----------|------|
+| **D-1** | Mock antivirus lives in Saphir (`python/gui/tests/`), inherits `AbstractAntivirusController`, runs in a subprocess | 2026-10-28 |
+| **D-2** | Bug target: target disconnection at end of copy → `SystemMustBeReset` (FIXED in `d7df95b`) | 2026-10-28 |
+| **D-3** | Environment: venv + `.pth` files for Safecor repos (no packaging) | 2026-10-28 |
+| **D-4** | Phase 6 scope: 85% coverage on the **entire project**, not just refactored modules | 2026-10-28 |
+| **D-5** | Handler tests use mocked `Api` + direct method invocation (no real broker needed) | 2026-10-28 |
