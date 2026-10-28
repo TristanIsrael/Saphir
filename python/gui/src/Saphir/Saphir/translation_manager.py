@@ -28,6 +28,7 @@ class TranslationManager(QObject):
 
     def on_default_language_response(self, payload: dict):
         from safecor import MqttHelper
+
         if MqttHelper.check_payload(payload, ["language"]):
             language = payload.get("language", "en")
             self.__install_translations(language)

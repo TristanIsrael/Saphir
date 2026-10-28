@@ -28,3 +28,13 @@ Issues = "https://github.com/pypa/sampleproject/issues"
 addopts = "-p safecor_emulator.pytest_plugin"
 testpaths = ["tests"]
 pythonpath = ["src/Saphir", "../libsaphir/src"]
+
+[tool.ruff]
+target-version = "py39"
+
+[tool.ruff.lint]
+ignore = [
+    "RUF012",  # Qt Signal() class attributes use mutable defaults by design
+    "B008",    # QModelIndex() in QAbstractItemModel defaults is a Qt idiom
+    "N999",    # Module names like 'Saphir' or 'EMA_ETA_estimator' are intentional
+]

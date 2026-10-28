@@ -1,24 +1,29 @@
-from PySide6.QtCore import QObject, Property, Signal
-from . import AnalysisState, AnalysisMode, AnalysisHelper
-from libsaphir import TOPIC_ANALYSIS, FileStatus, BIG_FILE_SIZE_IN_MB, MOUNT_ARCHIVES
-from safecor import Api, Topics, MqttHelper, Constants, FileHelper, DiskState
+from __future__ import annotations
+
 import threading
-from threading import Lock
 import time
+from threading import Lock
+
+from libsaphir import BIG_FILE_SIZE_IN_MB, MOUNT_ARCHIVES, TOPIC_ANALYSIS, FileStatus
+from PySide6.QtCore import Property, QObject, Signal
+from safecor import Api, Constants, DiskState, FileHelper, MqttHelper, Topics
+
+from . import AnalysisHelper, AnalysisMode, AnalysisState
+
 
 class AnalysisController(QObject):
-    ''' Cette classe contrôle la façon dont se déroule l'analyse des fichiers
+    """Cette classe contrôle la façon dont se déroule l'analyse des fichiers
     sélectionnés par l'utilisateur.
 
-    En fonction des capacité de la machine, l'analyse peut être parallélisée ou 
+    En fonction des capacité de la machine, l'analyse peut être parallélisée ou
     séquentielle et utiliser plus ou moins en ressources.
-    '''
+    """
 
     __analysis_state = AnalysisState.AnalysisStopped
-    __files:dict
+    __files: dict
     __analysis_components = []
     __repository_capacity = 1
-    #__repository_size = 0
+    # __repository_size = 0
     __files_copy_queue_size = 0
     __start_times = {}
     __clean_files_count = 0
@@ -36,11 +41,18 @@ class AnalysisController(QObject):
     resultsChanged = Signal()
     fileUpdated = Signal(str, list)
     systemUsed = Signal()
-    iterationDone = Signal(float, int) # duration in minutes, file size
+    iterationDone = Signal(float, int)  # duration in minutes, file size
 
-    def __init__(self, files:dict, analysis_components:list, source_disk:str, analysis_mode_:AnalysisMode, parent:QObject|None=None) -> None:
-        """ Instanciates a new Analysis controller
-        
+    def __init__(
+        self,
+        files: dict,
+        analysis_components: list,
+        source_disk: str,
+        analysis_mode_: AnalysisMode,
+        parent: QObject | None = None,
+    ) -> None:
+        """Instanciates a new Analysis controller
+
         The files list is provided by the Application controller and is a reference.
         """
         QObject.__init__(self, parent)
@@ -64,7 +76,7 @@ class AnalysisController(QObject):
         # de fichiers analysés en même temps
         Api().request_system_info()
 
-    def set_source_disk(self, source_disk:str):
+    def set_source_disk(self, source_disk: str):
         self.__source_disk = source_disk
 
     def start_analysis(self) -> None:
@@ -97,19 +109,18 @@ class AnalysisController(QObject):
         self.__files_copy_queue_size = 0
         self.__start_times = {}
 
-
     ######
     ## Private functions
     #
-    def __on_api_message(self, topic:str, payload:dict) -> None:
-        #Api().debug("Message received on topic {}".format(topic), "AnalysisController")
-        #print("[AnalysisController]", topic, payload)
-        
+    def __on_api_message(self, topic: str, payload: dict) -> None:
+        # Api().debug("Message received on topic {}".format(topic), "AnalysisController")
+        # print("[AnalysisController]", topic, payload)
+
         if topic == Topics.NEW_FILE:
             if not MqttHelper.check_payload(payload, ["disk", "filepath"]):
                 Api().error(f"Malformed message for topic {topic}")
                 return
-            
+
             disk = payload.get("disk")
 
             if disk != Constants.STR_REPOSITORY:
@@ -118,36 +129,45 @@ class AnalysisController(QObject):
 
             filepath = payload.get("filepath", "")
             fingerprint = payload.get("source_fingerprint", "")
-            
+
             self.__on_file_available(filepath, fingerprint)
         elif topic == f"{TOPIC_ANALYSIS}/response":
-            if not MqttHelper.check_payload(payload, ["component", "filepath", "success", "details"]):
+            if not MqttHelper.check_payload(
+                payload, ["component", "filepath", "success", "details"]
+            ):
                 Api().error(f"Malformed message for topic {topic}")
                 return
-                        
-            self.__handle_result(payload.get("component", ""), payload.get("filepath", ""), payload.get("success", False), payload.get("details", ""))
+
+            self.__handle_result(
+                payload.get("component", ""),
+                payload.get("filepath", ""),
+                payload.get("success", False),
+                payload.get("details", ""),
+            )
         elif topic == f"{TOPIC_ANALYSIS}/status":
             pass
         elif topic == f"{TOPIC_ANALYSIS}/error":
             if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
                 # On filtre pour ne pas provoquer de boucle infinie
                 return
-            
+
             self.__handle_error(payload)
         elif topic == f"{Topics.SYSTEM_INFO}/response":
             if not MqttHelper.check_payload(payload, ["system"]):
-                Api().warn(f"Wrong response format for system info response. Using {self.__repository_capacity} scans in parallel.")
+                Api().warn(
+                    f"Wrong response format for system info response. Using {self.__repository_capacity} scans in parallel."
+                )
                 return
-            
+
             self.__handle_sysinfo(payload)
         elif topic == Topics.DISK_STATE:
             if not MqttHelper.check_payload(payload, ["disk", "state"]):
                 Api().error(f"Malformed message for topic {topic}")
                 return
-            
+
             disk = payload.get("disk", "")
             state = payload.get("state", "")
-            
+
             # We only monitor the state mounted for the archives
             if state == DiskState.MOUNTED.value:
                 self.__on_archive_mounted(disk)
@@ -155,11 +175,11 @@ class AnalysisController(QObject):
             # We only monitor this message when we mounted an archive before
             if self.__archive_mounted_name is None:
                 return
-            
+
             if not MqttHelper.check_payload(payload, ["disk", "files"]):
                 Api().error(f"Malformed message for topic {topic}")
                 return
-            
+
             disk = payload.get("disk", "")
             files = payload.get("files", [])
 
@@ -168,45 +188,46 @@ class AnalysisController(QObject):
             if not MqttHelper.check_payload(payload, ["disk", "filepath"]):
                 Api().error(f"Malformed message for topic {topic}")
                 return
-            
+
             disk = payload.get("disk", "")
             filepath = payload.get("filepath", "")
 
             if disk == Constants.STR_REPOSITORY:
                 self.__on_deleted_file(disk, filepath)
 
-
-    def __on_file_available(self, filepath:str, fingerprint:str) -> None:
-        with self.__queue_lock:            
+    def __on_file_available(self, filepath: str, fingerprint: str) -> None:
+        with self.__queue_lock:
             self.__files_copy_queue_size -= 1
 
             try:
                 # If any file has been read the system becomes dirty
                 self.systemUsed.emit()
 
-                file = self.__files[filepath] if self.__archive_mounted_name is None else self.__archive_file.get("content", {}).get(filepath, {})
+                file = (
+                    self.__files[filepath]
+                    if self.__archive_mounted_name is None
+                    else self.__archive_file.get("content", {}).get(filepath, {})
+                )
 
                 file["status"] = FileStatus.FileAvailableInRepository
                 file["fingerprint"] = fingerprint
                 self.fileUpdated.emit(filepath, ["status"])
 
                 # Next step is to analyse the file
-                payload = {
-                    "filepath": filepath
-                }
+                payload = {"filepath": filepath}
                 Api().publish(f"{TOPIC_ANALYSIS}/request", payload)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 - MQTT publish can fail on disconnect
                 print("An error occured when handling the new_file notification")
                 print(e)
 
-    def __on_deleted_file(self, disk:str, filepath:str):
+    def __on_deleted_file(self, disk: str, filepath: str):
         print(f"The file {filepath} has been removed from the repository")
 
         with self.__queue_lock:
             file = self.__files[filepath]
             file["locked"] = False
 
-    def __on_list_files_received(self, disk:str, files:list):
+    def __on_list_files_received(self, disk: str, files: list):
         with self.__queue_lock:
             # If we receive a files list, it means that we have mounted a disk
             if len(files) > 0:
@@ -215,22 +236,22 @@ class AnalysisController(QObject):
                         continue
 
                     file["disk"] = disk
-                    filepath = f"{file.get("path")}{"/" if file.get("path") != "/" else ""}{file.get("name")}"
+                    filepath = f"{file.get('path')}{'/' if file.get('path') != '/' else ''}{file.get('name')}"
                     file["filepath"] = filepath
                     file["status"] = FileStatus.FileStatusUndefined
                     file["selected"] = True
                     file["inqueue"] = True
-                    
+
                     # Update the files list
                     if "content" in self.__archive_file:
                         archive_content = self.__archive_file["content"]
                     else:
                         self.__archive_file["content"] = {}
                         archive_content = self.__archive_file["content"]
-                    
+
                     archive_content[filepath] = file
 
-    def __on_archive_mounted(self, disk:str):
+    def __on_archive_mounted(self, disk: str):
         # When an archive has been mounted we need to query its files list
         # And insert them into the analysis queue
         self.__archive_mounted_name = disk
@@ -238,13 +259,9 @@ class AnalysisController(QObject):
         self.__archive_file = file
         Api().get_files_list(disk, True)
 
-    def __handle_sysinfo(self, payload:dict):
+    def __handle_sysinfo(self, payload: dict):
         # We look at the CPU count in the system information
-        system_info = payload.get("system", {})
-        machine_info = system_info.get("machine", {})
-        cpu_info = machine_info.get("cpu", {})
-        #cpu_count = cpu_info.get("count", self.__repository_capacity)
-        #because of bug #54
+        # because of bug #54
         cpu_count = 8
 
         # TODO: en théorie il faudrait que la quantité de fichiers analysés en parallèle
@@ -255,25 +272,39 @@ class AnalysisController(QObject):
 
         Api().info(f"Repository capacity is set to {self.__repository_capacity} files")
 
-
-    def __handle_status(self, filepath:str, status:FileStatus, progress:int):
+    def __handle_status(self, filepath: str, status: FileStatus, progress: int):
         pass
-        
 
-    def __handle_result(self, component:str, filepath:str, success:bool, details:str):
+    def __handle_result(
+        self, component: str, filepath: str, success: bool, details: str
+    ):
         # We work in a critical sectionn because this function may be called by
         # multiple threads at the same time
         with self.__queue_lock:
             # If the file is in an archive we put the results in the file content field
             # We gather all the results inside this file entity
             if self.__archive_mounted_name is None:
-                clean, file_size = AnalysisHelper.update_file_result(self.__files, filepath, success, component, details, self.__analysis_components)            
+                clean, file_size = AnalysisHelper.update_file_result(
+                    self.__files,
+                    filepath,
+                    success,
+                    component,
+                    details,
+                    self.__analysis_components,
+                )
                 self.fileUpdated.emit(filepath, ["status", "progress"])
             else:
-                clean, file_size = AnalysisHelper.update_archive_result(self.__archive_file, filepath, success, component, details, self.__analysis_components) 
+                clean, file_size = AnalysisHelper.update_archive_result(
+                    self.__archive_file,
+                    filepath,
+                    success,
+                    component,
+                    details,
+                    self.__analysis_components,
+                )
                 # We update the status only at the end
                 self.fileUpdated.emit(self.__archive_mounted_filepath, ["progress"])
-            
+
             if self.__archive_mounted_name is None:
                 # If this is a regular file
                 if AnalysisHelper.is_analysis_finished(self.__files, filepath):
@@ -283,7 +314,7 @@ class AnalysisController(QObject):
                     else:
                         self.__infected_files_count += 1
                         self.__infected_files_size += file_size
-                    
+
                     start_time = self.__start_times.get(filepath, time.time())
                     duration_in_secs = time.time() - start_time
                     filesize = self.__files[filepath].get("size", 0)
@@ -308,7 +339,9 @@ class AnalysisController(QObject):
                         self.__infected_files_count += 1
                         self.__infected_files_size += file_size
 
-                    self.fileUpdated.emit(self.__archive_mounted_filepath, ["status", "progress"])
+                    self.fileUpdated.emit(
+                        self.__archive_mounted_filepath, ["status", "progress"]
+                    )
                     self.resultsChanged.emit()
 
                     # We finished analyzing the image so we clean...
@@ -323,10 +356,10 @@ class AnalysisController(QObject):
                     self.iterationDone.emit(duration / 60, filesize)
 
                 # Free the slot in the repository for the archive
-                #Api().delete_file(self.__archive_mounted_filepath, Constants.STR_REPOSITORY)
-                #self.__repository_size = self.__repository_size - 1 # TODO: asynchronously after the file has been deleted                    
+                # Api().delete_file(self.__archive_mounted_filepath, Constants.STR_REPOSITORY)
+                # self.__repository_size = self.__repository_size - 1 # TODO: asynchronously after the file has been deleted
 
-            #print(f"File {filepath}, status={"clean" if clean else "infected"}, success={success}, component={component}")        
+            # print(f"File {filepath}, status={"clean" if clean else "infected"}, success={success}, component={component}")
 
     def __handle_error(self, payload):
         filepath = payload.get("filepath", "")
@@ -348,37 +381,48 @@ class AnalysisController(QObject):
 
         Api().delete_file(filepath, Constants.STR_REPOSITORY)
 
-    
     def __do_copy_files_into_repository(self):
         # We copy files in the repository until it is full (__repository_size)
         # We handle a local value to avoid sending queries to Safecor
         limit = self.__get_repository_free_slots()
 
         if limit <= 0:
-            self.__copy_timer = threading.Timer(0.5, self.__do_copy_files_into_repository)
+            self.__copy_timer = threading.Timer(
+                0.5, self.__do_copy_files_into_repository
+            )
             self.__copy_timer.start()
             return
 
         files = self.__get_next_group_of_files(limit)
-        #print("working:", self.get_working_files_count())
-        #print("free slots:", limit)
-        #print("next group:", files)
+        # print("working:", self.get_working_files_count())
+        # print("free slots:", limit)
+        # print("next group:", files)
 
         with self.__queue_lock:
             for file in files:
                 file["locked"] = True
 
-                if file.get("inqueue", False) or self.__analysis_mode == AnalysisMode.AnalyseWholeSource:
+                if (
+                    file.get("inqueue", False)
+                    or self.__analysis_mode == AnalysisMode.AnalyseWholeSource
+                ):
                     filepath = file.get("filepath", None)
 
                     if filepath is None:
                         continue
-                    
-                    if MOUNT_ARCHIVES and BIG_FILE_SIZE_IN_MB > -1 and file.get("size", 0) > BIG_FILE_SIZE_IN_MB and FileHelper.is_archive_file(file["name"]):
+
+                    if (
+                        MOUNT_ARCHIVES
+                        and BIG_FILE_SIZE_IN_MB > -1
+                        and file.get("size", 0) > BIG_FILE_SIZE_IN_MB
+                        and FileHelper.is_archive_file(file["name"])
+                    ):
                         # If the file is big and is an archive we mount it
                         # If there is an archive inside an archive there will be problems...
                         file["status"] = FileStatus.FileAnalysing
-                        self.fileUpdated.emit(self.__archive_mounted_name, [file["status"]])
+                        self.fileUpdated.emit(
+                            self.__archive_mounted_name, [file["status"]]
+                        )
                         self.__archive_mounted_filepath = file["filepath"]
                         Api().mount_file(self.__source_disk, file["filepath"])
                     else:
@@ -387,17 +431,27 @@ class AnalysisController(QObject):
                         if self.__archive_mounted_name is None:
                             self.fileUpdated.emit(filepath, [file["status"]])
                         else:
-                            self.fileUpdated.emit(self.__archive_mounted_name, [file["status"]])
+                            self.fileUpdated.emit(
+                                self.__archive_mounted_name, [file["status"]]
+                            )
 
-                        source_disk = self.__source_disk if self.__archive_mounted_name is None else self.__archive_mounted_name
+                        source_disk = (
+                            self.__source_disk
+                            if self.__archive_mounted_name is None
+                            else self.__archive_mounted_name
+                        )
 
-                        Api().read_file(source_disk, filepath)                        
-                        
+                        Api().read_file(source_disk, filepath)
+
                         self.__start_times[filepath] = time.time()
                         self.__files_copy_queue_size += 1
-                            
-        if self.__analysis_state == AnalysisState.AnalysisRunning and (len(self.__files) > 0 or len(self.__archive_file.get("content", {})) > 0):
-            self.__copy_timer = threading.Timer(0.5, self.__do_copy_files_into_repository)
+
+        if self.__analysis_state == AnalysisState.AnalysisRunning and (
+            len(self.__files) > 0 or len(self.__archive_file.get("content", {})) > 0
+        ):
+            self.__copy_timer = threading.Timer(
+                0.5, self.__do_copy_files_into_repository
+            )
             self.__copy_timer.start()
         else:
             print("No more file to analyse... Exiting loop")
@@ -410,26 +464,38 @@ class AnalysisController(QObject):
         The goal is to fill the repository but not overflow it.
         """
 
-        nb_files = self.__repository_capacity - AnalysisHelper.get_repository_size(self.__files)
-        #print("free slots=", nb_files)
+        nb_files = self.__repository_capacity - AnalysisHelper.get_repository_size(
+            self.__files
+        )
+        # print("free slots=", nb_files)
         return nb_files
 
     def __get_next_group_of_files(self, size_limit):
-        """ Returns a new group of files to analyze
+        """Returns a new group of files to analyze
 
         The quantity of files depends on the argument size_limit provided.
         To avoid unexpected behaviours the single files are provided before the archives
         and only one archive is provided at a time.
-        An archive is returned only when there is no other file currently being analyzed        
+        An archive is returned only when there is no other file currently being analyzed
         """
 
         group = []
-        files_list = self.__files if self.__archive_mounted_name is None else self.__archive_file.get("content", {})
+        files_list = (
+            self.__files
+            if self.__archive_mounted_name is None
+            else self.__archive_file.get("content", {})
+        )
 
-        # First of all we filter the files to consider only those whose state 
+        # First of all we filter the files to consider only those whose state
         # is "undefined" in the workflow
-        filtered = {k:f for k,f in files_list.items() if not f.get("locked", False) and f.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileStatusUndefined}
-        
+        filtered = {
+            k: f
+            for k, f in files_list.items()
+            if not f.get("locked", False)
+            and f.get("status", FileStatus.FileStatusUndefined)
+            == FileStatus.FileStatusUndefined
+        }
+
         for f in filtered.values():
             # First we get the next non-archive files that is not currently being analyzed
             if not FileHelper.is_archive_file(f.get("name", "")):
@@ -438,11 +504,11 @@ class AnalysisController(QObject):
                 # If this is an archive
                 if MOUNT_ARCHIVES and f.get("size", 0) > BIG_FILE_SIZE_IN_MB:
                     # If the file has to be mounted
-                    continue 
+                    continue
                 else:
                     # If we don't mount archives, we simply add the file
                     group.append(f)
-                        
+
             if len(group) >= size_limit:
                 # We stop adding files when the queue is full
                 break
@@ -453,53 +519,67 @@ class AnalysisController(QObject):
         # being read when the function is called again. So we use
         # another property that indicates that the analysis is ongoing
         # on that file.
-        if MOUNT_ARCHIVES and len(group) == 0 and AnalysisHelper.get_repository_size(self.__files) == 0 and self.get_working_files_count() == 0:
+        if (
+            MOUNT_ARCHIVES
+            and len(group) == 0
+            and AnalysisHelper.get_repository_size(self.__files) == 0
+            and self.get_working_files_count() == 0
+        ):
             for f in filtered.values():
-                if FileHelper.is_archive_file(f.get("name", "")) and not AnalysisHelper.is_file_completed(f):
+                if FileHelper.is_archive_file(
+                    f.get("name", "")
+                ) and not AnalysisHelper.is_file_completed(f):
                     group.append(f)
-                    break # We return only one archive
+                    break  # We return only one archive
 
-        #print("next group of files:", group)
+        # print("next group of files:", group)
 
         return group
 
     def get_working_files_count(self) -> int:
-        """ Returns the number of files currently being worked on
-        
+        """Returns the number of files currently being worked on
+
         Those files are in a state different from Undefined
         """
 
-        files_list = self.__files if self.__archive_mounted_name is None else self.__archive_file.get("content", {})
-        
+        files_list = (
+            self.__files
+            if self.__archive_mounted_name is None
+            else self.__archive_file.get("content", {})
+        )
+
         return len(
-            {k:f for k,f in files_list.items() if
-                f.get("status", None) in [
+            {
+                k: f
+                for k, f in files_list.items()
+                if f.get("status", None)
+                in [
                     FileStatus.FileAnalysing,
                     FileStatus.FileAvailableInRepository,
-                    FileStatus.FileCopySuccess
-                    ]
+                    FileStatus.FileCopySuccess,
+                ]
             }
         )
-    
+
     ######
     ## Getters and setters
     #
     def get_analysis_state(self) -> AnalysisState:
         return self.__analysis_state
-    
+
     def get_clean_files_count(self) -> int:
         return self.__clean_files_count
-    
+
     def get_clean_files_size(self) -> int:
         return self.__clean_files_size
-    
+
     def get_infected_files_count(self) -> int:
         return self.__infected_files_count
-    
+
     def get_infected_files_size(self) -> int:
         return self.__infected_files_size
-    
-    def __set_analysis_state(self, state:AnalysisState):
+
+    def __set_analysis_state(self, state: AnalysisState):
         self.__analysis_state = state
         self.stateChanged.emit(state)
 
@@ -512,4 +592,4 @@ class AnalysisController(QObject):
     def get_queue_size(self):
         return len(self.__files)
 
-    state = Property(int, get_analysis_state, notify= stateChanged)
+    state = Property(int, get_analysis_state, notify=stateChanged)

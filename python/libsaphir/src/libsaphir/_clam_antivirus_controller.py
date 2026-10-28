@@ -1,10 +1,14 @@
-from libsaphir._abstract_antivirus_controller import AbstractAntivirusController
+import os
+import subprocess
+import threading
+
 from safecor import ComponentState, Constants
+
 from libsaphir import FileStatus
-import subprocess, threading, os
+from libsaphir._abstract_antivirus_controller import AbstractAntivirusController
+
 
 class ClamAntivirusController(AbstractAntivirusController):
-    
     __state = ComponentState.UNKNOWN
 
     def __init__(self):
@@ -16,14 +20,14 @@ class ClamAntivirusController(AbstractAntivirusController):
 
         # Verify the daemon is ready
         threading.Timer(0.5, self.__ping_clamd).start()
-    
+
     def _analyse_file(self, filepath: str) -> None:
         print("CLAMAV analyse file", filepath)
-        
+
         if self.__state != ComponentState.READY:
             self.error("The component is not ready.")
             return
-        
+
         storage_filepath = f"{Constants.DOMU_REPOSITORY_PATH}{filepath}"
 
         if not os.path.exists(storage_filepath):
@@ -36,7 +40,7 @@ class ClamAntivirusController(AbstractAntivirusController):
         self.update_status(filepath, FileStatus.FileAnalysing, 0)
 
         cmd = ["clamdscan", storage_filepath]
-        proc = subprocess.run(cmd, capture_output=True)
+        proc = subprocess.run(cmd, check=False, capture_output=True)
         success = False
         details = ""
         if proc.returncode == 0:
@@ -48,39 +52,43 @@ class ClamAntivirusController(AbstractAntivirusController):
             if len(proc.stdout) == 0:
                 self.error("Clamdscan command produced no output")
                 return
-            
+
             result = proc.stdout.decode().split("\n\n", 1)[0]
             details = result.split(":")[1].strip()
         elif proc.returncode == 2:
             success = False
             details = proc.stderr.decode()
-        
+
         self.publish_result(filepath, success, details)
         self.analysis_finished(True)
-        
 
     def _get_component_state(self):
         return self.__state
 
-
     def _stop_immediately(self):
-        subprocess.run(["killall", "-9", "clamdscan"])
-
+        subprocess.run(["killall", "-9", "clamdscan"], check=False)
 
     def _get_component_version(self) -> str:
-        proc = subprocess.run(["clamscan", "--version"], capture_output=True)
+        proc = subprocess.run(
+            ["clamscan", "--version"], check=False, capture_output=True
+        )
         if proc.returncode == 0:
             return proc.stdout.decode().strip()
         else:
             return "#err"
 
     def _get_component_description(self) -> str:
-        proc = subprocess.run("clamconf | sed -n '/Software settings/,$p'", capture_output=True, shell=True)
+        proc = subprocess.run(
+            "clamconf | sed -n '/Software settings/,$p'",
+            check=False,
+            capture_output=True,
+            shell=True,
+        )
         if proc.returncode == 0:
             return proc.stdout.decode().strip()
         else:
             return "#err"
-        
+
     def _restart(self, domain_name: str):
         if domain_name != "saphir-av-clamav":
             return
@@ -92,12 +100,20 @@ class ClamAntivirusController(AbstractAntivirusController):
     ## Private functions
     #
     def __ping_clamd(self):
-        
+
         cmd = ["clamdscan", "--ping", "1"]
-        proc = subprocess.run(cmd, capture_output=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        proc = subprocess.run(
+            cmd,
+            check=False,
+            capture_output=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
         if proc.returncode > 0:
             threading.Timer(0.5, self.__ping_clamd).start()
         else:
             self.__state = ComponentState.READY
-            self.debug(f"Antivirus is ready. The storage path is {Constants.DOMU_REPOSITORY_PATH}")
+            self.debug(
+                f"Antivirus is ready. The storage path is {Constants.DOMU_REPOSITORY_PATH}"
+            )
             self.component_state_changed()

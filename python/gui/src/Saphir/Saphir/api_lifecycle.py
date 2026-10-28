@@ -64,5 +64,8 @@ class ApiLifecycle(QObject):
     def _on_subscribed(self, mid):
         if mid in self._subscriptions:
             self._subscribed_count += 1
-            if self._subscribed_count == len(self._subscriptions) and self._all_ready_callback is not None:
+            if (
+                self._subscribed_count == len(self._subscriptions)
+                and self._all_ready_callback is not None
+            ):
                 self._all_ready_callback()

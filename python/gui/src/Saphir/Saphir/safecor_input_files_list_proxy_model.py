@@ -1,7 +1,14 @@
-from PySide6.QtCore import QSortFilterProxyModel, QModelIndex, Qt, Signal, Slot
-from PySide6.QtCore import qDebug, QDir, QFileInfo, Property, QThread, QPersistentModelIndex
-from . import SafecorInputFilesListModel
-from . import Roles
+from __future__ import annotations
+
+from PySide6.QtCore import (
+    Property,
+    QModelIndex,
+    QPersistentModelIndex,
+    QSortFilterProxyModel,
+    Signal,
+)
+
+from . import Roles, SafecorInputFilesListModel
 
 
 class SafecorInputFilesListProxyModel(QSortFilterProxyModel):
@@ -11,16 +18,18 @@ class SafecorInputFilesListProxyModel(QSortFilterProxyModel):
     # Signals
     currentFolderChanged = Signal()
 
-    def __init__(self, source_model:SafecorInputFilesListModel, parent=None):
-        super().__init__(parent)   
+    def __init__(self, source_model: SafecorInputFilesListModel, parent=None):
+        super().__init__(parent)
         self.source_model_ = source_model
-        self.setSourceModel(source_model)    
+        self.setSourceModel(source_model)
         self.setSortRole(Roles.RoleFilename)
         self.sort(0)
 
-    def filterAcceptsRow(self, source_row:int, source_parent:QModelIndex|QPersistentModelIndex):  
-        return True      
-        '''idx = self.sourceModel().index(source_row, 0, QModelIndex())
+    def filterAcceptsRow(
+        self, source_row: int, source_parent: QModelIndex | QPersistentModelIndex
+    ):
+        return True
+        """idx = self.sourceModel().index(source_row, 0, QModelIndex())
         path = self.sourceModel().data(idx, Roles.RolePath)
         inqueue = self.sourceModel().data(idx, Roles.RoleInQueue)
         type = self.sourceModel().data(idx, Roles.RoleType)
@@ -32,9 +41,9 @@ class SafecorInputFilesListProxyModel(QSortFilterProxyModel):
             else:
                 return True
         
-        return False'''
+        return False"""
 
-    '''def setData(self, index, value, role=Qt.DisplayRole):
+    """def setData(self, index, value, role=Qt.DisplayRole):
         srcidx = self.mapToSource(index)
 
         if role == Roles.RoleSelected:                        
@@ -52,27 +61,32 @@ class SafecorInputFilesListProxyModel(QSortFilterProxyModel):
         elif role == Roles.RoleInQueue:
             self.source_model_.setData(srcidx, value, role)
 
-        return False'''
+        return False"""
 
-    '''@Slot()
+    """@Slot()
     def folder_up(self):
         path = Path(self.__current_folder)        
-        self.set_current_folder(path.parent.absolute().as_posix())'''
+        self.set_current_folder(path.parent.absolute().as_posix())"""
 
-    ### 
+    ###
     # Private functions
     def __get_current_folder(self):
         return self.__current_folder
-    
-    def set_current_folder(self, current_folder:str):
+
+    def set_current_folder(self, current_folder: str):
         if self.__current_folder == current_folder:
             return
-        
+
         self.__current_folder = current_folder
         self.currentFolderChanged.emit()
-        #self.source_model_.reset_selection()
+        # self.source_model_.reset_selection()
         self.invalidateFilter()
-    
+
     ###
     # Properties
-    currentFolder = Property(str, fget= __get_current_folder, fset= set_current_folder, notify= currentFolderChanged)
+    currentFolder = Property(
+        str,
+        fget=__get_current_folder,
+        fset=set_current_folder,
+        notify=currentFolderChanged,
+    )

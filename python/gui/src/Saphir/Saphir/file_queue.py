@@ -28,7 +28,9 @@ class FileQueue:
 
     def dequeue_folder(self, filepath: str) -> None:
         with self._lock:
-            self._files = {k: v for k, v in self._files.items() if not k.startswith(filepath)}
+            self._files = {
+                k: v for k, v in self._files.items() if not k.startswith(filepath)
+            }
 
     def clear(self) -> None:
         with self._lock:
@@ -56,23 +58,30 @@ class FileQueue:
 
     def get_clean_files(self) -> list[tuple[str, dict]]:
         return [
-            (k, v) for k, v in self._files.items()
+            (k, v)
+            for k, v in self._files.items()
             if v.get("status") == FileStatus.FileClean
         ]
 
     def get_transferred_ratio(self) -> float:
         with self._lock:
             clean = sum(
-                1 for item in self._files.values()
-                if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean
+                1
+                for item in self._files.values()
+                if item.get("status", FileStatus.FileStatusUndefined)
+                == FileStatus.FileClean
             )
             copy_success = sum(
-                1 for item in self._files.values()
-                if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileCopySuccess
+                1
+                for item in self._files.values()
+                if item.get("status", FileStatus.FileStatusUndefined)
+                == FileStatus.FileCopySuccess
             )
             copy_failed = sum(
-                1 for item in self._files.values()
-                if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileCopyError
+                1
+                for item in self._files.values()
+                if item.get("status", FileStatus.FileStatusUndefined)
+                == FileStatus.FileCopyError
             )
             copy_total = copy_failed + copy_success
 

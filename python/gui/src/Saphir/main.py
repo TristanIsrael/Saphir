@@ -1,38 +1,48 @@
-""" This is Saphir """
+"""This is Saphir"""
 
-import sys
 import signal
+import sys
 import threading
 from pathlib import Path
 
-from Saphir import Enums, ApplicationController
 from libsaphir import DEVMODE
+
+from Saphir import ApplicationController, Enums
+
 if DEVMODE:
     from Saphir import DevModeHelper
+
     DevModeHelper.set_qt_plugins_path()
-from PySide6.QtCore import Qt, QEvent, QObject
-from PySide6.QtQuickControls2 import QQuickStyle
-from PySide6.QtGui import QGuiApplication, QFont, QFontDatabase, QPointingDevice
+from PySide6.QtCore import QEvent, QObject, Qt
+from PySide6.QtGui import QFont, QFontDatabase, QGuiApplication, QPointingDevice
+from PySide6.QtQml import (
+    QQmlApplicationEngine,
+    qmlRegisterSingletonInstance,
+    qmlRegisterUncreatableType,
+)
 from PySide6.QtQuick import QQuickWindow
-from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterType, qmlRegisterSingletonType, qmlRegisterUncreatableType, qmlRegisterSingletonInstance
+from PySide6.QtQuickControls2 import QQuickStyle
 from safecor import Api, System
 
 api_ready = threading.Event()
 FORCE_FULLSCREEN = False
 VERSION = "3.1.0"
 
+
 def on_ready():
     print("Safecor API is ready")
     api_ready.set()
 
-def load_fonts(fonts:list):
+
+def load_fonts(fonts: list):
     for font in fonts:
         font_id = QFontDatabase.addApplicationFont(f"GUI/fonts/{font}")
         if font_id == -1:
             print(f"Could not load font {font}")
 
+
 class InputEventFilter(QObject):
-    def __init__(self, window: QQuickWindow, app:QGuiApplication):
+    def __init__(self, window: QQuickWindow, app: QGuiApplication):
         super().__init__()
         self.window = window
         self.app = app
@@ -40,32 +50,43 @@ class InputEventFilter(QObject):
     def eventFilter(self, watched, event):
         # If the event is touch we ignore it
         # If we move the mouse once, the cursor becomes visible
-        if hasattr(event, "device"):
-            if isinstance(event.device(), QPointingDevice) and event.device().pointerType() != QPointingDevice.PointerType.Finger and event.type() != QEvent.Enter:
-                self.app.restoreOverrideCursor()
-                #self.window.setCursor(Qt.ArrowCursor)
-                self.app.setOverrideCursor(Qt.ArrowCursor)
-                self.app.removeEventFilter(self)
+        if (
+            hasattr(event, "device")
+            and isinstance(event.device(), QPointingDevice)
+            and event.device().pointerType() != QPointingDevice.PointerType.Finger
+            and event.type() != QEvent.Enter
+        ):
+            self.app.restoreOverrideCursor()
+            # self.window.setCursor(Qt.ArrowCursor)
+            self.app.setOverrideCursor(Qt.ArrowCursor)
+            self.app.removeEventFilter(self)
 
         return super().eventFilter(watched, event)
 
+
 app = QGuiApplication(sys.argv)
 
-def handle_sigint(signum, frame):    
+
+def handle_sigint(signum, frame):
     app.quit()  # Quitte la boucle Qt
+
 
 signal.signal(signal.SIGINT, handle_sigint)
 
-def install_font(filename:str):
+
+def install_font(filename: str):
     app_root_path = Path(__file__).resolve().parent
 
     # Install font Google Material
-    font_id = QFontDatabase.addApplicationFont(Path(app_root_path / f"fonts/{filename}").as_posix())
+    font_id = QFontDatabase.addApplicationFont(
+        Path(app_root_path / f"fonts/{filename}").as_posix()
+    )
 
     if font_id != -1:
         print(f"The font {filename} has been correctly installed")
     else:
         print(f"The font {filename} has not been installed.")
+
 
 if __name__ == "__main__":
     app.setQuitOnLastWindowClosed(True)
@@ -92,7 +113,14 @@ if __name__ == "__main__":
     api_ready.wait()
 
     # Expose Types
-    qmlRegisterSingletonInstance(ApplicationController, "Saphir", 1, 0, "ApplicationController", applicationController)
+    qmlRegisterSingletonInstance(
+        ApplicationController,
+        "Saphir",
+        1,
+        0,
+        "ApplicationController",
+        applicationController,
+    )
     qmlRegisterUncreatableType(Enums, "Saphir", 1, 0, "Enums", "Not instanciable")
 
     QQuickStyle.setStyle("Basic")
@@ -101,11 +129,11 @@ if __name__ == "__main__":
     engine.rootContext().setContextProperty("DEVMODE", DEVMODE)
     engine.addImportPath(app_root_path / "GUI")
     qml_file = app_root_path / "GUI/content/MainScreen.qml"
-    
+
     engine.load(qml_file)
     if not engine.rootObjects():
         sys.exit(-1)
-    
+
     qml_root = engine.rootObjects()[0]
     app.setOverrideCursor(Qt.BlankCursor)
     filter = InputEventFilter(qml_root, app)

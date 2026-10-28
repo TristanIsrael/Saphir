@@ -1,9 +1,9 @@
-from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, Signal, Slot, qDebug
-from PySide6.QtCore import QDir, QFileInfo, Property, QThread, QByteArray
+from PySide6.QtCore import QAbstractListModel, QModelIndex, Qt, Signal
+
 from . import Roles
 
-class SafecorInputFilesListModel(QAbstractListModel):
 
+class SafecorInputFilesListModel(QAbstractListModel):
     # Signaux publics
     fichierAjoute = Signal()
     selectionChanged = Signal()
@@ -15,12 +15,12 @@ class SafecorInputFilesListModel(QAbstractListModel):
     changeSelection = Signal(str)  # dossier
 
     # Variables
-    __files:dict
+    __files: dict
     __rowCount = 0
     __lastRowCount = 0
-    __queuedFilesList:dict
+    __queuedFilesList: dict
 
-    def __init__(self, files:dict, queuedFilesList:dict, parent=None):
+    def __init__(self, files: dict, queuedFilesList: dict, parent=None):
         super().__init__(parent)
         self.__files = files
         self.__queuedFilesList = queuedFilesList
@@ -41,77 +41,77 @@ class SafecorInputFilesListModel(QAbstractListModel):
 
         row = index.row()
         fichier = list(self.__files.values())[row]
-        #qDebug(f"data() - filepath:{fichier["filepath"]}, inqueue:{fichier["inqueue"]}")        
+        # qDebug(f"data() - filepath:{fichier["filepath"]}, inqueue:{fichier["inqueue"]}")
 
         if role == Roles.RoleType:
             return fichier.get("type", "")
-        
+
         if role == Roles.RoleFilename:
             return fichier["name"]
-        
+
         if role == Roles.RolePath:
             return fichier["path"]
-        
+
         if role == Roles.RoleFilepath or role == Roles.RoleId:
             return fichier["filepath"]
-        
+
         if role == Roles.RoleStatus:
             return fichier["status"].value
-        
+
         if role == Roles.RoleProgress:
             return fichier.get("progress", 0)
 
         if role == Roles.RoleSelected:
             if fichier["type"] == "file":
-                return fichier["selected"]            
-            
-            return False        
-        
-        if role == Roles.RoleProgress: #0 to 100
+                return fichier["selected"]
+
+            return False
+
+        if role == Roles.RoleProgress:  # 0 to 100
             return 0
-        
+
         if role == Roles.RoleInQueue:
-            #inQueue = fichier.get("inqueue")
-            #return inQueue if inQueue is not None else False
+            # inQueue = fichier.get("inqueue")
+            # return inQueue if inQueue is not None else False
             if fichier["type"] == "file":
                 return fichier["filepath"] in self.__queuedFilesList
             else:
                 return any(fichier["filepath"] in key for key in self.__queuedFilesList)
 
-            #return inQueue if inQueue is not None else False
-        
+            # return inQueue if inQueue is not None else False
+
         return None
-    
+
     def roleNames(self) -> dict:
         roles = {
-            Roles.RoleType: b'type',
-            Roles.RoleFilename: b'filename',
-            Roles.RolePath: b'path',
-            Roles.RoleFilepath: b'filepath',
-            Roles.RoleSelected: b'selected',
-            Roles.RolePartialSelection: b'partialSelection',
-            Roles.RoleProgress: b'progress',
-            Roles.RoleInQueue: b'inqueue',
-            Roles.RoleStatus: b'status',
-            Roles.RoleId: b'backId'
+            Roles.RoleType: b"type",
+            Roles.RoleFilename: b"filename",
+            Roles.RolePath: b"path",
+            Roles.RoleFilepath: b"filepath",
+            Roles.RoleSelected: b"selected",
+            Roles.RolePartialSelection: b"partialSelection",
+            Roles.RoleProgress: b"progress",
+            Roles.RoleInQueue: b"inqueue",
+            Roles.RoleStatus: b"status",
+            Roles.RoleId: b"backId",
         }
         return roles
-    
+
     def reset(self):
-        self.beginResetModel()    
+        self.beginResetModel()
         self.__lastRowCount = 0
         self.__rowCount = len(self.__files)
         self.endResetModel()
 
-    def on_file_updated(self, filepath:str, fields:list):    
+    def on_file_updated(self, filepath: str, fields: list):
         is_child_of_folder = False
         if filepath not in self.__files:
             # The file added might be a child of one of the folders shown
             is_child_of_folder = any(filepath in key for key in self.__queuedFilesList)
             if not is_child_of_folder:
                 return
-        
-        #print("queue:", self.__queuedFilesList)
+
+        # print("queue:", self.__queuedFilesList)
 
         # If it is a file of the list
         if not is_child_of_folder:
@@ -122,13 +122,13 @@ class SafecorInputFilesListModel(QAbstractListModel):
                 return
             row = list(self.__files.keys()).index(folder)
 
-        #print(filepath)
+        # print(filepath)
         idx = self.index(row, 0)
 
         if not idx.isValid():
             return
 
-        roles = list()
+        roles = []
         if "status" in fields:
             roles.append(Roles.RoleStatus)
         if "progress" in fields:
@@ -142,11 +142,11 @@ class SafecorInputFilesListModel(QAbstractListModel):
         self.__rowCount = len(self.__files)
         self.beginInsertRows(QModelIndex(), self.__lastRowCount, self.__rowCount)
         self.endInsertRows()
-        
+
     #####
     ######
     ######
-    '''def findFolderInSelection(self, filepath):
+    """def findFolderInSelection(self, filepath):
         #qDebug("Recherche du fichier %s" %filepath)            
         return next((f for f in self.selection_ if f['path'].startswith(filepath)), None)        
 
@@ -162,9 +162,9 @@ class SafecorInputFilesListModel(QAbstractListModel):
     def removeFilepathFromSelection(self, filepath):
         for f in self.selection_:
             if f['path'] == filepath:
-                self.selection_.remove(f)'''
+                self.selection_.remove(f)"""
 
-    '''@Slot(str, int)
+    """@Slot(str, int)
     def onNouveauFichier(self, filepath, size):
         #qDebug("ListModel : nouveau fichier %s %i" % (filepath, size))
 
@@ -178,11 +178,11 @@ class SafecorInputFilesListModel(QAbstractListModel):
             pos = self.index(fichier['position'])
             self.dataChanged.emit(pos, pos, Roles.RoleSelected)
         # else:
-        #    qDebug("Fichier non trouvé %s" % filepath)'''
+        #    qDebug("Fichier non trouvé %s" % filepath)"""
 
     # La sélection des fichiers pour un chemin correspond à l'action
     # de l'utilisateur suite à la sélection d'un fichier précis.
-    ''' @Slot(str, bool)
+    """ @Slot(str, bool)
     def setSelectedByFilepath(self, filepath, selected):
         Api().debug("Changement d'état de sélection pour le fichier {} : {}".format(filepath, selected))
 
@@ -233,13 +233,13 @@ class SafecorInputFilesListModel(QAbstractListModel):
 
         #self.dataChanged.emit(position, position, self.RoleSelected)
         self.selectionChanged.emit()
-        #self.onTermine()'''
+        #self.onTermine()"""
 
     # La sélection des fichiers d'un stockage correspond à
     # l'action de l'utilisateur dans le menu contextel pour
     # changer l'état de sélection de l'ensemble des fichiers
     # d'un support connecté
-    '''
+    """
     @Slot()
     def selectAllFilesForStorage(self):
         Api().debug("Sélection de tous les fichiers du support")
@@ -316,10 +316,10 @@ class SafecorInputFilesListModel(QAbstractListModel):
         listeFichiersRepertoireSelection = [f for f in self.selection_ if filepath in f['filepath']]
         
         return len(listeFichiersRepertoireSelection) == len(listeFichiersRepertoire)    
-'''
+"""
 
     # Propriétés
-    '''def _selection(self):
+    """def _selection(self):
         return self.selection_
 
     def _setSelection(self, selection):
@@ -336,4 +336,4 @@ class SafecorInputFilesListModel(QAbstractListModel):
         return humanize.naturalsize(selectionSize)
 
     selection = Property(list, _selection, _setSelection, notify=selectionChanged)
-    selectionSize = Property(str, _selectionSize)'''
+    selectionSize = Property(str, _selectionSize)"""

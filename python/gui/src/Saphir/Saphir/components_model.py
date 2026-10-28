@@ -1,19 +1,17 @@
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal, Slot
-from PySide6.QtCore import QFileInfo, Property
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 from safecor import ComponentsHelper, ComponentState
 
 
 class ComponentsModel(QAbstractTableModel):
-
-    def __init__(self, components_helper:ComponentsHelper, parent=None):
-        super().__init__(parent)       
+    def __init__(self, components_helper: ComponentsHelper, parent=None):
+        super().__init__(parent)
         self.__components_helper = components_helper
 
-    def rowCount(self, parent=QModelIndex()):        
+    def rowCount(self, parent=QModelIndex()):
         return len(self.__components_helper.get_components())
 
     def columnCount(self, parent=QModelIndex()):
-        return 3 # Type, libellé, état
+        return 3  # Type, libellé, état
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():
@@ -26,7 +24,7 @@ class ComponentsModel(QAbstractTableModel):
         component = self.__components_helper.get_components()[row]
         if component is None:
             return None
-        
+
         if index.column() == 0:
             return component.get("type", "err")
         elif index.column() == 1:
@@ -43,8 +41,8 @@ class ComponentsModel(QAbstractTableModel):
                 return self.tr("Off")
             else:
                 return self.tr("Unknown")
-        
-        return None    
+
+        return None
 
     def components_updated(self):
         self.beginResetModel()

@@ -1,10 +1,10 @@
 import os
 import sys
-from safecor import MqttClient, ConnectionType
+
+from safecor import ConnectionType, MqttClient
 
 
-class DevModeHelper():
-
+class DevModeHelper:
     @staticmethod
     def create_mqtt_client(identifier: str) -> MqttClient:
         return MqttClient(identifier, ConnectionType.TCP_DEBUG, "localhost")

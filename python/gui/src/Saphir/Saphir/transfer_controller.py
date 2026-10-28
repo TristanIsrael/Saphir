@@ -79,12 +79,19 @@ class TransferController(QObject):
             self._copied_files_count += 1
             self.copiedFilesCountChanged.emit()
 
-        file["status"] = FileStatus.FileCopySuccess if success else FileStatus.FileCopyError
-        Api().info(f"The file {filepath} has been copied to {self._target_name}. The fingerprint is {fingerprint}")
+        file["status"] = (
+            FileStatus.FileCopySuccess if success else FileStatus.FileCopyError
+        )
+        Api().info(
+            f"The file {filepath} has been copied to {self._target_name}. The fingerprint is {fingerprint}"
+        )
 
         self.transferProgressChanged.emit()
 
-        if self._clean_files_total > 0 and self._copied_files_count >= self._clean_files_total:
+        if (
+            self._clean_files_total > 0
+            and self._copied_files_count >= self._clean_files_total
+        ):
             self.transferComplete.emit()
 
     def reset(self) -> None:
