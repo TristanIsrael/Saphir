@@ -27,6 +27,7 @@ from .workflow_controller import WorkflowController
 from .file_queue import FileQueue
 from .file_browser import FileBrowser
 from .storage_manager import StorageManager
+from .transfer_controller import TransferController
 from .application_controller import ApplicationController
 
 __all__ = [
@@ -39,6 +40,6 @@ __all__ = [
     "SafecorInputFilesListProxyModel", "SafecorOutputFilesListProxyModel",
     "ReportController", "EMAETAEstimator",
     "EnergyMonitor", "TranslationManager", "ApiLifecycle",
-    "FileQueue", "FileBrowser", "StorageManager",
+    "FileQueue", "FileBrowser", "StorageManager", "TransferController",
     "ApplicationController"
 ]

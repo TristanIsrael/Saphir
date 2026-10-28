@@ -11,6 +11,7 @@ from . import EMAETAEstimator
 from . import EnergyMonitor, TranslationManager, ApiLifecycle
 from . import WorkflowController
 from . import FileQueue, FileBrowser, StorageManager
+from . import TransferController
 try:
     from . import ReportController
 except Exception:
@@ -47,7 +48,6 @@ class ApplicationController(QObject):
     __long_process_running = False
     __system_used = False
     #__system_information = dict()
-    __copied_files_count = 0
     __messages_model = MessagesListModel()
     __handheld = True
     __eta_estimator = EMAETAEstimator()
@@ -129,6 +129,11 @@ class ApplicationController(QObject):
         self.__storage_manager.targetReadyChanged.connect(self.targetReadyChanged)
         self.__storage_manager.storagesChanged.connect(self.storagesChanged)
         self.__storage_manager.storagesCountChanged.connect(self.storagesCountChanged)
+
+        self.__transfer_controller = TransferController(self.__file_queue, self)
+        self.__transfer_controller.transferProgressChanged.connect(self.transferProgressChanged)
+        self.__transfer_controller.copiedFilesCountChanged.connect(self.copiedFilesCountChanged)
+        self.__transfer_controller.transferComplete.connect(self.__on_transfer_complete)
 
         self.__components_model = ComponentsModel(self.__components_helper, self)
 
@@ -305,20 +310,8 @@ class ApplicationController(QObject):
     def start_transfer(self):
         Api().info("Start transfer of clean files to target disk")
 
-        self.__copied_files_count = 0
-        #self.__analysis_controller.stop_analysis()
-
         self.__set_system_state(SystemState.CopyCleanFiles)
-
-        # Start in the run-loop
-        threading.Timer(0.1, self.__do_start_transfer).start()
-
-    @Slot()
-    def __do_start_transfer(self):
-        # Copy all the clean files
-        for filepath_, file_ in self.__file_queue.files.items():
-            if file_.get("status") == FileStatus.FileClean:
-                Api().copy_file(self.__storage_manager.source_name, filepath_, self.__storage_manager.target_name)
+        self.__transfer_controller.start(self.__storage_manager.source_name, self.__storage_manager.target_name)
 
     @Slot()
     def select_all_clean_files_for_copy(self):
@@ -383,7 +376,7 @@ class ApplicationController(QObject):
         self.remainingTimeChanged.emit()
         self.__long_process_running = False
         self.longProcessRunningChanged.emit()
-        self.__copied_files_count = 0
+        self.__transfer_controller.reset()
         self.copiedFilesCountChanged.emit()
 
         # The storages come from a single disk so we clean all of them
@@ -743,33 +736,12 @@ class ApplicationController(QObject):
             self.__components_model.components_updated()
 
     def __handle_copy_file(self, payload:dict):
-        if not MqttHelper.check_payload(payload, ["filepath", "status", "fingerprint"]):
-            Api().error("Missing arguments in copy file")
-            return
-        
+        self.__transfer_controller.on_copy_file(payload)
         filepath = payload.get("filepath")
-        status = payload.get("status")
-        fingerprint = payload.get("fingerprint")
+        if filepath:
+            self.fileUpdated.emit(filepath, ["status"])
 
-        file = self.__file_queue.files.get(filepath)
-        if file is None:
-            Api().error(f"The file {filepath} has not been found in the analysis queue")
-            return
-        
-        success = status == "ok"
-        if success:
-            self.__copied_files_count += 1
-            self.copiedFilesCountChanged.emit()
-
-        file["status"] = FileStatus.FileCopySuccess if success else FileStatus.FileCopyError
-        Api().info(f"The file {filepath} has been copied to {self.__get_target_name()}. The fingerprint is {fingerprint}")
-        self.fileUpdated.emit(filepath, ["status"])
-        self.transferProgressChanged.emit()
-
-        if self.__get_transferred_ratio() >= 1:
-            self.__finish_transfer()
-
-    def __finish_transfer(self):
+    def __on_transfer_complete(self):
         self.__set_system_state(SystemState.GeneratingReport)
 
         # Generate the report
@@ -906,7 +878,7 @@ class ApplicationController(QObject):
             clean_files_count= self.__get_clean_files_count(),
             infected_files_count= self.__get_infected_files_count(),
             analyzed_files_count= len(self.__file_queue.files),
-            copied_files_count= self.__copied_files_count,
+            copied_files_count= self.__transfer_controller.copied_files_count,
             start_datetime= self.__analysis_start_time,
             end_datetime= self.__analysis_end_time,
             equipement_id= self.__system_information_model.get_uuid(),
@@ -1017,7 +989,7 @@ class ApplicationController(QObject):
         return self.__file_queue.size()
 
     def __get_transferred_ratio(self):
-        return self.__file_queue.get_transferred_ratio()
+        return self.__transfer_controller.progress
 
     def __is_task_running(self):
         return True
@@ -1063,7 +1035,7 @@ class ApplicationController(QObject):
         return 0
     
     def __get_copied_files_count(self):
-        return self.__copied_files_count
+        return self.__transfer_controller.copied_files_count
 
     @Slot(str)
     def is_file_in_queue(self, filepath:str) -> bool:
