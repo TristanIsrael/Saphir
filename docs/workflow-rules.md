@@ -4,6 +4,8 @@
 > **Last updated**: 2026-10-28
 > **v2 changes**: added `SystemWaitingForTarget` (waiting for the 2nd target after analysis), Stop / Reset / Copy-cancellation transitions, and the AV failure distinction (per-file error vs engine panic, NFR-3).
 > **v2.1 changes**: decoupled file *selection* from AV readiness — a disk can be browsed/selected as soon as the disk-controller is ready and a disk is connected, even if the AV engines are not ready; the analysis trigger now requires the **ready-to-analyze** condition (AV engines ready + core ready + non-empty queue). Added the boot/start dialog sizing rule (large → small → hidden).
+> **v2.2 changes**: removed the copy-decline / copy-cancel transitions — there is **no cancel button**; `SystemWaitingForTarget` is a **stable terminal-ish state** whose only exits are: insert a target disk, Reset, or Shutdown.
+> **v2.3 changes**: renamed the analysis **Stop** button to **Pause** — there is **no hard stop**. Pausing suspends the analysis (files already analyzed keep their status) and the user can **resume** it later from the same state.
 
 ---
 
@@ -27,7 +29,7 @@ Saphir follows a deterministic state machine workflow from boot to shutdown. Thi
 | 5 | `SystemWaitingForUserAction` | Files loaded, user selects files to analyze | Pre-analysis |
 | 6 | `SystemAnalysisRunning` | Antivirus analysis in progress | Analysis |
 | 7 | `AnalysisCompleted` | All files analyzed, consensus reached | Post-analysis |
-| 8 | `SystemWaitingForTarget` | Analysis done, waiting for a target disk (or user decision) | Post-analysis |
+| 8 | `SystemWaitingForTarget` | Analysis done; **stable terminal-ish state** — wait for a target disk, or the user resets / shuts down (no cancel) | Post-analysis |
 | 9 | `CopyCleanFiles` | Copying clean files to target disk | Transfer |
 | 10 | `GeneratingReport` | PDF report + journal being written | Report |
 | 11 | `SystemMustBeReset` | Workflow complete, reset required before reuse | Post-transfer |
@@ -126,9 +128,7 @@ These states are defined in `enums.py` but are **unreachable** and should be rem
 | Trigger | From | To |
 |---------|------|-----|
 | target already available (skip the wait) | `AnalysisCompleted` | `CopyCleanFiles` |
-| user Stop / AV engine panic | `SystemAnalysisRunning` | `SystemWaitingForUserAction` |
-| user declines the copy | `SystemWaitingForTarget` | `SystemMustBeReset` |
-| user cancels the copy | `CopyCleanFiles` | `SystemMustBeReset` |
+| user Pause / AV engine panic | `SystemAnalysisRunning` | `SystemWaitingForUserAction` |
 | a different disk is plugged in (system already used) — NFR-4 | `SystemReady` | `SystemMustBeReset` |
 | user Reset (only when no operation is running) | `SystemWaitingForUserAction`, `AnalysisCompleted`, `SystemWaitingForTarget`, `SystemMustBeReset` | `SystemResetting` |
 | user Shutdown | **any state** | `SystemShuttingDown` |
@@ -149,15 +149,13 @@ Each transition has a **trigger** (event) and a **guard** (condition).
 | `SystemWaitingForUserAction` | `SystemAnalysisRunning` | User clicks "Start Analysis" | **ready-to-analyze**: AV engines ready + core ready + `queue_size > 0` |
 | `SystemWaitingForUserAction` | `SystemGettingFilesList` | User modifies queue | Always |
 | `SystemAnalysisRunning` | `AnalysisCompleted` | All files have a final status | `clean + infected + error == queue_size` |
-| `SystemAnalysisRunning` | `SystemWaitingForUserAction` | User clicks Stop | Always (files keep their status) |
+| `SystemAnalysisRunning` | `SystemWaitingForUserAction` | User clicks **Pause** | Always (files keep their status; the analysis is suspended and can be **resumed**) |
 | `SystemAnalysisRunning` | `SystemWaitingForUserAction` | AV **engine panic** (component `ERROR`/`OFF`) | Abort analysis immediately (NFR-3) |
 | `AnalysisCompleted` | `CopyCleanFiles` | Auto-triggered | `target_available` |
 | `AnalysisCompleted` | `SystemWaitingForTarget` | Auto-triggered | `not target_available` |
 | `SystemWaitingForTarget` | `CopyCleanFiles` | Target disk inserted | `target_available` |
-| `SystemWaitingForTarget` | `SystemMustBeReset` | User declines copy (end without copy) | Always (no report generated) |
 | `SystemWaitingForTarget` | `SystemResetting` | User clicks Reset | Always (no op running) |
 | `CopyCleanFiles` | `GeneratingReport` | All clean files copied | `copied == clean_count` |
-| `CopyCleanFiles` | `SystemMustBeReset` | User cancels the copy | Always (cannot be resumed, reset required) |
 | `GeneratingReport` | `SystemMustBeReset` | Journal.log copied to target | `disk == target_name && path == journal.log` |
 | `SystemWaitingForUserAction` | `SystemResetting` | User clicks Reset | Always (no op running) |
 | `AnalysisCompleted` | `SystemResetting` | User clicks Reset | Always (no op running) |
@@ -167,7 +165,9 @@ Each transition has a **trigger** (event) and a **guard** (condition).
 
 > **Ready-to-analyze** (the condition that enables the analysis trigger): the AV engines are ready (`len(analysis_components) >= ANTIVIRUS_NEEDED`) **and** the core Safecor components are ready **and** the queue is non-empty (`queue_size > 0`). File *selection* does **not** require the AV engines — it only needs the disk-controller ready and a disk connected. The "Start Analysis" button is **disabled** until this condition holds (view-state rule).
 >
-> **Reset rule**: Reset is allowed **only when no operation is running**. In practice it is relevant from the stable states where the system may be dirty — `SystemWaitingForUserAction`, `AnalysisCompleted`, `SystemWaitingForTarget`, `SystemMustBeReset` — and is **blocked** from `SystemAnalysisRunning`, `CopyCleanFiles`, and `GeneratingReport` (stop the running operation first). Resetting from `SystemReady` (nothing read yet) is a no-op.
+> **Reset rule**: Reset is allowed **only when no operation is running**. In practice it is relevant from the stable states where the system may be dirty — `SystemWaitingForUserAction`, `AnalysisCompleted`, `SystemWaitingForTarget`, `SystemMustBeReset` — and is **blocked** from `SystemAnalysisRunning`, `CopyCleanFiles`, and `GeneratingReport` (pause the running operation first). Resetting from `SystemReady` (nothing read yet) is a no-op.
+>
+> **No cancel**: there is **no cancel button** for the copy — neither before (from `SystemWaitingForTarget`) nor during (from `CopyCleanFiles`). The only exits from those states are: insert a target disk (→ `CopyCleanFiles`), **Reset**, or **Shutdown**. `SystemWaitingForTarget` is therefore a **stable terminal-ish state** the user may stay in (the summary screen `FilesCopyPanel` is shown, prompting to insert a target).
 
 ---
 
@@ -180,7 +180,7 @@ The workflow is divided into 6 phases. Each phase has an associated **loading pr
 | **Boot** | `SystemStarting` → `SafecorReady` | 0 → 0.33 | Loading panel, component discovery |
 | **Ready** | `SystemReady` | 0.33 → 1.0 | File browser panel shown if storage connected |
 | **Pre-Analysis** | `SystemGettingFilesList`, `SystemWaitingForUserAction` | 1.0 | File selection panel, queue visible |
-| **Analysis** | `SystemAnalysisRunning` | 1.0 | Analysis progress, ETA, stop button |
+| **Analysis** | `SystemAnalysisRunning` | 1.0 | Analysis progress, ETA, **pause** button |
 | **Post-Analysis** | `AnalysisCompleted`, `SystemWaitingForTarget`, `CopyCleanFiles`, `GeneratingReport` | 1.0 | "Insert target" prompt (when waiting), copy progress, report generation |
 | **Post-Transfer** | `SystemMustBeReset` | 1.0 | Reset/Shutdown dialog, messages |
 
@@ -239,7 +239,7 @@ infected = sum(result.success for result in results) < ANTIVIRUS_NEEDED
 ```
 
 ### I8: Reset Only When Idle
-Reset is allowed **only when no operation is running**. It is blocked from `SystemAnalysisRunning`, `CopyCleanFiles`, and `GeneratingReport`; the user must stop the running operation first (F10).
+Reset is allowed **only when no operation is running**. It is blocked from `SystemAnalysisRunning`, `CopyCleanFiles`, and `GeneratingReport`; the user must pause the running operation first (F10).
 
 ---
 
@@ -282,7 +282,7 @@ The following table defines which panels/dialogs are visible per state. This sho
 | `SystemGettingFilesList` | visible (loading) | hidden | hidden | hidden | hidden | hidden |
 | `SystemWaitingForUserAction` | **visible** | hidden | hidden | hidden | hidden | hidden |
 | `SystemAnalysisRunning` | hidden | hidden | hidden | hidden | hidden | **visible** |
-| `AnalysisCompleted` | hidden | **visible** | hidden | hidden | hidden | visible (stopped) |
+| `AnalysisCompleted` | hidden | **visible** | hidden | hidden | hidden | visible (finished / paused) |
 | `SystemWaitingForTarget` | hidden | **prompt (insert target)** | hidden | hidden | hidden | hidden |
 | `CopyCleanFiles` | hidden | **visible** | hidden | hidden | hidden | hidden |
 | `GeneratingReport` | hidden | visible (done) | **visible** | hidden | hidden | hidden |
@@ -320,13 +320,13 @@ Both are pure functions of the workflow state + the `analysisReady` binding, so 
 9. User clicks Reset → SystemResetting → SystemReady (cycle repeats)
 ```
 
-### 8.2 Stop During Analysis
+### 8.2 Pause / Resume During Analysis
 
 ```
 1. SystemAnalysisRunning
-2. User clicks Stop → AnalysisController.stop_analysis()
+2. User clicks **Pause** → AnalysisController.stop_analysis() (the analysis is suspended)
 3. SystemWaitingForUserAction (files already analyzed keep their status)
-4. User can modify queue and restart
+4. User can modify the queue, then click **Start** to **resume** the analysis (remaining files are picked up; already-analyzed files keep their status)
 ```
 
 ### 8.3 Post-Transfer Reconnection
@@ -347,7 +347,7 @@ Both are pure functions of the workflow state + the `analysisReady` binding, so 
 3. Source becomes the only storage → file browsing + analysis enabled
 4. Analysis completes → AnalysisCompleted → SystemWaitingForTarget (no target yet)
 5a. User inserts the target → CopyCleanFiles → ... → SystemMustBeReset
-5b. User declines the copy → SystemMustBeReset (no report)
+5b. User does not plug a target and clicks Reset → SystemResetting → SystemReady (no copy, no report)
 ```
 
 > **Resolved**: the waiting is modelled by `SystemWaitingForTarget`. Analysis works on a single disk; copy and report require a second disk (F1, F4).
@@ -356,9 +356,8 @@ Both are pure functions of the workflow state + the `analysisReady` binding, so 
 
 ```
 1. ... → AnalysisCompleted → SystemWaitingForTarget (no target)
-2. User chooses not to plug a target (end of cycle without copy)
-3. → SystemMustBeReset (no copy, no report)
-4. User clicks Reset → SystemResetting → SystemReady
+2. User does not plug a target; clicks Reset (no copy, no report)
+3. → SystemResetting → SystemReady
 ```
 
 ### 8.6 Source Disconnection During Copy

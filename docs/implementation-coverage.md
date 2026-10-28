@@ -85,7 +85,7 @@
 - Files parallelism: `__repository_capacity` + timer (line 80).
 - Engines parallelism: each file sent to all AV (line 199).
 - Consensus: `evaluate_result_consensus` (analysis_helper.py:110) — infected if **one** engine infected.
-- Stop/resume: `stop_analysis`/`start_analysis` + `stop`/`resume` topics (analysis_controller.py:70-86).
+- Pause/resume: `stop_analysis`/`start_analysis` + `stop`/`resume` topics (analysis_controller.py:70-86) — the UI button is a **Pause** (suspend + resume), not a hard stop.
 - Progression: `globalProgress`, `FilesProgress.qml`.
 - ETA: `EMAETAEstimator` (see F16).
 
@@ -108,7 +108,7 @@
 **Gaps / divergences**:
 - ❌ **Final check (copied == clean)**: `__get_transferred_ratio` compares but does **not** trigger an explicit error if files have failed. The end is determined by `ratio >= 1`.
 - ❌ **Source disconnection during copy**: not handled → uncertain state (known bug). No error message, no resume.
-- ❌ **Cancellation**: no button or cancellation logic for the copy.
+- ✅ **No cancellation (by design)**: there is no cancel button for the copy (neither before nor during); the only exits are insert a target, Reset, or Shutdown. `SystemWaitingForTarget` is a stable terminal-ish state (see workflow v2.2).
 - ⚠️ **Trigger**: immediate on target connection, not conditioned on the end of the analysis (see F1).
 - 🟡 `[feature]` No check of the available space on the target.
 - 🟡 **Available space displayed**: `targetAvailableSize` always 0 and `Property(bool, ...)` instead of `int` (application_controller.py:1242) → permanent "Available space: Unknown".
@@ -426,7 +426,6 @@ These capabilities used to exist in the code without a spec entry. They are now 
 | `[fix]` | F4/NFR-1 | **End-to-end fingerprint verification** (analysis + target copy) — critical gap |
 | `[fix]` | F4 | Final check: error if copied ≠ clean |
 | `[fix]` | F4 | Source disconnection during copy → error + automatic resume |
-| `[fix]` | F4 | Copy cancellation |
 | `[fix]` | F6 | Report template selection according to the language (use `scan_report_fr.html`) |
 | `[fix]` | F6 | PDF generation error handling (end normally) |
 | `[fix]` | F8 | Wire the classification (Safecor) instead of the hardcoded 0 |
