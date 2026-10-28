@@ -1,6 +1,6 @@
 # Refactoring Plan - Saphir v3.x
 
-> **Status**: In progress — Phases 0-6 complete, Phases 7-9 pending
+> **Status**: In progress — Phases 0-6 complete, Phases 7-11 pending
 > **Last updated**: 2026-10-28
 > **Branch**: `refactoring` (based on `main` post-merge #128)
 
@@ -373,6 +373,8 @@ These rules must hold throughout refactoring:
 | 7 Linting & static analysis | ⏳ Pending | — | — | Ruff + type check |
 | 8 Alpine package validation | ⏳ Pending | — | — | Docker local build |
 | 9 Documentation debt | ⏳ Pending | — | — | French→English, docstrings, dead code removal |
+| 10 Missing features & NFRs | ⏳ Pending | — | — | Fingerprint, ReportFailed, disconnect handlers, AV failure |
+| 11 Functional coverage | ⏳ Pending | — | — | Error paths, NFRs, disconnection scenarios |
 
 **Test baseline**: 91 passed, 3 skipped (MOUNT_ARCHIVES disabled), 0 failed, 0 xfailed
 
@@ -385,7 +387,9 @@ These rules must hold throughout refactoring:
 | Phase 7 | -50 / +50 | Low | Phases 3-5 ✅ |
 | Phase 8 | 0 / 0 | Low | Phases 3-5 ✅ |
 | Phase 9 | -250 / +100 | Medium | Phases 0-8 |
-| **Remaining** | **+0 / -150** | **~3 days** | — |
+| Phase 10 | +400 / +100 | High | Phases 3-6 ✅ |
+| Phase 11 | +300 / +200 | High | Phase 10 |
+| **Remaining** | **0 / +850** | **~10 days** | — |
 
 > **Note**: Phases 6 and 7 are independent and can be parallelized.
 
@@ -523,3 +527,247 @@ These rules must hold throughout refactoring:
 - Every public class and method in `Saphir/` has a docstring
 - No commented-out code blocks remain (verified by manual review + ruff)
 - Doxygen build succeeds without warnings on `python/gui/src/Saphir/`
+
+---
+
+### Phase 10: Missing Features & NFRs Implementation ⏳ PENDING
+
+**Goal**: Implement the features and NFRs that are specified in `docs/features.md` and `docs/workflow-rules.md` but **not yet coded**. These are prerequisites for Phase 11 (functional coverage testing).
+
+**Principle**: We cannot test what does not exist. This phase implements the missing behaviour so that Phase 11 can validate it.
+
+#### 10.1 [P0] NFR-1: Fingerprint verification chain
+
+**Spec**: `features.md` NFR-1 — Saphir must verify fingerprint integrity at each step.
+
+**Current state**: Safecor computes fingerprints automatically, but Saphir does **not** compare them between steps.
+
+**Work**:
+- In `TransferController.on_copy_file()`: compare the `fingerprint` in the copy response with the fingerprint stored in the file queue entry. If mismatch → mark file as `FileCopyError`, log the error.
+- In `AnalysisController.__handle_result()`: verify the fingerprint returned by the AV matches the one stored in the queue. If mismatch → mark file as `FileError`.
+- Store the source fingerprint in the file queue entry when the file is first copied to the repository (`NEW_FILE` notification).
+
+**Files**: `transfer_controller.py`, `analysis_controller.py`, `file_queue.py` (add `fingerprint` field to file entries)
+
+**Validation**: Unit tests verify mismatch → error status, match → normal flow.
+
+#### 10.2 [P0] Scenario 8.7: Report generation failure → `ReportFailed`
+
+**Spec**: `workflow-rules.md` §3.2 — `GeneratingReport → ReportFailed` on report failure. Permanent error state, reset required.
+
+**Current state**: The `ReportFailed` state exists in the enum (value 11) but the **transition is never triggered**. `ReportController.make_report()` exceptions are caught silently.
+
+**Work**:
+- In `ReportController`: emit a `reportFailed = Signal()` on exception (WeasyPrint error, disk full, I/O).
+- In `ApplicationController.__on_transfer_complete()`: connect to `reportFailed` → `__set_system_state(SystemState.ReportFailed)` + user message.
+- In `WorkflowController`: add `GeneratingReport → ReportFailed` to the valid transitions.
+- Verify `reset()` works from `ReportFailed` (I9: counters/queue cleared).
+
+**Files**: `report_controller.py`, `application_controller.py`, `workflow_controller.py`, `enums.py` (verify value)
+
+**Validation**: Unit test: mock `make_report` to raise → state = `ReportFailed` → reset → `SystemReady`.
+
+#### 10.3 [P1] Scenario 8.8: Source disconnection during analysis
+
+**Spec**: `workflow-rules.md` §8.8 — Analysis continues on repository files, error flag set, loop held, auto-resume on reconnection.
+
+**Current state**: `__handle_disk_state` for source DISCONNECTED during `SystemAnalysisRunning` falls through to `__reset_states()` (if not used) or `SystemMustBeReset` (if used). **No error-flag / hold / resume logic exists.**
+
+**Work**:
+- Add `__source_disconnected_during_analysis` flag to `ApplicationController`.
+- In `__handle_disk_state`: if state == `SystemAnalysisRunning` and source DISCONNECTED → set flag, emit user message, do NOT reset.
+- In `AnalysisController`: when the flag is set, the analysis loop waits (does not request new files from the source) but continues processing files already in the repository.
+- On source reconnection (same disk name): clear flag, resume requesting files.
+- On source reconnection (different disk name): → `SystemMustBeReset` (NFR-4).
+
+**Files**: `application_controller.py`, `analysis_controller.py`, `workflow_controller.py`
+
+**Validation**: Integration test (emulator): start analysis, disconnect source, verify analysis continues on repo files, reconnect, verify resume.
+
+#### 10.4 [P1] Scenario 8.6: Source/target disconnection during copy + auto-resume
+
+**Spec**: `workflow-rules.md` §8.6 — Error flag on `CopyCleanFiles`, auto-resume on same-disk reconnection, `SystemMustBeReset` on different disk.
+
+**Current state**: Target disconnect → `SystemMustBeReset` (implemented in `d7df95b`). Source disconnect during copy → **not handled** (falls through to reset or ignored).
+
+**Work**:
+- Add `__copy_error_flag` to `TransferController`.
+- In `ApplicationController.__handle_disk_state`: if state == `CopyCleanFiles`:
+  - Source DISCONNECTED → set `__copy_error_flag`, emit message, **stay in `CopyCleanFiles`**.
+  - Target DISCONNECTED → set `__copy_error_flag`, emit message, **stay in `CopyCleanFiles`**.
+- In `TransferController`: when `__copy_error_flag` is set, pause the copy loop (do not request next file).
+- On reconnection (same disk name): clear flag, resume copy from where it left off.
+- On reconnection (different disk name): → `SystemMustBeReset` (NFR-4, I6).
+
+**Files**: `application_controller.py`, `transfer_controller.py`, `workflow_controller.py`
+
+**Validation**: Integration test: start copy, disconnect source, verify pause, reconnect same disk, verify resume; disconnect + reconnect different disk, verify `SystemMustBeReset`.
+
+#### 10.5 [P1] NFR-3: AV engine failure during analysis
+
+**Spec**: `features.md` NFR-3 — If an AV fails during analysis: affected files get `Error` status, already-analyzed files keep status. If all AVs fail → abort.
+
+**Current state**: `__check_components_availability` is only called on `DISCOVER_COMPONENTS/response` (at startup). **No re-check during analysis.** If an AV VM dies mid-analysis, the files wait forever for a second result.
+
+**Work**:
+- Subscribe to `ComponentsHelper` state changes during analysis (or poll on a timer).
+- In `AnalysisController`: if an AV component transitions to `ERROR`/`OFF` during analysis:
+  - Mark all files that were waiting for this AV's result as `FileError`.
+  - If `len(available_avs) < ANTIVIRUS_NEEDED` → stop analysis, transition to `SystemWaitingForUserAction`.
+- In `ApplicationController.__on_analysis_state_changed`: handle the abort case.
+
+**Files**: `analysis_controller.py`, `application_controller.py`
+
+**Validation**: Integration test: start analysis, simulate AV component going OFF, verify files get `Error` status, verify analysis stops if below `ANTIVIRUS_NEEDED`.
+
+#### 10.6 [P2] F4: Individual copy failure + final check
+
+**Spec**: `features.md` F4 — Individual failure: copy continues, error reported. Final check: `copied == clean_count`, otherwise error.
+
+**Current state**: `TransferController.on_copy_file` handles individual success/failure. **The final check is implicit** (transfer completes when `copied >= total`), but a mismatch (some copies failed) is not explicitly detected and reported.
+
+**Work**:
+- In `TransferController`: on transfer completion, if `copied_files_count < clean_files_total` → emit `transferError = Signal(int)` with the number of failures.
+- In `ApplicationController`: on `transferError` → log the discrepancy, include in report.
+
+**Files**: `transfer_controller.py`, `application_controller.py`
+
+**Validation**: Unit test: 3 clean files, 1 fails → `transferError` emitted with count=1.
+
+#### 10.7 [P2] F3: Pause/Resume with partial analysis
+
+**Spec**: `workflow-rules.md` §8.2 — Pause suspends, resume picks up remaining files, already-analyzed files keep status.
+
+**Current state**: `stop_analysis()` sets state to `AnalysisStopped`. `start_analysis()` restarts but **re-processes all files** (including already-analyzed ones). The "skip already-analyzed" logic is missing.
+
+**Work**:
+- In `AnalysisController.start_analysis()`: before processing, check each file's current status. If `FileClean` or `FileInfected` → skip (do not re-copy, do not re-analyze).
+- Only enqueue files with status `FileStatusUndefined` or `FileAnalysing` (interrupted).
+
+**Files**: `analysis_controller.py`
+
+**Validation**: Integration test: analyze 1 of 3 files, stop, start again → verify only 2 files are processed.
+
+#### 10.8 [P2] F1: Full-disk analysis (all partitions)
+
+**Spec**: `features.md` F1 — "Scan all" mode must analyze **all partitions** of the media.
+
+**Current state**: `start_full_analysis()` requests only the root `/` of the first disk. Multi-partition disks produce multiple "disk" entries in Safecor, but only the first is analyzed.
+
+**Work**:
+- In `start_full_analysis()`: iterate over **all** storages (partitions) from `StorageManager.get_storages()`, not just the source.
+- Queue files from each partition root.
+- Update `folders_to_query` count accordingly.
+
+**Files**: `application_controller.py`, `storage_manager.py` (expose all partitions)
+
+**Validation**: Unit test: 2-partition disk → files from both partitions are queued.
+
+---
+
+### Phase 11: Functional Coverage ⏳ PENDING
+
+**Goal**: Increase functional coverage from ~58% (strict) to ≥ 80% by addressing the highest-priority gaps in error paths, NFRs, and disconnection scenarios.
+
+**Current functional coverage** (2026-10-28):
+
+| Category | Items | Covered | Partial | Not covered | Score |
+|----------|:-----:|:-------:|:-------:|:-----------:|:-----:|
+| Features (F1-F21) | 14 | 5 | 9 | 0 | 84% |
+| NFRs (NFR-1/5) | 4 | 1 | 2 | 1 | 59% |
+| Scenarios (8.1-8.8) | 8 | 1 | 5 | 2 | 50% |
+| **Total** | **26** | **7** | **16** | **3** | **~58%** |
+
+#### Sub-tasks (in decreasing priority order)
+
+##### 10.1 [P0] Fingerprint integrity verification (NFR-1)
+- **Gap**: No test verifies that Saphir compares fingerprints at each step (source→repository, repository→AV, repository→target)
+- **Work**:
+  - Add `test_fingerprint_verification.py`
+  - Test that a fingerprint mismatch on copy→repository marks the file as `Error`
+  - Test that a fingerprint mismatch on copy→target marks the file as `CopyError`
+  - Test that a matching fingerprint chain passes through to `CopySuccess`
+- **Files**: `tests/test_fingerprint_verification.py` (new), `analysis_helper.py` (if verification logic needs extraction)
+- **Effort**: Medium (1 day)
+
+##### 10.2 [P0] Report generation failure (Scenario 8.7)
+- **Gap**: No test covers the `GeneratingReport → ReportFailed` transition
+- **Work**:
+  - Add test in `test_application_controller_handlers.py`: mock `ReportController.make_report` to raise an exception
+  - Assert state transitions to `ReportFailed`
+  - Assert that `reset()` from `ReportFailed` works
+- **Files**: `tests/test_application_controller_handlers.py` (extend)
+- **Effort**: Low (2h)
+
+##### 10.3 [P1] Source disconnection during analysis (Scenario 8.8)
+- **Gap**: No test covers source DISCONNECTED while `SystemAnalysisRunning`
+- **Work**:
+  - Add test: state = `SystemAnalysisRunning`, publish `DISK_STATE` with source `DISCONNECTED`
+  - Assert analysis continues on repository files (AV not interrupted)
+  - Assert error flag is set / user prompted to reconnect
+  - Assert reconnection (same disk) clears the flag and analysis resumes
+- **Files**: `tests/test_application_controller_handlers.py` (extend), `application_controller.py` (if handler needs the error-flag logic)
+- **Effort**: Medium (1 day)
+
+##### 10.4 [P1] Source/target disconnection during copy + auto-resume (Scenario 8.6)
+- **Gap**: Only target disconnect → `SystemMustBeReset` is tested. Source disconnect during copy and the auto-resume path are not covered.
+- **Work**:
+  - Add test: state = `CopyCleanFiles`, source DISCONNECTED → error flag set, state stays `CopyCleanFiles`
+  - Add test: source reconnected (same disk) → copy resumes automatically
+  - Add test: source reconnected (different disk) → `SystemMustBeReset` (NFR-4)
+- **Files**: `tests/test_application_controller_handlers.py` (extend), `transfer_controller.py` (if resume logic needs extraction)
+- **Effort**: High (1-2 days)
+
+##### 10.5 [P1] AV engine failure during analysis (NFR-3)
+- **Gap**: No test covers an AV component transitioning to `ERROR`/`OFF` during an active analysis
+- **Work**:
+  - Add test: analysis running, one AV component state → `ERROR`
+  - Assert affected files get `Error` status (not clean)
+  - Assert already-analyzed files keep their status
+  - Assert if both AVs fail → analysis aborts → `SystemWaitingForUserAction`
+- **Files**: `tests/test_analysis_controller.py` (extend), `application_controller.py` (`__check_components_availability` during analysis)
+- **Effort**: Medium (1 day)
+
+##### 10.6 [P2] Pause/Resume with partial analysis (Scenario 8.2)
+- **Gap**: Pause is tested, but resume with a partial queue (some files already analyzed) is not
+- **Work**:
+  - Add test: start analysis, analyze 1 of 3 files, pause
+  - Assert remaining files are still in queue with pending status
+  - Resume → assert only the 2 remaining files are analyzed
+  - Assert the already-analyzed file keeps its status
+- **Files**: `tests/test_analysis_controller.py` (extend)
+- **Effort**: Medium (half day)
+
+##### 10.7 [P2] Individual copy failure (F4 error handling)
+- **Gap**: No test covers a single file copy failing while others succeed
+- **Work**:
+  - Add test: 3 clean files in queue, 1 copy returns `status != "ok"`
+  - Assert failed file gets `CopyError` status
+  - Assert other files continue copying
+  - Assert `copied_files_count` reflects only successes
+  - Assert final check detects mismatch (copied ≠ clean count)
+- **Files**: `tests/test_transfer_controller.py` (extend)
+- **Effort**: Low (2h)
+
+##### 10.8 [P2] Target disconnect before analysis (F1)
+- **Gap**: The "target disconnected before user made their choice → return to initial state" path is not explicitly tested
+- **Work**:
+  - Add test: no source set, no system_used, disk DISCONNECTED
+  - Assert state remains `SystemReady` (no source to reset)
+- **Files**: `tests/test_application_controller_handlers.py` (extend)
+- **Effort**: Low (1h)
+
+#### Target coverage after Phase 10
+
+| Category | Before | After (target) |
+|----------|:------:|:--------------:|
+| Features | 84% | 90% |
+| NFRs | 59% | 85% |
+| Scenarios | 50% | 80% |
+| **Total** | **~58%** | **≥ 80%** |
+
+**Validation**:
+- All new tests pass (`pytest tests/ -q`)
+- Functional coverage recalculated ≥ 80% (strict formula)
+- Code coverage remains ≥ 85%
+- `test_workflow_nominal.py` still passes (no regression)
