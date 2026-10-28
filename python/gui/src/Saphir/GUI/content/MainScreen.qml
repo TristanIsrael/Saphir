@@ -278,9 +278,7 @@ Window {
         id: bindings
 
         onSystemStateChanged: {
-            if(bindings.systemState === Enums.TransferFinished) {
-                window.pnlFilesCopy.visible = false
-            } else if (bindings.systemState === Enums.SystemResetting) {
+            if (bindings.systemState === Enums.SystemResetting) {
                 window.pnlFilesCopy.visible = false
                 window.pnlFileSelection.visible = false
                 window.dlgSystemMustBeReset.visible = false

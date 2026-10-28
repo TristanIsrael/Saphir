@@ -89,8 +89,6 @@ Item {
                             return qsTr("Copy in progress...")
                         } else if (bindings.systemState === Enums.GeneratingReport) {
                             return qsTr("Generating the report...")
-                        } else if (bindings.systemState === Enums.TransferFinished) {
-                            return qsTr("The transfer is finished!")
                         } else if (bindings.systemState === Enums.AnalysisCompleted) {
                             return qsTr("Please connect a target storage...")
                         }
@@ -112,8 +110,6 @@ Item {
                             return Environment.colorText
                         } else if (bindings.systemState === Enums.GeneratingReport) {
                             return Environment.colorText
-                        } else if (bindings.systemState === Enums.TransferFinished) {
-                            return Environment.colorClean
                         }
                     }
 
