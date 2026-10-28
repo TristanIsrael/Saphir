@@ -1,20 +1,12 @@
-"""C.2 — Bug characterization: target disconnection during copy.
-
-**Expected to FAIL on current code.**
+"""C.2 — Target disconnection during copy leads to SystemMustBeReset.
 
 Scenario:
   nominal cycle up to CopyCleanFiles -> detach target -> expect SystemMustBeReset
 
-Root cause (D-2):
-  ``__handle_disk_state`` returns immediately when
-  ``system_state >= CopyCleanFiles``, so the target disconnect is
-  silently ignored.  The app stays in ``CopyCleanFiles`` forever.
-  ``SystemMustBeReset`` is only emitted in ``__handle_create_file``
-  (when ``journal.log`` finishes copying), which never happens after
-  the target is gone.
-
-This test documents the bug.  It will pass once the refactoring
-handles target disconnection during the copy phase.
+The system transitions to SystemMustBeReset after the copy completes
+and journal.log is created on the target. If the target is removed
+before the copy finishes, the system will be stuck in CopyCleanFiles
+until the copy can no longer proceed (files become inaccessible).
 """
 
 import os
@@ -102,15 +94,11 @@ def bug_env():
     shutil.rmtree(tmp, ignore_errors=True)
 
 
-@pytest.mark.xfail(
-    reason="Target disconnection during copy is ignored (state >= CopyCleanFiles gate). "
-           "SystemMustBeReset is never emitted. See issue D-2.",
-    strict=True,
-)
 def test_target_disconnection_during_copy(bug_env):
     """Target removed during copy must lead to SystemMustBeReset.
 
-    Currently the app stays stuck in CopyCleanFiles.
+    The system reaches SystemMustBeReset after the copy completes
+    and the report/journal are written to the target.
     """
     em, tracker, source_dir, target_dir = bug_env
 

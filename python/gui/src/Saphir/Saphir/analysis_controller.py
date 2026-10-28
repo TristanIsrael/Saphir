@@ -29,7 +29,6 @@ class AnalysisController(QObject):
     __archive_mounted_filepath = None
     __archive_file = {}
     __queue_lock = Lock()
-    __repository_lock = Lock()
 
     # Signals
     stateChanged = Signal(AnalysisState)
@@ -92,7 +91,6 @@ class AnalysisController(QObject):
         self.__infected_files_size = 0
         self.__files_copy_queue_size = 0
         self.__start_times = {}
-        self.__repository_size = 0
 
 
     ######
@@ -124,12 +122,7 @@ class AnalysisController(QObject):
                         
             self.__handle_result(payload.get("component", ""), payload.get("filepath", ""), payload.get("success", False), payload.get("details", ""))
         elif topic == f"{TOPIC_ANALYSIS}/status":
-            return # Ignored
-            if not MqttHelper.check_payload(payload, ["filepath", "status", "progress"]):
-                Api().error(f"Malformed message for topic {topic}")
-                return
-            
-            self.__handle_status(payload.get("filepath", ""), FileStatus(payload.get("status", 0)), payload.get("progress", 0))
+            pass
         elif topic == f"{TOPIC_ANALYSIS}/error":
             if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
                 # On filtre pour ne pas provoquer de boucle infinie
@@ -259,20 +252,7 @@ class AnalysisController(QObject):
 
 
     def __handle_status(self, filepath:str, status:FileStatus, progress:int):
-        return # Unused
-        '''
-        with self.__queue_lock:
-            if self.__archive_mounted_name is not None:
-                # If this is an archive we ignore the status
-                return
-            
-            file = self.__files[filepath]
-            file["status"] = status
-
-            if progress > file.get("progress", 0):
-                file["progress"] = progress
-            
-            self.fileUpdated.emit(filepath, ["progress"])'''
+        pass
         
 
     def __handle_result(self, component:str, filepath:str, success:bool, details:str):
@@ -344,22 +324,24 @@ class AnalysisController(QObject):
             #print(f"File {filepath}, status={"clean" if clean else "infected"}, success={success}, component={component}")        
 
     def __handle_error(self, payload):
-        print("Error received:", payload)
+        filepath = payload.get("filepath", "")
+        error = payload.get("error", "unknown")
 
-        '''filepath = payload.get("filepath", "")
+        Api().warn(f"Analysis error for file {filepath}: {error}")
 
-        file = self.__files[filepath]
-        
-        #Api().warn(f"There was an error with the file {filepath}: {error}")
-        file["status"] = FileStatus.FileAnalysisError
-        file["progress"] = 100
-        self.__infected_files_count += 1
-        self.__infected_files_size += file["size"]
-        self.fileUpdated.emit(filepath, ["status", "progress"])
-        self.resultsChanged.emit()
+        file = self.__files.get(filepath)
+        if file is None:
+            return
+
+        with self.__queue_lock:
+            file["status"] = FileStatus.FileAnalysisError
+            file["progress"] = 100
+            self.__infected_files_count += 1
+            self.__infected_files_size += file.get("size", 0)
+            self.fileUpdated.emit(filepath, ["status", "progress"])
+            self.resultsChanged.emit()
 
         Api().delete_file(filepath, Constants.STR_REPOSITORY)
-        self.__repository_size -= 1'''
 
     
     def __do_copy_files_into_repository(self):
@@ -515,20 +497,9 @@ class AnalysisController(QObject):
         self.stateChanged.emit(state)
 
     def get_repository_capacity(self):
-        return self.__repository_capacity    
+        return self.__repository_capacity
 
-        #with self.__repository_lock:
-        #    return self.__repository_size
-        
-    #def inc_repository_size(self):
-    #    with self.__repository_lock:
-    #        self.__repository_size += 1
-
-    #def dec_repository_size(self):
-    #    with self.__repository_lock:
-    #        self.__repository_size -= 1
-    
     def get_queue_size(self):
         return len(self.__files)
-    
+
     state = Property(int, get_analysis_state, notify= stateChanged)
