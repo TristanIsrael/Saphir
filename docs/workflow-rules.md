@@ -1,8 +1,9 @@
 # Workflow Rules - Saphir
 
 > **Status**: Draft - To be reviewed and completed iteratively
-> **Last updated**: 2026-10-27
+> **Last updated**: 2026-10-28
 > **v2 changes**: added `SystemWaitingForTarget` (waiting for the 2nd target after analysis), Stop / Reset / Copy-cancellation transitions, and the AV failure distinction (per-file error vs engine panic, NFR-3).
+> **v2.1 changes**: decoupled file *selection* from AV readiness — a disk can be browsed/selected as soon as the disk-controller is ready and a disk is connected, even if the AV engines are not ready; the analysis trigger now requires the **ready-to-analyze** condition (AV engines ready + core ready + non-empty queue). Added the boot/start dialog sizing rule (large → small → hidden).
 
 ---
 
@@ -19,9 +20,9 @@ Saphir follows a deterministic state machine workflow from boot to shutdown. Thi
 | Value | State | Description | Phase |
 |-------|-------|-------------|-------|
 | 0 | `SystemInactive` | System not yet started | Pre-boot |
-| 1 | `SystemStarting` | Application initializing | Boot |
-| 2 | `SafecorReady` | Core platform + AV engines ready | Boot |
-| 3 | `SystemReady` | All components ready, waiting for media | Idle |
+| 1 | `SystemStarting` | Application and core platform initializing | Boot |
+| 2 | `SafecorReady` | Core platform (Safecor components) ready | Boot |
+| 3 | `SystemReady` | Core ready, waiting for media (AV engines **not** required) | Idle |
 | 4 | `SystemGettingFilesList` | Retrieving file list from source | Pre-analysis |
 | 5 | `SystemWaitingForUserAction` | Files loaded, user selects files to analyze | Pre-analysis |
 | 6 | `SystemAnalysisRunning` | Antivirus analysis in progress | Analysis |
@@ -62,14 +63,14 @@ These states are defined in `enums.py` but are **unreachable** and should be rem
       +---------------------+
                |  boot done
                v
-      +---------------------+
-      |    SafecorReady     |
-      +---------------------+
-               |  N AV engines ready
-               v
-      +---------------------+
-      |    SystemReady      |
-      +---------------------+
+       +---------------------+
+       |    SafecorReady     |
+       +---------------------+
+                |  core / disk-controller ready (AVs not required)
+                v
+       +---------------------+
+       |    SystemReady      |
+       +---------------------+
                |  storage connected (not used)
                v
       +-------------------------+
@@ -77,11 +78,11 @@ These states are defined in `enums.py` but are **unreachable** and should be rem
       +-------------------------+
                |  file list received
                v
-      +---------------------------+
-      |  SystemWaitingForUserAction|
-      +---------------------------+
-               |  user starts analysis
-               v
+       +---------------------------+
+       |  SystemWaitingForUserAction|
+       +---------------------------+
+                |  user starts analysis (ready-to-analyze)
+                v
       +-------------------------+
       |  SystemAnalysisRunning  |
       +-------------------------+
@@ -140,12 +141,12 @@ Each transition has a **trigger** (event) and a **guard** (condition).
 |------|-----|---------|-------|
 | `SystemInactive` | `SystemStarting` | App start | Always |
 | `SystemStarting` | `SafecorReady` | MQTT ready + subscriptions complete | Always |
-| `SafecorReady` | `SystemReady` | Disk controller + AV engines ready | `len(analysis_components) >= ANTIVIRUS_NEEDED` |
-| `SystemReady` | `SystemGettingFilesList` | First storage connected | `not system_used` |
+| `SafecorReady` | `SystemReady` | Disk controller ready (core components operational) | Always (AV engines **not** required) |
+| `SystemReady` | `SystemGettingFilesList` | First storage connected | `not system_used` (disk-controller ready + disk present) |
 | `SystemReady` | `SystemMustBeReset` | A **different** storage connected after use | `system_used && disk_name != source_name` |
 | `SystemGettingFilesList` | `SystemWaitingForUserAction` | All folders queried | `folders_to_query == 0 && analyse_selection` |
 | `SystemGettingFilesList` | `SystemAnalysisRunning` | All folders queried + whole-disk mode | `folders_to_query == 0 && analyse_whole` |
-| `SystemWaitingForUserAction` | `SystemAnalysisRunning` | User clicks "Start Analysis" | `queue_size > 0` |
+| `SystemWaitingForUserAction` | `SystemAnalysisRunning` | User clicks "Start Analysis" | **ready-to-analyze**: AV engines ready + core ready + `queue_size > 0` |
 | `SystemWaitingForUserAction` | `SystemGettingFilesList` | User modifies queue | Always |
 | `SystemAnalysisRunning` | `AnalysisCompleted` | All files have a final status | `clean + infected + error == queue_size` |
 | `SystemAnalysisRunning` | `SystemWaitingForUserAction` | User clicks Stop | Always (files keep their status) |
@@ -164,6 +165,8 @@ Each transition has a **trigger** (event) and a **guard** (condition).
 | `SystemResetting` | `SystemReady` | All VMs restarted + states cleared | Always |
 | Any | `SystemShuttingDown` | User clicks Shutdown | Always |
 
+> **Ready-to-analyze** (the condition that enables the analysis trigger): the AV engines are ready (`len(analysis_components) >= ANTIVIRUS_NEEDED`) **and** the core Safecor components are ready **and** the queue is non-empty (`queue_size > 0`). File *selection* does **not** require the AV engines — it only needs the disk-controller ready and a disk connected. The "Start Analysis" button is **disabled** until this condition holds (view-state rule).
+>
 > **Reset rule**: Reset is allowed **only when no operation is running**. In practice it is relevant from the stable states where the system may be dirty — `SystemWaitingForUserAction`, `AnalysisCompleted`, `SystemWaitingForTarget`, `SystemMustBeReset` — and is **blocked** from `SystemAnalysisRunning`, `CopyCleanFiles`, and `GeneratingReport` (stop the running operation first). Resetting from `SystemReady` (nothing read yet) is a no-op.
 
 ---
@@ -287,6 +290,17 @@ The following table defines which panels/dialogs are visible per state. This sho
 | `SystemResetting` | hidden | hidden | hidden | visible (loading) | hidden | hidden |
 | `SystemShuttingDown` | hidden | hidden | hidden | hidden | **visible** | hidden |
 
+### 7.1 Boot/start dialog (SystemLoadingPanel) — size & visibility
+
+The **`SystemLoadingPanel`** is an overlay (not a panel) shown while the system comes up. Two of its properties are driven by the workflow (see `MainScreenUi.ui.qml`):
+
+- **Size** — `height` is `implicitHeight` (the large splash) when the state is one of `SystemInactive`, `SystemStarting`, `SystemResetting`; otherwise `60` (a small top strip). So it is **large during boot / reset** and **small (a top strip) once the core is ready** (`SafecorReady` onward).
+- **Visibility** — `opacity` is `1.0` while the AV engines are **not** ready and `0.0` once they are, with a 1000 ms fade. So it is **hidden as soon as the AV engines are ready**.
+
+Both are pure functions of the workflow state + the `analysisReady` binding, so they stay within the view-state rule (the view binds to a derived property, it does not compute it).
+
+> **Intention vs. as-is**: the intended sizing is “large until a disk is detected, small once a disk is connected”. The as-is implementation keys the size on the **state** (large during `SystemStarting`, small from `SafecorReady`), which is functionally equivalent because a disk is only reachable once the core is ready. Requiring exact “disk-detected” sizing can be a follow-up (see `gui-backlog.md`).
+
 ---
 
 ## 8. Scenarios
@@ -294,10 +308,11 @@ The following table defines which panels/dialogs are visible per state. This sho
 ### 8.1 Normal Flow (Full Cycle)
 
 ```
-1. Boot → SystemStarting → SafecorReady → SystemReady
+1. Boot → SystemStarting → SafecorReady → SystemReady (core / disk-controller ready; AV engines **not** required)
 2. Insert source USB → SystemGettingFilesList (whole-disk) or SystemWaitingForUserAction (selection)
-3. User selects files → Queue populated
-4. User clicks Start → SystemAnalysisRunning
+   - Boot dialog (SystemLoadingPanel): **large** during boot (`SystemStarting`) → **small top strip** once the core is ready (`SafecorReady` onward, while the AV engines are not ready) → **hidden** once the AV engines are ready.
+3. User selects files → Queue populated (possible even if the AV engines are not ready yet)
+4. User clicks Start (enabled once **ready-to-analyze**: AV ready + core ready + queue non-empty) → SystemAnalysisRunning
 5. Files copied to repository → analyzed → status updated
 6. All files analyzed → AnalysisCompleted → (target available) → CopyCleanFiles
 7. Clean files copied to target → GeneratingReport

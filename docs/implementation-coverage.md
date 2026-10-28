@@ -1,7 +1,7 @@
 # Implementation state vs specification
 
 > **Status**: Coverage audit
-> **Last updated**: 2026-10-27
+> **Last updated**: 2026-10-28
 > **Reference**: `docs/features.md` (F1–F21, NFR-1 to NFR-5)
 
 ## Legend
@@ -70,6 +70,7 @@
 - Deselection: `dequeue_file` (line 254).
 
 **Gaps / divergences**:
+- ⚠️ **File selection blocked behind AV readiness (D7)**: the spec (workflow v2.1) allows selecting files as soon as the disk-controller is ready and a disk is connected, **even if the AV engines are not ready**; the analysis trigger is separately gated by the ready-to-analyze condition. The implementation gates `SystemReady` (and thus file selection) behind `len(analysis_components) >= ANTIVIRUS_NEEDED` (application_controller.py:612-623), so selection is not possible until the AV engines are ready.
 - ❌ **No concurrent enqueue**: no serialization wait queue. Several folders can be enqueued in parallel (spec constraint not met).
 - 🟡 **Queue locked after analysis**: the lock is implicit (via the system state), no explicit guard in `enqueue_file`/`dequeue_file`.
 - 🟡 `[feature]` No full queue drain (backlog).
@@ -411,6 +412,7 @@ These capabilities used to exist in the code without a spec entry. They are now 
 | D4 | Contamination point (NFR-4) | disk-controller read | Placement in the repository |
 | D5 | File status (F3) | Ternary (Clean/Infected/Error) | Binary + disabled error |
 | D6 | F11 progression | "Modal" | Panel (equivalent behavior) |
+| D7 | File selection vs AV readiness (F1/F2) | Selection possible dès disk-controller prêt + disque, **sans** attendre les AV; the analysis trigger is separately gated by ready-to-analyze (AV + core + queue) | `SystemReady` gated behind `len(analysis_components) >= ANTIVIRUS_NEEDED` (application_controller.py:612-623) → selection blocked until the AV engines are ready |
 
 ---
 
@@ -431,6 +433,7 @@ These capabilities used to exist in the code without a spec entry. They are now 
 | `[fix]` | F3/NFR-3 | Enable analysis error handling (Error status) |
 | `[fix]` | F15 | Viewer button + guards (unavailability, config, idle) |
 | `[fix]` | F2 | Enqueue serialization (no concurrent) |
+| `[fix]` | F1/F2 (D7) | Decouple file selection from AV readiness — reach `SystemReady` when the disk-controller is ready (no AV requirement); gate the analysis trigger on ready-to-analyze (AV + core + queue) |
 | `[fix]` | F10 | Also interrupt the copy in progress on reset |
 | `[fix]` | F16 | Translate the ETA duration units (`j`/`h`/`min`) — NFR-5 |
 | `[fix]` | F17 | Harmonize the third filter label (Waiting vs Other) |
