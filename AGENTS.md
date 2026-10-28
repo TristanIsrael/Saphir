@@ -80,6 +80,14 @@ Naming conventions:
 
 - Comments, documentation and commits are in **English** (see *Documentation standards*).
 
+## Issue tracking
+
+- Every code commit must be linked to a GitHub issue. Search existing issues first; create a new one only if none fits.
+- Ask the user for validation **before** creating an issue.
+- One commit = one issue (atomic commits). A single issue may span multiple commits if they are tightly coupled, but the default is 1:1.
+- All work that modifies existing code happens on a **dedicated branch** (never directly on `main`).
+- Label every issue at creation time. Use component labels (e.g. `emulator`, `gui`, `libsaphir`) plus a type label (`bug`, `feature`, `technical-debt`, `testing`, etc.).
+
 ## Chat rules
 
 - Respond in the same language as the prompt's
