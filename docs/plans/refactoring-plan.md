@@ -1,6 +1,6 @@
 # Refactoring Plan - Saphir v3.x
 
-> **Status**: In progress — Phases 0-2 complete, Phase 3-5 pending
+> **Status**: In progress — Phases 0-5 complete, Phases 6-8 pending
 > **Last updated**: 2026-10-28
 > **Branch**: `refactoring` (based on `main` post-merge #128)
 
@@ -222,10 +222,10 @@ elif state in (SystemMustBeReset, SystemResetting):
 
 ---
 
-### Phase 3: Extract Transfer Logic ⏳ PENDING
+### Phase 3: Extract Transfer Logic ✅ DONE
 
 **Goal**: Create dedicated `TransferController` for file copying.
-**Status**: Not started — depends on Phase 2
+**Status**: Complete — commit `2027609`, issue #134 (In review)
 
 #### 3.1 `TransferController` (NEW)
 - Extract `start_transfer()`, `__do_start_transfer()`, `__handle_copy_file()`, `__finish_transfer()`
@@ -250,10 +250,10 @@ if self.__get_transferred_ratio() >= 1:
 
 ---
 
-### Phase 4: Clean Up Existing Controllers ⏳ PENDING
+### Phase 4: Clean Up Existing Controllers ✅ DONE
 
 **Goal**: Improve `AnalysisController` and `ReportController`.
-**Status**: Not started — depends on Phase 2
+**Status**: Complete — commit `aff7921`, issue #135 (In review)
 
 #### 4.1 `AnalysisController` Cleanup
 - Remove archive mounting code (defer to future feature)
@@ -270,10 +270,10 @@ if self.__get_transferred_ratio() >= 1:
 
 ---
 
-### Phase 5: QML Cleanup (Views Last) ⏳ PENDING
+### Phase 5: QML Cleanup (Views Last) ✅ DONE
 
 **Goal**: Simplify QML visibility logic to rely on `WorkflowController` signals.
-**Status**: Not started — depends on Phase 1
+**Status**: Complete — commit `8909a19`, issue #136 (In review)
 **Note**: Phase 1.2 already removed dead `TransferFinished` references from QML (§5.2 partially done).
 
 #### 5.1 Remove `storagesCount`-driven visibility
@@ -341,7 +341,7 @@ These rules must hold throughout refactoring:
 3. **`handheld` property** — **Resolved**: kept, always `True` (not configurable for now); a form-factor adaptation is tracked in `docs/gui-backlog.md`.
 4. **Single-disk mode** — **Resolved** (see `docs/workflow-rules.md` §8.4): analysis works on one disk; copy and report require a second disk, modelled by the `SystemWaitingForTarget` state.
 5. **`__on_analysis_state_changed` driving state transitions** — **Resolved**: now routed through `WorkflowController.force_state()` (Phase 1.1).
-6. **Target disconnect during copy (bug C.2)** — **Open**: the gate fix (Phase 1.3) allows the event to be received, but the handling logic (what state to transition to) is not yet implemented. Tracked separately.
+6. **Target disconnect during copy (bug C.2)** — **Resolved**: `__handle_disk_state` now transitions to `SystemMustBeReset` when the target disconnects during `CopyCleanFiles`/`GeneratingReport` (commit `d7df95b`).
 
 ---
 
@@ -360,18 +360,20 @@ These rules must hold throughout refactoring:
 | 2.2 FileBrowser | ✅ Done | `d22987b` | #133 | Folder nav, enqueuing state |
 | 2.3 StorageManager | ✅ Done | `d22987b` | #133 | Sole DISK_STATE owner |
 | 2.x Unit tests | ✅ Done | `2026c90` | #133 | 48 tests, all passing |
-| 3.1 TransferController | ⏳ Pending | — | — | |
-| 3.2 Transfer race fix | ⏳ Pending | — | — | |
-| 4.1 AnalysisController cleanup | ⏳ Pending | — | — | |
-| 4.2 ReportController improvement | ⏳ Pending | — | — | |
-| 5.1 Remove storagesCount visibility | ⏳ Pending | — | — | |
-| 5.2 Remove dead TransferFinished handler | ✅ Partial | `8f49c1a` | #131 | QML refs removed; `onStoragesCountChanged` still present |
-| 5.3 Move rules to Bindings.qml | ⏳ Pending | — | — | |
+| 3.1 TransferController | ✅ Done | `2027609` | #134 | Copy orchestration, progress tracking |
+| 3.2 Transfer race fix | ✅ Done | `2027609` | #134 | Atomic counter + signal-based completion |
+| 4.1 AnalysisController cleanup | ✅ Done | `aff7921` | #135 | Dead code removed, error handling, timer cancel |
+| 4.2 ReportController improvement | ✅ Done | `aff7921` | #135 | `_render_html`/`_write_pdf` separated, try/except |
+| Fix broken analysis tests | ✅ Done | `814f8a8` | #136 | `deepcopy` fix, state-based assertions, 3 skipped |
+| Fix C.2 target disconnect | ✅ Done | `d7df95b` | #137 | `SystemMustBeReset` transition on target DISCONNECTED |
+| 5.1 Remove storagesCount visibility | ✅ Done | `8909a19` | #136 | Declarative bindings on systemState |
+| 5.2 Remove dead TransferFinished handler | ✅ Done | `8f49c1a` | #131 | QML refs removed in Phase 1.2 |
+| 5.3 Move rules to Bindings.qml | ✅ Done | `8909a19` | #136 | State-driven logic now declarative |
 | 6 Unit test coverage | ⏳ Pending | — | — | Target: ≥ 85% |
 | 7 Linting & static analysis | ⏳ Pending | — | — | Ruff + type check |
 | 8 Alpine package validation | ⏳ Pending | — | — | Docker local build |
 
-**Test baseline**: 73 passed, 4 failed (pre-existing), 1 xfailed (C.2 target disconnect bug)
+**Test baseline**: 91 passed, 3 skipped (MOUNT_ARCHIVES disabled), 0 failed, 0 xfailed
 
 ---
 
@@ -379,16 +381,12 @@ These rules must hold throughout refactoring:
 
 | Phase | Lines Changed | Effort | Dependencies |
 |-------|--------------|--------|--------------|
-| Phase 3 | +200 / -150 | Medium | Phase 2 ✅ |
-| Phase 4 | +100 / -100 | Low | Phase 2 ✅ |
-| Phase 5 | -50 / +50 | Low | Phase 1 ✅ |
-| Phase 6 | +300 / 0 | Medium | Phases 3-5 |
-| Phase 7 | -50 / +50 | Low | Phases 3-5 |
-| Phase 8 | 0 / 0 | Low | Phases 3-5 |
-| **Remaining** | **+500 / -200** | **~2-3 weeks** | — |
+| Phase 6 | +300 / 0 | Medium | Phases 3-5 ✅ |
+| Phase 7 | -50 / +50 | Low | Phases 3-5 ✅ |
+| Phase 8 | 0 / 0 | Low | Phases 3-5 ✅ |
+| **Remaining** | **+250 / +50** | **~1 week** | — |
 
-> **Note**: Phases 3-5 can be partially parallelized (Phase 4 and 5 are independent of Phase 3).
-> Phases 6-8 are sequential after 3-5 and can be partially parallelized (6 and 7 are independent).
+> **Note**: Phases 6 and 7 are independent and can be parallelized.
 
 ---
 

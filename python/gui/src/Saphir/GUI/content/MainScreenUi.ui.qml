@@ -449,7 +449,9 @@ Item {
         FilesSelectionPanel {
             id: pnlFileSelection
             anchors.fill: parent
-            visible: false
+            visible: bindings.sourceName !== ""
+                     && [ Enums.SystemReady, Enums.SystemWaitingForUserAction,
+                          Enums.SystemGettingFilesList ].includes(bindings.systemState)
         }
 
         /* Analysis */
@@ -472,7 +474,7 @@ Item {
                 fill: parent
             }
 
-            visible: false
+            visible: [ Enums.CopyCleanFiles, Enums.GeneratingReport ].includes(bindings.systemState)
         }
     }
 

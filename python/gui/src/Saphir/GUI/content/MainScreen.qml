@@ -129,14 +129,12 @@ Window {
 
             function onRejected() {
                 bindings.setAnalysisMode(Enums.AnalyseSelection)
-                window.pnlFileSelection.visible = bindings.sourceName !== ""
                 window.dlgAnalyseWholeStorage.visible = false
             }
 
             function onAccepted() {
                 bindings.setAnalysisMode(Enums.AnalyseWholeSource)
                 window.dlgAnalyseWholeStorage.visible = false
-                window.pnlFileSelection.visible = false
                 bindings.startFullAnalysis()
             }
         }
@@ -145,12 +143,6 @@ Window {
             target: window.btnStartStop
 
             function onClicked() {
-                if(!bindings.analyzing) {
-                    window.pnlFileSelection.visible = false
-                } else {
-                    window.pnlFileSelection.visible = true
-                }
-
                 bindings.startStopAnalysis()
             }
         }
@@ -221,14 +213,6 @@ Window {
         }
 
         Connections {
-            target: window.btnCopyFiles
-
-            function onClicked() {
-                window.pnlFilesCopy.visible = true
-            }
-        }
-
-        Connections {
             target: window.btnLanguageEN
 
             function onClicked() {
@@ -279,20 +263,11 @@ Window {
 
         onSystemStateChanged: {
             if (bindings.systemState === Enums.SystemResetting) {
-                window.pnlFilesCopy.visible = false
-                window.pnlFileSelection.visible = false
                 window.dlgSystemMustBeReset.visible = false
                 window.dlgRestart.visible = false
             } else if(bindings.systemState === Enums.SystemMustBeReset) {
-                window.pnlFilesCopy.visible = false
-                window.pnlFileSelection.visible = false
                 window.dlgSystemMustBeReset.visible = true
             }
-        }
-
-        onStoragesCountChanged: {
-            window.pnlFileSelection.visible = bindings.storagesCount === 1
-            window.pnlFilesCopy.visible = bindings.storagesCount === 2
         }
     }
 
