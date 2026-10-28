@@ -1,7 +1,7 @@
 # Refactoring Plan - Saphir v3.x
 
-> **Status**: Draft - To be reviewed and completed iteratively
-> **Last updated**: 2026-10-27
+> **Status**: Draft — execution plan; open questions resolved (§7)
+> **Last updated**: 2026-10-28
 
 ---
 
@@ -321,11 +321,11 @@ These rules must hold throughout refactoring:
 
 ## 7. TODO / Open Questions
 
-1. **Should `SystemWaitingForDevice` be removed or activated?** - Currently dead code.
-2. **Should archive mounting be fully removed or kept as a dormant feature?** - Currently disabled but code path exists.
-3. **Should `handheld` property be made configurable or removed?** - Hardcoded to `True`.
+1. **Remove `SystemWaitingForDevice`** — **Resolved**: dead code, to be removed (see `docs/workflow-rules.md` §2.2).
+2. **Archive mounting** — **Resolved**: the dormant code is **removed**; re-introduction is a backlog feature (see `docs/workflow-rules.md` §9, `docs/features.md` backlog).
+3. **`handheld` property** — **Resolved**: kept, always `True` (not configurable for now); a form-factor adaptation is tracked in `docs/gui-backlog.md`.
 4. **Single-disk mode** — **Resolved** (see `docs/workflow-rules.md` §8.4): analysis works on one disk; copy and report require a second disk, modelled by the `SystemWaitingForTarget` state.
-5. **Should `__on_analysis_state_changed` also drive state machine transitions?** - Currently it sets `SystemState` directly, bypassing `WorkflowController`.
+5. **`__on_analysis_state_changed` driving state transitions** — **Open**: today it sets `SystemState` directly, bypassing `WorkflowController`. During the refactor it must be routed through the `WorkflowController` (single-writer rule, I1). To be settled when Phase 1–2 is implemented.
 
 ---
 

@@ -1,7 +1,7 @@
 # Saphir — Features and NFR Specification
 
-> **Status**: Draft v1
-> **Last updated**: 2026-10-27
+> **Status**: Stable
+> **Last updated**: 2026-10-28
 > **Usage**: Reference document for refactoring the Saphir codebase.
 
 ---

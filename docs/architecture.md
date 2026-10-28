@@ -1,6 +1,6 @@
 # Saphir — Architecture Reference
 
-> **Status**: Draft v1 — for review
+> **Status**: Stable
 > **Last updated**: 2026-10-28
 > **Audience**: developers working on the Saphir codebase (refactoring and future features)
 > **Scope**: this is the **architecture** reference — the "what" and "how" of the system. It is the single place that ties the whole design together and points to the specialised documents for the details.

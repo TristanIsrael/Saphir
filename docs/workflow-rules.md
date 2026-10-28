@@ -1,11 +1,12 @@
 # Workflow Rules - Saphir
 
-> **Status**: Draft - To be reviewed and completed iteratively
+> **Status**: Stable
 > **Last updated**: 2026-10-28
 > **v2 changes**: added `SystemWaitingForTarget` (waiting for the 2nd target after analysis), Stop / Reset / Copy-cancellation transitions, and the AV failure distinction (per-file error vs engine panic, NFR-3).
 > **v2.1 changes**: decoupled file *selection* from AV readiness — a disk can be browsed/selected as soon as the disk-controller is ready and a disk is connected, even if the AV engines are not ready; the analysis trigger now requires the **ready-to-analyze** condition (AV engines ready + core ready + non-empty queue). Added the boot/start dialog sizing rule (large → small → hidden).
 > **v2.2 changes**: removed the copy-decline / copy-cancel transitions — there is **no cancel button**; `SystemWaitingForTarget` is a **stable terminal-ish state** whose only exits are: insert a target disk, Reset, or Shutdown.
 > **v2.3 changes**: renamed the analysis **Stop** button to **Pause** — there is **no hard stop**. Pausing suspends the analysis (files already analyzed keep their status) and the user can **resume** it later from the same state.
+> **v3 changes**: added the `ReportFailed` permanent error state (report failure, #4); reviewed and fixed the invariants (I2 completion guard, I5 report failure, I7 consensus, added I9 reset idempotence); completed the error-handling matrix (source/target disconnection during copy **and** analysis, MQTT transport, power loss); added scenarios 8.6–8.8; resolved all open questions (§9). **Contract fully reviewed and validated.**
 
 ---
 
