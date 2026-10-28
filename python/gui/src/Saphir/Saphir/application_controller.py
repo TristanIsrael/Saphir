@@ -1,4 +1,4 @@
-from PySide6.QtCore import QObject, Signal, Slot, Property, QCoreApplication, QTranslator
+from PySide6.QtCore import QObject, Signal, Slot, Property, QCoreApplication
 from safecor import Api, MqttFactory, Topics, MqttHelper, ComponentsHelper, Constants, ComponentState, DiskState
 from libsaphir import FileStatus
 from . import SystemState, AnalysisState, AnalysisMode
@@ -8,6 +8,7 @@ from . import DevModeHelper
 from . import ComponentsModel, MessagesListModel, SystemInformationModel
 from . import SafecorInputFilesListModel, SafecorInputFilesListProxyModel
 from . import EMAETAEstimator
+from . import EnergyMonitor, TranslationManager, ApiLifecycle
 try:
     from . import ReportController
 except Exception:
@@ -15,8 +16,6 @@ except Exception:
 from libsaphir import ANTIVIRUS_NEEDED, DEVMODE
 from pathlib import Path
 import threading
-import os
-import tempfile
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
@@ -27,7 +26,6 @@ class ApplicationController(QObject):
     # Member variables
 
     __ready = False
-    __monitorEnergy = True
     __source_name = ""
     __source_ready = False
     __storages = []
@@ -114,19 +112,20 @@ class ApplicationController(QObject):
     translationInstalled = Signal()
     systemLoadingProgressChanged = Signal()
 
-    # Energy
-    __battery_level = 0
-    __plugged = False
-
-    __subscriptions = []
-    __subscribed_count = 0
-    
-    __language = ""
-    __translator = None
-
     # Fonctions publiques
     def __init__(self, parent=None):
         QObject.__init__(self, parent)
+
+        self.__energy_monitor = EnergyMonitor(self)
+        self.__energy_monitor.batteryLevelChanged.connect(self.batteryLevelChanged)
+        self.__energy_monitor.pluggedChanged.connect(self.pluggedChanged)
+
+        self.__translation_manager = TranslationManager(self)
+        self.__translation_manager.languageChanged.connect(self.languageChanged)
+        self.__translation_manager.translationInstalled.connect(self.translationInstalled)
+
+        self.__api_lifecycle = ApiLifecycle(self)
+        self.__api_lifecycle.set_all_ready_callback(self.__on_all_subscriptions_ready)
 
         self.__components_model = ComponentsModel(self.__components_helper, self)
 
@@ -152,14 +151,14 @@ class ApplicationController(QObject):
         self.__system_information_model = SystemInformationModel(self.__handheld)        
 
     def start(self, ready_callback):
+        self.__ready_callback = ready_callback
+
         if DEVMODE:
             self.__mqtt_client = DevModeHelper.create_mqtt_client("GUI")
         else:
             self.__mqtt_client = MqttFactory.create_mqtt_client_domu("GUI")
 
-        self.__logfile = os.path.join(tempfile.gettempdir(), "saphir.log")
-        self.__ready_callback = ready_callback
-
+        self.__logfile = self.__api_lifecycle.get_logfile()
         Api().add_ready_callback(self.__on_api_ready)
         Api().start(mqtt_client=self.__mqtt_client, domain_identifier="GUI", recording=True, logfile=self.__logfile)        
 
@@ -416,60 +415,19 @@ class ApplicationController(QObject):
         Api().error(message, "Saphir")
     
 
-    def __on_api_ready(self):                
+    def __on_api_ready(self):
         Api().add_message_callback(self.__on_message_received)
-        Api().add_subscription_callback(self.__on_subscribed)
         Api().add_shutdown_callback(self.__on_shutdown)
-        
-        # Handle the subscriptions
-        result, mid = Api().subscribe(f"{Topics.COPY_FILE}/response")
-        if result:
-            self.__subscriptions.append(mid)
+        self.__api_lifecycle.setup_subscriptions()
 
-        result, mid = Api().subscribe(Topics.DISK_STATE)
-        if result:
-            self.__subscriptions.append(mid)
-
-        result, mid = Api().subscribe(f"{Topics.LIST_DISKS}/response")
-        if result:
-            self.__subscriptions.append(mid)
-            
-        result, mid = Api().subscribe(f"{Topics.LIST_FILES}/response")
-        if result:
-            self.__subscriptions.append(mid)
-            
-        result, mid = Api().subscribe(f"{Topics.DISCOVER_COMPONENTS}/response")
-        if result:
-            self.__subscriptions.append(mid)
-            
-        result, mid = Api().subscribe(f"{Topics.ENERGY_STATE}/response")
-        if result:
-            self.__subscriptions.append(mid)
-            
-        result, mid = Api().subscribe(f"{Topics.SYSTEM_INFO}/response")
-        if result:
-            self.__subscriptions.append(mid)
-
-        result, mid = Api().subscribe(f"{Topics.CREATE_FILE}/response")
-        if result:
-            self.__subscriptions.append(mid)
-
-        result, mid = Api().subscribe(f"{Topics.DEFAULT_LANGUAGE}/response")
-        if result:
-            self.__subscriptions.append(mid)
-        
-    def __on_subscribed(self, mid):
-        if mid in self.__subscriptions:
-            self.__subscribed_count += 1
-
-            if self.__subscribed_count == len(self.__subscriptions):
-                self.__app_ready()
+    def __on_all_subscriptions_ready(self):
+        self.__app_ready()
 
     def __app_ready(self):
         Api().info("Saphir is ready")
 
         Api().notify_gui_ready()
-        Api().get_default_language()
+        self.__translation_manager.request_default_language()
 
         if self.__ready_callback is not None:
             self.__ready_callback()
@@ -479,7 +437,7 @@ class ApplicationController(QObject):
         Api().request_system_info()
 
         # Energy management
-        self.__request_energy_state()
+        self.__energy_monitor.start_polling()
         
         self.__analysis_controller = AnalysisController(files=self.__queued_files_list, analysis_components= self.__analysis_components, source_disk= self.__source_name, analysis_mode_=self.__analysis_mode, parent= self)
         self.__analysis_controller.resultsChanged.connect(self.__on_results_changed)
@@ -519,9 +477,7 @@ class ApplicationController(QObject):
         elif topic == f"{Topics.CREATE_FILE}/response":
             self.__handle_create_file(payload)
         elif topic == f"{Topics.DEFAULT_LANGUAGE}/response":
-            if MqttHelper.check_payload(payload, ["language"]):
-                language = payload.get("language", "en")
-                self.__install_translations(language)
+            self.__translation_manager.on_default_language_response(payload)
 
     def __is_file_in_folder(self, filepath:str, folder:str) -> bool:
         return filepath.startswith(folder) # type: ignore
@@ -541,37 +497,9 @@ class ApplicationController(QObject):
         self.remainingTimeChanged.emit()
 
 
-    @Slot()
-    def __install_translations(self, language = ""):
-        if(self.__language == language):
-            return
-    
-        self.__language = language
-        self.languageChanged.emit()
-
-        if self.__language == "":
-            Api().info("Using the default language (EN)")
-            if self.__translator is not None:
-                QCoreApplication.instance().removeTranslator(self.__translator)
-                self.__translator.deleteLater()
-                self.__translator = None
-                self.translationInstalled.emit()
-            return
-        
-        # Create a new translator
-        if self.__translator is None:
-            self.__translator = QTranslator(self)
-            QCoreApplication.instance().installTranslator(self.__translator)
-
-        # Install the translations
-        app_root_path = Path(__file__).resolve().parent.parent
-        if self.__translator.load(f"{app_root_path}/i18n/{self.__language}.qm"):
-            Api().info(f"Install the translation for {self.__language}")
-        else:
-            Api().warn(f"No translation found for the language {self.__language}")
-
-        self.translationInstalled.emit()
-        self.languageChanged.emit()
+    @Slot(str)
+    def __set_language(self, lang: str):
+        self.__translation_manager.set_language(lang)
 
     @Slot()
     def shutdown(self):
@@ -877,20 +805,14 @@ class ApplicationController(QObject):
             Api().create_file(self.__report_controller.get_report_filename(), self.__target_name, report_data, True)
 
         # So the log file
-        with open(self.__logfile, 'rb') as f:
+        with open(self.__api_lifecycle.get_logfile(), 'rb') as f:
             log_data = f.read()
             Api().create_file("journal.log", self.__target_name, log_data)
 
     def __handle_energy_state(self, payload:dict):
-        if not MqttHelper.check_payload(payload, ["battery_level", "plugged"]):
-            return
-        
-        self.__battery_level = payload.get("battery_level", 0)
-        self.batteryLevelChanged.emit()
-        self.__system_information_model.set_battery_level(self.__battery_level)
-        self.__plugged = bool(payload.get("plugged", False))
-        self.pluggedChanged.emit()
-        self.__system_information_model.set_power_plugged(self.__plugged)
+        self.__energy_monitor.on_energy_state_response(payload)
+        self.__system_information_model.set_battery_level(self.__energy_monitor.get_battery_level())
+        self.__system_information_model.set_power_plugged(self.__energy_monitor.is_plugged())
 
     def __handle_system_info(self, payload:dict):
         if not MqttHelper.check_payload(payload, ["core", "system"]):
@@ -929,14 +851,6 @@ class ApplicationController(QObject):
         Api().debug(f"Safecor disk controller is {"ready" if ready else "not ready"}")
         if ready:
             Api().get_disks_list()
-
-
-    def __request_energy_state(self):
-        if not self.__monitorEnergy:
-            return
-        
-        Api().request_energy_state()
-        threading.Timer(5.0, self.__request_energy_state).start()
 
 
     def __dequeue_folder(self, filepath:str):
@@ -1154,10 +1068,10 @@ class ApplicationController(QObject):
         return True
     
     def __get_battery_level(self):
-        return self.__battery_level
+        return self.__energy_monitor.get_battery_level()
     
     def __is_plugged(self):
-        return self.__plugged
+        return self.__energy_monitor.is_plugged()
     
     def __get_analysis_mode(self):
         return self.__analysis_mode.value
@@ -1205,11 +1119,7 @@ class ApplicationController(QObject):
         return any(filepath in key for key in self.__queued_files_list)
 
     def __get_language(self):
-        return self.__language
-    
-    @Slot(str)
-    def __set_language(self, lang:str):
-        self.__install_translations(lang)
+        return self.__translation_manager.get_language()
 
     def __set_system_loading_progress(self, val:float):
         if self.__system_loading_progress == val:

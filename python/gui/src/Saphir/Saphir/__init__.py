@@ -20,6 +20,9 @@ except Exception as e:
     print("Report generation is disabled due to a missing dependency")
     print(e)
 from .EMA_ETA_estimator import EMAETAEstimator
+from .energy_monitor import EnergyMonitor
+from .translation_manager import TranslationManager
+from .api_lifecycle import ApiLifecycle
 from .application_controller import ApplicationController
 
 __all__ = [
@@ -31,5 +34,6 @@ __all__ = [
     "MessagesListModel", "SystemInformationModel", "SafecorInputFilesListModel",
     "SafecorInputFilesListProxyModel", "SafecorOutputFilesListProxyModel",
     "ReportController", "EMAETAEstimator",
+    "EnergyMonitor", "TranslationManager", "ApiLifecycle",
     "ApplicationController"
 ]
