@@ -10,6 +10,7 @@ from . import SafecorInputFilesListModel, SafecorInputFilesListProxyModel
 from . import EMAETAEstimator
 from . import EnergyMonitor, TranslationManager, ApiLifecycle
 from . import WorkflowController
+from . import FileQueue, FileBrowser, StorageManager
 try:
     from . import ReportController
 except Exception:
@@ -27,13 +28,9 @@ class ApplicationController(QObject):
     # Member variables
 
     __ready = False
-    __source_name = ""
-    __source_ready = False
-    __storages = []
-    __target_name = ""
-    __target_ready = False
-    __input_files_list = {}    # Contains the list of files in the source disk currently viewed
-    __queued_files_list = {}   # Contains the list of files in the queue
+    __file_queue: FileQueue
+    __file_browser: FileBrowser
+    __storage_manager: StorageManager
     __input_files_listmodel:SafecorInputFilesListModel
     __input_files_listproxymodel:SafecorInputFilesListProxyModel
     __queue_listmodel:QueueListModel
@@ -43,14 +40,9 @@ class ApplicationController(QObject):
     __analysis_components = []
     __analysis_controller:AnalysisController
     __files_to_enqueue = []
-    __current_folder = "/"
-    __is_enqueuing = False
     __log_listmodel:LogListModel
     __analysis_mode = AnalysisMode.AnalyseSelection
     __analysis_start_time = datetime.now()
-    __queue_files_list_lock = threading.Lock()
-    __folders_to_query = 1
-    __queue_files_size = 0
     __disk_controller_ready = False
     __long_process_running = False
     __system_used = False
@@ -60,9 +52,6 @@ class ApplicationController(QObject):
     __handheld = True
     __eta_estimator = EMAETAEstimator()
     __system_loading_progress = 0.0
-    
-    #__interfaceInputs = None
-    #__is_navigating = True
 
     # Signaux
     readyChanged = Signal(bool)
@@ -130,15 +119,26 @@ class ApplicationController(QObject):
         self.__workflow_controller = WorkflowController(self)
         self.__workflow_controller.systemStateChanged.connect(self.systemStateChanged)
 
+        self.__file_queue = FileQueue()
+        self.__file_browser = FileBrowser(self)
+        self.__file_browser.currentFolderChanged.connect(self.currentFolderChanged)
+        self.__storage_manager = StorageManager(self)
+        self.__storage_manager.sourceNameChanged.connect(self.sourceNameChanged)
+        self.__storage_manager.sourceReadyChanged.connect(self.sourceReadyChanged)
+        self.__storage_manager.targetNameChanged.connect(self.targetNameChanged)
+        self.__storage_manager.targetReadyChanged.connect(self.targetReadyChanged)
+        self.__storage_manager.storagesChanged.connect(self.storagesChanged)
+        self.__storage_manager.storagesCountChanged.connect(self.storagesCountChanged)
+
         self.__components_model = ComponentsModel(self.__components_helper, self)
 
-        self.__input_files_listmodel = SafecorInputFilesListModel(self.__input_files_list, self.__queued_files_list, self)
+        self.__input_files_listmodel = SafecorInputFilesListModel(self.__file_browser.input_files_list, self.__file_queue.files, self)
         self.__input_files_listmodel.updateFilesList.connect(self.update_source_files_list)
         self.fileUpdated.connect(self.__input_files_listmodel.on_file_updated)
         self.sourceNameChanged.connect(self.__input_files_listmodel.onSourceChanged)
 
         self.__input_files_listproxymodel = SafecorInputFilesListProxyModel(self.__input_files_listmodel, self)
-        self.__queue_listmodel = QueueListModel(self.__queued_files_list, self)
+        self.__queue_listmodel = QueueListModel(self.__file_queue.files, self)
         self.__queue_listproxymodel = QueueListProxyModel(self.__queue_listmodel, self)
         self.fileUpdated.connect(self.__queue_listmodel.on_file_updated)
         self.queueUpdated.connect(self.__queue_listmodel.reset)
@@ -151,7 +151,7 @@ class ApplicationController(QObject):
 
         self.__report_controller = ReportController(self)
         self.__report_controller.reportGenerated.connect(self.__on_report_generated)
-        self.__system_information_model = SystemInformationModel(self.__handheld)        
+        self.__system_information_model = SystemInformationModel(self.__handheld)
 
     def start(self, ready_callback):
         self.__ready_callback = ready_callback
@@ -169,33 +169,33 @@ class ApplicationController(QObject):
     @Slot()
     def update_source_files_list(self):
         # First we verify that there is a source
-        if self.__source_name == "":
+        if self.__storage_manager.source_name == "":
             return
 
         # Ask for the list of files
         if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-            self.__folders_to_query = 1
+            self.__file_browser.folders_to_query = 1
             self.set_long_process_running(True)
-            Api().get_files_list(self.__source_name, False)
+            Api().get_files_list(self.__storage_manager.source_name, False)
 
 
     @Slot(str)
     def go_to_folder(self, folder:str):
         #print("is_enqueuing=", self.__is_enquing)
-        self.__input_files_list.clear()
+        self.__file_browser.input_files_list.clear()
         self.__input_files_listmodel.reset()
         self.__input_files_listproxymodel.set_current_folder(folder)
-        self.__current_folder = folder
+        self.__file_browser.current_folder = folder
         self.currentFolderChanged.emit()
         self.idCurrentFolderChanged.emit()
-        self.__folders_to_query = 1
+        self.__file_browser.folders_to_query = 1
         self.set_long_process_running(True)
-        Api().get_files_list(self.__source_name, False, folder)
+        Api().get_files_list(self.__storage_manager.source_name, False, folder)
 
 
     @Slot()
     def go_to_parent_folder(self):
-        path = Path(self.__current_folder)
+        path = Path(self.__file_browser.current_folder)
         self.go_to_folder(path.parent.absolute().as_posix())
 
 
@@ -204,28 +204,27 @@ class ApplicationController(QObject):
         Api().info("Starting full device analysis")
         self.__analysis_mode = AnalysisMode.AnalyseWholeSource
         self.__analysis_start_time = datetime.now()
-        self.__folders_to_query = 1
+        self.__file_browser.folders_to_query = 1
 
         # On doit récupérer la liste des fichiers de façon intérative
         # sur l'ensemble du disque source. Pour cela on va mettre en queue
         # tous les fichiers du répertoire racine, puis demander la liste des
         # fichiers du premier répertoire, et à chaque réponse on recommencera
         # avec le répertoire suivant
-        self.__is_enqueuing = True
+        self.__file_browser.is_enqueuing = True
         self.set_long_process_running(True)
 
         #QCoreApplication.processEvents()
-        Api().get_files_list(self.__source_name, False, "/",)
+        Api().get_files_list(self.__storage_manager.source_name, False, "/",)
 
     @Slot(str, str)
     def enqueue_file(self, filetype:str, filepath:str):
         #print(f"User added {filetype} {filepath} to the queue")
 
         if filetype == "file":
-            file = self.__input_files_list[filepath]
+            file = self.__file_browser.input_files_list[filepath]
             file["inqueue"] = True
-            with self.__queue_files_list_lock:
-                self.__queued_files_list[filepath] = file
+            self.__file_queue.enqueue(filepath, file)
             #    self.__queuedFilesList[filepath] = copy.deepcopy(file)
 
             #self.fileQueued.emit(filepath)
@@ -234,21 +233,20 @@ class ApplicationController(QObject):
             self.queueSizeChanged.emit(self.__get_queue_size())
             self.set_long_process_running(False)
         else:
-            self.__is_enqueuing = True
-            self.__is_navigating = False
+            self.__file_browser.is_enqueuing = True
 
             self.set_long_process_running(True)
 
             # Enqueue the folder at first to make it disappear
-            self.__folders_to_query = 1
-            file = self.__input_files_list[filepath]
+            self.__file_browser.folders_to_query = 1
+            file = self.__file_browser.input_files_list[filepath]
             file["inqueue"] = True
 
             self.fileUpdated.emit(filepath, ["inqueue"])
 
             # Get the file tree from the disk and enqueue it
             self.__set_system_state(SystemState.SystemGettingFilesList)
-            Api().get_files_list(self.__source_name, False, filepath)
+            Api().get_files_list(self.__storage_manager.source_name, False, filepath)
 
 
     @Slot(str)
@@ -257,19 +255,18 @@ class ApplicationController(QObject):
         
         # La plupart du temps l'utilisateur déselectionnera un répertoire
         # il faut donc retrouver tous les fichiers de ce répertoire
-        file = self.__input_files_list.get(filepath)
+        file = self.__file_browser.input_files_list.get(filepath)
         if file is None:
             return
         
         if file["type"] == "file":
             # Si c'est un fichier on le retire de la queue
-            with self.__queue_files_list_lock:
-                self.__queued_files_list.pop(filepath)
+            self.__file_queue.dequeue(filepath)
 
             file["inqueue"] = False
             self.fileUpdated.emit(filepath, ["inqueue"])
 
-            self.queueSizeChanged.emit(len(self.__queued_files_list))
+            self.queueSizeChanged.emit(len(self.__file_queue.files))
             self.queueUpdated.emit()
             self.set_long_process_running(False)
         else:            
@@ -284,7 +281,7 @@ class ApplicationController(QObject):
         if self.__analysis_controller.state == AnalysisState.AnalysisStopped:
             Api().debug("User asked to start the analysis")
             self.__analysis_start_time = datetime.now()
-            self.__eta_estimator.setup(self.__queue_files_size)
+            self.__eta_estimator.setup(self.__file_queue.size())
             self.__analysis_controller.start_analysis()
         elif self.__analysis_controller.state == AnalysisState.AnalysisRunning:
             Api().debug("User asked to stop the analysis")
@@ -295,7 +292,7 @@ class ApplicationController(QObject):
         if self.__analysis_controller.state == AnalysisState.AnalysisStopped and self.__analysis_ready:
             Api().debug("User asked to start the analysis")
             self.__analysis_start_time = datetime.now()
-            self.__eta_estimator.setup(self.__queue_files_size)
+            self.__eta_estimator.setup(self.__file_queue.size())
             self.__analysis_controller.start_analysis()
         
     @Slot()
@@ -319,20 +316,20 @@ class ApplicationController(QObject):
     @Slot()
     def __do_start_transfer(self):
         # Copy all the clean files
-        for filepath_, file_ in self.__queued_files_list.items():
+        for filepath_, file_ in self.__file_queue.files.items():
             if file_.get("status") == FileStatus.FileClean:
-                Api().copy_file(self.__source_name, filepath_, self.__target_name)
+                Api().copy_file(self.__storage_manager.source_name, filepath_, self.__storage_manager.target_name)
 
     @Slot()
     def select_all_clean_files_for_copy(self):
-        for filepath_, file_ in self.__queued_files_list.items():
+        for filepath_, file_ in self.__file_queue.files.items():
             if file_["status"] == FileStatus.FileClean:
                 file_["select_for_copy"] = True
                 self.fileUpdated.emit(filepath_, ["select_for_copy"])
 
     @Slot()
     def deselect_all_clean_files_for_copy(self):
-        for filepath_, file_ in self.__queued_files_list.items():
+        for filepath_, file_ in self.__file_queue.files.items():
             if file_["status"] == FileStatus.FileClean:
                 file_["select_for_copy"] = False
                 self.fileUpdated.emit(filepath_, ["select_for_copy"])
@@ -366,21 +363,17 @@ class ApplicationController(QObject):
     def __reset_states(self):
         # Reset all models
         self.__system_used = False
-        self.__current_folder = "/"
-        self.__input_files_list.clear()
+        self.__file_browser.current_folder = "/"
+        self.__file_browser.input_files_list.clear()
         self.__input_files_listmodel.reset()
-        self.__queued_files_list.clear()
+        self.__file_queue.clear()
         self.__queue_listmodel.reset()
-        self.__queue_files_size = 0
-        self.__folders_to_query = 0
-        self.__current_folder = "/"
+        self.__file_browser.folders_to_query = 0
         self.currentFolderChanged.emit()
         self.__analysis_controller.reset()
-        self.__source_name = ""
-        self.sourceNameChanged.emit("")
+        self.__storage_manager.clear_source()
         self.__analysis_controller.set_source_disk("")
-        self.__target_name = ""
-        self.targetNameChanged.emit()
+        self.__storage_manager.clear_target()
         self.totalFilesCountChanged.emit(0)
         self.cleanFilesCountChanged.emit(0)
         self.infectedFilesCountChanged.emit(0)
@@ -442,7 +435,7 @@ class ApplicationController(QObject):
         # Energy management
         self.__energy_monitor.start_polling()
         
-        self.__analysis_controller = AnalysisController(files=self.__queued_files_list, analysis_components= self.__analysis_components, source_disk= self.__source_name, analysis_mode_=self.__analysis_mode, parent= self)
+        self.__analysis_controller = AnalysisController(files=self.__file_queue.files, analysis_components= self.__analysis_components, source_disk= self.__storage_manager.source_name, analysis_mode_=self.__analysis_mode, parent= self)
         self.__analysis_controller.resultsChanged.connect(self.__on_results_changed)
         self.__analysis_controller.fileUpdated.connect(self.__queue_listmodel.on_file_updated)
         self.__analysis_controller.stateChanged.connect(self.__on_analysis_state_changed)
@@ -588,7 +581,7 @@ class ApplicationController(QObject):
         else:
             self.__on_storage_removed(disk)
 
-        if self.__source_name == "" and state == DiskState.CONNECTED.value:
+        if self.__storage_manager.source_name == "" and state == DiskState.CONNECTED.value:
             if self.__system_used:
                 # If the system has already been used and the user is trying
                 # to start over we prevent it
@@ -596,15 +589,12 @@ class ApplicationController(QObject):
                 self.systemMustBeReset.emit()
             else:
                 # otherwise we set the first storage as the source
-                self.__source_ready = True
-                self.sourceReadyChanged.emit(self.__source_ready)
-                self.__source_name = disk
+                self.__storage_manager.set_source(disk)
                 self.__analysis_controller.set_source_disk(disk)
-                self.sourceNameChanged.emit(self.__source_name)
 
                 if DEVMODE:
                     self.start_full_analysis()
-        elif self.__source_name != "" and self.__source_name == disk and state == DiskState.DISCONNECTED.value:
+        elif self.__storage_manager.source_name != "" and self.__storage_manager.source_name == disk and state == DiskState.DISCONNECTED.value:
             # The source has been disconnected
             # If the system has been used the user must reset it
             # Otherwise we let go
@@ -614,34 +604,22 @@ class ApplicationController(QObject):
                 return
             
             self.__reset_states()
-        elif self.__source_name != "" and self.__source_name != disk and state == DiskState.CONNECTED.value:
+        elif self.__storage_manager.source_name != "" and self.__storage_manager.source_name != disk and state == DiskState.CONNECTED.value:
             # The target has been connected
-            self.__target_ready = True
-            self.targetReadyChanged.emit(self.__target_ready)
-            self.__target_name = disk
-            self.targetNameChanged.emit(disk)
+            self.__storage_manager.set_target(disk)
 
             # TODO: Verify whether the disk has enough space
             if True:
                 self.start_transfer()
-        elif self.__target_name != "" and self.__target_name == disk and state == DiskState.DISCONNECTED.value:
+        elif self.__storage_manager.target_name != "" and self.__storage_manager.target_name == disk and state == DiskState.DISCONNECTED.value:
             # The target has been disconnected
-            self.__target_ready = False
-            self.targetReadyChanged.emit(self.__target_ready)
-            self.__target_name = ""
-            self.targetNameChanged.emit(disk)
-        if self.__target_ready and not self.__source_ready:
+            self.__storage_manager.clear_target()
+        if self.__storage_manager.target_ready and not self.__storage_manager.source_ready:
             # If there is only one disk connected it becomes the source
-            self.__source_name = self.__target_name
-            self.__analysis_controller.set_source_disk(self.__target_name)
-            self.__target_name = ""
-            self.__source_ready = True
-            self.__target_ready = False
-            self.sourceNameChanged.emit(self.__source_name)
-            self.sourceReadyChanged.emit(self.__source_ready)
-            self.targetNameChanged.emit(self.__target_name)
-            self.targetReadyChanged.emit(self.__target_ready)
-            self.__input_files_list.clear()
+            self.__storage_manager.set_source(self.__storage_manager.target_name)
+            self.__analysis_controller.set_source_disk(self.__storage_manager.target_name)
+            self.__storage_manager.clear_target()
+            self.__file_browser.input_files_list.clear()
             self.__input_files_listmodel.reset()
 
 
@@ -667,12 +645,9 @@ class ApplicationController(QObject):
         if len(disks) > 0:
             # We set the first disk as the source disk
             disk = disks[0]
-            self.__source_ready = True
-            self.sourceReadyChanged.emit(self.__source_ready)
-            self.__source_name = disk
+            self.__storage_manager.set_source(disk)
             self.__analysis_controller.set_source_disk(disk)
-            self.sourceNameChanged.emit(self.__source_name)
-            Api().info(f"The source disk name is {self.__source_name}")
+            Api().info(f"The source disk name is {self.__storage_manager.source_name}")
             #self.__set_system_state(SystemState.SystemGettingFilesList)
 
     def __handle_list_files(self, payload:dict) -> None:
@@ -681,79 +656,78 @@ class ApplicationController(QObject):
         if self.__workflow_controller.state == SystemState.SystemAnalysisRunning:
             return
         
-        with self.__queue_files_list_lock:
-            disk = payload.get("disk")
-            files = payload.get("files", list())
+        disk = payload.get("disk")
+        files = payload.get("files", list())
 
-            if disk is None:
-                Api().error("The disk argument is missing")
-                return
-            
-            if files is None:
-                Api().error("The files argument is missing")
-                return
+        if disk is None:
+            Api().error("The disk argument is missing")
+            return
+        
+        if files is None:
+            Api().error("The files argument is missing")
+            return
 
-            #Api().debug("Files list received, count={}".format(len(files)))
-            self.__folders_to_query -= 1
+        #Api().debug("Files list received, count={}".format(len(files)))
+        self.__file_browser.folders_to_query -= 1
 
-            for file in files:
-                file["disk"] = disk
-                filepath = f"{file.get("path")}{"/" if file.get("path") != "/" else ""}{file.get("name")}"
-                file["filepath"] = filepath
-                file["status"] = FileStatus.FileStatusUndefined
-                file["selected"] = False
-                #print(filepath)
+        for file in files:
+            file["disk"] = disk
+            filepath = f"{file.get("path")}{"/" if file.get("path") != "/" else ""}{file.get("name")}"
+            file["filepath"] = filepath
+            file["status"] = FileStatus.FileStatusUndefined
+            file["selected"] = False
+            #print(filepath)
 
-                if self.__is_enqueuing:
-                    # On est en train de sélectionner des fichiers
-                    #if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                    # On est en mode de sélection unitaire
-                    if file["type"] == "file":
-                        file["inqueue"] = True
-                        self.__queue_files_size += file["size"]
-                        self.__queued_files_list[filepath] = file
-                        self.fileUpdated.emit(filepath, ["inqueue"])
-                    elif file["type"] == "folder":
-                        # Si c'est un dossier on va chercher les fichiers qu'il contient
-                        self.__folders_to_query += 1
-                        self.__thread_pool.submit(Api().get_files_list, self.__source_name, False, filepath)
-                else:
-                    # Sinon on est en train de peupler le navigateur
-                    if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                        # Si on est en mode de sélection de fichiers
-                        file["inqueue"] = False
-                        if not self.__is_enqueuing:
-                            self.__input_files_list[filepath] = file
-            
-            # On met à jour le compteur car cette opération est peu couteuse
-            # et permet à l'utilisateur de voir qu'il se passe quelque chose
-            if self.__is_enqueuing:
-                self.queueSizeChanged.emit(len(self.__queued_files_list))
-
-            #print(self.__folders_to_query)
-            if self.__folders_to_query == 0:
-                self.set_long_process_running(False)
-
-                # Après avoir récupéré la liste de tous les fichiers on met à jour les modèles
+            if self.__file_browser.is_enqueuing:
+                # On est en train de sélectionner des fichiers
+                #if self.__analysis_mode == AnalysisMode.AnalyseSelection:
+                # On est en mode de sélection unitaire
+                if file["type"] == "file":
+                    file["inqueue"] = True
+                    self.__file_queue.add_size(file["size"])
+                    self.__file_queue.enqueue(filepath, file)
+                    self.fileUpdated.emit(filepath, ["inqueue"])
+                elif file["type"] == "folder":
+                    # Si c'est un dossier on va chercher les fichiers qu'il contient
+                    self.__file_browser.folders_to_query += 1
+                    self.__thread_pool.submit(Api().get_files_list, self.__storage_manager.source_name, False, filepath)
+            else:
+                # Sinon on est en train de peupler le navigateur
                 if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                    if not self.__is_enqueuing:
-                        self.__input_files_listmodel.reset()
-                
-                # If we were enqueing (one or more folders)
-                if self.__is_enqueuing:
-                    self.queueSizeChanged.emit(len(self.__queued_files_list))
-                    self.queueUpdated.emit()
+                    # Si on est en mode de sélection de fichiers
+                    file["inqueue"] = False
+                    if not self.__file_browser.is_enqueuing:
+                        self.__file_browser.add_file(filepath, file)
+        
+        # On met à jour le compteur car cette opération est peu couteuse
+        # et permet à l'utilisateur de voir qu'il se passe quelque chose
+        if self.__file_browser.is_enqueuing:
+            self.queueSizeChanged.emit(self.__file_queue.count())
 
-                    if self.__analysis_mode == AnalysisMode.AnalyseWholeSource:
-                        # If we are analyzing the whole storage and we have no
-                        # more folder to query we start the analysis                    
-                        self.start_analysis()
+        #print(self.__file_browser.folders_to_query)
+        if self.__file_browser.folders_to_query == 0:
+            self.set_long_process_running(False)
 
-                if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                    self.__set_system_state(SystemState.SystemWaitingForUserAction)
+            # Après avoir récupéré la liste de tous les fichiers on met à jour les modèles
+            if self.__analysis_mode == AnalysisMode.AnalyseSelection:
+                if not self.__file_browser.is_enqueuing:
+                    self.__input_files_listmodel.reset()
+            
+            # If we were enqueing (one or more folders)
+            if self.__file_browser.is_enqueuing:
+                self.queueSizeChanged.emit(self.__file_queue.count())
+                self.queueUpdated.emit()
 
-                # A la fin on sort du mode de mise en queue
-                self.__is_enqueuing = False
+                if self.__analysis_mode == AnalysisMode.AnalyseWholeSource:
+                    # If we are analyzing the whole storage and we have no
+                    # more folder to query we start the analysis                    
+                    self.start_analysis()
+
+            if self.__analysis_mode == AnalysisMode.AnalyseSelection:
+                self.__set_system_state(SystemState.SystemWaitingForUserAction)
+
+            # A la fin on sort du mode de mise en queue
+            self.__file_browser.is_enqueuing = False
 
 
     def __handle_discover_components(self, payload:dict):
@@ -777,7 +751,7 @@ class ApplicationController(QObject):
         status = payload.get("status")
         fingerprint = payload.get("fingerprint")
 
-        file = self.__queued_files_list.get(filepath)
+        file = self.__file_queue.files.get(filepath)
         if file is None:
             Api().error(f"The file {filepath} has not been found in the analysis queue")
             return
@@ -805,12 +779,12 @@ class ApplicationController(QObject):
         report_filepath = self.__report_controller.get_report_filepath()
         with open(report_filepath, 'rb') as f:
             report_data = f.read()
-            Api().create_file(self.__report_controller.get_report_filename(), self.__target_name, report_data, True)
+            Api().create_file(self.__report_controller.get_report_filename(), self.__storage_manager.target_name, report_data, True)
 
         # So the log file
         with open(self.__api_lifecycle.get_logfile(), 'rb') as f:
             log_data = f.read()
-            Api().create_file("journal.log", self.__target_name, log_data)
+            Api().create_file("journal.log", self.__storage_manager.target_name, log_data)
 
     def __handle_energy_state(self, payload:dict):
         self.__energy_monitor.on_energy_state_response(payload)
@@ -829,8 +803,8 @@ class ApplicationController(QObject):
         disk = payload.get("disk", "")
         filepath = str(payload.get("filepath", ""))
 
-        print(f"filepath:{filepath}, endswith:{filepath.endswith("journal.log")}, disk:{disk}, targetName:{self.__target_name}")
-        if disk == self.__target_name and filepath.endswith("journal.log"):
+        print(f"filepath:{filepath}, endswith:{filepath.endswith("journal.log")}, disk:{disk}, targetName:{self.__storage_manager.target_name}")
+        if disk == self.__storage_manager.target_name and filepath.endswith("journal.log"):
             self.__set_system_state(SystemState.SystemMustBeReset)
             self.__messages_model.clear()
             self.__messages_model.addMessage(self.tr("The report ang log have been copied to the destination storage."))
@@ -857,14 +831,11 @@ class ApplicationController(QObject):
 
 
     def __dequeue_folder(self, filepath:str):
-        with self.__queue_files_list_lock:
-            nouveau = {k: v for k, v in self.__queued_files_list.items() if not k.startswith(filepath)}
-            self.__queued_files_list.clear()
-            self.__queued_files_list.update(nouveau)
-            self.queueSizeChanged.emit(len(self.__queued_files_list))
-            #self.queueListModel_.reset()
-            self.queueUpdated.emit()
-            self.set_long_process_running(False)
+        self.__file_queue.dequeue_folder(filepath)
+        self.queueSizeChanged.emit(self.__file_queue.count())
+        #self.queueListModel_.reset()
+        self.queueUpdated.emit()
+        self.set_long_process_running(False)
 
 
     @Slot(AnalysisState)
@@ -880,26 +851,19 @@ class ApplicationController(QObject):
             # TODO
 
     def __on_storage_added(self, disk):
-        if disk not in self.__storages:
-            self.__storages.append(disk)
-            self.storagesChanged.emit()
-            self.storagesCountChanged.emit()
+        self.__storage_manager.on_storage_added(disk)
 
     def __on_storage_removed(self, disk):
-        if disk in self.__storages:
-            self.__storages.remove(disk)
-            self.storagesCountChanged.emit()
+        self.__storage_manager.on_storage_removed(disk)
             
     def __reset_storages(self):
-        self.__storages.clear()
-        self.storagesChanged.emit()
-        self.storagesCountChanged.emit()
+        self.__storage_manager.reset()
 
     def __get_storages(self):
-        return self.__storages
+        return self.__storage_manager.get_storages()
     
     def __get_storages_count(self):
-        return len(self.__storages)
+        return self.__storage_manager.get_storages_count()
 
     def __get_remaining_time(self):
         """ Returns the time remaining for the complete scan, in minutes """
@@ -917,7 +881,7 @@ class ApplicationController(QObject):
 
     def __on_system_used(self):
         self.__system_used = True
-        self.__input_files_list.clear()
+        self.__file_browser.input_files_list.clear()
         self.__input_files_listmodel.reset()
         self.systemUsedChanged.emit()
 
@@ -938,15 +902,15 @@ class ApplicationController(QObject):
 
         # On exécute la génération du rapport dans un thread
         self.__report_controller.make_report(
-            files= self.__queued_files_list,
+            files= self.__file_queue.files,
             clean_files_count= self.__get_clean_files_count(),
             infected_files_count= self.__get_infected_files_count(),
-            analyzed_files_count= len(self.__queued_files_list),
+            analyzed_files_count= len(self.__file_queue.files),
             copied_files_count= self.__copied_files_count,
             start_datetime= self.__analysis_start_time,
             end_datetime= self.__analysis_end_time,
             equipement_id= self.__system_information_model.get_uuid(),
-            storage_name= self.__source_name,
+            storage_name= self.__storage_manager.source_name,
             safecor_version= self.__system_information_model.get_safecor_version(),
             saphir_version= QCoreApplication.applicationVersion(),
             antiviruses=antiviruses
@@ -960,10 +924,9 @@ class ApplicationController(QObject):
     def on_storage_selected(self, disk:str):
         print("Storage changed to:", disk)
 
-        self.__source_name = disk
+        self.__storage_manager.set_source(disk)
         self.__analysis_controller.set_source_disk(disk)
-        self.sourceNameChanged.emit(self.__source_name)
-        self.__input_files_list.clear()
+        self.__file_browser.input_files_list.clear()
         self.__input_files_listmodel.reset()
 
     ###
@@ -979,7 +942,7 @@ class ApplicationController(QObject):
         return self.__ready
     
     def __get_current_folder(self):
-        return self.__current_folder
+        return self.__file_browser.current_folder
     
     def __set_ready(self, pret:bool):
         if self.__ready == pret:
@@ -989,16 +952,16 @@ class ApplicationController(QObject):
         self.readyChanged.emit(self.__ready)
 
     def __get_source_name(self):
-        return self.__source_name
+        return self.__storage_manager.source_name
     
     def __is_source_ready(self):
-        return self.__source_ready
+        return self.__storage_manager.source_ready
     
     def __get_target_name(self):
-        return self.__target_name
+        return self.__storage_manager.target_name
     
     def __id_target_ready(self):
-        return self.__target_ready
+        return self.__storage_manager.target_ready
 
     def __get_input_files_listmodel(self):
         return self.__input_files_listmodel
@@ -1023,8 +986,7 @@ class ApplicationController(QObject):
         self.__workflow_controller.force_state(state)
 
     def __get_queue_size(self):
-        with self.__queue_files_list_lock:
-            return len(self.__queued_files_list)
+        return self.__file_queue.count()
 
     def __is_analysis_ready(self):
         return self.__analysis_ready
@@ -1052,19 +1014,10 @@ class ApplicationController(QObject):
         return (self.__get_clean_files_count() + self.__get_infected_files_count())*100 / self.__get_queue_size()
     
     def __get_total_files_size(self):
-        return self.__queue_files_size
+        return self.__file_queue.size()
 
     def __get_transferred_ratio(self):
-        with self.__queue_files_list_lock:
-            clean_files = sum(1 for item in self.__queued_files_list.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean)
-            copy_success = sum(1 for item in self.__queued_files_list.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileCopySuccess) 
-            copy_failed = sum(1 for item in self.__queued_files_list.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileCopyError)
-            copy_total = copy_failed + copy_success
-
-            if clean_files > 0:
-                return copy_total / clean_files
-            else:
-                return 0
+        return self.__file_queue.get_transferred_ratio()
 
     def __is_task_running(self):
         return True
@@ -1114,11 +1067,11 @@ class ApplicationController(QObject):
 
     @Slot(str)
     def is_file_in_queue(self, filepath:str) -> bool:
-        return filepath in self.__queued_files_list
+        return filepath in self.__file_queue.files
 
     @Slot(str, result=bool)
     def is_folder_in_queue(self, filepath:str) -> bool:
-        return any(filepath in key for key in self.__queued_files_list)
+        return any(filepath in key for key in self.__file_queue.files)
 
     def __get_language(self):
         return self.__translation_manager.get_language()
