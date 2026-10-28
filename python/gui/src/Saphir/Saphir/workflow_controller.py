@@ -45,6 +45,7 @@ class WorkflowController(QObject):
         },
         SystemState.CopyCleanFiles: {
             SystemState.GeneratingReport,
+            SystemState.SystemMustBeReset,
             SystemState.SystemShuttingDown,
         },
         SystemState.GeneratingReport: {

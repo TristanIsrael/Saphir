@@ -607,6 +607,9 @@ class ApplicationController(QObject):
         elif self.__storage_manager.target_name != "" and self.__storage_manager.target_name == disk and state == DiskState.DISCONNECTED.value:
             # The target has been disconnected
             self.__storage_manager.clear_target()
+            if self.__workflow_controller.state in (SystemState.CopyCleanFiles, SystemState.GeneratingReport):
+                self.__set_system_state(SystemState.SystemMustBeReset)
+                self.systemMustBeReset.emit()
         if self.__storage_manager.target_ready and not self.__storage_manager.source_ready:
             # If there is only one disk connected it becomes the source
             self.__storage_manager.set_source(self.__storage_manager.target_name)

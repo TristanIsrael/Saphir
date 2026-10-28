@@ -94,12 +94,6 @@ def bug_env():
     shutil.rmtree(tmp, ignore_errors=True)
 
 
-@pytest.mark.xfail(
-    reason="Target disconnection during/after copy does not reliably lead to SystemMustBeReset. "
-           "Copy may complete before detach (timing), or report generation may hang. "
-           "See issue C.2.",
-    strict=False,
-)
 def test_target_disconnection_during_copy(bug_env):
     """Target removed during copy must lead to SystemMustBeReset.
 
