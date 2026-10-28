@@ -66,11 +66,12 @@ class MockAVManager:
 
         python = sys.executable
         cmd = [
-            python, str(_MOCK_AV_SCRIPT),
+            python, "-u", str(_MOCK_AV_SCRIPT),
             "--name", self.name,
             "--config", self._config_file,
         ]
         env = os.environ.copy()
+        env["DEVMODE"] = "1"
         env["PYTHONPATH"] = self._build_pythonpath()
 
         self._process = subprocess.Popen(
@@ -100,12 +101,16 @@ class MockAVManager:
             self._config_file = None
 
     def _build_pythonpath(self) -> str:
-        """Build the PYTHONPATH so the subprocess can find its dependencies."""
-        parts = []
+        """Build the PYTHONPATH so the subprocess can import libsaphir + safecor."""
+        gui_src = _SCRIPT_DIR.parent / "src" / "Saphir"
+        libsaphir_src = _SCRIPT_DIR.parent.parent / "libsaphir" / "src"
+        parts = [str(gui_src), str(libsaphir_src)]
+
         existing = os.environ.get("PYTHONPATH", "")
         if existing:
             parts.append(existing)
-        return os.pathsep.join(parts) if parts else ""
+
+        return os.pathsep.join(parts)
 
     def __enter__(self) -> "MockAVManager":
         self.start()
