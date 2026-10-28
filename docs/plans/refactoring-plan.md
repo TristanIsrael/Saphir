@@ -682,7 +682,7 @@ These rules must hold throughout refactoring:
 
 #### Sub-tasks (in decreasing priority order)
 
-##### 10.1 [P0] Fingerprint integrity verification (NFR-1)
+##### 11.1 [P0] Fingerprint integrity verification (NFR-1)
 - **Gap**: No test verifies that Saphir compares fingerprints at each step (source→repository, repository→AV, repository→target)
 - **Work**:
   - Add `test_fingerprint_verification.py`
@@ -692,7 +692,7 @@ These rules must hold throughout refactoring:
 - **Files**: `tests/test_fingerprint_verification.py` (new), `analysis_helper.py` (if verification logic needs extraction)
 - **Effort**: Medium (1 day)
 
-##### 10.2 [P0] Report generation failure (Scenario 8.7)
+##### 11.2 [P0] Report generation failure (Scenario 8.7)
 - **Gap**: No test covers the `GeneratingReport → ReportFailed` transition
 - **Work**:
   - Add test in `test_application_controller_handlers.py`: mock `ReportController.make_report` to raise an exception
@@ -701,7 +701,7 @@ These rules must hold throughout refactoring:
 - **Files**: `tests/test_application_controller_handlers.py` (extend)
 - **Effort**: Low (2h)
 
-##### 10.3 [P1] Source disconnection during analysis (Scenario 8.8)
+##### 11.3 [P1] Source disconnection during analysis (Scenario 8.8)
 - **Gap**: No test covers source DISCONNECTED while `SystemAnalysisRunning`
 - **Work**:
   - Add test: state = `SystemAnalysisRunning`, publish `DISK_STATE` with source `DISCONNECTED`
@@ -711,7 +711,7 @@ These rules must hold throughout refactoring:
 - **Files**: `tests/test_application_controller_handlers.py` (extend), `application_controller.py` (if handler needs the error-flag logic)
 - **Effort**: Medium (1 day)
 
-##### 10.4 [P1] Source/target disconnection during copy + auto-resume (Scenario 8.6)
+##### 11.4 [P1] Source/target disconnection during copy + auto-resume (Scenario 8.6)
 - **Gap**: Only target disconnect → `SystemMustBeReset` is tested. Source disconnect during copy and the auto-resume path are not covered.
 - **Work**:
   - Add test: state = `CopyCleanFiles`, source DISCONNECTED → error flag set, state stays `CopyCleanFiles`
@@ -720,7 +720,7 @@ These rules must hold throughout refactoring:
 - **Files**: `tests/test_application_controller_handlers.py` (extend), `transfer_controller.py` (if resume logic needs extraction)
 - **Effort**: High (1-2 days)
 
-##### 10.5 [P1] AV engine failure during analysis (NFR-3)
+##### 11.5 [P1] AV engine failure during analysis (NFR-3)
 - **Gap**: No test covers an AV component transitioning to `ERROR`/`OFF` during an active analysis
 - **Work**:
   - Add test: analysis running, one AV component state → `ERROR`
@@ -730,7 +730,7 @@ These rules must hold throughout refactoring:
 - **Files**: `tests/test_analysis_controller.py` (extend), `application_controller.py` (`__check_components_availability` during analysis)
 - **Effort**: Medium (1 day)
 
-##### 10.6 [P2] Pause/Resume with partial analysis (Scenario 8.2)
+##### 11.6 [P2] Pause/Resume with partial analysis (Scenario 8.2)
 - **Gap**: Pause is tested, but resume with a partial queue (some files already analyzed) is not
 - **Work**:
   - Add test: start analysis, analyze 1 of 3 files, pause
@@ -740,7 +740,7 @@ These rules must hold throughout refactoring:
 - **Files**: `tests/test_analysis_controller.py` (extend)
 - **Effort**: Medium (half day)
 
-##### 10.7 [P2] Individual copy failure (F4 error handling)
+##### 11.7 [P2] Individual copy failure (F4 error handling)
 - **Gap**: No test covers a single file copy failing while others succeed
 - **Work**:
   - Add test: 3 clean files in queue, 1 copy returns `status != "ok"`
@@ -751,7 +751,7 @@ These rules must hold throughout refactoring:
 - **Files**: `tests/test_transfer_controller.py` (extend)
 - **Effort**: Low (2h)
 
-##### 10.8 [P2] Target disconnect before analysis (F1)
+##### 11.8 [P2] Target disconnect before analysis (F1)
 - **Gap**: The "target disconnected before user made their choice → return to initial state" path is not explicitly tested
 - **Work**:
   - Add test: no source set, no system_used, disk DISCONNECTED
@@ -759,7 +759,7 @@ These rules must hold throughout refactoring:
 - **Files**: `tests/test_application_controller_handlers.py` (extend)
 - **Effort**: Low (1h)
 
-#### Target coverage after Phase 10
+#### Target coverage after Phase 11
 
 | Category | Before | After (target) |
 |----------|:------:|:--------------:|
