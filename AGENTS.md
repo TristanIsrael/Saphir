@@ -58,6 +58,8 @@ docs/            # Developer + user documentation
   - A bug fix bumps the last digit (patch) only.
   - A new feature bumps the second digit (minor) and resets the last digit to 0.
   - The first digit (major) is bumped only by the product maintainer.
+- The python dependencies that are used only in development and tests must lie in the file requirements-dev.txt.
+- The python dependencies that are used in production, in developpement and tests must lie in the file requirements.txt.
 
 ## Coding standards
 
