@@ -10,3 +10,4 @@ PySide6
 evdev
 inotify_simple
 weasyprint
+jinja2
