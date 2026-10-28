@@ -564,9 +564,9 @@ class ApplicationController(QObject):
             self.__messages_model.addMessage(self.tr("The antiviruses are ready"))
 
     def __handle_disk_state(self, payload:dict):
-        # If the system has been used and the files have been copied we ignore new
-        # notifications for disks state
-        if self.__workflow_controller.state.value >= SystemState.CopyCleanFiles.value:
+        # Ignore disk state changes when the system is locked (reset required or in progress)
+        locked_states = {SystemState.SystemMustBeReset, SystemState.SystemResetting, SystemState.SystemShuttingDown}
+        if self.__workflow_controller.state in locked_states:
             return
 
         # in version 3.0 we handle multiple partitions on disks
