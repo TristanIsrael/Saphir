@@ -23,6 +23,7 @@ from .EMA_ETA_estimator import EMAETAEstimator
 from .energy_monitor import EnergyMonitor
 from .translation_manager import TranslationManager
 from .api_lifecycle import ApiLifecycle
+from .workflow_controller import WorkflowController
 from .application_controller import ApplicationController
 
 __all__ = [

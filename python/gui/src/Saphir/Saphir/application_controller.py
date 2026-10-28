@@ -9,6 +9,7 @@ from . import ComponentsModel, MessagesListModel, SystemInformationModel
 from . import SafecorInputFilesListModel, SafecorInputFilesListProxyModel
 from . import EMAETAEstimator
 from . import EnergyMonitor, TranslationManager, ApiLifecycle
+from . import WorkflowController
 try:
     from . import ReportController
 except Exception:
@@ -31,7 +32,6 @@ class ApplicationController(QObject):
     __storages = []
     __target_name = ""
     __target_ready = False
-    __system_state:SystemState = SystemState.SystemStarting
     __input_files_list = {}    # Contains the list of files in the source disk currently viewed
     __queued_files_list = {}   # Contains the list of files in the queue
     __input_files_listmodel:SafecorInputFilesListModel
@@ -126,6 +126,9 @@ class ApplicationController(QObject):
 
         self.__api_lifecycle = ApiLifecycle(self)
         self.__api_lifecycle.set_all_ready_callback(self.__on_all_subscriptions_ready)
+
+        self.__workflow_controller = WorkflowController(self)
+        self.__workflow_controller.systemStateChanged.connect(self.systemStateChanged)
 
         self.__components_model = ComponentsModel(self.__components_helper, self)
 
@@ -563,7 +566,7 @@ class ApplicationController(QObject):
     def __handle_disk_state(self, payload:dict):
         # If the system has been used and the files have been copied we ignore new
         # notifications for disks state
-        if self.__system_state.value >= SystemState.CopyCleanFiles.value:
+        if self.__workflow_controller.state.value >= SystemState.CopyCleanFiles.value:
             return
 
         # in version 3.0 we handle multiple partitions on disks
@@ -675,7 +678,7 @@ class ApplicationController(QObject):
     def __handle_list_files(self, payload:dict) -> None:
         # If the analysis is running we don't care about this message
         # because the AnalysisController will do
-        if self.__system_state == SystemState.SystemAnalysisRunning:
+        if self.__workflow_controller.state == SystemState.SystemAnalysisRunning:
             return
         
         with self.__queue_files_list_lock:
@@ -1013,12 +1016,11 @@ class ApplicationController(QObject):
         return self.__log_listmodel
     
     def __get_system_state(self):
-        return self.__system_state.value
+        return self.__workflow_controller.state.value
     
     def __set_system_state(self, state:SystemState):
-        self.__system_state = state
-        print(f"System state: {SystemState(self.__system_state)}")
-        self.systemStateChanged.emit(self.__system_state.value)
+        print(f"System state: {SystemState(state)}")
+        self.__workflow_controller.force_state(state)
 
     def __get_queue_size(self):
         with self.__queue_files_list_lock:
@@ -1096,7 +1098,7 @@ class ApplicationController(QObject):
         return self.__handheld
 
     def __is_transfer_started(self):
-        return self.__system_state == SystemState.CopyCleanFiles
+        return self.__workflow_controller.state == SystemState.CopyCleanFiles
 
     def __get_messages_model(self):
         return self.__messages_model
