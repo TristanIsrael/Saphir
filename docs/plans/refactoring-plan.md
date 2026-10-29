@@ -472,6 +472,13 @@ These rules must hold throughout refactoring:
 > **Environment note**: the K8s cluster was not reachable (OIDC/DPoP issue), so validation is
 > performed in a local **Alpine 3.21.9 chroot** (`/tmp/opencode/alpine`, repo at `/work/Saphir`)
 > against the Saphir APK repository.
+>
+> The chroot workflow is automated by **`setup/chroot/chroot-build.sh`**
+> (subcommands: `init`, `sync`, `build`, `install`, `test-gui`, `validate`,
+> `list`, `destroy`). `validate` performs the full cycle: sync the sources,
+> build `saphir-lib` + `saphir-gui` with abuild, install the APKs, and boot
+> the GUI bundle in DEVMODE (offscreen, local mosquitto) verifying the
+> `Saphir is ready` marker in the API log.
 
 #### 8.1 APKBUILD update ✅ Done
 - `setup/packages/saphir-gui/APKBUILD` verified: the refactoring introduced **no new dependencies**
