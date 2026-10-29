@@ -30,16 +30,20 @@ class SafecorInputFilesListModel(QAbstractListModel):
         self.__queuedFilesList = queuedFilesList
 
     def onSourceChanged(self):
+        """Notify the views that the source disk file list changed."""
         self.updateFilesList.emit()
 
     def rowCount(self, parent=QModelIndex()):
+        """Return the number of rows in the model."""
         self.__lastRowCount = self.__rowCount
         return self.__rowCount
 
     def flags(self, index):
+        """Return the item flags (editable rows for the selection state)."""
         return Qt.ItemIsEditable
 
     def data(self, index, role=Qt.DisplayRole):
+        """Return the file field for the given row and role."""
         if not index.isValid():
             return None
 
@@ -82,6 +86,7 @@ class SafecorInputFilesListModel(QAbstractListModel):
         return None
 
     def roleNames(self) -> dict:
+        """Return the mapping of role numbers to QML role names."""
         roles = {
             Roles.RoleType: b"type",
             Roles.RoleFilename: b"filename",
@@ -97,12 +102,14 @@ class SafecorInputFilesListModel(QAbstractListModel):
         return roles
 
     def reset(self):
+        """Resync the row count with the file list and reset the model."""
         self.beginResetModel()
         self.__lastRowCount = 0
         self.__rowCount = len(self.__files)
         self.endResetModel()
 
     def on_file_updated(self, filepath: str, fields: list):
+        """Update the row of a file (or of the folder containing it) after a field change."""
         is_child_of_folder = False
         if filepath not in self.__files:
             # The file added might be a child of one of the folders shown
@@ -135,6 +142,7 @@ class SafecorInputFilesListModel(QAbstractListModel):
         self.dataChanged.emit(idx, idx, roles)
 
     def on_file_added(self):
+        """Insert the newly added file rows into the model."""
         self.__rowCount = len(self.__files)
         self.beginInsertRows(QModelIndex(), self.__lastRowCount, self.__rowCount)
         self.endInsertRows()

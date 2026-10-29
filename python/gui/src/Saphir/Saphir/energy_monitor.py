@@ -21,21 +21,26 @@ class EnergyMonitor(QObject):
         QObject.__init__(self, parent)
 
     def start_polling(self):
+        """Start the periodic energy state polling."""
         self.__request_energy_state()
 
     def stop_polling(self):
+        """Stop the periodic energy state polling."""
         self.__monitor = False
         if self.__timer is not None:
             self.__timer.cancel()
             self.__timer = None
 
     def get_battery_level(self) -> int:
+        """Return the last known battery level in percent."""
         return self.__battery_level
 
     def is_plugged(self) -> bool:
+        """Return whether the system is plugged into a power source."""
         return self.__plugged
 
     def on_energy_state_response(self, payload: dict):
+        """Store a new energy state and emit the corresponding signals."""
         if not MqttHelper.check_payload(payload, ["battery_level", "plugged"]):
             return
 

@@ -11,6 +11,8 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 
 class SystemState(Enum):
+    """Workflow states of the Saphir state machine (see docs/workflow-rules.md)."""
+
     SystemInactive = 0
     SystemStarting = 1
     SafecorReady = 2
@@ -30,14 +32,20 @@ class SystemState(Enum):
 
 
 class AnalysisState(Enum):
+    """High-level analysis state (not ready, running, stopped)."""
+
     AnalysisNotReady, AnalysisRunning, AnalysisStopped = range(3)
 
 
 class AnalysisMode(Enum):
+    """Scope of an analysis: the whole source or the user selection."""
+
     Undefined, AnalyseWholeSource, AnalyseSelection = range(3)
 
 
 class Roles:
+    """Custom Qt model roles shared by the file list models."""
+
     RoleType = Qt.UserRole + 1
     RoleFilename = Qt.UserRole + 2
     RolePath = Qt.UserRole + 3
@@ -56,6 +64,8 @@ class Roles:
 
 @QmlElement
 class Enums(QObject):
+    """QML element exposing the Python enums to QML as singletons."""
+
     QEnum(SystemState)
     QEnum(AnalysisState)
     QEnum(FileStatus)

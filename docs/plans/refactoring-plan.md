@@ -1,6 +1,6 @@
 # Refactoring Plan - Saphir v3.x
 
-> **Status**: In progress — Phases 0-8 complete, Phases 9-14 pending
+> **Status**: In progress — Phases 0-9 complete, Phases 10-14 pending
 > **Last updated**: 2026-10-29
 > **Branch**: `refactoring` (based on `main` post-merge #128)
 
@@ -372,7 +372,7 @@ These rules must hold throughout refactoring:
 | 6 Unit test coverage | ✅ Done | `d71de3b` | #137 | 44 new tests; refactored modules ≥ 95% |
 | 7 Linting & static analysis | ✅ Done | `9bdfe42` | #54 | 122+27 ruff errors fixed, format applied, 0 remaining |
 | 8 Alpine package validation | ✅ Done | `4b0b1b2`, `056a659`, `cf86fbd`, `c459924`, `c94d4af` | #141, #142, #143, #144 | 7/8 packages built in the Alpine 3.21.9 chroot, GUI domain boots in DEVMODE; `saphir-container-eset` not buildable (ESET URL 404 - the official CI skips it too) |
-| 9 Documentation debt | ⏳ Pending | — | — | French→English, docstrings, dead code removal |
+| 9 Documentation debt | ✅ Done | `4038c13` + round 2 | #139 | French→English (incl. accent-free), all class/method/module docstrings, dead code removed; 0 French comments, 0 public class/method without docstring |
 | 10 Missing features & NFRs | ⏳ Pending | — | — | Fingerprint, ReportFailed, disconnect handlers, AV failure |
 | 11 Functional coverage | ⏳ Pending | — | — | Error paths, NFRs, disconnection scenarios |
 | 12 GUI (QML) test coverage | ⏳ Pending | — | — | QML bindings, panel visibility, signal integration |
@@ -389,15 +389,14 @@ These rules must hold throughout refactoring:
 |-------|--------------|--------|--------------|
 | Phase 7 | ✅ done | — | Phases 3-5 ✅ |
 | Phase 8 | ✅ done | — | Phases 3-5 ✅ |
-| Phase 9 | -250 / +100 | Medium | Phases 0-8 |
+| Phase 9 | ✅ done | — | Phases 0-8 ✅ |
 | Phase 10 | +400 / +100 | High | Phases 3-6 ✅ |
 | Phase 11 | +300 / +200 | High | Phase 10 |
 | Phase 12 | +200 / +150 | Medium | Phases 5-6, 10 |
 | Phase 14 | +250 / +150 | Medium | Safecor emulator (external, **blocking**) |
-| **Remaining** | **0 / +700** | **~15 days** | — |
+| **Remaining** | **0 / +550** | **~13 days** | — |
 
-> **Note**: Phase 9 (documentation debt) is independent and can start immediately;
-> Phase 11 depends on Phase 10, and Phase 12 on Phase 10. Phase 14 is blocked on the
+> **Note**: Phase 11 depends on Phase 10, and Phase 12 on Phase 10. Phase 14 is blocked on the
 > external Safecor emulator (interactive scenario API / observation hooks not yet built).
 
 ---
@@ -536,48 +535,52 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 
 ---
 
-### Phase 9: Documentation Debt ⏳ PENDING
+### Phase 9: Documentation Debt ✅ DONE (commits 4038c13, cd727c6-era round 2)
 
 **Goal**: Eliminate the code documentation debt accumulated over time.
 
-**Current state**:
-- 13 out of 25 Python modules have **zero** docstrings
-- ~30+ comments in French (should be English per project rules)
-- No class-level documentation on most QML model classes
-- `application_controller.py` (1108 lines) has only 3 docstring markers
-- `safecor_input_files_list_model.py` (339 lines) has 0 docstrings and ~200 lines of commented-out dead code
+**Done in two rounds**:
+- Round 1 (`4038c13`): French comments translated, module docstrings added to all
+  24 modules, class docstrings on the proxy/model classes, ~200 lines of
+  commented-out dead code removed from `safecor_input_files_list_model.py`,
+  `queue_list_proxy_model.py` (file later removed) and
+  `safecor_input_files_list_proxy_model.py`.
+- Round 2 (this round): the remaining class and method docstrings plus the
+  dead code that survived round 1.
 
-#### 9.1 Translate French comments to English
-- `analysis_controller.py`: ~10 French comments (lines 63-79, 250-253)
-- `application_controller.py`: ~20 French comments (lines 214-218, 261-262, 281, 446-448, 678-707, 866-878)
-- `analysis_helper.py`: 3 French comments (lines 92-94)
-- `components_model.py`: 1 French comment (line 16)
+#### 9.1 Translate French comments to English ✅
+- All French comments translated, including ones without accented characters
+  (e.g. `Si c'est un fichier...`) that the accented-character grep missed.
 
-#### 9.2 Add class-level docstrings
-- All `QAbstractListModel` / `QAbstractTableModel` subclasses in `Saphir/`
-- All controller classes (already partially done in Phases 0-4)
-- Target: every public class has a one-line docstring explaining its responsibility
+#### 9.2 Add class-level docstrings ✅
+- Every public class in `Saphir/` now has a docstring (enums, QML models,
+  controllers, helpers).
 
-#### 9.3 Add method docstrings for public API
-- All `@Slot` methods in `application_controller.py`
-- All public methods in controllers (non-underscore)
-- Target: every public method has a docstring (summary line at minimum)
+#### 9.3 Add method docstrings for public API ✅
+- Every public (non-underscore) method in `Saphir/` has a summary docstring,
+  including all `@Slot` methods of `application_controller.py`, the Qt model
+  interface methods (`rowCount`, `data`, `roleNames`, ...) and the property
+  getters/setters.
 
-#### 9.4 Remove dead commented-out code
-- `safecor_input_files_list_model.py`: ~200 lines of commented-out code (lines 149-339)
-- `queue_list_proxy_model.py`: dead code in `lessThan()` (lines 24-37) and `on_data_changed()` (lines 41-47)
-- `safecor_input_files_list_proxy_model.py`: ~40 lines of commented-out code (lines 37-60)
-- Verify with `ruff` that no other dead code blocks exist
+#### 9.4 Remove dead commented-out code ✅
+- Remaining commented-out debug prints, dead state transitions and dead API
+  calls removed from `analysis_controller.py`, `application_controller.py`,
+  `log_list_model.py`, `queue_list_model.py`, `messages_list_model.py`,
+  `safecor_output_files_list_proxymodel.py`.
 
-#### 9.5 Add module-level docstrings
-- Every `.py` file in `Saphir/` should have a one-line module docstring
-- Format: `"""Short description of what this module provides."""`
+#### 9.5 Add module-level docstrings ✅
+- Every `.py` file in `Saphir/` (24 modules, including `__init__.py`) has a
+  one-line module docstring.
 
-**Validation**:
+**Validation** (verified):
 - `grep -r "#.*[éèàçûôî]" Saphir/` returns zero results (no French comments)
-- Every public class and method in `Saphir/` has a docstring
-- No commented-out code blocks remain (verified by manual review + ruff)
-- Doxygen build succeeds without warnings on `python/gui/src/Saphir/`
+- AST check: every public class and public method in `Saphir/` has a docstring
+- No commented-out code blocks remain (manual review + pattern grep)
+- `ruff check` and `ruff format --check` pass on `src/Saphir/`
+- Full test suite: 350 passed, 3 skipped
+- Doxygen: no Doxygen config exists in the repository, so the Doxygen
+  criterion is not applicable until a Doxygen setup is added (tracked as a
+  follow-up, not blocking)
 
 ---
 

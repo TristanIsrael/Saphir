@@ -78,9 +78,11 @@ class AnalysisController(QObject):
         Api().request_system_info()
 
     def set_source_disk(self, source_disk: str):
+        """Set the name of the disk being analyzed."""
         self.__source_disk = source_disk
 
     def start_analysis(self) -> None:
+        """Start the analysis: resume the AV queue and copy the files to the repository."""
         Api().info("Starting the analysis", "AnalysisController")
 
         self.__set_analysis_state(AnalysisState.AnalysisRunning)
@@ -93,6 +95,7 @@ class AnalysisController(QObject):
         self.__copy_timer.start()
 
     def stop_analysis(self) -> None:
+        """Stop the analysis: ask the AVs to stop and clear the copy timer."""
         Api().info("Stopping the analysis", "AnalysisController")
         Api().publish(f"{TOPIC_ANALYSIS}/stop", {})
         Api().clear_sys_usb_queues()
@@ -102,6 +105,7 @@ class AnalysisController(QObject):
         self.__set_analysis_state(AnalysisState.AnalysisStopped)
 
     def reset(self):
+        """Reset the analysis counters and state to their initial values."""
         self.__clean_files_count = 0
         self.__clean_files_size = 0
         self.__infected_files_count = 0
@@ -113,9 +117,6 @@ class AnalysisController(QObject):
     ## Private functions
     #
     def __on_api_message(self, topic: str, payload: dict) -> None:
-        # Api().debug("Message received on topic {}".format(topic), "AnalysisController")
-        # print("[AnalysisController]", topic, payload)
-
         if topic == Topics.NEW_FILE:
             if not MqttHelper.check_payload(payload, ["disk", "filepath"]):
                 Api().error(f"Malformed message for topic {topic}")
@@ -148,7 +149,7 @@ class AnalysisController(QObject):
             pass
         elif topic == f"{TOPIC_ANALYSIS}/error":
             if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
-                # On filtre pour ne pas provoquer de boucle infinie
+                # Filter out malformed payloads to avoid an infinite error loop
                 return
 
             self.__handle_error(payload)
@@ -355,12 +356,6 @@ class AnalysisController(QObject):
                     filesize = self.__files[filepath].get("size", 0)
                     self.iterationDone.emit(duration / 60, filesize)
 
-                # Free the slot in the repository for the archive
-                # Api().delete_file(self.__archive_mounted_filepath, Constants.STR_REPOSITORY)
-                # self.__repository_size = self.__repository_size - 1 # TODO: asynchronously after the file has been deleted
-
-            # print(f"File {filepath}, status={"clean" if clean else "infected"}, success={success}, component={component}")
-
     def __handle_error(self, payload):
         filepath = payload.get("filepath", "")
         error = payload.get("error", "unknown")
@@ -394,9 +389,6 @@ class AnalysisController(QObject):
             return
 
         files = self.__get_next_group_of_files(limit)
-        # print("working:", self.get_working_files_count())
-        # print("free slots:", limit)
-        # print("next group:", files)
 
         with self.__queue_lock:
             for file in files:
@@ -467,7 +459,6 @@ class AnalysisController(QObject):
         nb_files = self.__repository_capacity - AnalysisHelper.get_repository_size(
             self.__files
         )
-        # print("free slots=", nb_files)
         return nb_files
 
     def __get_next_group_of_files(self, size_limit):
@@ -532,8 +523,6 @@ class AnalysisController(QObject):
                     group.append(f)
                     break  # We return only one archive
 
-        # print("next group of files:", group)
-
         return group
 
     def get_working_files_count(self) -> int:
@@ -565,18 +554,23 @@ class AnalysisController(QObject):
     ## Getters and setters
     #
     def get_analysis_state(self) -> AnalysisState:
+        """Return the current analysis state."""
         return self.__analysis_state
 
     def get_clean_files_count(self) -> int:
+        """Return the number of files declared clean."""
         return self.__clean_files_count
 
     def get_clean_files_size(self) -> int:
+        """Return the total size in bytes of the files declared clean."""
         return self.__clean_files_size
 
     def get_infected_files_count(self) -> int:
+        """Return the number of files declared infected or errored."""
         return self.__infected_files_count
 
     def get_infected_files_size(self) -> int:
+        """Return the total size in bytes of the files declared infected or errored."""
         return self.__infected_files_size
 
     def __set_analysis_state(self, state: AnalysisState):
@@ -584,12 +578,15 @@ class AnalysisController(QObject):
         self.stateChanged.emit(state)
 
     def get_repository_capacity(self):
+        """Return the total capacity of the analysis repository in bytes."""
         return self.__repository_capacity
 
     def get_repository_size(self) -> int:
+        """Return the number of files currently held in the analysis repository."""
         return AnalysisHelper.get_repository_size(self.__files)
 
     def get_queue_size(self):
+        """Return the number of files in the analysis queue."""
         return len(self.__files)
 
     state = Property(int, get_analysis_state, notify=stateChanged)

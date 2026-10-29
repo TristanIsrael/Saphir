@@ -197,6 +197,7 @@ class ApplicationController(QObject):
         self.__system_information_model = SystemInformationModel(self.__handheld)
 
     def start(self, ready_callback):
+        """Start the Safecor API connection with the platform or the debug broker."""
         self.__ready_callback = ready_callback
 
         if DEVMODE:
@@ -215,6 +216,7 @@ class ApplicationController(QObject):
 
     @Slot()
     def update_source_files_list(self):
+        """Refresh the file list of the selected folder on the source disk."""
         # First we verify that there is a source
         if self.__storage_manager.source_name == "":
             return
@@ -227,7 +229,7 @@ class ApplicationController(QObject):
 
     @Slot(str)
     def go_to_folder(self, folder: str):
-        # print("is_enqueuing=", self.__is_enquing)
+        """Navigate the file browser to the given folder."""
         self.__file_browser.input_files_list.clear()
         self.__input_files_listmodel.reset()
         self.__input_files_listproxymodel.set_current_folder(folder)
@@ -240,11 +242,13 @@ class ApplicationController(QObject):
 
     @Slot()
     def go_to_parent_folder(self):
+        """Navigate the file browser to the parent of the current folder."""
         path = Path(self.__file_browser.current_folder)
         self.go_to_folder(path.parent.absolute().as_posix())
 
     @Slot()
     def start_full_analysis(self):
+        """Start the analysis of the whole source disk, file list included."""
         Api().info("Starting full device analysis")
         self.__analysis_mode = AnalysisMode.AnalyseWholeSource
         self.__analysis_start_time = datetime.now()
@@ -257,7 +261,6 @@ class ApplicationController(QObject):
         self.__file_browser.is_enqueuing = True
         self.set_long_process_running(True)
 
-        # QCoreApplication.processEvents()
         Api().get_files_list(
             self.__storage_manager.source_name,
             False,
@@ -266,16 +269,11 @@ class ApplicationController(QObject):
 
     @Slot(str, str)
     def enqueue_file(self, filetype: str, filepath: str):
-        # print(f"User added {filetype} {filepath} to the queue")
-
+        """Add a file or a folder selected by the user to the analysis queue."""
         if filetype == "file":
             file = self.__file_browser.input_files_list[filepath]
             file["inqueue"] = True
             self.__file_queue.enqueue(filepath, file)
-            #    self.__queuedFilesList[filepath] = copy.deepcopy(file)
-
-            # self.fileQueued.emit(filepath)
-            # self.queueListModel_.reset()
             self.fileUpdated.emit(filepath, ["inqueue"])
             self.queueSizeChanged.emit(self.__get_queue_size())
             self.set_long_process_running(False)
@@ -297,8 +295,7 @@ class ApplicationController(QObject):
 
     @Slot(str)
     def dequeue_file(self, filepath: str):
-        # Api().debug("User removed {} from to the queue".format(filepath))
-
+        """Remove a file or a folder selected by the user from the analysis queue."""
         # Most of the time the user will deselect a folder,
         # so we need to find all files in that folder
         file = self.__file_browser.input_files_list.get(filepath)
@@ -306,7 +303,7 @@ class ApplicationController(QObject):
             return
 
         if file["type"] == "file":
-            # Si c'est un fichier on le retire de la queue
+            # It is a single file, so we only remove it from the queue
             self.__file_queue.dequeue(filepath)
 
             file["inqueue"] = False
@@ -324,6 +321,7 @@ class ApplicationController(QObject):
 
     @Slot()
     def start_stop_analysis(self):
+        """Toggle the analysis: start it if stopped, stop it if running."""
         if self.__analysis_controller.state == AnalysisState.AnalysisStopped:
             Api().debug("User asked to start the analysis")
             self.__analysis_start_time = datetime.now()
@@ -335,6 +333,7 @@ class ApplicationController(QObject):
 
     @Slot()
     def start_analysis(self):
+        """Start the analysis if it is stopped and ready to run."""
         if (
             self.__analysis_controller.state == AnalysisState.AnalysisStopped
             and self.__analysis_ready
@@ -346,12 +345,14 @@ class ApplicationController(QObject):
 
     @Slot()
     def stop_analysis(self):
+        """Stop the analysis if it is currently running."""
         if self.__analysis_controller.state == AnalysisState.AnalysisRunning:
             Api().debug("User asked to stop the analysis")
             self.__analysis_controller.stop_analysis()
 
     @Slot()
     def start_transfer(self):
+        """Start copying the clean files to the target disk."""
         Api().info("Start transfer of clean files to target disk")
 
         self.__set_system_state(SystemState.CopyCleanFiles)
@@ -361,6 +362,7 @@ class ApplicationController(QObject):
 
     @Slot()
     def select_all_clean_files_for_copy(self):
+        """Select every clean file for the copy to the target disk."""
         for filepath_, file_ in self.__file_queue.files.items():
             if file_["status"] == FileStatus.FileClean:
                 file_["select_for_copy"] = True
@@ -368,6 +370,7 @@ class ApplicationController(QObject):
 
     @Slot()
     def deselect_all_clean_files_for_copy(self):
+        """Deselect every clean file from the copy to the target disk."""
         for filepath_, file_ in self.__file_queue.files.items():
             if file_["status"] == FileStatus.FileClean:
                 file_["select_for_copy"] = False
@@ -375,6 +378,7 @@ class ApplicationController(QObject):
 
     @Slot()
     def reset(self):
+        """Reset the whole system: restart the dirty domains and clear the models."""
         self.stop_analysis()
         self.__set_system_state(SystemState.SystemResetting)
 
@@ -432,23 +436,28 @@ class ApplicationController(QObject):
 
     @Slot()
     def set_long_process_running(self, running: bool):
+        """Set the long-process state shown by the GUI progress indicator."""
         self.__long_process_running = running
         self.longProcessRunningChanged.emit()
 
     @Slot(str)
     def debug(self, message: str):
+        """Log a debug message from QML through the Safecor API."""
         Api().debug(message, "Saphir")
 
     @Slot(str)
     def info(self, message: str):
+        """Log an info message from QML through the Safecor API."""
         Api().info(message, "Saphir")
 
     @Slot(str)
     def warn(self, message: str):
+        """Log a warning message from QML through the Safecor API."""
         Api().warn(message, "Saphir")
 
     @Slot(str)
     def error(self, message: str):
+        """Log an error message from QML through the Safecor API."""
         Api().error(message, "Saphir")
 
     def __on_api_ready(self):
@@ -517,8 +526,6 @@ class ApplicationController(QObject):
     def __on_message_received(self, topic: str, payload: dict):
         # WARNING: this function is called from another thread.
         # Use signals to communicate with other system objects.
-        # print("[ApplicationController] topic: {}".format(topic))
-        # print("payload: {}".format(payload))
 
         if topic == Topics.DISK_STATE:
             self.__handle_disk_state(payload)
@@ -564,12 +571,14 @@ class ApplicationController(QObject):
 
     @Slot()
     def shutdown(self):
+        """Ask the Safecor platform to shut the system down."""
         self.__set_system_state(SystemState.SystemShuttingDown)
         self.__messages_model.addMessage(self.tr("The system is shutting down..."))
         Api().shutdown()
 
     @Slot()
     def switch_to_viewer(self):
+        """Switch the screen from the Saphir GUI to the read-only viewer."""
         Api().switch_gui("saphir-viewer")
 
     def __check_components_availability(self):
@@ -766,7 +775,6 @@ class ApplicationController(QObject):
             self.__storage_manager.set_source(disk)
             self.__analysis_controller.set_source_disk(disk)
             Api().info(f"The source disk name is {self.__storage_manager.source_name}")
-            # self.__set_system_state(SystemState.SystemGettingFilesList)
 
     def __handle_list_files(self, payload: dict) -> None:
         # If the analysis is running we don't care about this message
@@ -785,7 +793,6 @@ class ApplicationController(QObject):
             Api().error("The files argument is missing")
             return
 
-        # Api().debug("Files list received, count={}".format(len(files)))
         self.__file_browser.folders_to_query -= 1
 
         for file in files:
@@ -794,11 +801,9 @@ class ApplicationController(QObject):
             file["filepath"] = filepath
             file["status"] = FileStatus.FileStatusUndefined
             file["selected"] = False
-            # print(filepath)
 
             if self.__file_browser.is_enqueuing:
                 # We are in the process of selecting files
-                # if self.__analysis_mode == AnalysisMode.AnalyseSelection:
                 # We are in single-selection mode
                 if file["type"] == "file":
                     file["inqueue"] = True
@@ -806,7 +811,7 @@ class ApplicationController(QObject):
                     self.__file_queue.enqueue(filepath, file)
                     self.fileUpdated.emit(filepath, ["inqueue"])
                 elif file["type"] == "folder":
-                    # Si c'est un dossier on va chercher les fichiers qu'il contient
+                    # It is a folder, so we fetch the files it contains
                     self.__file_browser.folders_to_query += 1
                     self.__thread_pool.submit(
                         Api().get_files_list,
@@ -827,7 +832,6 @@ class ApplicationController(QObject):
         if self.__file_browser.is_enqueuing:
             self.queueSizeChanged.emit(self.__file_queue.count())
 
-        # print(self.__file_browser.folders_to_query)
         if self.__file_browser.folders_to_query == 0:
             self.set_long_process_running(False)
 
@@ -851,7 +855,7 @@ class ApplicationController(QObject):
             if self.__analysis_mode == AnalysisMode.AnalyseSelection:
                 self.__set_system_state(SystemState.SystemWaitingForUserAction)
 
-            # A la fin on sort du mode de mise en queue
+            # Finally we leave the enqueuing mode
             self.__file_browser.is_enqueuing = False
 
     def __handle_discover_components(self, payload: dict):
@@ -909,9 +913,7 @@ class ApplicationController(QObject):
         if not MqttHelper.check_payload(payload, ["core", "system"]):
             return
 
-        # self.__system_information = payload
         self.__system_information_model.information_updated(payload)
-        # self.systemInformationChanged.emit()
 
     def __handle_create_file(self, payload: dict):
         disk = payload.get("disk", "")
@@ -958,7 +960,6 @@ class ApplicationController(QObject):
             self.__analysis_controller.stop_analysis()
             self.__analysis_end_time = datetime.now()
             self.__set_system_state(SystemState.AnalysisCompleted)
-            # self.__make_analysis_report()
 
     def __on_disk_controller_state_changed(self, ready: bool):
         Api().debug(f"Safecor disk controller is {'ready' if ready else 'not ready'}")
@@ -968,7 +969,6 @@ class ApplicationController(QObject):
     def __dequeue_folder(self, filepath: str):
         self.__file_queue.dequeue_folder(filepath)
         self.queueSizeChanged.emit(self.__file_queue.count())
-        # self.queueListModel_.reset()
         self.queueUpdated.emit()
         self.set_long_process_running(False)
 
@@ -1053,11 +1053,12 @@ class ApplicationController(QObject):
         )
 
     def __on_report_generated(self):
+        # Placeholder: the report file copy is done in __on_transfer_complete.
         pass
-        # self.__set_system_state(SystemState.AnalysisCompleted)
 
     @Slot(str)
     def on_storage_selected(self, disk: str):
+        """Set the selected disk as the analysis source and reset the file browser."""
         print("Storage changed to:", disk)
 
         self.__storage_manager.set_source(disk)
@@ -1219,10 +1220,12 @@ class ApplicationController(QObject):
 
     @Slot(str)
     def is_file_in_queue(self, filepath: str) -> bool:
+        """Return whether the file is in the analysis queue (QML query)."""
         return filepath in self.__file_queue.files
 
     @Slot(str, result=bool)
     def is_folder_in_queue(self, filepath: str) -> bool:
+        """Return whether any file of the folder is in the analysis queue (QML query)."""
         return any(filepath in key for key in self.__file_queue.files)
 
     def __get_language(self):

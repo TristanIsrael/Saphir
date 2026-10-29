@@ -4,6 +4,8 @@ from libsaphir import FileStatus
 
 
 class AnalysisHelper:
+    """Static helpers that aggregate antivirus results and compute per-file consensus."""
+
     @staticmethod
     def update_file_result(
         files: dict,

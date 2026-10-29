@@ -71,13 +71,16 @@ class WorkflowController(QObject):
 
     @property
     def state(self) -> SystemState:
+        """Return the current workflow state."""
         return self._state
 
     def can_transition(self, to: SystemState) -> bool:
+        """Return whether a transition to the given state is valid."""
         allowed = self._VALID_TRANSITIONS.get(self._state, set())
         return to in allowed
 
     def transition_to(self, to: SystemState) -> bool:
+        """Validate and apply a state transition, returning whether it was accepted."""
         if not self.can_transition(to):
             print(f"[WorkflowController] BLOCKED: {self._state.name} -> {to.name}")
             return False
@@ -93,4 +96,5 @@ class WorkflowController(QObject):
         self.systemStateChanged.emit(self._state.value)
 
     def is_in_states(self, states: set[SystemState]) -> bool:
+        """Return whether the current state is one of the given states."""
         return self._state in states

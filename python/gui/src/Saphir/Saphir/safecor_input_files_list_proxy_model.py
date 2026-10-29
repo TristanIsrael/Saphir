@@ -31,6 +31,7 @@ class SafecorInputFilesListProxyModel(QSortFilterProxyModel):
     def filterAcceptsRow(
         self, source_row: int, source_parent: QModelIndex | QPersistentModelIndex
     ):
+        """Accept every row (the filtering is done by the current folder property)."""
         return True
 
     # Private functions
@@ -38,6 +39,7 @@ class SafecorInputFilesListProxyModel(QSortFilterProxyModel):
         return self.__current_folder
 
     def set_current_folder(self, current_folder: str):
+        """Set the current folder, emit the signal and invalidate the filter."""
         if self.__current_folder == current_folder:
             return
 

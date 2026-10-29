@@ -16,8 +16,9 @@ from . import Roles
 
 
 class QueueListModel(QAbstractListModel):
+    """List model of the analysis queue with clean/infected/other status filters."""
+
     # Variables
-    # __last_row_count = 0
     __row_count = 0
     __max_rows = 999999
     __files: dict
@@ -38,16 +39,16 @@ class QueueListModel(QAbstractListModel):
         self.__make_cache()
 
     def rowCount(self, parent=QModelIndex()):
-        # return len(self.__fichiers)
+        """Return the number of files in the filtered cache."""
         return len(self.__cache)
 
     def data(self, index, role=Qt.DisplayRole):
+        """Return the file field for the given row and role."""
         if not index.isValid():
             return None
 
         row = index.row()
         file = self.__cache[row]
-        # qDebug("fonction data() - filename:%s, filepath:%s" % (fichier["name"], fichier["filepath"]))
 
         if role == Roles.RoleType:
             return file.get("type", "")
@@ -62,7 +63,6 @@ class QueueListModel(QAbstractListModel):
             return file.get("filepath", "#err")
 
         if role == Roles.RoleStatus:
-            # qDebug("{} -> {} ({})".format(fichier.get("name"), fichier.get("status", FileStatus.FileStatusUndefined), fichier.get("status", FileStatus.FileStatusUndefined).value))
             return file.get("status", FileStatus.FileStatusUndefined).value
 
         if role == Roles.RoleProgress:
@@ -80,6 +80,7 @@ class QueueListModel(QAbstractListModel):
         return None
 
     def roleNames(self) -> dict:
+        """Return the mapping of role numbers to QML role names."""
         roles = {
             Roles.RoleType: b"type",
             Roles.RoleFilename: b"filename",
@@ -95,6 +96,7 @@ class QueueListModel(QAbstractListModel):
         return roles
 
     def reset(self):
+        """Rebuild the cache from the queue and reset the model."""
         self.beginResetModel()
         self.__set_auto_filter_rule()
         self.__make_cache()
@@ -147,6 +149,7 @@ class QueueListModel(QAbstractListModel):
 
     @Slot(str, list)
     def on_file_updated(self, filepath: str, fields: list):
+        """Insert, remove or update a queue row after a file field change."""
         with self.__update_lock:
             if filepath not in self.__files:
                 return
@@ -186,7 +189,6 @@ class QueueListModel(QAbstractListModel):
 
             # We remove the file from the cache if its status is incompatible with the filters
             if "status" in fields and fichier["status"] not in filters:
-                # print(f"Removed the file {fichier["filepath"]} at index {i}")
                 self.beginRemoveRows(QModelIndex(), i, i)
                 del self.__cache[i]
                 self.endRemoveRows()
@@ -214,27 +216,33 @@ class QueueListModel(QAbstractListModel):
                 print(e)
 
     def get_filter_clean(self):
+        """Return whether clean files are shown."""
         return self.__filter_clean
 
     def set_filter_clean(self, filtre: bool):
+        """Enable or disable the clean filter and rebuild the cache."""
         self.beginResetModel()
         self.__filter_clean = filtre
         self.__make_cache()
         self.endResetModel()
 
     def get_filter_infected(self):
+        """Return whether infected/error files are shown."""
         return self.__filter_infected
 
     def set_filter_infected(self, filtre: bool):
+        """Enable or disable the infected filter and rebuild the cache."""
         self.beginResetModel()
         self.__filter_infected = filtre
         self.__make_cache()
         self.endResetModel()
 
     def get_filter_other(self):
+        """Return whether files with an in-progress status are shown."""
         return self.__filter_other
 
     def set_filter_other(self, filtre: bool):
+        """Enable or disable the other filter and rebuild the cache."""
         self.beginResetModel()
         self.__filter_other = filtre
         self.__make_cache()

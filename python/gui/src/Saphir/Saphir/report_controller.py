@@ -13,15 +13,19 @@ from weasyprint import HTML
 
 
 class ReportController(QObject):
+    """Renders and writes the PDF scan report (Jinja2 + WeasyPrint)."""
+
     reportGenerated = Signal()
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
 
     def get_report_filename(self) -> str:
+        """Return the base name of the generated report."""
         return "Scan report.pdf"
 
     def get_report_filepath(self) -> str:
+        """Return the full path where the report is written."""
         out_dir = tempfile.gettempdir()
         out_path = os.path.join(out_dir, self.get_report_filename())
         return out_path
@@ -98,6 +102,7 @@ class ReportController(QObject):
         saphir_version: str,
         antiviruses: dict,
     ) -> None:
+        """Render the HTML template and write the final PDF report."""
         try:
             html_content = self._render_html(
                 files,

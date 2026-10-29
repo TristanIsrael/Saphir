@@ -18,9 +18,11 @@ class ApiLifecycle(QObject):
         self._all_ready_callback = None
 
     def get_logfile(self) -> str:
+        """Return the path of the Saphir API log file."""
         return self._logfile
 
     def set_all_ready_callback(self, callback):
+        """Set the callback invoked once every MQTT subscription is confirmed."""
         self._all_ready_callback = callback
 
     def setup_subscriptions(self):

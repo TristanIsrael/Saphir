@@ -1,3 +1,5 @@
+"""Saphir GUI application package: controllers, QML models and helpers."""
+
 # ruff: noqa: I001
 # Import order is dependency-driven (circular import avoidance), not alphabetical.
 __author__ = "Tristan Israël (tristan.israel@alefbet.net)"

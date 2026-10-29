@@ -14,6 +14,8 @@ from . import QueueListModel, Roles
 
 
 class SafecorOutputFilesListProxyModel(QSortFilterProxyModel):
+    """Proxy of the queue model showing only the files copied to the target."""
+
     ###
     # Signals
     currentFolderChanged = Signal()
@@ -28,8 +30,8 @@ class SafecorOutputFilesListProxyModel(QSortFilterProxyModel):
     def filterAcceptsRow(
         self, source_row: int, source_parent: QModelIndex | QPersistentModelIndex
     ):
+        """Accept only files whose copy to the target finished (success or error)."""
         idx = self.sourceModel().index(source_row, 0, QModelIndex())
-        # path = self.sourceModel().data(idx, Roles.RolePath)
         type = self.sourceModel().data(idx, Roles.RoleType)
         status = self.sourceModel().data(idx, Roles.RoleStatus)
 

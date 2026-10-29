@@ -7,12 +7,16 @@ from safecor import ConnectionType, MqttClient
 
 
 class DevModeHelper:
+    """Factories and environment tweaks for running in DEVMODE (no appliance)."""
+
     @staticmethod
     def create_mqtt_client(identifier: str) -> MqttClient:
+        """Create a TCP MQTT client pointing at the local debug broker."""
         return MqttClient(identifier, ConnectionType.TCP_DEBUG, "localhost")
 
     @staticmethod
     def set_qt_plugins_path():
+        """Point QT_QPA_PLATFORM_PLUGIN_PATH at the venv PySide6 platforms plugins."""
         venv_path = os.getenv("VIRTUAL_ENV")
         if not venv_path:
             return

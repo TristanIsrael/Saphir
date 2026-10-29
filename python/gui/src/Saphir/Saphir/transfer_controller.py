@@ -29,19 +29,23 @@ class TransferController(QObject):
 
     @property
     def copied_files_count(self) -> int:
+        """Return the number of files copied so far."""
         return self._copied_files_count
 
     @property
     def is_started(self) -> bool:
+        """Return whether the copy operation has been started."""
         return self._started
 
     @property
     def progress(self) -> float:
+        """Return the copy progress as the ratio of copied clean files."""
         if self._clean_files_total == 0:
             return 0
         return self._copied_files_count / self._clean_files_total
 
     def start(self, source_name: str, target_name: str) -> None:
+        """Start copying all the clean files from the source to the target."""
         self._source_name = source_name
         self._target_name = target_name
         self._copied_files_count = 0
@@ -61,6 +65,7 @@ class TransferController(QObject):
 
     @Slot(dict)
     def on_copy_file(self, payload: dict) -> None:
+        """Handle a copy file response: update the status, the count and the progress."""
         from safecor import MqttHelper
 
         if not MqttHelper.check_payload(payload, ["filepath", "status", "fingerprint"]):
@@ -97,6 +102,7 @@ class TransferController(QObject):
             self.transferComplete.emit()
 
     def reset(self) -> None:
+        """Reset the copy operation state to its initial values."""
         self._copied_files_count = 0
         self._clean_files_total = 0
         self._started = False

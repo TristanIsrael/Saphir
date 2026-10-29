@@ -34,6 +34,7 @@ class EMAETAEstimator:
         self.__weight_sum = 0.0
 
     def speed(self):
+        """Return the current weighted data rate (size per time unit)."""
         if self.__weight_sum == 0:
             return 0.0
         return self.__weighted_speed_sum / self.__weight_sum

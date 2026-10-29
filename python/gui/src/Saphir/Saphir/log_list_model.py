@@ -8,6 +8,8 @@ from safecor import Api, Logger, Topics
 
 
 class LogListModel(QAbstractTableModel):
+    """Table model fed with Safecor event log entries for the log dialog."""
+
     # Variables
     __logs: list = []
     __loglevel = logging.DEBUG
@@ -16,19 +18,24 @@ class LogListModel(QAbstractTableModel):
         super().__init__(parent)
 
     def listen_to_logs(self):
+        """Subscribe to the Safecor events topics and install the log callback."""
         Api().add_message_callback(self.__on_message)
         Api().subscribe(f"{Topics.EVENTS}/#")
 
     def index(self, row: int, column: int, parent=QModelIndex()) -> QModelIndex:
+        """Return the QModelIndex for the given row, column and parent."""
         return self.createIndex(row, column, parent)
 
     def rowCount(self, parent=QModelIndex()):
+        """Return the number of log entries in the model."""
         return len(self.__logs)
 
     def columnCount(self, parent=QModelIndex()):
+        """Return the number of columns (datetime, module, description)."""
         return 3
 
     def data(self, index, role=Qt.DisplayRole):
+        """Return the display value for the given log entry cell."""
         if not index.isValid():
             return None
 
@@ -48,7 +55,6 @@ class LogListModel(QAbstractTableModel):
 
     def __on_message(self, topic: str, payload: dict):
         if topic.startswith(Topics.EVENTS):
-            # print("{} < {}".format(Logger.loglevel_from_topic(topic), self.__loglevel))
             if Logger.loglevel_from_topic(topic) < self.__loglevel:
                 return
 

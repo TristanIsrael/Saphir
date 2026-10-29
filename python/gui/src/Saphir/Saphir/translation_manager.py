@@ -19,16 +19,20 @@ class TranslationManager(QObject):
         QObject.__init__(self, parent)
 
     def get_language(self) -> str:
+        """Return the currently installed language code."""
         return self.__language
 
     @Slot(str)
     def set_language(self, lang: str):
+        """Switch the application to the given language."""
         self.__install_translations(lang)
 
     def request_default_language(self):
+        """Ask the Safecor platform for the default language."""
         Api().get_default_language()
 
     def on_default_language_response(self, payload: dict):
+        """Install the translations for the platform default language."""
         from safecor import MqttHelper
 
         if MqttHelper.check_payload(payload, ["language"]):

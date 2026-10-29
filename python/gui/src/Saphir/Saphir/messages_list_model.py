@@ -4,6 +4,8 @@ from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt
 
 
 class MessagesListModel(QAbstractItemModel):
+    """List model holding the system messages/notifications shown in the GUI."""
+
     # Variables
     __messages = []
 
@@ -11,8 +13,7 @@ class MessagesListModel(QAbstractItemModel):
         super().__init__(parent)
 
     def addMessage(self, message: str):
-        # lastRow = self.index(len(self.__messages), 0)
-        # newRow = self.index(len(self.__messages)+1, 0)
+        """Append a message to the model and notify the views."""
         self.beginInsertRows(
             QModelIndex(), len(self.__messages), len(self.__messages) + 1
         )
@@ -20,12 +21,15 @@ class MessagesListModel(QAbstractItemModel):
         self.endInsertRows()
 
     def index(self, row: int, column: int, parent=QModelIndex()) -> QModelIndex:
+        """Return the QModelIndex for the given row, column and parent."""
         return self.createIndex(row, column, parent)
 
     def rowCount(self, parent=QModelIndex()):
+        """Return the number of messages in the model."""
         return len(self.__messages)
 
     def data(self, index, role=Qt.DisplayRole):
+        """Return the message text for the given row."""
         if not index.isValid():
             return None
 
@@ -35,6 +39,7 @@ class MessagesListModel(QAbstractItemModel):
         return msg
 
     def clear(self):
+        """Remove all messages and reset the model."""
         self.beginResetModel()
         self.__messages.clear()
         self.endResetModel()

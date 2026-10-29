@@ -6,6 +6,8 @@ from PySide6.QtCore import QAbstractTableModel, QCoreApplication, QModelIndex, Q
 
 
 class SystemInformationModel(QAbstractTableModel):
+    """Table model of the system information dialog (versions, battery, sensors)."""
+
     __system_information = []  # Extracted data (tuples list)
     __system_information_data = {}
     __update_mutex = threading.Lock()
@@ -19,6 +21,7 @@ class SystemInformationModel(QAbstractTableModel):
         self.__handheld = handheld
 
     def information_updated(self, information: dict):
+        """Store a new system information payload and reset the model."""
         with self.__update_mutex:
             self.__system_information_data = information
             self.beginResetModel()
@@ -26,30 +29,37 @@ class SystemInformationModel(QAbstractTableModel):
             self.endResetModel()
 
     def set_battery_level(self, level: int):
+        """Update the battery level and reset the model."""
         self.beginResetModel()
         self.__battery_level = level
         self.__update_information()
         self.endResetModel()
 
     def set_power_plugged(self, plugged: bool):
+        """Update the power-plugged state and reset the model."""
         self.beginResetModel()
         self.__plugged = plugged
         self.__update_information()
         self.endResetModel()
 
     def get_uuid(self):
+        """Return the system UUID."""
         return self.__system_information_data.get("system", {}).get("uuid", "")
 
     def get_safecor_version(self):
+        """Return the Safecor core version."""
         return self.__system_information_data.get("core", {}).get("version", "unknown")
 
     def rowCount(self, parent=QModelIndex()) -> int:
+        """Return the number of information rows in the model."""
         return len(self.__system_information)
 
     def columnCount(self, parent=QModelIndex()) -> int:
+        """Return the number of columns (label, value)."""
         return 2
 
     def data(self, index, role=Qt.DisplayRole):
+        """Return the label or value for the given information row."""
         if not index.isValid():
             return None
 
