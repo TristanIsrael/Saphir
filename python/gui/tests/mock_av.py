@@ -1,4 +1,4 @@
-"""Mock antivirus controller for pre-refactoring characterization tests.
+"""Mock antivirus controller non-regression tests.
 
 Inherits from :class:`AbstractAntivirusController` to be fully representative
 of a real AV domain. Runs in a subprocess because the ``Api()`` singleton
@@ -19,13 +19,14 @@ Config file format (JSON)::
 If no config is provided, all files are reported clean with a 0.05 s delay.
 """
 
+from __future__ import annotations
+
 import argparse
 import json
-import sys
-import time
 import threading
+import time
 
-from libsaphir import AbstractAntivirusController, FileStatus, TOPIC_ANALYSIS
+from libsaphir import AbstractAntivirusController, FileStatus
 from safecor import ComponentState
 
 
