@@ -1,3 +1,5 @@
+"""Proxy model for the input file browser, manages current folder and sorting."""
+
 from __future__ import annotations
 
 from PySide6.QtCore import (
@@ -12,9 +14,10 @@ from . import Roles, SafecorInputFilesListModel
 
 
 class SafecorInputFilesListProxyModel(QSortFilterProxyModel):
+    """Proxy model for the input file browser, manages current folder and sorting."""
+
     __current_folder = "/"
 
-    ###
     # Signals
     currentFolderChanged = Signal()
 
@@ -29,46 +32,7 @@ class SafecorInputFilesListProxyModel(QSortFilterProxyModel):
         self, source_row: int, source_parent: QModelIndex | QPersistentModelIndex
     ):
         return True
-        """idx = self.sourceModel().index(source_row, 0, QModelIndex())
-        path = self.sourceModel().data(idx, Roles.RolePath)
-        inqueue = self.sourceModel().data(idx, Roles.RoleInQueue)
-        type = self.sourceModel().data(idx, Roles.RoleType)
-        
-        res = (path == self.__current_folder)
-        if res:
-            if type == "file" and inqueue:
-                return False
-            else:
-                return True
-        
-        return False"""
 
-    """def setData(self, index, value, role=Qt.DisplayRole):
-        srcidx = self.mapToSource(index)
-
-        if role == Roles.RoleSelected:                        
-            file_type = self.source_model_.data(srcidx, Roles.RoleType)
-            file_path = self.source_model_.data(srcidx, Roles.RolePath)
-            file_name = self.source_model_.data(srcidx, Roles.RoleFilename)
-            
-            if file_type is not None:
-                if file_type == "file":
-                    self.source_model_.set_selected(srcidx)
-                else:
-                    self.set_current_folder("{}/{}".format("" if file_path == "/" else file_path, file_name))                                                         
-
-            return True
-        elif role == Roles.RoleInQueue:
-            self.source_model_.setData(srcidx, value, role)
-
-        return False"""
-
-    """@Slot()
-    def folder_up(self):
-        path = Path(self.__current_folder)        
-        self.set_current_folder(path.parent.absolute().as_posix())"""
-
-    ###
     # Private functions
     def __get_current_folder(self):
         return self.__current_folder
@@ -79,10 +43,8 @@ class SafecorInputFilesListProxyModel(QSortFilterProxyModel):
 
         self.__current_folder = current_folder
         self.currentFolderChanged.emit()
-        # self.source_model_.reset_selection()
         self.invalidateFilter()
 
-    ###
     # Properties
     currentFolder = Property(
         str,

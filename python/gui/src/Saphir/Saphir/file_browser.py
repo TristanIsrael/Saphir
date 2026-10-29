@@ -1,3 +1,5 @@
+"""Manages iterative directory traversal and file enqueuing from the source disk."""
+
 from __future__ import annotations
 
 from PySide6.QtCore import QObject, Signal

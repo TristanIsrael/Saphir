@@ -1,3 +1,5 @@
+"""QML list model for system messages/notifications."""
+
 from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt
 
 

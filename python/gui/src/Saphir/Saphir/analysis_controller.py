@@ -1,3 +1,5 @@
+"""Orchestrates multi-AV file analysis with worker pool and consensus verdict."""
+
 from __future__ import annotations
 
 import threading
@@ -72,8 +74,7 @@ class AnalysisController(QObject):
         Api().subscribe(Topics.DISK_STATE)
         Api().subscribe(f"{Topics.LIST_FILES}/response")
 
-        # On demande les infos sur le système parce qu'on veut affiner le nombre
-        # de fichiers analysés en même temps
+        # Request system info to determine the number of files to analyze concurrently
         Api().request_system_info()
 
     def set_source_disk(self, source_disk: str):
@@ -86,9 +87,8 @@ class AnalysisController(QObject):
         self.__files_copy_queue_size = 0
         Api().publish(f"{TOPIC_ANALYSIS}/resume", {})
 
-        # Itération sur la liste des fichiers de façon asynchrone
-        # pour copier les fichiers dans le dépôt au fur et à mesure
-        # à concurrence de la place disponible dans le dépôt
+        # Iterate over the file list asynchronously to copy files into the
+        # repository as space becomes available
         self.__copy_timer = threading.Timer(0.5, self.__do_copy_files_into_repository)
         self.__copy_timer.start()
 
@@ -264,10 +264,10 @@ class AnalysisController(QObject):
         # because of bug #54
         cpu_count = 8
 
-        # TODO: en théorie il faudrait que la quantité de fichiers analysés en parallèle
-        # corresponde à la quantité de coeurs divisée par la quantité d'antivirus utilisés.
-        # Pour l'instant, nous sommes en phase d'obervation et l'algorithme sera ajusté
-        # en fonction des performances observées.
+        # TODO: the number of files analyzed in parallel should correspond to
+        # the number of CPU cores divided by the number of antivirus engines.
+        # For now, we are in an observation phase and the algorithm will be
+        # adjusted based on observed performance.
         self.__repository_capacity = cpu_count
 
         Api().info(f"Repository capacity is set to {self.__repository_capacity} files")

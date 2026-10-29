@@ -1,3 +1,5 @@
+"""Shared enums: SystemState, AnalysisMode, AnalysisState, Roles."""
+
 from enum import Enum
 
 from libsaphir import FileStatus

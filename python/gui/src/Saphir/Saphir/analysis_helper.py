@@ -1,3 +1,5 @@
+"""Helper functions for analysis state management and file result aggregation."""
+
 from libsaphir import FileStatus
 
 
@@ -114,9 +116,9 @@ class AnalysisHelper:
         results = file.get("results", {})
         av = results.get(av_component, {})
 
-        # Premier passage : pas d'état pour le fichier, on prend le nouvel état
-        # Deuxième passage : si le fichier était clean et qu'il ne l'est plus alors il passe à infecté
-        #                    si le fichier n'était pas clean, on ne tient pas compte de son nouvel état
+        # First pass: no state for the file, take the new state
+        # Second pass: if the file was clean and no longer is, it becomes infected
+        #              if the file was not clean, ignore its new state
         av["result"] = "Clean" if success else "Infected"
         av["details"] = details
         results[av_component] = av

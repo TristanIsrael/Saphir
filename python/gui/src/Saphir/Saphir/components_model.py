@@ -1,3 +1,5 @@
+"""QML table model displaying antivirus component status (type, label, state)."""
+
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
 from safecor import ComponentsHelper, ComponentState
 
@@ -11,7 +13,7 @@ class ComponentsModel(QAbstractTableModel):
         return len(self.__components_helper.get_components())
 
     def columnCount(self, parent=QModelIndex()):
-        return 3  # Type, libellé, état
+        return 3  # Type, label, state
 
     def data(self, index, role=Qt.DisplayRole):
         if not index.isValid():

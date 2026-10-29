@@ -1,3 +1,5 @@
+"""Orchestrates the copy of clean files from source to target disk."""
+
 from __future__ import annotations
 
 import threading

@@ -1,3 +1,5 @@
+"""Manages the Safecor API connection lifecycle (connect, disconnect, reconnect)."""
+
 import os
 import tempfile
 

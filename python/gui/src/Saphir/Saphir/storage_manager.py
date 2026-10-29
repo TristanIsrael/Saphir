@@ -1,3 +1,5 @@
+"""Manages source/target disk state and storage paths."""
+
 from PySide6.QtCore import QObject, Signal
 
 

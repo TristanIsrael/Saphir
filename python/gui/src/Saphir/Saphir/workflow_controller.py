@@ -1,3 +1,5 @@
+"""Single state authority for the system workflow with transition validation."""
+
 from typing import ClassVar
 
 from PySide6.QtCore import QObject, Signal

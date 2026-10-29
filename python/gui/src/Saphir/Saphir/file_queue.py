@@ -1,3 +1,5 @@
+"""Thread-safe bounded queue for files awaiting analysis, with size tracking."""
+
 from __future__ import annotations
 
 import threading

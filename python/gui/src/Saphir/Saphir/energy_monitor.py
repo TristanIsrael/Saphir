@@ -1,3 +1,5 @@
+"""Polls battery level and charging state for the TopBar display."""
+
 import threading
 
 from PySide6.QtCore import QObject, Signal

@@ -1,3 +1,5 @@
+"""QML table model for the system log dialog."""
+
 import logging
 from datetime import datetime
 

@@ -1,3 +1,5 @@
+"""Exponential moving average estimator for remaining analysis time."""
+
 import math
 
 

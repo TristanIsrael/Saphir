@@ -1,3 +1,5 @@
+"""Manages QTranslator lifecycle for EN/FR bilingual support."""
+
 from pathlib import Path
 
 from PySide6.QtCore import QCoreApplication, QObject, QTranslator, Signal, Slot

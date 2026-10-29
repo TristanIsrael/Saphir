@@ -1,3 +1,5 @@
+"""QML table model for system information (CPU, memory, disks)."""
+
 import threading
 
 from PySide6.QtCore import QAbstractTableModel, QCoreApplication, QModelIndex, Qt

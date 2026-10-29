@@ -1,3 +1,5 @@
+"""Provides the DEVMODE flag for local development without the Safecor appliance."""
+
 import os
 import sys
 

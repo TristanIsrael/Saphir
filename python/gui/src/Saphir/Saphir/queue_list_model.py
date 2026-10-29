@@ -1,3 +1,5 @@
+"""QML table model for the analysis queue (file status, progress)."""
+
 from threading import Lock
 
 from libsaphir import FileStatus

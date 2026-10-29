@@ -371,7 +371,7 @@ These rules must hold throughout refactoring:
 | 5.3 Move rules to Bindings.qml | ✅ Done | `8909a19` | #136 | State-driven logic now declarative |
 | 6 Unit test coverage | ✅ Done | `d71de3b` | #137 | 44 new tests; refactored modules ≥ 95% |
 | 7 Linting & static analysis | ✅ Done | `9bdfe42` | #54 | 122+27 ruff errors fixed, format applied, 0 remaining |
-| 8 Alpine package validation | ⏳ Pending | — | — | Docker local build |
+| 8 Alpine package validation | ⏳ Blocked | — | — | Needs K8s cluster access (OIDC/DPoP issue) |
 | 9 Documentation debt | ⏳ Pending | — | — | French→English, docstrings, dead code removal |
 | 10 Missing features & NFRs | ⏳ Pending | — | — | Fingerprint, ReportFailed, disconnect handlers, AV failure |
 | 11 Functional coverage | ⏳ Pending | — | — | Error paths, NFRs, disconnection scenarios |
@@ -465,7 +465,7 @@ These rules must hold throughout refactoring:
 
 ---
 
-### Phase 8: Alpine Package Validation ⏳ PENDING
+### Phase 8: Alpine Package Validation ⏳ BLOCKED (cluster access)
 
 **Goal**: Verify that the refactored code builds and packages correctly in the Alpine Linux environment.
 

@@ -1,3 +1,5 @@
+"""Proxy model for the output (target disk) file list."""
+
 from __future__ import annotations
 
 from libsaphir import FileStatus

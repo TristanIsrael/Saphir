@@ -1,3 +1,5 @@
+"""Central mediator between the Safecor platform and the QML UI. Owns the system state machine."""
+
 from libsaphir import FileStatus
 from PySide6.QtCore import Property, QCoreApplication, QObject, Signal, Slot
 from safecor import (
@@ -250,11 +252,10 @@ class ApplicationController(QObject):
         self.__analysis_start_time = datetime.now()
         self.__file_browser.folders_to_query = 1
 
-        # On doit récupérer la liste des fichiers de façon intérative
-        # sur l'ensemble du disque source. Pour cela on va mettre en queue
-        # tous les fichiers du répertoire racine, puis demander la liste des
-        # fichiers du premier répertoire, et à chaque réponse on recommencera
-        # avec le répertoire suivant
+        # We must retrieve the file list iteratively across the entire source disk.
+        # For this, we enqueue all files from the root directory, then request the
+        # file list of the first subdirectory, and on each response we proceed
+        # with the next directory.
         self.__file_browser.is_enqueuing = True
         self.set_long_process_running(True)
 
@@ -300,8 +301,8 @@ class ApplicationController(QObject):
     def dequeue_file(self, filepath: str):
         # Api().debug("User removed {} from to the queue".format(filepath))
 
-        # La plupart du temps l'utilisateur déselectionnera un répertoire
-        # il faut donc retrouver tous les fichiers de ce répertoire
+        # Most of the time the user will deselect a folder,
+        # so we need to find all files in that folder
         file = self.__file_browser.input_files_list.get(filepath)
         if file is None:
             return
@@ -319,8 +320,8 @@ class ApplicationController(QObject):
         else:
             self.set_long_process_running(True)
 
-            # C'est un dossier
-            # ... il faut parcourir toutes les entrées de la liste et retirer chaque fichier
+            # It's a folder
+            # ... we need to walk through all list entries and remove each file
             threading.Thread(target=self.__dequeue_folder, args=(filepath,)).start()
 
     @Slot()
@@ -503,9 +504,8 @@ class ApplicationController(QObject):
         )
 
     def __on_message_received(self, topic: str, payload: dict):
-        # ATTENTION : cette fonction est appelée depuis un autre thread
-        # il faut envoyer des signaux pour communiquer avec les autres
-        # objets du système
+        # WARNING: this function is called from another thread.
+        # Use signals to communicate with other system objects.
         # print("[ApplicationController] topic: {}".format(topic))
         # print("payload: {}".format(payload))
 
@@ -778,9 +778,9 @@ class ApplicationController(QObject):
             # print(filepath)
 
             if self.__file_browser.is_enqueuing:
-                # On est en train de sélectionner des fichiers
+                # We are in the process of selecting files
                 # if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                # On est en mode de sélection unitaire
+                # We are in single-selection mode
                 if file["type"] == "file":
                     file["inqueue"] = True
                     self.__file_queue.add_size(file["size"])
@@ -796,15 +796,15 @@ class ApplicationController(QObject):
                         filepath,
                     )
             else:
-                # Sinon on est en train de peupler le navigateur
+                # Otherwise we are populating the browser
                 if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                    # Si on est en mode de sélection de fichiers
+                    # If we are in file selection mode
                     file["inqueue"] = False
                     if not self.__file_browser.is_enqueuing:
                         self.__file_browser.add_file(filepath, file)
 
-        # On met à jour le compteur car cette opération est peu couteuse
-        # et permet à l'utilisateur de voir qu'il se passe quelque chose
+        # Update the counter since this operation is lightweight
+        # and lets the user see that something is happening
         if self.__file_browser.is_enqueuing:
             self.queueSizeChanged.emit(self.__file_queue.count())
 
@@ -812,7 +812,7 @@ class ApplicationController(QObject):
         if self.__file_browser.folders_to_query == 0:
             self.set_long_process_running(False)
 
-            # Après avoir récupéré la liste de tous les fichiers on met à jour les modèles
+            # After retrieving the full file list, update the models
             if (
                 self.__analysis_mode == AnalysisMode.AnalyseSelection
                 and not self.__file_browser.is_enqueuing
@@ -1005,7 +1005,7 @@ class ApplicationController(QObject):
     def __make_analysis_report(self):
         Api().info("Generate the analysis report")
 
-        # On prépare la structure pour les détails des antivirus
+        # Prepare the structure for antivirus details
         antiviruses = {}
 
         for component in self.__components_helper.get_components():
@@ -1017,7 +1017,7 @@ class ApplicationController(QObject):
                 av["description"] = description.replace("\n", "<br/>")
                 antiviruses[av_id] = av
 
-        # On exécute la génération du rapport dans un thread
+        # Execute report generation in a separate thread
         self.__report_controller.make_report(
             files=self.__file_queue.files,
             clean_files_count=self.__get_clean_files_count(),

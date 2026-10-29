@@ -1,3 +1,5 @@
+"""Generates the PDF scan report using Jinja2 templates and WeasyPrint."""
+
 from __future__ import annotations
 
 import os
