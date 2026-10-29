@@ -370,14 +370,15 @@ These rules must hold throughout refactoring:
 | 5.2 Remove dead TransferFinished handler | ✅ Done | `8f49c1a` | #131 | QML refs removed in Phase 1.2 |
 | 5.3 Move rules to Bindings.qml | ✅ Done | `8909a19` | #136 | State-driven logic now declarative |
 | 6 Unit test coverage | ✅ Done | `d71de3b` | #137 | 44 new tests; refactored modules ≥ 95% |
-| 7 Linting & static analysis | ⏳ Pending | — | — | Ruff + type check |
+| 7 Linting & static analysis | ✅ Done | `9bdfe42` | #54 | 122+27 ruff errors fixed, format applied, 0 remaining |
 | 8 Alpine package validation | ⏳ Pending | — | — | Docker local build |
 | 9 Documentation debt | ⏳ Pending | — | — | French→English, docstrings, dead code removal |
 | 10 Missing features & NFRs | ⏳ Pending | — | — | Fingerprint, ReportFailed, disconnect handlers, AV failure |
 | 11 Functional coverage | ⏳ Pending | — | — | Error paths, NFRs, disconnection scenarios |
 | 12 GUI (QML) test coverage | ⏳ Pending | — | — | QML bindings, panel visibility, signal integration |
+| 13 Viewer modernization | ⏳ Pending | — | — | Lint, format, unit tests (0 → 85%) |
 
-**Test baseline**: 91 passed, 3 skipped (MOUNT_ARCHIVES disabled), 0 failed, 0 xfailed
+**Test baseline**: 350 passed, 3 skipped, 0 failed (1 known flaky in full suite)
 
 ---
 
