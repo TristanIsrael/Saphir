@@ -143,6 +143,8 @@ class ApplicationController(QObject):
 
         self.__api_lifecycle = ApiLifecycle(self)
         self.__api_lifecycle.set_all_ready_callback(self.__on_all_subscriptions_ready)
+        self.__app_ready_done = False
+        self.__ready_callback = None
 
         self.__workflow_controller = WorkflowController(self)
         self.__workflow_controller.systemStateChanged.connect(self.systemStateChanged)
@@ -454,10 +456,23 @@ class ApplicationController(QObject):
         Api().add_shutdown_callback(self.__on_shutdown)
         self.__api_lifecycle.setup_subscriptions()
 
+        # The boot-time discover_components request is one-shot; on a
+        # (re)connection that happens before the components are up it may
+        # go unanswered. Ask again until the system has left the boot phase.
+        if self.__workflow_controller.state in (
+            SystemState.SystemStarting,
+            SystemState.SafecorReady,
+        ):
+            Api().discover_components()
+
     def __on_all_subscriptions_ready(self):
         self.__app_ready()
 
     def __app_ready(self):
+        if self.__app_ready_done:
+            return
+        self.__app_ready_done = True
+
         Api().info("Saphir is ready")
 
         Api().notify_gui_ready()
@@ -601,7 +616,15 @@ class ApplicationController(QObject):
         progress = 0.0
 
         if ready:
-            self.__set_system_state(SystemState.SystemReady)
+            # Never force the state backwards: a late component response
+            # must not pull the workflow back to SystemReady once analysis
+            # (or any later phase) has started.
+            if self.__workflow_controller.state in (
+                SystemState.SystemStarting,
+                SystemState.SafecorReady,
+                SystemState.SystemReady,
+            ):
+                self.__set_system_state(SystemState.SystemReady)
             progress = 1.0
         elif len(self.__analysis_components) == 2:
             progress = 0.66

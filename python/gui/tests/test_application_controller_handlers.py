@@ -462,6 +462,79 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__check_components_availability()
         self.assertFalse(self.controller.analysisReady)
 
+    def test_check_components_availability_no_backward_state_force(self):
+        components = [
+            {"id": "safecor_disk_controller", "type": "disk", "state": "ready"},
+            {
+                "id": "av1",
+                "type": "antivirus",
+                "state": "ready",
+                "domain_name": "d1",
+                "label": "AV1",
+                "version": "1.0",
+            },
+            {
+                "id": "av2",
+                "type": "antivirus",
+                "state": "ready",
+                "domain_name": "d2",
+                "label": "AV2",
+                "version": "2.0",
+            },
+        ]
+        self.controller._ApplicationController__components_helper.update(components)
+        self.controller._ApplicationController__check_components_availability()
+        self.assertEqual(self.controller.systemState, SystemState.SystemReady.value)
+
+        # The workflow moves on to analysis
+        self.controller._ApplicationController__set_system_state(
+            SystemState.SystemAnalysisRunning
+        )
+
+        # A late all-ready component response arrives
+        self.controller._ApplicationController__check_components_availability()
+
+        # The state must not be pulled back to SystemReady
+        self.assertEqual(
+            self.controller.systemState, SystemState.SystemAnalysisRunning.value
+        )
+
+    # --- __app_ready ---
+
+    def test_app_ready_is_idempotent(self):
+        energy = self.controller._ApplicationController__energy_monitor
+        with (
+            patch("Saphir.application_controller.AnalysisController") as mock_ac,
+            patch.object(type(energy), "start_polling"),
+            patch("Saphir.translation_manager.Api", return_value=self.__mock_api_instance),
+            patch("Saphir.log_list_model.Api", return_value=self.__mock_api_instance),
+        ):
+            self.controller._ApplicationController__app_ready()
+            self.controller._ApplicationController__app_ready()
+
+        self.__mock_api_instance.notify_gui_ready.assert_called_once()
+        self.__mock_api_instance.discover_components.assert_called_once()
+        self.__mock_api_instance.request_system_info.assert_called_once()
+        mock_ac.assert_called_once()
+        self.assertTrue(self.controller._ApplicationController__ready)
+
+    # --- __on_api_ready ---
+
+    def test_on_api_ready_re_discovers_during_boot(self):
+        with patch("Saphir.api_lifecycle.Api", return_value=self.__mock_api_instance):
+            self.__mock_api_instance.subscribe.return_value = (0, 1)
+            self.__mock_api_instance.discover_components.reset_mock()
+            self.controller._ApplicationController__on_api_ready()
+        self.__mock_api_instance.discover_components.assert_called_once()
+
+    def test_on_api_ready_no_re_discover_after_boot(self):
+        self.controller._ApplicationController__set_system_state(SystemState.SystemReady)
+        with patch("Saphir.api_lifecycle.Api", return_value=self.__mock_api_instance):
+            self.__mock_api_instance.subscribe.return_value = (0, 1)
+            self.__mock_api_instance.discover_components.reset_mock()
+            self.controller._ApplicationController__on_api_ready()
+        self.__mock_api_instance.discover_components.assert_not_called()
+
     # --- __handle_copy_file ---
 
     def test_handle_copy_file(self):
