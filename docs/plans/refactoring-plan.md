@@ -1,6 +1,6 @@
 # Refactoring Plan - Saphir v3.x
 
-> **Status**: In progress — Phases 0-8 complete, Phases 9-13 pending
+> **Status**: In progress — Phases 0-8 complete, Phases 9-14 pending
 > **Last updated**: 2026-10-29
 > **Branch**: `refactoring` (based on `main` post-merge #128)
 
@@ -377,6 +377,7 @@ These rules must hold throughout refactoring:
 | 11 Functional coverage | ⏳ Pending | — | — | Error paths, NFRs, disconnection scenarios |
 | 12 GUI (QML) test coverage | ⏳ Pending | — | — | QML bindings, panel visibility, signal integration |
 | 13 Viewer modernization | ⏳ Pending | — | — | Lint, format, unit tests (0 → 85%) |
+| 14 Semi-automated validation env | ⏳ Pending (Not ready) | — | — | Human-driven test on Safecor emulator (operator console + state observer); blocked on emulator features |
 
 **Test baseline**: 350 passed, 3 skipped, 0 failed (1 known flaky in full suite)
 
@@ -392,10 +393,12 @@ These rules must hold throughout refactoring:
 | Phase 10 | +400 / +100 | High | Phases 3-6 ✅ |
 | Phase 11 | +300 / +200 | High | Phase 10 |
 | Phase 12 | +200 / +150 | Medium | Phases 5-6, 10 |
-| **Remaining** | **-250 / +550** | **~12 days** | — |
+| Phase 14 | +250 / +150 | Medium | Safecor emulator (external, **blocking**) |
+| **Remaining** | **0 / +700** | **~15 days** | — |
 
 > **Note**: Phase 9 (documentation debt) is independent and can start immediately;
-> Phase 11 depends on Phase 10, and Phase 12 on Phase 10.
+> Phase 11 depends on Phase 10, and Phase 12 on Phase 10. Phase 14 is blocked on the
+> external Safecor emulator (interactive scenario API / observation hooks not yet built).
 
 ---
 
@@ -1098,3 +1101,90 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 - `DEVMODE=1 pytest tests/ -q` → all pass
 - Coverage ≥ 85% on all viewer modules
 - No regression on GUI tests (shared libsaphir)
+
+---
+
+### Phase 14: Semi-Automated Validation Environment ⏳ PENDING (blocked on Safecor emulator)
+
+**Goal**: Let a **human** test Saphir in a **non-representative environment** (no appliance, no
+physical USB disks) while using the **Safecor emulator** as the platform. The tester drives the
+real Saphir GUI normally (mouse/keyboard) and, in parallel, **manipulates the emulator** to
+trigger platform events (attach/detach storage, power state, language, domain restart…) and
+**observes the system's internal state** (workflow state, analysis queue, clean/infected
+counts, copy progress, ETA) to check the behavior against `docs/workflow-rules.md`.
+
+**Context**:
+- The Safecor emulator (Safecor repo, `python/emulator/`) emulates the appliance over MQTT
+  (mock Dom0 + mock SysUSB + broker) and already exposes a **scripted** scenario API
+  (`attach_disk()`, `detach_disk()`, `set_energy_state()`, …) used by the pytest
+  integration tests. It is a headless test tool — there is no interactive, human-facing mode.
+- What is missing for this semi-automated workflow:
+  1. **Interactive control**: on-demand actions triggered by a human (not a test script).
+  2. **State observation**: a live view of Saphir's internal state (the emulator currently
+     observes the platform, not the Saphir application).
+  3. **Side-by-side launch**: emulator + real Saphir GUI running together, documented and
+     reproducible.
+
+> **Dependency (blocking)**: the **Safecor emulator does not have these features yet**. The
+> interactive control and/or observation hooks must be delivered in the **Saphir** repository
+> first. Until then this phase is **Not ready** (see `docs/github-project-management.md`
+> status semantics). The Saphir-side work below is only unblocked once the emulator support
+> lands.
+
+#### 14.1 [P0] Runbook + launch tooling
+- **Gap**: running "emulator + real Saphir GUI" today is ad-hoc knowledge from the
+  integration tests; there is no documented, one-command way to start the validation
+  environment.
+- **Work**:
+  - A launcher script (e.g. `setup/emulator/run-validation-env.sh`) that starts the emulator
+    (broker + mock components) and the Saphir GUI pointed at it, with the AV layer mocked
+    (reuse the DEVMODE mock AVs if they can run alongside a real MQTT broker).
+  - A runbook in `docs/` (steps, prerequisites, how to stop, how to read the state view).
+- **Files**: `setup/emulator/` (new), `docs/` (new runbook)
+- **Effort**: Low-Medium (1 day)
+
+#### 14.2 [P0] Interactive emulator operator (human-facing)
+- **Gap**: the scenario API is programmatic; a human has no way to trigger
+  attach/detach/energy events on demand.
+- **Work**: a small interactive console (CLI/TUI, or a minimal widget) wrapping the emulator
+  scenario API: `attach source`, `detach source`, `attach target`, `power on/off`,
+  `set language`, `restart domain`, plus a live log of the platform events sent.
+- **Depends on**: emulator exposing its scenario API as a stable, external entry point.
+- **Effort**: Medium (1-2 days, emulator side)
+
+#### 14.3 [P1] Internal state observer
+- **Gap**: the tester cannot see Saphir's internal state (workflow state, analysis queue,
+  `nbClean`/`nbInfected`, copy progress, ETA) while manually driving the GUI.
+- **Work**: a live state view. Options (pick one at design time):
+  - (a) a dashboard/panel subscribing to the Saphir MQTT status topics (non-invasive);
+  - (b) a debug endpoint in the GUI (e.g. a hidden "validation" overlay toggled by an env
+    var) showing `SystemState`, queue size, counts, EMA ETA;
+  - (c) structured logs with a human-readable state-transition line per transition.
+- **Constraint**: must not change production behavior (flag/env-var gated, like DEVMODE).
+- **Effort**: Medium (1-2 days)
+
+#### 14.4 [P1] Manual scenario catalog
+- **Gap**: no curated list of what a human should try in this environment, nor the expected
+  workflow states per scenario.
+- **Work**: a checklist of manual scenarios with expected `SystemState` transitions
+  (cross-referenced with `docs/workflow-rules.md`):
+  - Nominal cycle: attach source → analyze → attach target → copy → report → reset
+  - Source disconnect during analysis; target disconnect during copy (bug C.2 path)
+  - Power loss at boot / during scan; language change; domain restart
+  - AV error path (mock AV forced failure)
+- **Files**: `docs/` (new manual-scenarios doc)
+- **Effort**: Low (half day)
+
+**Validation**:
+- A human completes the nominal end-to-end cycle and at least 3 error scenarios in the
+  validation environment, using the operator console + state observer.
+- Observed internal states match the state machine in `docs/workflow-rules.md` for every
+  executed scenario.
+- The environment is reproducible from the runbook on a clean machine.
+
+**Dependencies**:
+- **Safecor emulator** (external repo): interactive scenario API / observation hooks —
+  **not yet implemented** (blocking for 14.2 and 14.3).
+- Reuses the DEVMODE mock AV infrastructure for the antivirus layer.
+
+**Estimated effort (Saphir side)**: ~3-4 days, once the emulator support is available.
