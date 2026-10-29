@@ -371,7 +371,7 @@ These rules must hold throughout refactoring:
 | 5.3 Move rules to Bindings.qml | ✅ Done | `8909a19` | #136 | State-driven logic now declarative |
 | 6 Unit test coverage | ✅ Done | `d71de3b` | #137 | 44 new tests; refactored modules ≥ 95% |
 | 7 Linting & static analysis | ✅ Done | `9bdfe42` | #54 | 122+27 ruff errors fixed, format applied, 0 remaining |
-| 8 Alpine package validation | ⏳ Blocked | — | — | Needs K8s cluster access (OIDC/DPoP issue) |
+| 8 Alpine package validation | 🔄 In progress | — | — | 8.1 + 8.2 ✅ (Alpine 3.21.9 chroot); 8.3 pending (4 packages) |
 | 9 Documentation debt | ⏳ Pending | — | — | French→English, docstrings, dead code removal |
 | 10 Missing features & NFRs | ⏳ Pending | — | — | Fingerprint, ReportFailed, disconnect handlers, AV failure |
 | 11 Functional coverage | ⏳ Pending | — | — | Error paths, NFRs, disconnection scenarios |
@@ -465,26 +465,38 @@ These rules must hold throughout refactoring:
 
 ---
 
-### Phase 8: Alpine Package Validation ⏳ BLOCKED (cluster access)
+### Phase 8: Alpine Package Validation 🔄 IN PROGRESS
 
 **Goal**: Verify that the refactored code builds and packages correctly in the Alpine Linux environment.
 
-#### 8.1 APKBUILD update
-- Update `setup/packages/saphir-gui/APKBUILD` if new dependencies are introduced
-- Verify `requirements.txt` and `requirements-dev.txt` are consistent with the refactored imports
-- Ensure `saphir-gui.spec` (PyInstaller) includes the new modules
+> **Environment note**: the K8s cluster was not reachable (OIDC/DPoP issue), so validation is
+> performed in a local **Alpine 3.21.9 chroot** (`/tmp/opencode/alpine`, repo at `/work/Saphir`)
+> against the Saphir APK repository.
 
-#### 8.2 Local Docker build
-- Build the `saphir-gui` package in the local Docker dev environment (`setup/docker/`)
-- Verify the package installs and the GUI boots in DEVMODE
-- Confirm no missing imports or runtime errors
+#### 8.1 APKBUILD update ✅ Done
+- `setup/packages/saphir-gui/APKBUILD` verified: the refactoring introduced **no new dependencies**
+- `requirements.txt` / `requirements-dev.txt` consistent with the refactored imports
+- `saphir-gui.spec` (PyInstaller) validated during 8.2 — one bug found and fixed (see below)
 
-#### 8.3 Local package build verification
-- Build all 8 APKBUILD packages in the local Docker dev environment
+#### 8.2 Build + DEVMODE boot ✅ Done (saphir-lib, saphir-gui)
+- Built `saphir-lib` and `saphir-gui` in the Alpine 3.21.9 chroot (signed APKs)
+- **Bug found & fixed**: the `saphir-gui` PyInstaller bundle failed at startup because
+  `PySide6.QtNetwork` was only listed in `binaries` (which does not collect the Python
+  module). It has been moved to `hiddenimports` in `saphir-gui.spec`.
+- The GUI boots in DEVMODE (MQTT + mock components) and completes the boot sequence
+
+#### 8.3 Full package build verification ⏳ Pending
+- Remaining packages to build: `saphir`, `saphir-splash`, `saphir-av-clamav`, `saphir-av-eset`
 - Verify no build errors, missing dependencies, or import failures
 - Confirm the `saphir-gui` binary launches in DEVMODE after install
 
-**Validation**: All packages build successfully in Docker, GUI boots and completes a full scan cycle in DEVMODE.
+**Validation**: All packages build successfully in the chroot, GUI boots and completes a full scan cycle in DEVMODE.
+
+#### 8.4 Follow-ups identified during validation
+- **Deferred to CI integration**: the broker can disconnect idle clients on keepalive timeout
+  (30 s). The mock AVs and the Safecor TCP `MqttClient` do not reconnect on mid-session
+  disconnect (`on_connection_lost` is only set in the SERIAL_PORT branch), so QoS 0 analysis
+  requests sent during the window are lost. To be addressed when the workflow tests run in CI.
 
 ---
 
