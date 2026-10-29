@@ -922,3 +922,133 @@ These rules must hold throughout refactoring:
 - All QML tests pass with `QT_QPA_PLATFORM=offscreen pytest tests/test_qml_*.py -q`
 - No regression on existing tests
 - Panel visibility is correct for all 15 `SystemState` values
+
+---
+
+### Phase 13: Viewer Modernization ⏳ PENDING
+
+**Goal**: Bring the Viewer app to the same quality level as the main GUI — lint, format, type-annotate, and add unit tests. The viewer currently has **0 tests**, **50 ruff errors**, and no ruff config.
+
+**Scope**: `python/viewer/` (15 Python files, ~850 lines core code, 0 tests)
+
+| File | Lines | Role |
+|------|:-----:|------|
+| `Viewer/application_controller.py` | 521 | Main controller (MQTT, file listing, Office→PDF) |
+| `Viewer/safecor_input_files_list_model.py` | 56 | QML file list model |
+| `Viewer/safecor_input_files_list_proxy_model.py` | 37 | Filtered proxy model |
+| `Viewer/enums.py` | 24 | FileType, ViewerState enums |
+| `Viewer/constants.py` | 62 | ViewerConstants (topics, paths) |
+| `Viewer/office_helper.py` | 38 | LibreOffice conversion helper |
+| `Viewer/devmode_helper.py` | 25 | DEVMODE flag |
+| `main.py` | 91 | Entry point (QML engine, event filter) |
+| `Mock/*` | 5 files | DEVMODE mock controllers |
+
+#### 13.1 [P0] Ruff lint & format
+
+**Work**:
+- Add `[tool.ruff]` section to `python/viewer/pyproject.toml` (same config as GUI: target py39, ignore RUF012/B008/N999)
+- Run `ruff check --fix` to auto-fix import sorting, unused imports, `__all__` sorting
+- Fix remaining manual issues:
+  - Python 3.9 f-string syntax (line 345 `application_controller.py`)
+  - SIM102 nested if, SIM114 combine branches
+  - UP039 unnecessary parentheses after class definitions (4 files)
+  - FA102 missing `from __future__ import annotations`
+  - BLE001 in Mock (add `# noqa` — mock code)
+- Run `ruff format` on all files
+- Validate: `ruff check` + `ruff format --check` → 0 errors
+
+**Files**: `pyproject.toml`, all 15 Python files
+
+**Effort**: Low (2h)
+
+#### 13.2 [P0] Unit tests — application_controller
+
+**Gap**: `application_controller.py` (521 lines) has **0 tests**. It handles:
+- MQTT topic subscriptions (file list, disk state)
+- File type detection (image, video, audio, office, PDF)
+- Office→PDF conversion via LibreOffice
+- DEVMODE behavior
+
+**Work**:
+- Create `python/viewer/tests/test_application_controller.py`
+- Tests:
+  - `test_init`: controller creates with mocked Api, subscribes to expected topics
+  - `test_file_type_detection`: each file extension maps to correct `FileType` enum
+  - `test_on_files_list`: MQTT payload → model populated correctly
+  - `test_on_disk_state`: disk state changes update `viewerState`
+  - `test_office_conversion`: `office_helper` called for .docx/.xlsx/.pptx, not for .pdf
+  - `test_devmode`: DEVMODE=1 uses mock data
+- Mock strategy: same pattern as GUI (`patch("viewer.Viewer.application_controller.Api")`)
+- Target: ≥ 85% coverage on `application_controller.py`
+
+**Files**: `tests/test_application_controller.py` (new), `tests/conftest.py` (new)
+
+**Effort**: Medium (1 day)
+
+#### 13.3 [P1] Unit tests — models & enums
+
+**Gap**: `safecor_input_files_list_model.py`, `safecor_input_files_list_proxy_model.py`, `enums.py` have no tests.
+
+**Work**:
+- In `tests/test_models.py`:
+  - `SafecorInputFilesListModel`: add files, verify row count, data roles
+  - `SafecorInputFilesListProxyModel`: filter by file type, verify visible rows
+  - `FileType` enum: verify all values are unique and QML-compatible
+  - `ViewerState` enum: verify state transitions are valid
+
+**Files**: `tests/test_models.py` (new)
+
+**Effort**: Low (half day)
+
+#### 13.4 [P1] Unit tests — office_helper & constants
+
+**Gap**: `office_helper.py` (LibreOffice conversion) and `constants.py` have no tests.
+
+**Work**:
+- In `tests/test_office_helper.py`:
+  - `test_convert_docx_to_pdf`: mock LibreOffice subprocess, verify output path
+  - `test_convert_non_office`: non-office files returned as-is
+  - `test_tempfile_cleanup`: temp files are cleaned after conversion
+- In `tests/test_constants.py`:
+  - Verify all topic strings match the Safecor API spec
+  - Verify `SUPPORTED_EXTENSIONS` covers all documented file types
+
+**Files**: `tests/test_office_helper.py` (new), `tests/test_constants.py` (new)
+
+**Effort**: Low (half day)
+
+#### 13.5 [P2] main.py cleanup
+
+**Gap**: `main.py` has 7 unused imports (copied from GUI `main.py` scaffold) and the event filter logic is untested.
+
+**Work**:
+- Remove unused imports (Qt, QEvent, QObject, QPointingDevice, QQuickWindow, qmlRegisterType, qmlRegisterSingletonType)
+- Verify the event filter (touch vs mouse cursor) works correctly
+- Add `# noqa: N999` or rename if the module name is flagged
+
+**Files**: `main.py`
+
+**Effort**: Low (1h)
+
+#### Viewer coverage target
+
+| Module | Before | After (target) |
+|--------|:------:|:--------------:|
+| `application_controller.py` | 0% | ≥ 85% |
+| `safecor_input_files_list_model.py` | 0% | ≥ 85% |
+| `safecor_input_files_list_proxy_model.py` | 0% | ≥ 85% |
+| `enums.py` | 0% | 100% |
+| `constants.py` | 0% | 100% |
+| `office_helper.py` | 0% | ≥ 85% |
+| **Overall viewer** | **0%** | **≥ 85%** |
+
+**Prerequisites**:
+- `python/viewer` needs a `tests/` directory and `conftest.py` (doesn't exist yet)
+- `pyproject.toml` needs `pythonpath` config for pytest (same pattern as GUI)
+- DEVMODE mock infrastructure already exists in `Viewer/Mock/`
+
+**Validation**:
+- `ruff check` + `ruff format --check` → 0 errors
+- `DEVMODE=1 pytest tests/ -q` → all pass
+- Coverage ≥ 85% on all viewer modules
+- No regression on GUI tests (shared libsaphir)
