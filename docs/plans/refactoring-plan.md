@@ -1,7 +1,7 @@
 # Refactoring Plan - Saphir v3.x
 
-> **Status**: In progress — Phases 0-6 complete, Phases 7-12 pending
-> **Last updated**: 2026-10-28
+> **Status**: In progress — Phases 0-8 complete, Phases 9-13 pending
+> **Last updated**: 2026-10-29
 > **Branch**: `refactoring` (based on `main` post-merge #128)
 
 ---
@@ -371,7 +371,7 @@ These rules must hold throughout refactoring:
 | 5.3 Move rules to Bindings.qml | ✅ Done | `8909a19` | #136 | State-driven logic now declarative |
 | 6 Unit test coverage | ✅ Done | `d71de3b` | #137 | 44 new tests; refactored modules ≥ 95% |
 | 7 Linting & static analysis | ✅ Done | `9bdfe42` | #54 | 122+27 ruff errors fixed, format applied, 0 remaining |
-| 8 Alpine package validation | 🔄 In progress | — | — | 8.1 + 8.2 ✅ (Alpine 3.21.9 chroot); 8.3 pending (4 packages) |
+| 8 Alpine package validation | ✅ Done | `4b0b1b2`, `056a659`, `cf86fbd`, `c459924`, `c94d4af` | #141, #142, #143, #144 | 7/8 packages built in the Alpine 3.21.9 chroot, GUI domain boots in DEVMODE; `saphir-container-eset` not buildable (ESET URL 404 - the official CI skips it too) |
 | 9 Documentation debt | ⏳ Pending | — | — | French→English, docstrings, dead code removal |
 | 10 Missing features & NFRs | ⏳ Pending | — | — | Fingerprint, ReportFailed, disconnect handlers, AV failure |
 | 11 Functional coverage | ⏳ Pending | — | — | Error paths, NFRs, disconnection scenarios |
@@ -386,15 +386,16 @@ These rules must hold throughout refactoring:
 
 | Phase | Lines Changed | Effort | Dependencies |
 |-------|--------------|--------|--------------|
-| Phase 7 | -50 / +50 | Low | Phases 3-5 ✅ |
-| Phase 8 | 0 / 0 | Low | Phases 3-5 ✅ |
+| Phase 7 | ✅ done | — | Phases 3-5 ✅ |
+| Phase 8 | ✅ done | — | Phases 3-5 ✅ |
 | Phase 9 | -250 / +100 | Medium | Phases 0-8 |
 | Phase 10 | +400 / +100 | High | Phases 3-6 ✅ |
 | Phase 11 | +300 / +200 | High | Phase 10 |
 | Phase 12 | +200 / +150 | Medium | Phases 5-6, 10 |
-| **Remaining** | **0 / +1050** | **~14 days** | — |
+| **Remaining** | **-250 / +550** | **~12 days** | — |
 
-> **Note**: Phases 6 and 7 are independent and can be parallelized.
+> **Note**: Phase 9 (documentation debt) is independent and can start immediately;
+> Phase 11 depends on Phase 10, and Phase 12 on Phase 10.
 
 ---
 
@@ -465,7 +466,7 @@ These rules must hold throughout refactoring:
 
 ---
 
-### Phase 8: Alpine Package Validation 🔄 IN PROGRESS
+### Phase 8: Alpine Package Validation ✅ DONE
 
 **Goal**: Verify that the refactored code builds and packages correctly in the Alpine Linux environment.
 
@@ -474,11 +475,13 @@ These rules must hold throughout refactoring:
 > against the Saphir APK repository.
 >
 > The chroot workflow is automated by **`setup/chroot/chroot-build.sh`**
-> (subcommands: `init`, `sync`, `build`, `install`, `test-gui`, `validate`,
-> `list`, `destroy`). `validate` performs the full cycle: sync the sources,
-> build `saphir-lib` + `saphir-gui` with abuild, install the APKs, and boot
+> (subcommands: `init`, `sync`, `build` [or `build all`], `install [PKG...]`, `test-gui`,
+> `validate`, `list`, `destroy`). `validate` performs the full cycle: sync the sources,
+> build `saphir-lib` + `saphir-gui` with abuild, install the GUI-domain APKs, and boot
 > the GUI bundle in DEVMODE (offscreen, local mosquitto) verifying the
-> `Saphir is ready` marker in the API log.
+> `Saphir is ready` marker in the API log. `build all` builds every buildable Saphir
+> package in dependency order. `install` installs per domain (the appliance runs each
+> package set in its own Safecor domain - see 8.3).
 
 #### 8.1 APKBUILD update ✅ Done
 - `setup/packages/saphir-gui/APKBUILD` verified: the refactoring introduced **no new dependencies**
@@ -492,18 +495,41 @@ These rules must hold throughout refactoring:
   module). It has been moved to `hiddenimports` in `saphir-gui.spec`.
 - The GUI boots in DEVMODE (MQTT + mock components) and completes the boot sequence
 
-#### 8.3 Full package build verification ⏳ Pending
-- Remaining packages to build: `saphir`, `saphir-splash`, `saphir-av-clamav`, `saphir-av-eset`
-- Verify no build errors, missing dependencies, or import failures
-- Confirm the `saphir-gui` binary launches in DEVMODE after install
+#### 8.3 Full package build verification ✅ Done
+- Built from a clean chroot world (`build all`): `saphir-splash`, `saphir-lib`, `saphir`,
+  `saphir-gui`, `saphir-viewer`, `saphir-av-clamav`, `saphir-av-eset` — no build errors,
+  missing dependencies, or import failures
+- **Not buildable**: `saphir-container-eset` — it fetches an ESET binary from a URL that
+  returns HTTP 404; the official CI skips it as well ("The container archive cannot be
+  built on GitHub", see `.github/workflows/build-all.yml`). `saphir-av-eset` resolves its
+  `saphir-container-eset` dependency from the official Saphir repository.
+- GUI domain installed (`saphir-lib` + `saphir-gui`) and the bundle boots in DEVMODE
+  (`Saphir is ready` marker)
+- **Bugs found & fixed during 8.3**:
+  - `saphir` APKBUILD had a stale sha512sum for `topology.json` (the file was updated in
+    `7d7dcd5` without regenerating the checksums), so the package failed at unpack time.
+    The official CI only masked it by running `abuild checksum` on the fly. Fixed in
+    #144; the chroot script now runs `abuild checksum` before every build, as the CI does.
+  - `saphir` (depends on `safecor-core` → `xen`) and `saphir-gui` (depends on
+    `safecor-gui-base` → `xe-guest-utilities`) cannot be installed in the same world
+    (`xen` and `xe-guest-utilities` conflict). On the appliance they live in separate
+    Safecor domains; the script therefore installs per domain and all builds must happen
+    before the install step.
 
-**Validation**: All packages build successfully in the chroot, GUI boots and completes a full scan cycle in DEVMODE.
+**Validation**: 7/8 packages build successfully in the chroot (the 8th is blocked by a
+dead upstream URL, skipped by the official CI too), the GUI domain installs and the bundle
+boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test suite
+(350 tests, see test baseline above).
 
 #### 8.4 Follow-ups identified during validation
 - **Deferred to CI integration**: the broker can disconnect idle clients on keepalive timeout
   (30 s). The mock AVs and the Safecor TCP `MqttClient` do not reconnect on mid-session
   disconnect (`on_connection_lost` is only set in the SERIAL_PORT branch), so QoS 0 analysis
   requests sent during the window are lost. To be addressed when the workflow tests run in CI.
+- **ESET download URL is dead**: the `saphir-container-eset` APKBUILD fetches
+  `https://download.eset.com/com/eset/apps/business/efs/linux/latest/eeau_x86_64.bin`,
+  which currently 404s. The package needs its source updated (or a local mirror) before
+  it can be built again.
 
 ---
 

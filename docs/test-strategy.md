@@ -21,6 +21,7 @@ This document is the container of the **validation strategy**; the simulation ca
 | **Unit** | Isolated module | pytest | Pure logic: consensus (F3), EMA (F16), helpers, models |
 | **Component** | Isolated controller | pytest + mocks | Each future sub-controller (WorkflowController, StorageManager, …) |
 | **Integration** | GUI + emulator | pytest + Safecor emulator + mock AV | Orchestration, state transitions, MQTT, full workflow |
+| **Packaging** | Alpine chroot (minirootfs) | `setup/chroot/chroot-build.sh` | Real APKs built with abuild, PyInstaller bundle boots in DEVMODE |
 | **System / E2E** | Real appliance | Manual / script | Platform verification (multi-VM, physical disks) |
 
 ---

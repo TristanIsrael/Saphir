@@ -1,7 +1,7 @@
 # Saphir Refactoring - Session Context
 
-> **Last update**: 2026-10-27
-> **Previous session status**: Planning phase, documentation complete
+> **Last update**: 2026-10-29
+> **Session status**: Phases 0-8 ✅ done (see `refactoring-plan.md`); next: Phase 9 (Documentation debt)
 
 ## What was accomplished
 
@@ -20,8 +20,10 @@
 
 ## Current state
 
-- **Priorité**: Workflow → Contrôleurs → Vues
-- **Questions ouvertes**: 4 (voir `workflow-rules.md` §9; single-disk résolue par `SystemWaitingForTarget`)
+- **Phases 0-8 du `refactoring-plan.md` sont terminées** (refactor, tests, lint, validation des paquets Alpine en chroot)
+- **Prochaine phase**: Phase 9 - Documentation debt (Français→Anglais, docstrings, dead code)
+- **Test baseline**: 350 passed, 3 skipped, 0 failed
+- Validation des paquets : `setup/chroot/chroot-build.sh` (7/8 paquets buildés, boot GUI DEVMODE validé ; `saphir-container-eset` bloqué par une URL ESET morte)
 
 ## Key decisions
 
@@ -33,6 +35,9 @@
 - Archives désactivées (`MOUNT_ARCHIVES = False`)
 
 ## Known issues
+
+> **Note** (2026-10-29) : ces problèmes, relevés à la phase de planification, ont été traités
+> durant les phases 0-7 (voir `refactoring-plan.md`).
 
 - God class : `application_controller.py` (1268 lignes)
 - 4 dead states à supprimer
