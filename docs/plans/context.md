@@ -1,7 +1,7 @@
 # Saphir Refactoring - Session Context
 
 > **Last update**: 2026-10-29
-> **Session status**: Phases 0-8 ✅ done (see `refactoring-plan.md`); next: Phase 9 (Documentation debt)
+> **Session status**: Phases 0-9 ✅ done (see `refactoring-plan.md`); next: Phase 10 (Missing features & NFRs)
 
 ## What was accomplished
 
@@ -20,8 +20,8 @@
 
 ## Current state
 
-- **Phases 0-8 du `refactoring-plan.md` sont terminées** (refactor, tests, lint, validation des paquets Alpine en chroot)
-- **Prochaine phase**: Phase 9 - Documentation debt (Français→Anglais, docstrings, dead code)
+- **Phases 0-9 du `refactoring-plan.md` sont terminées** (refactor, tests, lint, validation des paquets Alpine en chroot, dette documentaire)
+- **Prochaine phase**: Phase 10 - Missing features & NFRs (fingerprint NFR-1, ReportFailed, handlers de déconnexion, échec AV)
 - **Test baseline**: 350 passed, 3 skipped, 0 failed
 - Validation des paquets : `setup/chroot/chroot-build.sh` (7/8 paquets buildés, boot GUI DEVMODE validé ; `saphir-container-eset` bloqué par une URL ESET morte)
 
