@@ -27,7 +27,6 @@ from . import (
     LogListModel,
     MessagesListModel,
     QueueListModel,
-    QueueListProxyModel,
     SafecorInputFilesListModel,
     SafecorInputFilesListProxyModel,
     StorageManager,
@@ -63,7 +62,6 @@ class ApplicationController(QObject):
     __input_files_listmodel: SafecorInputFilesListModel
     __input_files_listproxymodel: SafecorInputFilesListProxyModel
     __queue_listmodel: QueueListModel
-    __queue_listproxymodel: QueueListProxyModel
     __components_helper = ComponentsHelper()
     __analysis_ready = False
     __analysis_components = []
@@ -184,12 +182,10 @@ class ApplicationController(QObject):
             self.__input_files_listmodel, self
         )
         self.__queue_listmodel = QueueListModel(self.__file_queue.files, self)
-        self.__queue_listproxymodel = QueueListProxyModel(self.__queue_listmodel, self)
         self.fileUpdated.connect(self.__queue_listmodel.on_file_updated)
         self.queueUpdated.connect(self.__queue_listmodel.reset)
         self.queueUpdated.connect(self.__input_files_listmodel.reset)
         self.allFilesUpdated.connect(self.__input_files_listmodel.reset)
-        self.fileUpdated.connect(self.__queue_listproxymodel.on_data_changed)
 
         self.__log_listmodel = LogListModel(self)
         self.__thread_pool = ThreadPoolExecutor(max_workers=1)
@@ -1089,9 +1085,6 @@ class ApplicationController(QObject):
     def __get_queue_listmodel(self):
         return self.__queue_listmodel
 
-    def __get_queue_list_proxy_model(self):
-        return self.__queue_listproxymodel
-
     def __get_log_listmodel(self):
         return self.__log_listmodel
 
@@ -1236,7 +1229,7 @@ class ApplicationController(QObject):
     )
     # outputFilesListProxyModel = Property(QObject, __outputFilesListProxyModel, constant= True)
     queueListModel = Property(QObject, __get_queue_listmodel, constant=True)
-    queueListProxyModel = Property(QObject, __get_queue_list_proxy_model, constant=True)
+
     logListModel = Property(QObject, __get_log_listmodel, constant=True)
     systemState = Property(int, __get_system_state, notify=systemStateChanged)
     queueSize = Property(int, __get_queue_size, notify=queueSizeChanged)

@@ -11,7 +11,6 @@ from .devmode_helper import DevModeHelper
 from .log_list_model import LogListModel
 from .messages_list_model import MessagesListModel
 from .queue_list_model import QueueListModel
-from .queue_list_proxy_model import QueueListProxyModel
 from .safecor_input_files_list_model import SafecorInputFilesListModel
 from .safecor_input_files_list_proxy_model import SafecorInputFilesListProxyModel
 from .safecor_output_files_list_proxymodel import SafecorOutputFilesListProxyModel
@@ -49,7 +48,6 @@ __all__ = [
     "LogListModel",
     "MessagesListModel",
     "QueueListModel",
-    "QueueListProxyModel",
     "ReportController",
     "Roles",
     "SafecorInputFilesListModel",

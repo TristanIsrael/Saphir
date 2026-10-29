@@ -10,7 +10,6 @@ from Saphir import (
     LogListModel,
     MessagesListModel,
     SafecorInputFilesListModel,
-    QueueListProxyModel,
     SafecorInputFilesListProxyModel,
     SafecorOutputFilesListProxyModel,
 )
@@ -409,23 +408,6 @@ class TestSafecorInputFilesListModel(unittest.TestCase):
         self.model.updateFilesList.connect(lambda: signals.append(True))
         self.model.onSourceChanged()
         self.assertEqual(len(signals), 1)
-
-
-class TestQueueListProxyModel(unittest.TestCase):
-
-    def setUp(self):
-        self.files = {"/f1": make_file("/f1", "f1", status=FileStatus.FileClean)}
-        self.source = QueueListModel(self.files)
-        self.proxy = QueueListProxyModel(self.source)
-
-    def test_filter_accepts_all(self):
-        self.assertTrue(self.proxy.filterAcceptsRow(0, QModelIndex()))
-
-    def test_less_than(self):
-        self.assertTrue(self.proxy.lessThan(self.source.index(0, 0), self.source.index(0, 0)))
-
-    def test_on_data_changed(self):
-        self.proxy.on_data_changed()
 
 
 class TestSafecorInputFilesListProxyModel(unittest.TestCase):

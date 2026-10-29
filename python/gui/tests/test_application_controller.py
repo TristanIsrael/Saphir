@@ -177,9 +177,6 @@ class TestApplicationController(unittest.TestCase):
     def test_queue_list_model(self):
         self.assertIsNotNone(self.controller.queueListModel)
 
-    def test_queue_list_proxy_model(self):
-        self.assertIsNotNone(self.controller.queueListProxyModel)
-
     def test_log_list_model(self):
         self.assertIsNotNone(self.controller.logListModel)
 
