@@ -23,7 +23,11 @@
 #   init             Create the chroot (idempotent)
 #   sync             Sync python/ and setup/ from this repository
 #   build [PKG...]   Build the given packages (default: saphir-lib saphir-gui)
-#   install          Install the built saphir-* APKs
+#   build all        Build every buildable Saphir package (dependency
+#                    order; saphir-container-eset excluded, see ALL_PKGS)
+#   install [PKG...] Install the built packages (default: saphir-lib
+#                    saphir-gui - the GUI domain; other domains get their
+#                    own packages on the appliance, see below)
 #   test-gui         Boot the GUI bundle in DEVMODE and check the boot marker
 #   validate         sync + build + install + test-gui
 #   list             List the built packages
@@ -41,6 +45,12 @@
 #   - `build` requires network access inside the chroot (apk + pip).
 #   - The local signing key (localval.rsa) is for validation only; the
 #     official CI signs with the Saphir key (see setup/docker/local-dev/).
+#   - Build BEFORE install: `install` adds the runtime dependencies to the
+#     chroot world (e.g. xe-guest-utilities via safecor-gui-base), which
+#     then conflicts with xen (pulled in by safecor-core when building the
+#     `saphir` package). abuild uninstalls its build dependencies after
+#     each build, so the world stays clean as long as all builds happen
+#     before the install step.
 #
 set -euo pipefail
 
@@ -69,6 +79,23 @@ BOOT_TIMEOUT=30
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 DEFAULT_PKGS=(saphir-lib saphir-gui)
+
+# Every buildable Saphir package, in dependency order (a package may
+# depend on the APK of a previously built one, resolved from the local
+# build repository). saphir-container-eset is not buildable: it fetches
+# an ESET binary from a URL that currently 404s, and the official CI
+# skips it as well ("The container archive cannot be built on GitHub",
+# see .github/workflows/build-all.yml). saphir-av-eset resolves its
+# saphir-container-eset dependency from the official Saphir repository.
+ALL_PKGS=(
+    saphir-splash
+    saphir-lib
+    saphir
+    saphir-gui
+    saphir-viewer
+    saphir-av-clamav
+    saphir-av-eset
+)
 
 # Packages installed in the chroot during init (build toolchain + GUI
 # dependencies + local MQTT broker for the DEVMODE boot test).
@@ -196,7 +223,11 @@ cmd_sync() {
 cmd_build() {
     chroot_ready || die "Chroot not initialized (run: $0 init)"
     local pkgs=("$@")
-    [ "${#pkgs[@]}" -gt 0 ] || pkgs=("${DEFAULT_PKGS[@]}")
+    if [ "${#pkgs[@]}" -eq 0 ]; then
+        pkgs=("${DEFAULT_PKGS[@]}")
+    elif [ "${#pkgs[@]}" -eq 1 ] && [ "${pkgs[0]}" = "all" ]; then
+        pkgs=("${ALL_PKGS[@]}")
+    fi
 
     local pkg
     for pkg in "${pkgs[@]}"; do
@@ -204,8 +235,11 @@ cmd_build() {
         # -r install missing makedepends, -f forces a fresh build: the
         # up-to-date check only compares the APKBUILD timestamp, not the
         # synced Python sources, so a plain `abuild` would skip rebuilds.
+        # `abuild checksum` refreshes the sha512sums first, as the official
+        # CI does (a source file changed outside abuild would otherwise
+        # fail the checksum verification at unpack time).
         chroot_builder "cd ${WORK_DIR}/setup/packages/saphir/${pkg} && \
-            abuild -r -f"
+            abuild checksum && abuild -r -f"
     done
 
     log "Built packages:"
@@ -218,13 +252,20 @@ cmd_build() {
 cmd_install() {
     chroot_ready || die "Chroot not initialized (run: $0 init)"
 
-    local apks
-    apks=$(chroot_sh "ls ${PKG_DIR}/saphir-*.apk 2>/dev/null")
-    [ -n "$apks" ] || die "No built saphir-*.apk found in ${PKG_DIR} (run: $0 build)"
+    # Install the GUI domain by default. Not every saphir-* package can be
+    # installed in one world: `saphir` depends on safecor-core (xen) while
+    # `saphir-gui` depends on safecor-gui-base (xe-guest-utilities), and
+    # those two conflict. On the appliance they live in separate Safecor
+    # domains (separate rootfs); install them per domain, e.g.
+    #   ./chroot-build.sh install saphir saphir-splash
+    local pkgs=("$@")
+    [ "${#pkgs[@]}" -gt 0 ] || pkgs=(saphir-lib saphir-gui)
 
-    log "Installing: $(echo "$apks" | xargs -n1 basename | tr '\n' ' ')"
-    # shellcheck disable=SC2086
-    chroot_sh "apk add $(echo "$apks" | tr '\n' ' ')"
+    local apk
+    for apk in "${pkgs[@]}"; do
+        log "Installing ${apk}"
+        chroot_sh "apk add ${PKG_DIR}/${apk}-*.apk"
+    done
 }
 
 # ---------------------------------------------------------------------------
