@@ -55,6 +55,7 @@ class MockAVManager:
         self._corrupt = corrupt or set()
         self._process: subprocess.Popen | None = None
         self._config_file: str | None = None
+        self._failure_flag: str | None = None
 
     @property
     def is_running(self) -> bool:
@@ -75,6 +76,7 @@ class MockAVManager:
         with os.fdopen(fd, "w") as f:
             json.dump(config, f)
 
+        self._failure_flag = self._config_file + ".fail"
         python = sys.executable
         cmd = [
             python, "-u", str(_MOCK_AV_SCRIPT),
@@ -86,6 +88,7 @@ class MockAVManager:
         env["PYTHONPATH"] = self._build_pythonpath()
         if self._repository_path:
             env["SAPHIR_REPOSITORY_PATH"] = self._repository_path
+        env["MOCK_AV_FAILURE_FLAG"] = self._failure_flag
 
         self._process = subprocess.Popen(
             cmd,
@@ -98,6 +101,16 @@ class MockAVManager:
         if not self.is_running:
             output = self._process.stdout.read().decode() if self._process.stdout else ""
             raise RuntimeError(f"Mock AV '{self.name}' died at startup:\n{output}")
+
+    def fail(self):
+        """Make the mock AV engine fail (NFR-3).
+
+        The engine reports itself OFF to the GUI and stops, like a dead
+        antivirus domain would be reported by the platform.
+        """
+        if self._failure_flag:
+            with open(self._failure_flag, "w") as f:
+                f.write("fail")
 
     def stop(self):
         """Terminate the mock AV subprocess."""
@@ -112,6 +125,9 @@ class MockAVManager:
         if self._config_file and os.path.exists(self._config_file):
             os.unlink(self._config_file)
             self._config_file = None
+        if self._failure_flag and os.path.exists(self._failure_flag):
+            os.unlink(self._failure_flag)
+            self._failure_flag = None
 
     def _build_pythonpath(self) -> str:
         """Build the PYTHONPATH so the subprocess can import libsaphir + safecor."""

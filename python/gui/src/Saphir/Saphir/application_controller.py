@@ -622,17 +622,33 @@ class ApplicationController(QObject):
         ids = self.__components_helper.get_ids_by_type("antivirus")
         for comp_id in ids:
             av = self.__components_helper.get_by_id(comp_id)
-            ready &= av.get("state", ComponentState.UNKNOWN) == ComponentState.READY
-            if (
-                av.get("state", ComponentState.UNKNOWN) == ComponentState.READY
-                and av not in self.__analysis_components
-            ):
-                self.__analysis_components.append(av)
-            elif (
-                av.get("state", ComponentState.UNKNOWN) == ComponentState.OFF
-                and av in self.__analysis_components
-            ):
+            av_state = av.get("state", ComponentState.UNKNOWN)
+            ready &= av_state == ComponentState.READY
+            if av_state == ComponentState.READY:
+                if av not in self.__analysis_components:
+                    self.__analysis_components.append(av)
+            elif av in self.__analysis_components:
+                # The engine was ready, it is not anymore (NFR-3). If the
+                # analysis is running the AnalysisController declares the
+                # incomplete files in error and aborts when the number of
+                # available engines drops below ANTIVIRUS_NEEDED.
                 self.__analysis_components.remove(av)
+                if (
+                    self.__workflow_controller.state
+                    == SystemState.SystemAnalysisRunning
+                ):
+                    aborted = self.__analysis_controller.handle_av_failure(comp_id)
+                    label = av.get("label", comp_id)
+                    message = f"{label}: " + self.tr(
+                        "The antivirus engine failed during the analysis: "
+                        "the files that could not be analyzed by all the engines "
+                        "are declared in error."
+                    )
+                    if aborted:
+                        message += " " + self.tr(
+                            "The analysis was stopped: please reset the system."
+                        )
+                    self.__messages_model.addMessage(message)
 
         # Now we check again the antiviruses
         ready &= len(self.__analysis_components) >= ANTIVIRUS_NEEDED

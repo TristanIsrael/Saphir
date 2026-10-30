@@ -6,7 +6,13 @@ import threading
 import time
 from threading import Lock
 
-from libsaphir import BIG_FILE_SIZE_IN_MB, MOUNT_ARCHIVES, TOPIC_ANALYSIS, FileStatus
+from libsaphir import (
+    ANTIVIRUS_NEEDED,
+    BIG_FILE_SIZE_IN_MB,
+    MOUNT_ARCHIVES,
+    TOPIC_ANALYSIS,
+    FileStatus,
+)
 from PySide6.QtCore import Property, QObject, Signal
 from safecor import Api, Constants, DiskState, FileHelper, MqttHelper, Topics
 
@@ -108,6 +114,68 @@ class AnalysisController(QObject):
             self.__copy_timer = None
         self.__source_held = False
         self.__set_analysis_state(AnalysisState.AnalysisStopped)
+
+    def handle_av_failure(self, av_component_id: str) -> bool:
+        """Handle an antivirus engine failure during the analysis (NFR-3).
+
+        The files that can no longer be analyzed by all the engines of the
+        analysis (already sent to them, or the analysis is aborting) are
+        declared in error; the files already analyzed keep their status.
+        If fewer than ANTIVIRUS_NEEDED engines remain available, the
+        analysis is aborted.
+
+        Returns True when the analysis was aborted.
+        """
+        if self.__analysis_state != AnalysisState.AnalysisRunning:
+            return False
+
+        with self.__queue_lock:
+            # Remove the failed engine in place: this list is shared with
+            # the ApplicationController (same object), the progress
+            # denominator must stay consistent for the next analyses.
+            for c in list(self.__analysis_components):
+                if c.get("id") == av_component_id:
+                    self.__analysis_components.remove(c)
+            aborted = len(self.__analysis_components) < ANTIVIRUS_NEEDED
+
+            errored = []
+            for filepath, file in self.__files.items():
+                status = file.get("status")
+                if status in (
+                    FileStatus.FileClean,
+                    FileStatus.FileInfected,
+                    FileStatus.FileAnalysisError,
+                ):
+                    # Already analyzed: keep the status (NFR-3)
+                    continue
+                # The file is incomplete and can no longer reach a valid
+                # consensus (it was sent to the engines, or the analysis
+                # is aborting and it never will be).
+                if aborted or status in (
+                    FileStatus.FileAnalysing,
+                    FileStatus.FileAvailableInRepository,
+                ):
+                    file["status"] = FileStatus.FileAnalysisError
+                    file["progress"] = 100
+                    errored.append((filepath, file))
+
+            for filepath, file in errored:
+                self.__infected_files_count += 1
+                self.__infected_files_size += file.get("size", 0)
+                self.fileUpdated.emit(filepath, ["status", "progress"])
+
+        if aborted:
+            Api().error(
+                f"Antivirus engine {av_component_id} failed and "
+                f"fewer than {ANTIVIRUS_NEEDED} engines remain: "
+                f"the analysis is aborted"
+            )
+            self.stop_analysis()
+            return True
+
+        if errored:
+            self.resultsChanged.emit()
+        return False
 
     def reset(self):
         """Reset the analysis counters and state to their initial values."""

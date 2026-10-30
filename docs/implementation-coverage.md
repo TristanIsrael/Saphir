@@ -346,7 +346,7 @@ Compliant.
 |------|-----|--------|
 | NFR-1 | End-to-end integrity (fingerprint) | ❌ |
 | NFR-2 | Source media integrity | ✅ |
-| NFR-3 | Minimum number of antivirus engines | 🟡 |
+| NFR-3 | Minimum number of antivirus engines | ✅ |
 | NFR-4 | Dirty state & locking | 🟡 |
 | NFR-5 | Translatability | 🟡 |
 
@@ -363,12 +363,12 @@ Compliant.
 
 - By design, Saphir only does `read_file` on the source. No write. Compliant.
 
-### NFR-3 — Minimum number of AV 🟡
+### NFR-3 — Minimum number of AV ✅
 
 - ✅ Compile-time constant: `ANTIVIRUS_NEEDED = 2` (libsaphir `_constants.py:7`).
 - ✅ Analysis blocked if not reached: `btnStartStop.enabled` depends on `analysisReady` (which requires `len(analysis_components) >= ANTIVIRUS_NEEDED`, application_controller.py:612).
 - ✅ Progression pending.
-- ❌ **AV failure during analysis**: not handled (the error handler is disabled, see F3). The result should switch to error.
+- ✅ **AV failure during analysis** (#149): `__check_components_availability` detects the READY → non-READY transition of an engine while `SystemAnalysisRunning` and calls `AnalysisController.handle_av_failure(comp_id)`. The files that can no longer reach a valid consensus are declared `Error` (the already-analyzed files keep their status); when fewer than `ANTIVIRUS_NEEDED` engines remain the analysis is aborted (`SystemWaitingForUserAction`), otherwise it continues with the surviving engines (workflow-rules.md scenario 8.9).
 
 ### NFR-4 — Dirty state & locking 🟡
 
@@ -429,7 +429,7 @@ These capabilities used to exist in the code without a spec entry. They are now 
 | `[fix]` | F6 | Report template selection according to the language (use `scan_report_fr.html`) |
 | `[fix]` | F6 | PDF generation error handling (end normally) |
 | `[fix]` | F8 | Wire the classification (Safecor) instead of the hardcoded 0 |
-| `[fix]` | F3/NFR-3 | Enable analysis error handling (Error status) |
+| `[fix]` | F3 | Analysis pause/resume without re-analyzing the processed files (the NFR-3 engine-failure part is done, #149) |
 | `[fix]` | F15 | Viewer button + guards (unavailability, config, idle) |
 | `[fix]` | F2 | Enqueue serialization (no concurrent) |
 | `[fix]` | F1/F2 (D7) | Decouple file selection from AV readiness — reach `SystemReady` when the disk-controller is ready (no AV requirement); gate the analysis trigger on ready-to-analyze (AV + core + queue) |

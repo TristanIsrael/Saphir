@@ -653,6 +653,108 @@ class TestApplicationControllerHandlers(unittest.TestCase):
             self.controller.systemState, SystemState.SystemAnalysisRunning.value
         )
 
+    def test_check_components_availability_av_failure_during_analysis(self):
+        # The components helper and the analysis components list are class
+        # attributes shared by the tests: start from a clean state
+        self.controller._ApplicationController__components_helper.clear()
+        self.controller._ApplicationController__analysis_components.clear()
+
+        components = [
+            {"id": "safecor_disk_controller", "type": "disk", "state": "ready"},
+            {
+                "id": "av1",
+                "type": "antivirus",
+                "state": "ready",
+                "domain_name": "d1",
+                "label": "AV1",
+                "version": "1.0",
+            },
+            {
+                "id": "av2",
+                "type": "antivirus",
+                "state": "ready",
+                "domain_name": "d2",
+                "label": "AV2",
+                "version": "2.0",
+            },
+        ]
+        self.controller._ApplicationController__components_helper.update(components)
+        self.controller._ApplicationController__check_components_availability()
+        self.assertTrue(self.controller.analysisReady)
+
+        # The analysis is running
+        self.controller._ApplicationController__set_system_state(
+            SystemState.SystemAnalysisRunning
+        )
+        ac = self.controller._ApplicationController__analysis_controller
+        ac.handle_av_failure = MagicMock(return_value=True)
+
+        messages_model = self.controller._ApplicationController__messages_model
+        count_before = messages_model.rowCount()
+
+        # An engine fails while the analysis is running
+        components[1]["state"] = "off"
+        self.controller._ApplicationController__components_helper.update(components)
+        self.controller._ApplicationController__check_components_availability()
+
+        self.assertFalse(self.controller.analysisReady)
+        # The AnalysisController is notified of the failure
+        ac.handle_av_failure.assert_called_once_with("av1")
+        # The failed engine is removed from the analysis components
+        ids = [
+            c.get("id")
+            for c in self.controller._ApplicationController__analysis_components
+        ]
+        self.assertEqual(ids, ["av2"])
+
+        # A message informs the user
+        self.assertEqual(messages_model.rowCount(), count_before + 1)
+        self.assertIn(
+            "AV1",
+            messages_model.data(messages_model.index(count_before, 0)),
+        )
+
+    def test_check_components_availability_av_failure_not_running(self):
+        self.controller._ApplicationController__components_helper.clear()
+        self.controller._ApplicationController__analysis_components.clear()
+
+        components = [
+            {"id": "safecor_disk_controller", "type": "disk", "state": "ready"},
+            {
+                "id": "av1",
+                "type": "antivirus",
+                "state": "ready",
+                "domain_name": "d1",
+                "label": "AV1",
+                "version": "1.0",
+            },
+            {
+                "id": "av2",
+                "type": "antivirus",
+                "state": "ready",
+                "domain_name": "d2",
+                "label": "AV2",
+                "version": "2.0",
+            },
+        ]
+        self.controller._ApplicationController__components_helper.update(components)
+        self.controller._ApplicationController__check_components_availability()
+        self.assertTrue(self.controller.analysisReady)
+
+        # No analysis is running: the failure only disables the analysis
+        self.controller._ApplicationController__set_system_state(
+            SystemState.SystemReady
+        )
+        ac = self.controller._ApplicationController__analysis_controller
+        ac.handle_av_failure = MagicMock()
+
+        components[1]["state"] = "off"
+        self.controller._ApplicationController__components_helper.update(components)
+        self.controller._ApplicationController__check_components_availability()
+
+        self.assertFalse(self.controller.analysisReady)
+        ac.handle_av_failure.assert_not_called()
+
     # --- __app_ready ---
 
     def test_app_ready_is_idempotent(self):

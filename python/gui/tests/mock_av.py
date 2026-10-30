@@ -61,6 +61,22 @@ class MockAntivirusController(AbstractAntivirusController):
         if repository_path:
             Constants.DOMU_REPOSITORY_PATH = repository_path
 
+        # Failure injection (NFR-3): when the flag file appears the engine
+        # reports itself OFF (like the platform would for a dead domain)
+        # and stops.
+        self._failure_flag = os.environ.get("MOCK_AV_FAILURE_FLAG")
+        if self._failure_flag:
+            threading.Thread(target=self._watch_failure_flag, daemon=True).start()
+
+    def _watch_failure_flag(self):
+        while not os.path.exists(self._failure_flag):
+            time.sleep(0.1)
+
+        print(f"Mock AV {self._name}: failure requested, going OFF")
+        self.component_state_changed(ComponentState.OFF)
+        time.sleep(0.5)
+        os._exit(0)
+
     def _on_analysis_requested(self, filepath: str, fingerprint: str) -> None:
         # Test fixture: corrupt the repository file before the integrity
         # check runs, to exercise the NFR-1 mismatch path end-to-end.

@@ -381,7 +381,7 @@ These rules must hold throughout refactoring:
 | 13 Viewer modernization | ⏳ Pending | — | — | Lint, format, unit tests (0 → 85%) |
 | 14 Semi-automated validation env | ⏳ Pending (Not ready) | — | — | Human-driven test on Safecor emulator (operator console + state observer); blocked on emulator features |
 
-**Test baseline**: 401 passed, 3 skipped, 0 failed (2026-10-30, after 10.4; known boot-sequence flake in full suite under high load)
+**Test baseline**: 408 passed, 3 skipped, 0 failed (2026-10-30, after 10.5; known boot-sequence flake in full suite under high load — `test_nominal_cycle` passes in isolation)
 
 ---
 
@@ -586,7 +586,7 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 
 ---
 
-### Phase 10: Missing Features & NFRs Implementation ⏳ IN PROGRESS (10.1, 10.2, 10.3, 10.4 done)
+### Phase 10: Missing Features & NFRs Implementation ⏳ IN PROGRESS (10.1, 10.2, 10.3, 10.4, 10.5 done)
 
 **Goal**: Implement the features and NFRs that are specified in `docs/features.md` and `docs/workflow-rules.md` but **not yet coded**. These are prerequisites for Phase 11 (functional coverage testing).
 
@@ -688,7 +688,7 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 - The pre-existing `test_workflow_bug_target_disconnection.py` (C.2) characterized the old behaviour (target disconnect → immediate `SystemMustBeReset`); it was rewritten to the 8.6 semantics (hold + auto-resume).
 - Integration tests: `test_workflow_source_disconnection_copy.py` (source: hold + auto-resume; different disk → `SystemMustBeReset`) and the rewritten C.2 (target: hold + auto-resume). The copy phase is stretched with 40 × 30 MB files so the unplug lands mid-copy even on a loaded machine.
 
-#### 10.5 [P1] NFR-3: AV engine failure during analysis
+#### 10.5 [P1] NFR-3: AV engine failure during analysis — ✅ Done (#149)
 
 **Spec**: `features.md` NFR-3 — If an AV fails during analysis: affected files get `Error` status, already-analyzed files keep status. If all AVs fail → abort.
 
@@ -704,6 +704,13 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 **Files**: `analysis_controller.py`, `application_controller.py`
 
 **Validation**: Integration test: start analysis, simulate AV component going OFF, verify files get `Error` status, verify analysis stops if below `ANTIVIRUS_NEEDED`.
+
+**Implementation notes**:
+- Detection: an AV domain (or the platform for a dead domain) publishes its state on `DISCOVER_COMPONENTS/response` — the app already reacts to every response via `__check_components_availability`. The missing piece was the **reaction**: that method now detects the READY → non-READY transition of an engine **while `SystemAnalysisRunning`** and calls `AnalysisController.handle_av_failure(comp_id)`, then posts a user message (engine label + abort suffix).
+- `AnalysisController.handle_av_failure(av_id) -> bool`: removes the engine from the (shared) `analysis_components` list **in place** (progress denominator stays consistent for future analyses), then marks `FileAnalysisError` the files that are not in a final state (Clean/Infected/Error) and were already sent to the engines (`FileAnalysing`/`FileAvailableInRepository`) — or all of them when aborting. If fewer than `ANTIVIRUS_NEEDED` engines remain, it calls `stop_analysis()` (state → `AnalysisStopped` → the app goes to `SystemWaitingForUserAction` via the existing `__on_analysis_state_changed`) and returns `True`; otherwise it returns `False` and the analysis continues with the surviving engines (files not yet sent will complete with the reduced consensus).
+- Test infra: `MockAVManager.fail()` touches a flag file watched by the mock AV, which publishes `ComponentState.OFF` and exits — simulating the platform reporting a dead AV domain.
+- Tests: 4 unit (`handle_av_failure`: abort + keep analyzed, continue with 3 engines, ignored when not running, unknown component), 2 app handlers (failure during analysis → AC notified + message + engine removed; not running → only disabled), 1 integration (emulator: AV OFF mid-analysis → `SystemWaitingForUserAction`, no `AnalysisCompleted`, no reset).
+- Note: `ANALYSIS_COMPONENTS` in `test_analysis_controller.py` is a class attribute shared between tests; the controller now receives a `deepcopy` and the failure tests normalize their own copy, so in-place removals do not leak between tests. Filenames in the new tests are unique (`AvFail*.txt`) because the Api message callbacks are never cleared between tests and stale controllers must not find the paths.
 
 #### 10.6 [P2] F4: Individual copy failure + final check
 

@@ -1,11 +1,17 @@
 # Workflow Rules - Saphir
 
 > **Status**: Stable
+>
 > **Last updated**: 2026-10-28
+>
 > **v2 changes**: added `SystemWaitingForTarget` (waiting for the 2nd target after analysis), Stop / Reset / Copy-cancellation transitions, and the AV failure distinction (per-file error vs engine panic, NFR-3).
+>
 > **v2.1 changes**: decoupled file *selection* from AV readiness — a disk can be browsed/selected as soon as the disk-controller is ready and a disk is connected, even if the AV engines are not ready; the analysis trigger now requires the **ready-to-analyze** condition (AV engines ready + core ready + non-empty queue). Added the boot/start dialog sizing rule (large → small → hidden).
+>
 > **v2.2 changes**: removed the copy-decline / copy-cancel transitions — there is **no cancel button**; `SystemWaitingForTarget` is a **stable terminal-ish state** whose only exits are: insert a target disk, Reset, or Shutdown.
+>
 > **v2.3 changes**: renamed the analysis **Stop** button to **Pause** — there is **no hard stop**. Pausing suspends the analysis (files already analyzed keep their status) and the user can **resume** it later from the same state.
+>
 > **v3 changes**: added the `ReportFailed` permanent error state (report failure, #4); reviewed and fixed the invariants (I2 completion guard, I5 report failure, I7 consensus, added I9 reset idempotence); completed the error-handling matrix (source/target disconnection during copy **and** analysis, MQTT transport, power loss); added scenarios 8.6–8.8; resolved all open questions (§9). **Contract fully reviewed and validated.**
 
 ---
@@ -275,7 +281,7 @@ A **Reset** always returns the system to its **initial state**: state `SystemRea
 | Error | Current Behavior | Target Behavior |
 |-------|-----------------|-----------------|
 | Per-file analysis error (one engine errors) | Not handled (`__handle_error` is a no-op) | File → `Error` status (not clean); analysis **continues** (NFR-3) |
-| AV **engine panic** (component `ERROR`/`OFF`) | Not handled | **Abort** analysis immediately → `SystemWaitingForUserAction` (NFR-3) |
+| AV **engine panic** (component `ERROR`/`OFF`) | Handled (scenario 8.9) | Incomplete files → `Error` (analyzed files keep their status); **abort** → `SystemWaitingForUserAction` when fewer than `ANTIVIRUS_NEEDED` engines remain, otherwise continue with the survivors (NFR-3) |
 | Copy fails for a clean file | Counted in `copiedFilesCount` failure, continues | Log error, mark file, continue, report failure in PDF; final check `copied == clean_count` (F4) |
 | Source disk disconnected during copy | Not handled (uncertain state) | Stay in `CopyCleanFiles` with an **error flag** (no dedicated state); pause the copy and prompt to re-insert; on re-insertion, run a **coherence check** (source state + integrity/fingerprint) and clear the flag → **auto-resume**. No reset, no re-analysis (F4) |
 | **Target** disk disconnected during copy | Not handled | Same as the source: **error flag** on `CopyCleanFiles`, pause, prompt to re-insert, **coherence check** on re-insertion, **auto-resume** (F4) |
@@ -289,7 +295,7 @@ A **Reset** always returns the system to its **initial state**: state `SystemRea
 
 ```
 Per-file analysis error  → stays in SystemAnalysisRunning (file → Error), completes to AnalysisCompleted
-AV engine panic          → SystemWaitingForUserAction (abort, user retries)
+AV engine panic          → incomplete files Error; abort → SystemWaitingForUserAction (if < ANTIVIRUS_NEEDED engines), else continue (scenario 8.9)
 Source disconnected (analysis) → stays in SystemAnalysisRunning (AV continues on the repository); error flag + dialog; held until the source is re-connected, then resumes
 Copy error (single file) → continue, log in report (CopyCleanFiles → GeneratingReport)
 Source disconnected (copy) → stays in CopyCleanFiles with an error flag; on re-insertion, coherence check (state + integrity) then auto-resume
@@ -455,6 +461,23 @@ where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infecte
 4. The analysis loop is HELD (waiting) so it does not exit prematurely while files remain to be copied
 5. User re-inserts the source → the flag is cleared, the remaining files are copied, and the analysis resumes
 6. All files analyzed → AnalysisCompleted (→ copy / report as usual)
+```
+
+### 8.9 Antivirus Engine Failure During Analysis (NFR-3)
+
+```
+1. SystemAnalysisRunning (an antivirus engine reports itself OFF/ERROR, e.g. a dead domain)
+2. The GUI detects the state change on the DISCOVER_COMPONENTS response
+3. Files already analyzed keep their status (Clean / Infected)
+4. Files that were already sent to the engines but are incomplete are declared Error
+   (no valid consensus is possible without the failed engine)
+5. If the number of available engines drops below ANTIVIRUS_NEEDED (2):
+   the analysis is ABORTED → SystemWaitingForUserAction (message to the user);
+   files not yet sent are also declared Error
+6. If at least ANTIVIRUS_NEEDED engines remain (3+ engines configured):
+   the analysis CONTINUES with the remaining engines; the files not yet sent
+   are analyzed by the survivors (the failed engine is removed from the consensus)
+7. The user can reset (or, once an engine is back, start the analysis again)
 ```
 
 ---

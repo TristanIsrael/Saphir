@@ -51,7 +51,9 @@ class TestAnalysisController(unittest.TestCase):
         Api().subscribe(f"{Topics.SYSTEM_INFO}/request")
         Api().subscribe(f"{TOPIC_ANALYSIS}/#")
         Api().subscribe(f"{Topics.DISKS}/+/request")
-        self.__analysis_controller = AnalysisController(self.__files_queue, self.ANALYSIS_COMPONENTS, "Archives", AnalysisMode.AnalyseSelection)
+        # A fresh copy per test: the controller mutates the list in place
+        # (e.g. handle_av_failure), the class attribute must stay pristine.
+        self.__analysis_controller = AnalysisController(self.__files_queue, deepcopy(self.ANALYSIS_COMPONENTS), "Archives", AnalysisMode.AnalyseSelection)
 
     def __on_subscribed(self, mid):
         self.__nb_subscriptions = self.__nb_subscriptions + 1
@@ -1205,6 +1207,132 @@ class TestAnalysisController(unittest.TestCase):
             and m["payload"]["filepath"] == "/File1.txt"
         ]
         self.assertEqual(len(analysis_requests), 1)
+
+    # --- AV engine failure during the analysis (NFR-3) ---
+
+    def test_av_failure_marks_incomplete_files_error_and_aborts(self):
+        ac_comps = self.__analysis_controller._AnalysisController__analysis_components
+        ac_comps[:] = deepcopy(self.ANALYSIS_COMPONENTS)
+        # Unique filenames: stale callbacks from previous tests (the Api
+        # message callbacks are never cleared) must not find these paths.
+        self.__update_queue([
+            {"type": "file", "path": "/", "name": "AvFailA.txt", "size": 100},
+            {"type": "file", "path": "/", "name": "AvFailB.txt", "size": 200},
+            {"type": "file", "path": "/", "name": "AvFailC.txt", "size": 300},
+        ])
+        self.__files_queue["/AvFailC.txt"]["status"] = FileStatus.FileStatusUndefined
+        self.__analysis_controller.start_analysis()
+
+        f1 = self.__files_queue["/AvFailA.txt"]
+        f1["status"] = FileStatus.FileClean
+        f2 = self.__files_queue["/AvFailB.txt"]
+        f2["status"] = FileStatus.FileAnalysing
+        f2["progress"] = 50
+        f3 = self.__files_queue["/AvFailC.txt"]
+        # f3 is not sent to the engines yet
+
+        aborted = self.__analysis_controller.handle_av_failure("av1")
+
+        # One engine is left: below ANTIVIRUS_NEEDED, the analysis aborts
+        self.assertTrue(aborted)
+        self.assertEqual(
+            self.__analysis_controller.get_analysis_state(),
+            AnalysisState.AnalysisStopped,
+        )
+        # The file already analyzed keeps its status (NFR-3)
+        self.assertEqual(f1["status"], FileStatus.FileClean)
+        # The incomplete files are declared in error
+        self.assertEqual(f2["status"], FileStatus.FileAnalysisError)
+        self.assertEqual(f3["status"], FileStatus.FileAnalysisError)
+        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 2)
+
+    def test_av_failure_continues_when_enough_engines_remain(self):
+        ac_comps = self.__analysis_controller._AnalysisController__analysis_components
+        ac_comps[:] = deepcopy(self.ANALYSIS_COMPONENTS)
+        # Add a third engine so that one failure still leaves
+        # ANTIVIRUS_NEEDED engines available
+        self.__analysis_controller._AnalysisController__analysis_components.append(
+            {
+                "id": "av3", "domain_name": "Mac", "label": "Mock 3 antivirus",
+                "type": "antivirus", "state": "ready",
+                "version": "1.0.0-mock", "description": "",
+            }
+        )
+        self.__update_queue([
+            {"type": "file", "path": "/", "name": "AvFailD.txt", "size": 100},
+            {"type": "file", "path": "/", "name": "AvFailE.txt", "size": 200},
+        ])
+        self.__files_queue["/AvFailE.txt"]["status"] = FileStatus.FileStatusUndefined
+        self.__analysis_controller.start_analysis()
+
+        f1 = self.__files_queue["/AvFailD.txt"]
+        f1["status"] = FileStatus.FileAnalysing
+        f1["progress"] = 100 * 2 / 3
+        f2 = self.__files_queue["/AvFailE.txt"]
+        # f2 is not sent to the engines yet
+
+        aborted = self.__analysis_controller.handle_av_failure("av3")
+
+        self.assertFalse(aborted)
+        self.assertEqual(
+            self.__analysis_controller.get_analysis_state(),
+            AnalysisState.AnalysisRunning,
+        )
+        # f1 was sent to the engines and is incomplete: error
+        self.assertEqual(f1["status"], FileStatus.FileAnalysisError)
+        # f2 has not been sent: it will be analyzed by the remaining engines
+        self.assertEqual(f2["status"], FileStatus.FileStatusUndefined)
+        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 1)
+        # The failed engine is removed from the consensus
+        ids = [
+            c.get("id")
+            for c in self.__analysis_controller._AnalysisController__analysis_components
+        ]
+        self.assertNotIn("av3", ids)
+
+    def test_av_failure_ignored_when_not_running(self):
+        self.__update_queue([
+            {"type": "file", "path": "/", "name": "AvFailF.txt", "size": 100},
+        ])
+        self.__files_queue["/AvFailF.txt"]["status"] = FileStatus.FileStatusUndefined
+
+        aborted = self.__analysis_controller.handle_av_failure("av1")
+
+        self.assertFalse(aborted)
+        self.assertEqual(
+            self.__files_queue["/AvFailF.txt"]["status"],
+            FileStatus.FileStatusUndefined,
+        )
+        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
+
+    def test_av_failure_unknown_component(self):
+        ac_comps = self.__analysis_controller._AnalysisController__analysis_components
+        ac_comps[:] = deepcopy(self.ANALYSIS_COMPONENTS)
+        self.__update_queue([
+            {"type": "file", "path": "/", "name": "AvFailG.txt", "size": 100},
+            {"type": "file", "path": "/", "name": "AvFailH.txt", "size": 200},
+        ])
+        self.__files_queue["/AvFailH.txt"]["status"] = FileStatus.FileStatusUndefined
+        self.__analysis_controller.start_analysis()
+
+        f1 = self.__files_queue["/AvFailG.txt"]
+        f1["status"] = FileStatus.FileAnalysing
+        f1["progress"] = 50
+
+        # The component is not part of the analysis: the list is unchanged
+        # and the analysis keeps running with the two remaining engines
+        aborted = self.__analysis_controller.handle_av_failure("avX")
+
+        self.assertFalse(aborted)
+        self.assertEqual(
+            self.__analysis_controller.get_analysis_state(),
+            AnalysisState.AnalysisRunning,
+        )
+        self.assertEqual(f1["status"], FileStatus.FileAnalysisError)
+        self.assertEqual(
+            self.__files_queue["/AvFailH.txt"]["status"],
+            FileStatus.FileStatusUndefined,
+        )
 
     def __update_queue(self, files_list:list[dict]):
         self.__files_queue.clear()
