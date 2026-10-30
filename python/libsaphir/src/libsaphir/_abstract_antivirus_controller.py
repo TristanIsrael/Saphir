@@ -5,7 +5,15 @@ import time
 from abc import ABC, abstractmethod
 from queue import Queue
 
-from safecor import Api, ComponentState, MqttFactory, MqttHelper, Topics
+from safecor import (
+    Api,
+    ComponentState,
+    Constants,
+    FileHelper,
+    MqttFactory,
+    MqttHelper,
+    Topics,
+)
 
 from . import DEVMODE, TOPIC_ANALYSIS, FileStatus
 
@@ -61,13 +69,22 @@ class AbstractAntivirusController(ABC):
     def stop(self):
         Api().stop()
 
-    def publish_result(self, filepath: str, success: bool, details: str):
+    def publish_result(
+        self,
+        filepath: str,
+        success: bool,
+        details: str,
+        fingerprint_error: bool = False,
+    ):
         payload = {
             "component": self.__component_name,
             "filepath": filepath,
             "success": success,
             "details": details,
         }
+
+        if fingerprint_error:
+            payload["fingerprint_error"] = True
 
         Api().publish(f"{TOPIC_ANALYSIS}/response", payload)
 
@@ -131,7 +148,8 @@ class AbstractAntivirusController(ABC):
                 return
 
             filepath = payload.get("filepath")
-            self.__files_queue.put(filepath)
+            fingerprint = payload.get("fingerprint", "")
+            self.__files_queue.put((filepath, fingerprint))
             self.__analyse_next_file()
 
         elif topic == f"{Topics.RESTART_DOMAIN}/request":
@@ -172,14 +190,49 @@ class AbstractAntivirusController(ABC):
                 and self.__workers < self.__max_workers
             ):
                 # If there is a file to scan we start the analysis in a new thread
-                filepath = self.__files_queue.get()
+                item = self.__files_queue.get()
+                if isinstance(item, tuple):
+                    filepath, fingerprint = item
+                else:
+                    # Backward compatibility with bare filepath entries
+                    filepath, fingerprint = item, ""
 
                 self.__workers += 1
                 print("Antivirus start thread for file", filepath)
-                threading.Thread(target=self._analyse_file, args=(filepath,)).start()
+                threading.Thread(
+                    target=self.__analyse_with_integrity_check,
+                    args=(filepath, fingerprint),
+                ).start()
             else:
                 # If there is no file to scan we schedule a timer
                 threading.Timer(0.5, self.__analyse_next_file).start()
+
+    def __analyse_with_integrity_check(self, filepath: str, fingerprint: str) -> None:
+        """Verify the repository file integrity before the analysis (NFR-1).
+
+        The fingerprint recorded in the queue is compared with the fingerprint of the
+        file in the repository. On mismatch the file is declared in error and the
+        analysis is not started. When no fingerprint is recorded or the file cannot be
+        read the check is skipped and the analysis proceeds as before.
+        """
+        if fingerprint:
+            storage_filepath = f"{Constants.DOMU_REPOSITORY_PATH}{filepath}"
+            actual = FileHelper.calculate_fingerprint(storage_filepath)
+            if actual and actual != fingerprint:
+                self.error(
+                    f"Fingerprint mismatch for {filepath}: "
+                    f"expected {fingerprint}, got {actual}"
+                )
+                self.publish_result(
+                    filepath,
+                    False,
+                    "Fingerprint mismatch (file altered in the repository)",
+                    fingerprint_error=True,
+                )
+                self.analysis_finished(False)
+                return
+
+        self._analyse_file(filepath)
 
     def debug(self, message: str):
         Api().debug(message, self.__component_name)

@@ -8,6 +8,7 @@ The test observes state transitions via the app's stdout.
 """
 
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -32,11 +33,16 @@ class StateTracker:
         self._process = process
         self._thread = threading.Thread(target=self._read, daemon=True)
 
+    _STATE_RE = re.compile(r"System state:\s*(SystemState\.\w+)")
+
     def _read(self):
         for line in iter(self._process.stdout.readline, b""):
-            line = line.decode().strip()
-            if line.startswith("System state:"):
-                self.states.append(line.split("System state:")[1].strip())
+            # A state line can be glued to a print from another thread
+            # (non-atomic prints on the shared stdout), so search the
+            # state marker anywhere in the line instead of startswith.
+            m = self._STATE_RE.search(line.decode())
+            if m:
+                self.states.append(m.group(1))
 
     def start(self):
         self._thread.start()

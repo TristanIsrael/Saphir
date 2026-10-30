@@ -270,13 +270,13 @@ class TestAnalysisController(unittest.TestCase):
         
         self.assertEqual(len(self.__messages_recv), 4)
         self.assertEqual(self.__messages_recv[0]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[0]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp"})
+        self.assertEqual(self.__messages_recv[0]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp", "fingerprint": "abcdef0123456789"})
         self.assertEqual(self.__messages_recv[1]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[1]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag"})
+        self.assertEqual(self.__messages_recv[1]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag", "fingerprint": "abcdef0123456789"})
         self.assertEqual(self.__messages_recv[2]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[2]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json"})
+        self.assertEqual(self.__messages_recv[2]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json", "fingerprint": "abcdef0123456789"})
         self.assertEqual(self.__messages_recv[3]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[3]["payload"], {"filepath": "/1.3.0/switch/.overlays/parental_control.ovl"})        
+        self.assertEqual(self.__messages_recv[3]["payload"], {"filepath": "/1.3.0/switch/.overlays/parental_control.ovl", "fingerprint": "abcdef0123456789"})        
 
         # We send a result
         payload = {
@@ -467,7 +467,7 @@ class TestAnalysisController(unittest.TestCase):
         
         self.assertEqual(len(self.__messages_recv), 1)
         self.assertEqual(self.__messages_recv[0]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[0]["payload"], {"filepath": "/File.txt"})
+        self.assertEqual(self.__messages_recv[0]["payload"], {"filepath": "/File.txt", "fingerprint": "abcdef0123456789"})
 
         # Send the results
         self.__messages_recv.clear()
@@ -493,7 +493,7 @@ class TestAnalysisController(unittest.TestCase):
         self.assertTrue(self.__message_event.wait(0.5))
         self.assertEqual(len(self.__messages_recv), 1)
         self.assertEqual(self.__messages_recv[0]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[0]["payload"], {"filepath": "/File2.txt"})
+        self.assertEqual(self.__messages_recv[0]["payload"], {"filepath": "/File2.txt", "fingerprint": "abcdef0123456789"})
 
         # Then we send the results
         self.__messages_recv.clear()
@@ -568,13 +568,13 @@ class TestAnalysisController(unittest.TestCase):
         
         self.assertEqual(len(self.__messages_recv), 4)
         self.assertEqual(self.__messages_recv[0]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[0]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp"})
+        self.assertEqual(self.__messages_recv[0]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp", "fingerprint": "abcdef0123456789"})
         self.assertEqual(self.__messages_recv[1]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[1]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag"})
+        self.assertEqual(self.__messages_recv[1]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag", "fingerprint": "abcdef0123456789"})
         self.assertEqual(self.__messages_recv[2]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[2]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json"})
+        self.assertEqual(self.__messages_recv[2]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json", "fingerprint": "abcdef0123456789"})
         self.assertEqual(self.__messages_recv[3]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[3]["payload"], {"filepath": "/1.3.0/switch/.overlays/parental_control.ovl"})        
+        self.assertEqual(self.__messages_recv[3]["payload"], {"filepath": "/1.3.0/switch/.overlays/parental_control.ovl", "fingerprint": "abcdef0123456789"})        
 
         # We send a result
         payload = {
@@ -987,6 +987,48 @@ class TestAnalysisController(unittest.TestCase):
         self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
         self.assertEqual(self.__analysis_controller.get_infected_files_count(), 1)
 
+
+    def test_analysis_response_fingerprint_error(self):
+        self.__update_queue(self.STORAGE_FILES.get("files", []))
+
+        file = self.__files_queue["/.DS_Store"]
+        file["status"] = FileStatus.FileAnalysing
+
+        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", {
+            "component": "av1",
+            "filepath": "/.DS_Store",
+            "success": False,
+            "details": "Fingerprint mismatch (file altered in the repository)",
+            "fingerprint_error": True,
+        })
+
+        deadline = time.time() + 2
+        while file.get("status") != FileStatus.FileAnalysisError and time.time() < deadline:
+            time.sleep(0.1)
+
+        self.assertEqual(file.get("status"), FileStatus.FileAnalysisError)
+        self.assertEqual(file.get("progress", 0), 100)
+        # A fingerprint error makes the file not clean (NFR-1)
+        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 1)
+
+    def test_analysis_response_without_fingerprint_error_is_normal(self):
+        self.__update_queue(self.STORAGE_FILES.get("files", []))
+
+        file = self.__files_queue["/.DS_Store"]
+
+        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", {
+            "component": "av1",
+            "filepath": "/.DS_Store",
+            "success": True,
+            "details": "Clean",
+        })
+
+        deadline = time.time() + 2
+        while file.get("progress", 0) == 0 and time.time() < deadline:
+            time.sleep(0.1)
+
+        self.assertEqual(file.get("status"), FileStatus.FileAnalysing)
+        self.assertNotEqual(file.get("status"), FileStatus.FileAnalysisError)
 
     def test_get_working_files_count(self):
         self.__files_queue.clear()

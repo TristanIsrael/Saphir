@@ -590,7 +590,7 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 
 **Principle**: We cannot test what does not exist. This phase implements the missing behaviour so that Phase 11 can validate it.
 
-#### 10.1 [P0] NFR-1: Fingerprint verification chain
+#### 10.1 [P0] NFR-1: Fingerprint verification chain — ✅ Done (#145)
 
 **Spec**: `features.md` NFR-1 — Saphir must verify fingerprint integrity at each step.
 
@@ -604,6 +604,12 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 **Files**: `transfer_controller.py`, `analysis_controller.py`, `file_queue.py` (add `fingerprint` field to file entries)
 
 **Validation**: Unit tests verify mismatch → error status, match → normal flow.
+
+**Implementation notes** (done):
+- The repository copy step already stored the source fingerprint in the queue entry (`NEW_FILE` → `file["fingerprint"]`).
+- The AV integrity check runs in the AV domain (the only place with access to the repository file): the GUI sends the recorded fingerprint in the `saphir/analysis/request` payload; `AbstractAntivirusController` computes the fingerprint of the repository file before the analysis and, on mismatch, publishes the response with a `fingerprint_error: true` flag (no analysis started). The GUI routes such responses to `__handle_error` → file marked `FileAnalysisError` (declared *Error* per NFR-1), chain continues.
+- The copy-to-target check compares the `fingerprint` of the copy response with the recorded one; mismatch → `FileCopyError` + journal entry.
+- When no fingerprint is recorded (or the file cannot be read) the check is skipped, preserving the previous behaviour (DEVMODE compatibility).
 
 #### 10.2 [P0] Scenario 8.7: Report generation failure → `ReportFailed`
 

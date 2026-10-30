@@ -83,6 +83,17 @@ class TransferController(QObject):
 
         success = status == "ok"
         if success:
+            # NFR-1: the fingerprint of the copied file must match the one
+            # recorded when the file was first copied to the repository.
+            expected = file.get("fingerprint", "")
+            if expected and fingerprint != expected:
+                success = False
+                Api().error(
+                    f"Fingerprint mismatch for {filepath} after copy to "
+                    f"{self._target_name}: expected {expected}, got {fingerprint}"
+                )
+
+        if success:
             self._copied_files_count += 1
             self.copiedFilesCountChanged.emit()
 

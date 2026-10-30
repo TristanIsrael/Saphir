@@ -1,5 +1,7 @@
 """Central mediator between the Safecor platform and the QML UI. Owns the system state machine."""
 
+import sys
+
 from libsaphir import FileStatus
 from PySide6.QtCore import Property, QCoreApplication, QObject, Signal, Slot
 from safecor import (
@@ -1116,7 +1118,11 @@ class ApplicationController(QObject):
         return self.__workflow_controller.state.value
 
     def __set_system_state(self, state: SystemState):
-        print(f"System state: {SystemState(state)}")
+        # A single write (line + newline) so the state line cannot be
+        # interleaved with prints from other threads (e.g. the test harness
+        # reads these lines from stdout).
+        sys.stdout.write(f"System state: {SystemState(state)}\n")
+        sys.stdout.flush()
         self.__workflow_controller.force_state(state)
 
     def __get_queue_size(self):

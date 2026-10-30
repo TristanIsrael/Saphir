@@ -62,12 +62,12 @@ The domains do **not** share memory. They exchange data through the **repository
        v
  AnalysisController marks file FileAvailableInRepository
        |
-       +-- publish saphir/analysis/request {filepath}
+       +-- publish saphir/analysis/request {filepath, fingerprint}
                                             \
-                                             \--MQTT-->  ClamAV scans file (worker pool)
-                                             \--MQTT-->  ESET  scans file (worker pool)
+                                             \--MQTT-->  ClamAV verifies the repository fingerprint (NFR-1), then scans (worker pool)
+                                             \--MQTT-->  ESET  verifies the repository fingerprint (NFR-1), then scans (worker pool)
                                                      |            |
-                                  publish saphir/analysis/response {component, filepath, success, details}
+                                  publish saphir/analysis/response {component, filepath, success, details[, fingerprint_error]}
                                                      |
        +<---------------------------------------------+
  AnalysisController.__handle_result aggregates per-AV results
@@ -162,7 +162,7 @@ It exposes ~38 signals and ~38 `@Property` (see the full list in the refactoring
 
 `python/libsaphir/src/libsaphir/` is the shared library used by the AV domains.
 
-- **`AbstractAntivirusController`** implements the **Template Method** for an antivirus domain: it owns the MQTT client lifecycle, the bounded **worker pool** (a `Queue` + a capped number of `threading.Thread`s, rescheduled via `threading.Timer`), the request routing (`analysis/request|stop|resume|reset`), and the result publishing (`analysis/response`, `analysis/status`). Subclasses implement the abstract hooks: `_on_api_ready`, `_get_component_state`, `_analyse_file`, `_stop_immediately`, `_get_component_version`, `_get_component_description`, `_restart`.
+- **`AbstractAntivirusController`** implements the **Template Method** for an antivirus domain: it owns the MQTT client lifecycle, the bounded **worker pool** (a `Queue` + a capped number of `threading.Thread`s, rescheduled via `threading.Timer`), the request routing (`analysis/request|stop|resume|reset`), and the result publishing (`analysis/response`, `analysis/status`). Before dispatching a file to a subclass's `_analyse_file`, it verifies the repository file integrity (NFR-1): the fingerprint recorded in the queue is compared with the fingerprint of the file in the repository; on mismatch the response is published with `fingerprint_error: true` and the analysis is not started. Subclasses implement the abstract hooks: `_on_api_ready`, `_get_component_state`, `_analyse_file`, `_stop_immediately`, `_get_component_version`, `_get_component_description`, `_restart`.
 - **`ClamAntivirusController`** — many workers (CPU count); scans by running the `clamdscan` CLI as a subprocess; return code `0`=clean, `1`=infected, `2`=error; pings `clamdscan --ping` for readiness.
 - **`EeaAntivirusController`** — **single worker**; scans through shell scripts wrapping the LXC container (`scan-file.sh` then `get-scan-result.sh`, i.e. odscan + lslog); richer return codes (`0`=clean, `10`=incomplete→clean, `50`=infected); pings `lxc-info` for readiness.
 
@@ -234,8 +234,8 @@ The Safecor `Api` is a **singleton** (`safecor._api.Api` uses `SingletonMeta`). 
 
 | Topic | Publisher | Subscriber | Purpose |
 |-------|-----------|------------|---------|
-| `saphir/analysis/request` | GUI `AnalysisController` | each AV domain | "analyse this file" |
-| `saphir/analysis/response` | each AV domain | GUI `AnalysisController` | scan result `{component, filepath, success, details}` |
+| `saphir/analysis/request` | GUI `AnalysisController` | each AV domain | "analyse this file" `{filepath, fingerprint}` |
+| `saphir/analysis/response` | each AV domain | GUI `AnalysisController` | scan result `{component, filepath, success, details}`; on repository integrity failure (NFR-1) the payload carries `fingerprint_error: true` and the GUI marks the file `FileAnalysisError` |
 | `saphir/analysis/status` | each AV domain | GUI (currently ignored) | progress |
 | `saphir/analysis/error` | each AV domain | GUI `AnalysisController` | scan error |
 | `saphir/analysis/stop` / `resume` | GUI `AnalysisController` | each AV domain | pause / run |

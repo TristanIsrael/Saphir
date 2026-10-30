@@ -139,6 +139,17 @@ class AnalysisController(QObject):
                 Api().error(f"Malformed message for topic {topic}")
                 return
 
+            # NFR-1: the AV domain verifies the repository file integrity and
+            # reports a mismatch here. The file is declared in error (NFR-1).
+            if payload.get("fingerprint_error", False):
+                self.__handle_error(
+                    {
+                        "filepath": payload.get("filepath", ""),
+                        "error": "Fingerprint mismatch: the file was altered in the repository",
+                    }
+                )
+                return
+
             self.__handle_result(
                 payload.get("component", ""),
                 payload.get("filepath", ""),
@@ -214,8 +225,13 @@ class AnalysisController(QObject):
                 file["fingerprint"] = fingerprint
                 self.fileUpdated.emit(filepath, ["status"])
 
-                # Next step is to analyse the file
-                payload = {"filepath": filepath}
+                # Next step is to analyse the file.
+                # The recorded fingerprint is sent so the AV domain can verify
+                # the file integrity in the repository before analyzing it (NFR-1).
+                payload = {
+                    "filepath": filepath,
+                    "fingerprint": file.get("fingerprint", ""),
+                }
                 Api().publish(f"{TOPIC_ANALYSIS}/request", payload)
             except Exception as e:  # noqa: BLE001 - MQTT publish can fail on disconnect
                 print("An error occured when handling the new_file notification")

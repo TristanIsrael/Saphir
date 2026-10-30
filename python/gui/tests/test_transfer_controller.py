@@ -203,6 +203,56 @@ class TestTransferController(unittest.TestCase):
 
         self.assertEqual(self.transfer.progress, 0)
 
+    def test_on_copy_file_fingerprint_match_keeps_success(self):
+        f1 = {
+            "name": "a.txt",
+            "type": "file",
+            "size": 100,
+            "status": FileStatus.FileClean,
+            "fingerprint": "abc123",
+        }
+        self.file_queue.enqueue("/a.txt", f1)
+
+        with patch("Saphir.transfer_controller.threading.Timer"):
+            self.transfer.start("source", "target")
+
+        payload = {"filepath": "/a.txt", "status": "ok", "fingerprint": "abc123"}
+        self.transfer.on_copy_file(payload)
+
+        self.assertEqual(self.file_queue.get("/a.txt")["status"], FileStatus.FileCopySuccess)
+        self.assertEqual(self.transfer.copied_files_count, 1)
+
+    def test_on_copy_file_fingerprint_mismatch_marks_error(self):
+        f1 = {
+            "name": "a.txt",
+            "type": "file",
+            "size": 100,
+            "status": FileStatus.FileClean,
+            "fingerprint": "abc123",
+        }
+        self.file_queue.enqueue("/a.txt", f1)
+
+        with patch("Saphir.transfer_controller.threading.Timer"):
+            self.transfer.start("source", "target")
+
+        payload = {"filepath": "/a.txt", "status": "ok", "fingerprint": "def456"}
+        self.transfer.on_copy_file(payload)
+
+        self.assertEqual(self.file_queue.get("/a.txt")["status"], FileStatus.FileCopyError)
+        self.assertEqual(self.transfer.copied_files_count, 0)
+
+    def test_on_copy_file_missing_recorded_fingerprint_skips_check(self):
+        f1 = {"name": "a.txt", "type": "file", "size": 100, "status": FileStatus.FileClean}
+        self.file_queue.enqueue("/a.txt", f1)
+
+        with patch("Saphir.transfer_controller.threading.Timer"):
+            self.transfer.start("source", "target")
+
+        payload = {"filepath": "/a.txt", "status": "ok", "fingerprint": "abc123"}
+        self.transfer.on_copy_file(payload)
+
+        self.assertEqual(self.file_queue.get("/a.txt")["status"], FileStatus.FileCopySuccess)
+
     def test_do_start_transfer_calls_api(self):
         f1 = {"name": "a.txt", "type": "file", "size": 100, "status": FileStatus.FileClean}
         self.file_queue.enqueue("/a.txt", f1)

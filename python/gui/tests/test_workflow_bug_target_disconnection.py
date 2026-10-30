@@ -112,7 +112,9 @@ def test_target_disconnection_during_copy(bug_env):
     assert tracker.wait_for("SystemAnalysisRunning", timeout=30), (
         f"Analysis never started.\nStates: {tracker.states}"
     )
-    assert tracker.wait_for("AnalysisCompleted", timeout=30), (
+    # 200 files: the analysis duration depends on the MQTT round-trips and
+    # the mock AV throughput, leave a comfortable margin.
+    assert tracker.wait_for("AnalysisCompleted", timeout=60), (
         f"Analysis never completed.\nStates: {tracker.states}"
     )
 
