@@ -135,6 +135,21 @@
         <source>The copy could not be resumed: the reconnected storage does not match. Please reset the system.</source>
         <translation>La copie n'a pas pu reprendre : le stockage reconnecté ne correspond pas. Veuillez réinitialiser le système.</translation>
     </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="646"/>
+        <source>The antivirus engine failed during the analysis: the files that could not be analyzed by all the engines are declared in error.</source>
+        <translation>Le moteur antivirus a échoué pendant l'analyse : les fichiers qui n'ont pas pu être analysés par tous les moteurs sont déclarés en erreur.</translation>
+    </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="652"/>
+        <source>The analysis was stopped: please reset the system.</source>
+        <translation>L'analyse a été arrêtée : veuillez réinitialiser le système.</translation>
+    </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="976"/>
+        <source>The copy finished with failures: the files that could not be copied are listed in the scan report.</source>
+        <translation>La copie s'est terminée avec des échecs : les fichiers qui n'ont pas pu être copiés sont listés dans le rapport d'analyse.</translation>
+    </message>
 </context>
 <context>
     <name>ComponentsModel</name>

@@ -104,10 +104,11 @@
 - Automatic trigger: on target connection (line 692-694).
 - Progression: `copied_files_count`, `FilesCopyPanel.qml`.
 - Report + journal copied at the end: `__finish_transfer` (line 866).
+- ✅ **Final check (copied == clean)** (#150): `TransferController.__check_transfer_complete` — the transfer completes when every clean file has been attempted (copied or failed); if `copied != clean`, `transferError` is emitted, the discrepancy is reported in the GUI and in the scan report ("Copy failures: N", in red). Scenario 8.10.
+- ✅ **Individual copy failure** (#150): the copy continues on the other files; the platform error notifications (`events/error`) are handled by `TransferController.on_copy_error`.
+- ✅ **Source disconnection during copy** (#148): the copy is held and auto-resumes on re-insertion (coherence check). Scenario 8.6.
 
 **Gaps / divergences**:
-- ❌ **Final check (copied == clean)**: `__get_transferred_ratio` compares but does **not** trigger an explicit error if files have failed. The end is determined by `ratio >= 1`.
-- ❌ **Source disconnection during copy**: not handled → uncertain state (known bug). No error message, no resume.
 - ✅ **No cancellation (by design)**: there is no cancel button for the copy (neither before nor during); the only exits are insert a target, Reset, or Shutdown. `SystemWaitingForTarget` is a stable terminal-ish state (see workflow v2.2).
 - ⚠️ **Trigger** (D2, resolved): implementation triggers the copy immediately on target connection; the spec/workflow requires the copy **after the analysis ends**, triggered by the 2nd-media insertion (`AnalysisCompleted → CopyCleanFiles` / `SystemWaitingForTarget`). **Implementation to fix** (refactoring).
 - 🟡 `[feature]` No check of the available space on the target.
@@ -424,8 +425,8 @@ These capabilities used to exist in the code without a spec entry. They are now 
 |------|------|-------------|
 | `[bug]` | F1 | "Scan all" mode does not analyze all partitions |
 | `[fix]` | F4/NFR-1 | **End-to-end fingerprint verification** (analysis + target copy) — critical gap |
-| `[fix]` | F4 | Final check: error if copied ≠ clean |
-| `[fix]` | F4 | Source disconnection during copy → error + automatic resume |
+| `[fix]` | F4 | Final check: error if copied ≠ clean — **Resolved** (#150) |
+| `[fix]` | F4 | Source disconnection during copy → error + automatic resume — **Resolved** (#148) |
 | `[fix]` | F6 | Report template selection according to the language (use `scan_report_fr.html`) |
 | `[fix]` | F6 | PDF generation error handling (end normally) |
 | `[fix]` | F8 | Wire the classification (Safecor) instead of the hardcoded 0 |

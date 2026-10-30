@@ -375,13 +375,13 @@ These rules must hold throughout refactoring:
 | 7 Linting & static analysis | ✅ Done | `9bdfe42` | #54 | 122+27 ruff errors fixed, format applied, 0 remaining |
 | 8 Alpine package validation | ✅ Done | `4b0b1b2`, `056a659`, `cf86fbd`, `c459924`, `c94d4af` | #141, #142, #143, #144 | 7/8 packages built in the Alpine 3.21.9 chroot, GUI domain boots in DEVMODE; `saphir-container-eset` not buildable (ESET URL 404 - the official CI skips it too) |
 | 9 Documentation debt | ✅ Done | `4038c13` + round 2 | #139 | French→English (incl. accent-free), all class/method/module docstrings, dead code removed; 0 French comments, 0 public class/method without docstring |
-| 10 Missing features & NFRs | ⏳ In progress (4/8) | #145, #146, #147, #148 | — | Fingerprint, ReportFailed, disconnect handlers, AV failure |
+| 10 Missing features & NFRs | ⏳ In progress (5/8) | #145, #146, #147, #148, #149, #150 | — | Fingerprint, ReportFailed, disconnect handlers, AV failure, copy final check |
 | 11 Functional coverage | ⏳ Pending | — | — | Error paths, NFRs, disconnection scenarios |
 | 12 GUI (QML) test coverage | ⏳ Pending | — | — | QML bindings, panel visibility, signal integration |
 | 13 Viewer modernization | ⏳ Pending | — | — | Lint, format, unit tests (0 → 85%) |
 | 14 Semi-automated validation env | ⏳ Pending (Not ready) | — | — | Human-driven test on Safecor emulator (operator console + state observer); blocked on emulator features |
 
-**Test baseline**: 408 passed, 3 skipped, 0 failed (2026-10-30, after 10.5; known boot-sequence flake in full suite under high load — `test_nominal_cycle` passes in isolation)
+**Test baseline**: 421 passed, 3 skipped, 0 failed (2026-10-30, after 10.6; known boot-sequence flake in full suite under high load — `test_nominal_cycle` passes in isolation)
 
 ---
 
@@ -586,7 +586,7 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 
 ---
 
-### Phase 10: Missing Features & NFRs Implementation ⏳ IN PROGRESS (10.1, 10.2, 10.3, 10.4, 10.5 done)
+### Phase 10: Missing Features & NFRs Implementation ⏳ IN PROGRESS (10.1, 10.2, 10.3, 10.4, 10.5, 10.6 done)
 
 **Goal**: Implement the features and NFRs that are specified in `docs/features.md` and `docs/workflow-rules.md` but **not yet coded**. These are prerequisites for Phase 11 (functional coverage testing).
 
@@ -712,7 +712,7 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 - Tests: 4 unit (`handle_av_failure`: abort + keep analyzed, continue with 3 engines, ignored when not running, unknown component), 2 app handlers (failure during analysis → AC notified + message + engine removed; not running → only disabled), 1 integration (emulator: AV OFF mid-analysis → `SystemWaitingForUserAction`, no `AnalysisCompleted`, no reset).
 - Note: `ANALYSIS_COMPONENTS` in `test_analysis_controller.py` is a class attribute shared between tests; the controller now receives a `deepcopy` and the failure tests normalize their own copy, so in-place removals do not leak between tests. Filenames in the new tests are unique (`AvFail*.txt`) because the Api message callbacks are never cleared between tests and stale controllers must not find the paths.
 
-#### 10.6 [P2] F4: Individual copy failure + final check
+#### 10.6 [P2] F4: Individual copy failure + final check — ✅ Done (#150)
 
 **Spec**: `features.md` F4 — Individual failure: copy continues, error reported. Final check: `copied == clean_count`, otherwise error.
 
@@ -725,6 +725,12 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 **Files**: `transfer_controller.py`, `application_controller.py`
 
 **Validation**: Unit test: 3 clean files, 1 fails → `transferError` emitted with count=1.
+
+**Implementation notes**:
+- `TransferController` now counts failed copies (`failed_files_count`); the transfer completes when every clean file has been **attempted** (`copied + failed >= total`). At completion, if `copied != total` the **final check (F4)** fails: `transferError = Signal(int)` is emitted with the failure count, then `transferComplete` (the cycle continues to the report, which lists the failures).
+- The platform reports I/O copy failures on `events/error` (not as a failed copy response) — the app now subscribes to `Topics.ERROR` (`api_lifecycle.py`) and routes it to `TransferController.on_copy_error`, which marks the file `FileCopyError` and counts it (ignored while the copy is paused, 8.6, since the file is re-copied on resume; ignored outside the copy phase — an analysis read failure is only logged by the app).
+- `ApplicationController.__on_transfer_error`: user message (EN/FR in fr.ts) + log. The scan report gains a `copy_failures_count` field rendered in red ("Copy failures: N") only when > 0 (`scan_report_en.html` + `scan_report.css`; the FR template is out of date — see F6 backlog).
+- Tests: 10 unit (final check via response error / via events/error: complete+error signal, no error when all copied, all failed, reset, ignored when not copying / already done / already failed / paused, malformed payload), 3 app handlers (`__on_transfer_error` message + log; `__handle_copy_error` delegation + outside-copy log), 1 integration (emulator: a source file lost before the copy → `events/error` → the copy continues, the final check reports "4 file(s) copied for 5 clean file(s), 1 failure(s)", the cycle completes to `SystemMustBeReset`, the 4 other files are on the target).
 
 #### 10.7 [P2] F3: Pause/Resume with partial analysis
 

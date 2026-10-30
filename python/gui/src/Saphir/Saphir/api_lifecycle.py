@@ -65,6 +65,10 @@ class ApiLifecycle(QObject):
         if result:
             self._subscriptions.append(mid)
 
+        result, mid = Api().subscribe(Topics.ERROR)
+        if result:
+            self._subscriptions.append(mid)
+
     def _on_subscribed(self, mid):
         if mid in self._subscriptions:
             self._subscribed_count += 1

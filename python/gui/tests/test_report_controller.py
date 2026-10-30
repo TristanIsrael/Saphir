@@ -1,13 +1,12 @@
-import unittest
 import os
+import unittest
 from datetime import datetime
-from copy import deepcopy
 from unittest.mock import patch
 try:
     from Saphir import ReportController
 except Exception:
     pass
-from libsaphir import TOPIC_ANALYSIS, FileStatus
+from libsaphir import FileStatus
 
 class TestReportController(unittest.TestCase):
 
@@ -27,6 +26,7 @@ class TestReportController(unittest.TestCase):
             1,
             2,
             2,
+            0,
             datetime.now(),
             datetime.now(),
             "12345678901234567890",

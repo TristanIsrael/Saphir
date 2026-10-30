@@ -174,6 +174,7 @@ class ApplicationController(QObject):
             self.copiedFilesCountChanged
         )
         self.__transfer_controller.transferComplete.connect(self.__on_transfer_complete)
+        self.__transfer_controller.transferError.connect(self.__on_transfer_error)
         self.__transfer_controller.copyPausedChanged.connect(
             self.__on_copy_paused_changed
         )
@@ -558,6 +559,8 @@ class ApplicationController(QObject):
             self.__handle_discover_components(payload)
         elif topic == f"{Topics.COPY_FILE}/response":
             self.__handle_copy_file(payload)
+        elif topic == Topics.ERROR:
+            self.__handle_copy_error(payload)
         elif topic == f"{Topics.ENERGY_STATE}/response":
             self.__handle_energy_state(payload)
         elif topic == f"{Topics.SYSTEM_INFO}/response":
@@ -945,6 +948,36 @@ class ApplicationController(QObject):
         if filepath:
             self.fileUpdated.emit(filepath, ["status"])
 
+    def __handle_copy_error(self, payload: dict):
+        # Platform error notification (F4): a copy (or a read) failed with
+        # an I/O error. The TransferController only acts during the copy
+        # phase; an error outside of it (e.g. a read failure during the
+        # analysis) is only logged.
+        during_copy = self.__transfer_controller.is_copying
+        self.__transfer_controller.on_copy_error(payload)
+        if not during_copy:
+            Api().error(
+                f"Copy error notification: {payload.get('error', 'unknown')} "
+                f"for {payload.get('filepath', 'unknown file')}"
+            )
+        filepath = payload.get("filepath")
+        if filepath:
+            self.fileUpdated.emit(filepath, ["status"])
+
+    def __on_transfer_error(self, failures: int):
+        # F4 final check: the copy finished but some clean files could not
+        # be copied. The discrepancy is reported to the user and in the
+        # scan report; the cycle continues (the report lists the failures).
+        Api().error(
+            f"Copy final check failed: {failures} clean file(s) could not be copied"
+        )
+        self.__messages_model.addMessage(
+            self.tr(
+                "The copy finished with failures: the files that could not "
+                "be copied are listed in the scan report."
+            )
+        )
+
     def __on_transfer_complete(self):
         self.__set_system_state(SystemState.GeneratingReport)
 
@@ -1176,6 +1209,7 @@ class ApplicationController(QObject):
             infected_files_count=self.__get_infected_files_count(),
             analyzed_files_count=len(self.__file_queue.files),
             copied_files_count=self.__transfer_controller.copied_files_count,
+            copy_failures_count=self.__transfer_controller.failed_files_count,
             start_datetime=self.__analysis_start_time,
             end_datetime=self.__analysis_end_time,
             equipement_id=self.__system_information_model.get_uuid(),

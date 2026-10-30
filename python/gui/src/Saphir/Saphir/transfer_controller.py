@@ -17,6 +17,7 @@ class TransferController(QObject):
     transferProgressChanged = Signal()
     copiedFilesCountChanged = Signal()
     transferComplete = Signal()
+    transferError = Signal(int)
     copyPausedChanged = Signal(bool)
     coherenceCheckFailed = Signal(str)
 
@@ -26,6 +27,7 @@ class TransferController(QObject):
         self._source_name: str = ""
         self._target_name: str = ""
         self._copied_files_count: int = 0
+        self._failed_files_count: int = 0
         self._clean_files_total: int = 0
         self._started: bool = False
         # True while the clean files are being copied (cleared at completion)
@@ -43,6 +45,11 @@ class TransferController(QObject):
     def copied_files_count(self) -> int:
         """Return the number of files copied so far."""
         return self._copied_files_count
+
+    @property
+    def failed_files_count(self) -> int:
+        """Return the number of files that could not be copied (F4)."""
+        return self._failed_files_count
 
     @property
     def is_started(self) -> bool:
@@ -80,6 +87,7 @@ class TransferController(QObject):
         self._source_name = source_name
         self._target_name = target_name
         self._copied_files_count = 0
+        self._failed_files_count = 0
         self._started = True
         self._copying = True
         self._copy_paused = False
@@ -142,6 +150,14 @@ class TransferController(QObject):
         if success:
             self._copied_files_count += 1
             self.copiedFilesCountChanged.emit()
+        else:
+            # Individual copy failure (F4): the copy continues on the
+            # other files, the error is counted for the final check.
+            self._failed_files_count += 1
+            Api().error(
+                f"The file {filepath} could not be copied to "
+                f"{self._target_name}. The copy continues."
+            )
 
         file["status"] = (
             FileStatus.FileCopySuccess if success else FileStatus.FileCopyError
@@ -152,16 +168,74 @@ class TransferController(QObject):
 
         self.transferProgressChanged.emit()
 
+        self.__check_transfer_complete()
+
+    def on_copy_error(self, payload: dict) -> None:
+        """Handle a copy error notification from the platform (F4).
+
+        The platform reports I/O failures this way (instead of a copy
+        response): the file is marked as failed so the copy can complete
+        and the final check (copied == clean) can run.
+        """
+        if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
+            Api().error("Missing arguments in copy error notification")
+            return
+
+        if not self._copying:
+            # Not a copy phase error (e.g. a read_file failure during the
+            # analysis): nothing to do here.
+            return
+
+        filepath = payload.get("filepath")
+        file = self._file_queue.get(filepath)
+        if file is None or file.get("status") in (
+            FileStatus.FileCopySuccess,
+            FileStatus.FileCopyError,
+        ):
+            return
+
+        if self._copy_paused:
+            # The copy was interrupted by a disk disconnection (8.6): the
+            # file is re-copied when the copy resumes, no copy error.
+            Api().info(
+                f"The copy of {filepath} was interrupted and will be re-tried on resume"
+            )
+            return
+
+        self._failed_files_count += 1
+        file["status"] = FileStatus.FileCopyError
+        Api().error(f"Copy error for {filepath}: {payload.get('error')}")
+        self.transferProgressChanged.emit()
+
+        self.__check_transfer_complete()
+
+    def __check_transfer_complete(self) -> None:
+        """Complete the transfer when every clean file has been attempted.
+
+        The final check (F4) requires that the number of copied files is
+        strictly equal to the number of clean files: otherwise the
+        discrepancy is reported with transferError.
+        """
         if (
             self._clean_files_total > 0
-            and self._copied_files_count >= self._clean_files_total
+            and self._copied_files_count + self._failed_files_count
+            >= self._clean_files_total
         ):
             self._copying = False
+            if self._copied_files_count < self._clean_files_total:
+                failures = self._clean_files_total - self._copied_files_count
+                Api().error(
+                    f"Copy final check failed: {self._copied_files_count} file(s) "
+                    f"copied for {self._clean_files_total} clean file(s), "
+                    f"{failures} failure(s)"
+                )
+                self.transferError.emit(failures)
             self.transferComplete.emit()
 
     def reset(self) -> None:
         """Reset the copy operation state to its initial values."""
         self._copied_files_count = 0
+        self._failed_files_count = 0
         self._clean_files_total = 0
         self._started = False
         self._copying = False

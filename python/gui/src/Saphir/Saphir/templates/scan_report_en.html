@@ -41,6 +41,9 @@
                     <p>Clean files: {{ clean_files_count }}</p>
                     <p>Infected files: {{ infected_files_count }}</p>
                     <p>Copied files: {{ copied_files_count }}</p>
+                    {% if copy_failures_count %}
+                    <p class="copy-failures">Copy failures: {{ copy_failures_count }}</p>
+                    {% endif %}
                 </td>
             </tr>
         </table>

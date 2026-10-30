@@ -480,6 +480,21 @@ where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infecte
 7. The user can reset (or, once an engine is back, start the analysis again)
 ```
 
+### 8.10 Individual Copy Failure + Final Check (F4)
+
+```
+1. CopyCleanFiles in progress (clean files copied one by one)
+2. One copy fails (I/O error, fingerprint mismatch, insufficient space):
+   - the platform reports it (copy response error or events/error notification)
+   - the file is marked CopyError, the copy CONTINUES on the other files
+   - a GUI message and a log entry report the failure
+3. At the end, the FINAL CHECK requires: copied == clean files count
+4. If the check fails: the discrepancy is reported to the user (message)
+   and included in the scan report ("Copy failures: N", in red)
+5. The cycle still completes: GeneratingReport → SystemMustBeReset
+   (the report lists the files that could not be copied)
+```
+
 ---
 
 ## 9. Open Questions

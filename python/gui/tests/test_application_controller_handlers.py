@@ -1519,6 +1519,50 @@ class TestApplicationControllerHandlers(unittest.TestCase):
             "/sub/file.txt", self.controller._ApplicationController__file_queue.files
         )
 
+    # --- __on_transfer_error (F4 final check) ---
+
+    def test_on_transfer_error_adds_message_and_logs(self):
+        messages_model = self.controller._ApplicationController__messages_model
+        count_before = messages_model.rowCount()
+
+        self.controller._ApplicationController__on_transfer_error(2)
+
+        self.assertEqual(messages_model.rowCount(), count_before + 1)
+        self.assertIn(
+            "The copy finished with failures",
+            messages_model.data(messages_model.index(count_before, 0)),
+        )
+        self.__mock_api_instance.error.assert_called_with(
+            "Copy final check failed: 2 clean file(s) could not be copied"
+        )
+
+    # --- __handle_copy_error (F4 platform error notification) ---
+
+    def test_handle_copy_error_delegates_to_transfer_controller(self):
+        self.controller._ApplicationController__transfer_controller = MagicMock()
+        self.controller._ApplicationController__transfer_controller.is_copying = True
+
+        self.controller._ApplicationController__handle_copy_error(
+            {"disk": "source", "filepath": "/a.txt", "error": "I/O error"}
+        )
+
+        self.controller._ApplicationController__transfer_controller.on_copy_error.assert_called_once_with(
+            {"disk": "source", "filepath": "/a.txt", "error": "I/O error"}
+        )
+        # The error is handled by the transfer controller: no extra log
+        self.__mock_api_instance.error.assert_not_called()
+
+    def test_handle_copy_error_outside_copy_is_logged(self):
+        self.controller._ApplicationController__transfer_controller = MagicMock()
+        self.controller._ApplicationController__transfer_controller.is_copying = False
+
+        self.controller._ApplicationController__handle_copy_error(
+            {"disk": "source", "filepath": "/a.txt", "error": "read failure"}
+        )
+
+        self.controller._ApplicationController__transfer_controller.on_copy_error.assert_called_once()
+        self.__mock_api_instance.error.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

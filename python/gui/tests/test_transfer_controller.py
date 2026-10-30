@@ -366,6 +366,186 @@ class TestTransferController(unittest.TestCase):
                 "src_disk", "/a.txt", "dst_disk"
             )
 
+    def _start_with_clean_files(self, *paths):
+        for path in paths:
+            self.file_queue.enqueue(
+                path,
+                {
+                    "name": path,
+                    "type": "file",
+                    "size": 100,
+                    "status": FileStatus.FileClean,
+                },
+            )
+        with patch("Saphir.transfer_controller.threading.Timer"):
+            self.transfer.start("source", "target")
+
+    def test_copy_failure_completes_transfer_with_error(self):
+        # F4: 3 clean files, 1 fails -> transferError(1) + transferComplete
+        self._start_with_clean_files("/a.txt", "/b.txt", "/c.txt")
+
+        errors = []
+        completes = []
+        self.transfer.transferError.connect(lambda n: errors.append(n))
+        self.transfer.transferComplete.connect(lambda: completes.append(True))
+
+        self.transfer.on_copy_file(
+            {"filepath": "/a.txt", "status": "ok", "fingerprint": "abc"}
+        )
+        self.transfer.on_copy_file(
+            {"filepath": "/b.txt", "status": "error", "fingerprint": ""}
+        )
+        self.assertEqual(len(completes), 0)
+        self.assertEqual(len(errors), 0)
+
+        self.transfer.on_copy_file(
+            {"filepath": "/c.txt", "status": "ok", "fingerprint": "cde"}
+        )
+
+        self.assertEqual(completes, [True])
+        self.assertEqual(errors, [1])
+        self.assertEqual(self.transfer.copied_files_count, 2)
+        self.assertEqual(self.transfer.failed_files_count, 1)
+        self.assertFalse(self.transfer.is_copying)
+        self.assertEqual(
+            self.file_queue.get("/b.txt")["status"], FileStatus.FileCopyError
+        )
+
+    def test_all_copied_no_error_signal(self):
+        # F4: every clean file is copied -> transferComplete, no transferError
+        self._start_with_clean_files("/a.txt", "/b.txt")
+
+        errors = []
+        completes = []
+        self.transfer.transferError.connect(lambda n: errors.append(n))
+        self.transfer.transferComplete.connect(lambda: completes.append(True))
+
+        self.transfer.on_copy_file(
+            {"filepath": "/a.txt", "status": "ok", "fingerprint": "abc"}
+        )
+        self.transfer.on_copy_file(
+            {"filepath": "/b.txt", "status": "ok", "fingerprint": "def"}
+        )
+
+        self.assertEqual(completes, [True])
+        self.assertEqual(errors, [])
+        self.assertEqual(self.transfer.failed_files_count, 0)
+
+    def test_all_failed_completes_with_error(self):
+        # F4: no file is copied -> the transfer still completes, all failed
+        self._start_with_clean_files("/a.txt")
+
+        errors = []
+        completes = []
+        self.transfer.transferError.connect(lambda n: errors.append(n))
+        self.transfer.transferComplete.connect(lambda: completes.append(True))
+
+        self.transfer.on_copy_file(
+            {"filepath": "/a.txt", "status": "error", "fingerprint": ""}
+        )
+
+        self.assertEqual(completes, [True])
+        self.assertEqual(errors, [1])
+        self.assertEqual(self.transfer.copied_files_count, 0)
+
+    def test_reset_clears_failed_files_count(self):
+        self._start_with_clean_files("/a.txt")
+        self.transfer.on_copy_file(
+            {"filepath": "/a.txt", "status": "error", "fingerprint": ""}
+        )
+        self.assertEqual(self.transfer.failed_files_count, 1)
+
+        self.transfer.reset()
+        self.assertEqual(self.transfer.failed_files_count, 0)
+
+    def test_on_copy_error_marks_file_failed_and_completes(self):
+        # F4: the platform reports an I/O error on events/error
+        self._start_with_clean_files("/a.txt", "/b.txt")
+
+        errors = []
+        completes = []
+        self.transfer.transferError.connect(lambda n: errors.append(n))
+        self.transfer.transferComplete.connect(lambda: completes.append(True))
+
+        self.transfer.on_copy_file(
+            {"filepath": "/a.txt", "status": "ok", "fingerprint": "abc"}
+        )
+
+        payload = {
+            "disk": "source",
+            "filepath": "/b.txt",
+            "error": "The file could not be copied",
+        }
+        self.transfer.on_copy_error(payload)
+
+        self.assertEqual(completes, [True])
+        self.assertEqual(errors, [1])
+        self.assertEqual(
+            self.file_queue.get("/b.txt")["status"], FileStatus.FileCopyError
+        )
+        self.assertFalse(self.transfer.is_copying)
+
+    def test_on_copy_error_ignored_when_not_copying(self):
+        self._start_with_clean_files("/a.txt")
+        self.transfer.reset()
+
+        self.transfer.on_copy_error(
+            {"disk": "source", "filepath": "/a.txt", "error": "boom"}
+        )
+
+        self.assertEqual(self.transfer.failed_files_count, 0)
+        self.assertEqual(self.file_queue.get("/a.txt")["status"], FileStatus.FileClean)
+
+    def test_on_copy_error_ignored_for_already_copied_file(self):
+        self._start_with_clean_files("/a.txt")
+
+        self.transfer.on_copy_file(
+            {"filepath": "/a.txt", "status": "ok", "fingerprint": "abc"}
+        )
+
+        self.transfer.on_copy_error(
+            {"disk": "source", "filepath": "/a.txt", "error": "boom"}
+        )
+
+        self.assertEqual(self.transfer.failed_files_count, 0)
+        self.assertEqual(
+            self.file_queue.get("/a.txt")["status"], FileStatus.FileCopySuccess
+        )
+
+    def test_on_copy_error_ignored_for_already_failed_file(self):
+        self._start_with_clean_files("/a.txt")
+
+        self.transfer.on_copy_file(
+            {"filepath": "/a.txt", "status": "error", "fingerprint": ""}
+        )
+
+        self.transfer.on_copy_error(
+            {"disk": "source", "filepath": "/a.txt", "error": "boom"}
+        )
+
+        self.assertEqual(self.transfer.failed_files_count, 1)
+
+    def test_on_copy_error_ignored_while_paused(self):
+        # 8.6: an error on a paused copy is re-tried on resume
+        self._start_with_clean_files("/a.txt")
+        self.transfer._TransferController__on_disk_state("source", "disconnected")
+
+        self.transfer.on_copy_error(
+            {"disk": "source", "filepath": "/a.txt", "error": "boom"}
+        )
+
+        self.assertEqual(self.transfer.failed_files_count, 0)
+        self.assertTrue(self.transfer.is_copy_paused)
+
+    def test_on_copy_error_missing_payload(self):
+        self._start_with_clean_files("/a.txt")
+
+        with patch("Saphir.transfer_controller.Api") as mock_api:
+            self.transfer.on_copy_error({"disk": "source"})
+            mock_api().error.assert_called_once()
+
+        self.assertEqual(self.transfer.failed_files_count, 0)
+
 
 class TestTransferControllerCopyPause(unittest.TestCase):
     """Scenario 8.6: source/target disconnection during the copy (pause + auto-resume)."""
