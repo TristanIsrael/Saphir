@@ -1073,6 +1073,139 @@ class TestAnalysisController(unittest.TestCase):
         self.__files_queue["/2"] = { "status": FileStatus.FileClean }
         self.assertEqual(self.__analysis_controller.get_working_files_count(), 0)
 
+    # --- Source disconnection hold (scenario 8.8) ---
+
+    def test_source_disconnection_holds_analysis(self):
+        self.__update_queue([
+            {"type": "file", "path": "/", "name": "File1.txt", "size": 100},
+            {"type": "file", "path": "/", "name": "File2.txt", "size": 100},
+        ])
+        self.__analysis_controller.start_analysis()
+
+        # The source is disconnected while the analysis is running
+        payload = NotificationFactory.create_notification_disk_state(
+            "Archives", DiskState.DISCONNECTED
+        )
+        self.__mqtt_client.publish(Topics.DISK_STATE, payload)
+
+        deadline = time.time() + 2
+        while not self.__analysis_controller._AnalysisController__source_held and time.time() < deadline:
+            time.sleep(0.05)
+        self.assertTrue(self.__analysis_controller._AnalysisController__source_held)
+
+        # The copy loop is held: no file is requested from the missing source
+        self.__messages_recv.clear()
+        time.sleep(1.2)
+        read_requests = [
+            m for m in self.__messages_recv
+            if m["topic"] == f"{Topics.READ_FILE}/request"
+        ]
+        self.assertEqual(len(read_requests), 0)
+
+        # A file whose copy was in flight when the source was disconnected
+        # is re-requested when the source is re-inserted
+        file = self.__files_queue["/File1.txt"]
+        file["status"] = FileStatus.GettingFile
+        file["locked"] = True
+
+        self.__messages_recv.clear()
+        payload = NotificationFactory.create_notification_disk_state(
+            "Archives", DiskState.CONNECTED
+        )
+        self.__mqtt_client.publish(Topics.DISK_STATE, payload)
+
+        deadline = time.time() + 2
+        while self.__analysis_controller._AnalysisController__source_held and time.time() < deadline:
+            time.sleep(0.05)
+        self.assertFalse(self.__analysis_controller._AnalysisController__source_held)
+
+        # The stuck file is back in the queue and re-requested from the source
+        self.assertEqual(file.get("status"), FileStatus.FileStatusUndefined)
+        self.assertFalse(file.get("locked", True))
+
+        deadline = time.time() + 2
+        read_requests = []
+        while time.time() < deadline:
+            read_requests = [
+                m for m in self.__messages_recv
+                if m["topic"] == f"{Topics.READ_FILE}/request"
+            ]
+            if any(m["payload"]["filepath"] == "/File1.txt" for m in read_requests):
+                break
+            time.sleep(0.1)
+        self.assertTrue(
+            any(m["payload"]["filepath"] == "/File1.txt" for m in read_requests),
+            "The stuck file was not re-requested after the source reconnection",
+        )
+
+    def test_source_disconnection_ignored_when_not_running(self):
+        payload = NotificationFactory.create_notification_disk_state(
+            "Archives", DiskState.DISCONNECTED
+        )
+        self.__mqtt_client.publish(Topics.DISK_STATE, payload)
+        time.sleep(0.5)
+        self.assertFalse(self.__analysis_controller._AnalysisController__source_held)
+
+    def test_non_source_disk_disconnection_ignored(self):
+        self.__update_queue([
+            {"type": "file", "path": "/", "name": "File1.txt", "size": 100},
+        ])
+        self.__analysis_controller.start_analysis()
+
+        payload = NotificationFactory.create_notification_disk_state(
+            "OtherDisk", DiskState.DISCONNECTED
+        )
+        self.__mqtt_client.publish(Topics.DISK_STATE, payload)
+        time.sleep(0.5)
+        self.assertFalse(self.__analysis_controller._AnalysisController__source_held)
+
+    def test_duplicate_new_file_ignored(self):
+        self.__update_queue([
+            {"type": "file", "path": "/", "name": "File1.txt", "size": 100},
+        ])
+        self.__analysis_controller.start_analysis()
+
+        # Wait for the file to be requested from the source
+        deadline = time.time() + 2
+        while not any(
+            m["topic"] == f"{Topics.READ_FILE}/request"
+            and m["payload"]["filepath"] == "/File1.txt"
+            for m in self.__messages_recv
+        ) and time.time() < deadline:
+            time.sleep(0.05)
+
+        # First NEW_FILE: the analysis request is sent
+        payload = NotificationFactory.create_notification_new_file(
+            Constants.STR_REPOSITORY, "/File1.txt", "abcdef0123456789", "abcdef0123456789"
+        )
+        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
+
+        deadline = time.time() + 2
+        while not any(
+            m["topic"] == f"{TOPIC_ANALYSIS}/request"
+            and m["payload"]["filepath"] == "/File1.txt"
+            for m in self.__messages_recv
+        ) and time.time() < deadline:
+            time.sleep(0.05)
+
+        analysis_requests = [
+            m for m in self.__messages_recv
+            if m["topic"] == f"{TOPIC_ANALYSIS}/request"
+            and m["payload"]["filepath"] == "/File1.txt"
+        ]
+        self.assertEqual(len(analysis_requests), 1)
+
+        # A duplicate NEW_FILE (e.g. a late notification after a source
+        # reconnection re-request) must not start the analysis twice
+        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
+        time.sleep(0.8)
+        analysis_requests = [
+            m for m in self.__messages_recv
+            if m["topic"] == f"{TOPIC_ANALYSIS}/request"
+            and m["payload"]["filepath"] == "/File1.txt"
+        ]
+        self.assertEqual(len(analysis_requests), 1)
+
     def __update_queue(self, files_list:list[dict]):
         self.__files_queue.clear()
 

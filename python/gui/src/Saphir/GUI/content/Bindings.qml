@@ -33,6 +33,7 @@ Item {
     property int cleanFilesSize: ApplicationController.cleanFilesSize
     property int targetAvailableSize: ApplicationController.targetAvailableSize
     property real systemLoadingProgress: ApplicationController.systemLoadingProgress
+    property bool sourceDisconnected: ApplicationController.sourceDisconnected
 
     /** Models */
     property var sourceFilesListModel: ApplicationController.inputFilesListProxyModel

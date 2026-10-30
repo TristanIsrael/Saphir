@@ -1,7 +1,7 @@
 # Refactoring Plan - Saphir v3.x
 
 > **Status**: In progress — Phases 0-9 complete, Phases 10-14 pending
-> **Last updated**: 2026-10-29
+> **Last updated**: 2026-10-30
 > **Branch**: `refactoring` (based on `main` post-merge #128)
 
 ---
@@ -584,7 +584,7 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 
 ---
 
-### Phase 10: Missing Features & NFRs Implementation 🔄 IN PROGRESS (10.1, 10.2 done)
+### Phase 10: Missing Features & NFRs Implementation 🔄 IN PROGRESS (10.1, 10.2, 10.3 done)
 
 **Goal**: Implement the features and NFRs that are specified in `docs/features.md` and `docs/workflow-rules.md` but **not yet coded**. These are prerequisites for Phase 11 (functional coverage testing).
 
@@ -634,7 +634,7 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 - `ReportFailed` added to the disk-handler locked states: disk changes are ignored while the system waits for a reset.
 - Adjacent bug fixed: `MessagesListModel.__messages` was a class attribute (shared between instances); moved to `__init__`.
 
-#### 10.3 [P1] Scenario 8.8: Source disconnection during analysis
+#### 10.3 [P1] Scenario 8.8: Source disconnection during analysis — ✅ Done (#147)
 
 **Spec**: `workflow-rules.md` §8.8 — Analysis continues on repository files, error flag set, loop held, auto-resume on reconnection.
 
@@ -650,6 +650,14 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 **Files**: `application_controller.py`, `analysis_controller.py`, `workflow_controller.py`
 
 **Validation**: Integration test (emulator): start analysis, disconnect source, verify analysis continues on repo files, reconnect, verify resume.
+
+**Implementation notes** (done):
+- The hold is owned by `AnalysisController` (it already receives `DISK_STATE` and owns the stuck files): `sourceHoldChanged = Signal(bool)` is emitted when the source disk disconnects while the analysis is running and when it reconnects. Files whose copy to the repository was in flight (`GettingFile`) are re-queued (`Undefined`, unlocked) on reconnection.
+- The copy loop (`__do_copy_files_into_repository`) reschedules itself while held instead of requesting files from the missing source or exiting.
+- `ApplicationController.__handle_disk_state` no longer resets (or locks into `SystemMustBeReset`) when the source is unplugged during a running analysis; the user is informed via the message list and a warning banner in the `AnalysisPanel` (`sourceDisconnected` property).
+- `__on_file_available` is now idempotent: a stale/duplicate `NEW_FILE` (late notification after a re-request) no longer starts the analysis twice.
+- The hold flag is cleared by `stop_analysis()`/`reset()` so it never leaks into a later session.
+- Out of scope here: inserting a *different* disk during a held analysis still takes the target branch of `__handle_disk_state` (pre-existing behaviour, also present during a plain running analysis); the NFR-4 "different disk → `SystemMustBeReset`" rule for the copy phase is handled in 10.4.
 
 #### 10.4 [P1] Scenario 8.6: Source/target disconnection during copy + auto-resume
 

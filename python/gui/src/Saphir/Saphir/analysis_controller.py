@@ -44,6 +44,7 @@ class AnalysisController(QObject):
     fileUpdated = Signal(str, list)
     systemUsed = Signal()
     iterationDone = Signal(float, int)  # duration in minutes, file size
+    sourceHoldChanged = Signal(bool)
 
     def __init__(
         self,
@@ -63,6 +64,9 @@ class AnalysisController(QObject):
         self.__source_disk = source_disk
         self.__analysis_components = analysis_components
         self.__analysis_mode = analysis_mode_
+        # True while the source disk is disconnected during the analysis:
+        # the file copy loop is held, the AVs keep scanning the repository.
+        self.__source_held = False
 
         Api().add_message_callback(self.__on_api_message)
         Api().subscribe(Topics.NEW_FILE)
@@ -102,6 +106,7 @@ class AnalysisController(QObject):
         if self.__copy_timer is not None:
             self.__copy_timer.cancel()
             self.__copy_timer = None
+        self.__source_held = False
         self.__set_analysis_state(AnalysisState.AnalysisStopped)
 
     def reset(self):
@@ -112,6 +117,7 @@ class AnalysisController(QObject):
         self.__infected_files_size = 0
         self.__files_copy_queue_size = 0
         self.__start_times = {}
+        self.__source_held = False
 
     ######
     ## Private functions
@@ -183,6 +189,19 @@ class AnalysisController(QObject):
             # We only monitor the state mounted for the archives
             if state == DiskState.MOUNTED.value:
                 self.__on_archive_mounted(disk)
+                return
+
+            # Source disconnection during the analysis (scenario 8.8):
+            # the analysis continues on the repository files, the copy loop
+            # is held until the source is re-inserted.
+            if disk == self.__source_disk:
+                if (
+                    state == DiskState.DISCONNECTED.value
+                    and self.__analysis_state == AnalysisState.AnalysisRunning
+                ):
+                    self.__set_source_held(True)
+                elif state == DiskState.CONNECTED.value and self.__source_held:
+                    self.__set_source_held(False)
         elif topic == f"{Topics.LIST_FILES}/response":
             # We only monitor this message when we mounted an archive before
             if self.__archive_mounted_name is None:
@@ -220,6 +239,18 @@ class AnalysisController(QObject):
                     if self.__archive_mounted_name is None
                     else self.__archive_file.get("content", {}).get(filepath, {})
                 )
+
+                if not file:
+                    return
+
+                # Stale or duplicate NEW_FILE (e.g. a late notification for a
+                # file re-requested after a source reconnection): the file is
+                # already in the repository, do not start the analysis twice.
+                if file.get("status") not in (
+                    FileStatus.GettingFile,
+                    FileStatus.FileStatusUndefined,
+                ):
+                    return
 
                 file["status"] = FileStatus.FileAvailableInRepository
                 file["fingerprint"] = fingerprint
@@ -402,7 +433,34 @@ class AnalysisController(QObject):
 
         Api().delete_file(filepath, Constants.STR_REPOSITORY)
 
+    def __set_source_held(self, held: bool) -> None:
+        if held == self.__source_held:
+            return
+
+        self.__source_held = held
+
+        if not held:
+            # The source is back: re-request the files whose copy to the
+            # repository was in flight when the source was disconnected.
+            with self.__queue_lock:
+                for file in self.__files.values():
+                    if file.get("status") == FileStatus.GettingFile:
+                        file["status"] = FileStatus.FileStatusUndefined
+                        file["locked"] = False
+                        self.fileUpdated.emit(file.get("filepath", ""), ["status"])
+
+        self.sourceHoldChanged.emit(held)
+
     def __do_copy_files_into_repository(self):
+        # The source is disconnected: hold the loop (do not request files
+        # from a missing disk, do not exit) until it is re-inserted.
+        if self.__source_held:
+            self.__copy_timer = threading.Timer(
+                0.5, self.__do_copy_files_into_repository
+            )
+            self.__copy_timer.start()
+            return
+
         # We copy files in the repository until it is full (__repository_size)
         # We handle a local value to avoid sending queries to Safecor
         limit = self.__get_repository_free_slots()

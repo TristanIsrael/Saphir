@@ -126,6 +126,51 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         )
         self.assertTrue(signals)
 
+    def test_handle_disk_state_disconnected_source_analysis_running_holds(self):
+        # Scenario 8.8: the source is unplugged during the analysis.
+        # The analysis must be held, not reset.
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.SystemAnalysisRunning
+        )
+        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__system_used = True
+        self.controller._ApplicationController__analysis_controller.get_analysis_state.return_value = AnalysisState.AnalysisRunning
+        self.controller._ApplicationController__handle_disk_state(
+            {"disk": "usb0", "state": "disconnected"}
+        )
+        # The source is kept and the analysis is not interrupted
+        self.assertEqual(self.controller.sourceName, "usb0")
+        self.assertEqual(
+            self.controller.systemState, SystemState.SystemAnalysisRunning.value
+        )
+
+    def test_on_source_hold_changed_sets_property(self):
+        self.assertFalse(self.controller.sourceDisconnected)
+
+        self.controller._ApplicationController__on_source_hold_changed(True)
+        self.assertTrue(self.controller.sourceDisconnected)
+
+        self.controller._ApplicationController__on_source_hold_changed(False)
+        self.assertFalse(self.controller.sourceDisconnected)
+
+    def test_on_source_hold_changed_adds_message(self):
+        messages_model = self.controller._ApplicationController__messages_model
+        count_before = messages_model.rowCount()
+
+        self.controller._ApplicationController__on_source_hold_changed(True)
+        self.assertEqual(messages_model.rowCount(), count_before + 1)
+        self.assertIn(
+            "source storage",
+            messages_model.data(messages_model.index(count_before, 0)),
+        )
+
+        self.controller._ApplicationController__on_source_hold_changed(False)
+        self.assertEqual(messages_model.rowCount(), count_before + 2)
+        self.assertIn(
+            "source storage",
+            messages_model.data(messages_model.index(count_before + 1, 0)),
+        )
+
     def test_handle_disk_state_disconnected_target_during_copy(self):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.CopyCleanFiles

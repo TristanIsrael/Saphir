@@ -58,6 +58,7 @@ class ApplicationController(QObject):
     # Member variables
 
     __ready = False
+    __source_disconnected = False
     __file_queue: FileQueue
     __file_browser: FileBrowser
     __storage_manager: StorageManager
@@ -117,6 +118,7 @@ class ApplicationController(QObject):
     longProcessRunningChanged = Signal()
     systemUsedChanged = Signal()
     systemMustBeReset = Signal()
+    sourceDisconnectedChanged = Signal()
     doResetSystem = Signal()
     # systemInformationChanged = Signal()
     transferStartedChanged = Signal()
@@ -431,6 +433,8 @@ class ApplicationController(QObject):
         self.remainingTimeChanged.emit()
         self.__long_process_running = False
         self.longProcessRunningChanged.emit()
+        self.__source_disconnected = False
+        self.sourceDisconnectedChanged.emit()
         self.__transfer_controller.reset()
         self.copiedFilesCountChanged.emit()
 
@@ -516,6 +520,9 @@ class ApplicationController(QObject):
         )
         self.__analysis_controller.systemUsed.connect(self.__on_system_used)
         self.__analysis_controller.iterationDone.connect(self.__on_iteration_done)
+        self.__analysis_controller.sourceHoldChanged.connect(
+            self.__on_source_hold_changed
+        )
 
         self.__log_listmodel.listen_to_logs()
 
@@ -708,6 +715,15 @@ class ApplicationController(QObject):
             # The source has been disconnected
             # If the system has been used the user must reset it
             # Otherwise we let go
+            if (
+                self.__analysis_controller.get_analysis_state()
+                == AnalysisState.AnalysisRunning
+            ):
+                # Scenario 8.8: the analysis continues on the repository
+                # files, the copy loop is held (AnalysisController) until
+                # the source is re-inserted. Do not reset.
+                return
+
             if self.__system_used:
                 self.__set_system_state(SystemState.SystemMustBeReset)
                 self.systemMustBeReset.emit()
@@ -1031,6 +1047,28 @@ class ApplicationController(QObject):
         self.__input_files_listmodel.reset()
         self.systemUsedChanged.emit()
 
+    @Slot(bool)
+    def __on_source_hold_changed(self, held: bool):
+        # The source was disconnected (or re-inserted) during the analysis:
+        # the AVs keep scanning the repository, the copy loop is held.
+        self.__source_disconnected = held
+        self.sourceDisconnectedChanged.emit()
+        if held:
+            self.__messages_model.addMessage(
+                self.tr(
+                    "The source storage was disconnected. The analysis of the "
+                    "copied files continues: please reconnect the source "
+                    "storage to analyze the remaining files."
+                )
+            )
+        else:
+            self.__messages_model.addMessage(
+                self.tr("The source storage is back: the analysis is resumed.")
+            )
+
+    def __is_source_disconnected(self) -> bool:
+        return self.__source_disconnected
+
     def __make_analysis_report(self):
         Api().info("Generate the analysis report")
 
@@ -1323,6 +1361,9 @@ class ApplicationController(QObject):
         bool, __is_long_process_running, notify=longProcessRunningChanged
     )
     systemUsed = Property(bool, __is_system_used, notify=systemUsedChanged)
+    sourceDisconnected = Property(
+        bool, __is_source_disconnected, notify=sourceDisconnectedChanged
+    )
     componentsModel = Property(QObject, __get_components_model, constant=True)
     # systemInformation = Property(dict, __get_system_information, notify=systemInformationChanged)
     messagesListModel = Property(QObject, __get_messages_model, constant=True)

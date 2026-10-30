@@ -4,6 +4,11 @@
 <context>
     <name>AnalysisPanel</name>
     <message>
+        <location filename="../GUI/content/AnalysisPanel.qml" line="27"/>
+        <source>The source storage was disconnected: the analysis is on hold. Please reconnect the source storage to continue.</source>
+        <translation>Le support source a été déconnecté : l'analyse est en pause. Veuillez reconnecter le support source pour continuer.</translation>
+    </message>
+    <message>
         <location filename="../GUI/content/AnalysisPanel.qml" line="83"/>
         <location filename="../GUI/content/AnalysisPanel.qml" line="127"/>
         <source>Clean</source>
@@ -104,6 +109,16 @@
         <location filename="../Saphir/application_controller.py" line="908"/>
         <source>If you want to analyze another storage you will have to reset the system from the menu.</source>
         <translation>Si vous voulez analyser un autre support de stockage, vous devrez nettoyer le système depuis le menu principal.</translation>
+    </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="1059"/>
+        <source>The source storage was disconnected. The analysis of the copied files continues: please reconnect the source storage to analyze the remaining files.</source>
+        <translation>Le support source a été déconnecté. L'analyse des fichiers copiés se poursuit : veuillez reconnecter le support source pour analyser les fichiers restants.</translation>
+    </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="1067"/>
+        <source>The source storage is back: the analysis is resumed.</source>
+        <translation>Le support source est de retour : l'analyse reprend.</translation>
     </message>
 </context>
 <context>

@@ -18,6 +18,17 @@ Item {
         anchors.fill: parent
         spacing: height * 0.1
 
+        /* Source disconnection alert (held analysis) */
+        StyledText {
+            Layout.fillWidth: true
+            visible: bindings.analyzing && bindings.sourceDisconnected
+            horizontalAlignment: Text.AlignHCenter
+            color: Environment.colorWarning
+            text: qsTr("The source storage was disconnected: the analysis is on hold. Please reconnect the source storage to continue.")
+            section: Constants.Section.Title2
+            font.bold: true
+        }
+
         /* Progress */
         RowLayout {
             Layout.fillHeight: true
