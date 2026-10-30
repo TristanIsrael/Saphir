@@ -175,6 +175,11 @@
     </message>
     <message>
         <location filename="../GUI/content/FilesCopyPanel.qml" line="93"/>
+        <source>Report generation failed. Please reset the system.</source>
+        <translation>La génération du rapport a échoué. Veuillez réinitialiser le système.</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="93"/>
         <source>The transfer is finished!</source>
         <translation>Le transfert est terminé !</translation>
     </message>

@@ -89,6 +89,8 @@ Item {
                             return qsTr("Copy in progress...")
                         } else if (bindings.systemState === Enums.GeneratingReport) {
                             return qsTr("Generating the report...")
+                        } else if (bindings.systemState === Enums.ReportFailed) {
+                            return qsTr("Report generation failed. Please reset the system.")
                         } else if (bindings.systemState === Enums.AnalysisCompleted) {
                             return qsTr("Please connect a target storage...")
                         }
@@ -104,7 +106,9 @@ Item {
                         return Environment.colorWarning
                     } else {
                         // Transfer in progress...
-                        if(bindings.systemState === Enums.AnalysisCompleted) {
+                        if(bindings.systemState === Enums.ReportFailed) {
+                            return Environment.colorWarning
+                        } else if(bindings.systemState === Enums.AnalysisCompleted) {
                             return Environment.colorText
                         } else if([Enums.CopyCleanFiles, Enums.GeneratingReport].includes(bindings.systemState)) {
                             return Environment.colorText

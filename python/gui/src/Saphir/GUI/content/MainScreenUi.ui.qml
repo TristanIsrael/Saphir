@@ -474,7 +474,8 @@ Item {
                 fill: parent
             }
 
-            visible: [ Enums.CopyCleanFiles, Enums.GeneratingReport ].includes(bindings.systemState)
+            visible: [ Enums.CopyCleanFiles, Enums.GeneratingReport,
+                       Enums.ReportFailed ].includes(bindings.systemState)
         }
     }
 
