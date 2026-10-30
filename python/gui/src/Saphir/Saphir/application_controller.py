@@ -196,6 +196,7 @@ class ApplicationController(QObject):
 
         self.__report_controller = ReportController(self)
         self.__report_controller.reportGenerated.connect(self.__on_report_generated)
+        self.__report_controller.reportFailed.connect(self.__on_report_failed)
         self.__system_information_model = SystemInformationModel(self.__handheld)
 
     def start(self, ready_callback):
@@ -657,6 +658,7 @@ class ApplicationController(QObject):
         # Ignore disk state changes when the system is locked (reset required or in progress)
         locked_states = {
             SystemState.SystemMustBeReset,
+            SystemState.ReportFailed,
             SystemState.SystemResetting,
             SystemState.SystemShuttingDown,
         }
@@ -884,6 +886,12 @@ class ApplicationController(QObject):
         # Generate the report
         self.__make_analysis_report()
 
+        # If the report generation failed, __on_report_failed has moved the
+        # system to ReportFailed (permanent error state, reset required):
+        # there is no report nor journal to copy.
+        if self.__workflow_controller.state != SystemState.GeneratingReport:
+            return
+
         # Then copy it on the disk
         report_filepath = self.__report_controller.get_report_filepath()
         with open(report_filepath, "rb") as f:
@@ -1057,6 +1065,15 @@ class ApplicationController(QObject):
     def __on_report_generated(self):
         # Placeholder: the report file copy is done in __on_transfer_complete.
         pass
+
+    @Slot(str)
+    def __on_report_failed(self, reason: str):
+        # Permanent error state: a reset is required, no automatic retry.
+        Api().error(f"Report generation failed: {reason}")
+        self.__set_system_state(SystemState.ReportFailed)
+        self.__messages_model.addMessage(
+            self.tr("The report generation failed. Please reset the system.")
+        )
 
     @Slot(str)
     def on_storage_selected(self, disk: str):

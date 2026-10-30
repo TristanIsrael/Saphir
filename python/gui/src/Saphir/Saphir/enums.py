@@ -29,6 +29,7 @@ class SystemState(Enum):
     SystemMustBeReset = 13
     SystemResetting = 14
     SystemShuttingDown = 15
+    ReportFailed = 16
 
 
 class AnalysisState(Enum):

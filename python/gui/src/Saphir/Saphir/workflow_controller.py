@@ -52,6 +52,11 @@ class WorkflowController(QObject):
         },
         SystemState.GeneratingReport: {
             SystemState.SystemMustBeReset,
+            SystemState.ReportFailed,
+            SystemState.SystemShuttingDown,
+        },
+        SystemState.ReportFailed: {
+            SystemState.SystemResetting,
             SystemState.SystemShuttingDown,
         },
         SystemState.SystemMustBeReset: {

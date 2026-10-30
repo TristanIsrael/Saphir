@@ -72,6 +72,7 @@ class TestWorkflowController(unittest.TestCase):
             SystemState.AnalysisCompleted,
             SystemState.CopyCleanFiles,
             SystemState.GeneratingReport,
+            SystemState.ReportFailed,
             SystemState.SystemMustBeReset,
             SystemState.SystemResetting,
         ]:
@@ -127,6 +128,31 @@ class TestWorkflowController(unittest.TestCase):
     def test_resetting_to_ready(self):
         self.controller.force_state(SystemState.SystemResetting)
         self.assertTrue(self.controller.can_transition(SystemState.SystemReady))
+
+    def test_generating_report_to_report_failed(self):
+        self.controller.force_state(SystemState.GeneratingReport)
+        self.assertTrue(self.controller.can_transition(SystemState.ReportFailed))
+
+    def test_report_failed_to_resetting(self):
+        self.controller.force_state(SystemState.ReportFailed)
+        self.assertTrue(self.controller.can_transition(SystemState.SystemResetting))
+
+    def test_report_failed_blocks_other_transitions(self):
+        self.controller.force_state(SystemState.ReportFailed)
+        for state in SystemState:
+            if state in (SystemState.SystemResetting, SystemState.SystemShuttingDown):
+                continue
+            self.assertFalse(
+                self.controller.can_transition(state),
+                f"ReportFailed -> {state.name} should be blocked",
+            )
+
+    def test_report_failure_cycle(self):
+        # GeneratingReport -> ReportFailed -> SystemResetting -> SystemReady
+        self.controller.force_state(SystemState.GeneratingReport)
+        self.assertTrue(self.controller.transition_to(SystemState.ReportFailed))
+        self.assertTrue(self.controller.transition_to(SystemState.SystemResetting))
+        self.assertTrue(self.controller.transition_to(SystemState.SystemReady))
 
 
 if __name__ == "__main__":

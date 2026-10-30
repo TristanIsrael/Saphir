@@ -7,10 +7,9 @@ class MessagesListModel(QAbstractItemModel):
     """List model holding the system messages/notifications shown in the GUI."""
 
     # Variables
-    __messages = []
-
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.__messages = []
 
     def addMessage(self, message: str):
         """Append a message to the model and notify the views."""

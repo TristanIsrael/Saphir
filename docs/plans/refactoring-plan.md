@@ -584,7 +584,7 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 
 ---
 
-### Phase 10: Missing Features & NFRs Implementation ⏳ PENDING
+### Phase 10: Missing Features & NFRs Implementation 🔄 IN PROGRESS (10.1, 10.2 done)
 
 **Goal**: Implement the features and NFRs that are specified in `docs/features.md` and `docs/workflow-rules.md` but **not yet coded**. These are prerequisites for Phase 11 (functional coverage testing).
 
@@ -611,11 +611,9 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 - The copy-to-target check compares the `fingerprint` of the copy response with the recorded one; mismatch → `FileCopyError` + journal entry.
 - When no fingerprint is recorded (or the file cannot be read) the check is skipped, preserving the previous behaviour (DEVMODE compatibility).
 
-#### 10.2 [P0] Scenario 8.7: Report generation failure → `ReportFailed`
+#### 10.2 [P0] Scenario 8.7: Report generation failure → `ReportFailed` — ✅ Done (#146)
 
 **Spec**: `workflow-rules.md` §3.2 — `GeneratingReport → ReportFailed` on report failure. Permanent error state, reset required.
-
-**Current state**: The `ReportFailed` state exists in the enum (value 11) but the **transition is never triggered**. `ReportController.make_report()` exceptions are caught silently.
 
 **Work**:
 - In `ReportController`: emit a `reportFailed = Signal()` on exception (WeasyPrint error, disk full, I/O).
@@ -626,6 +624,15 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 **Files**: `report_controller.py`, `application_controller.py`, `workflow_controller.py`, `enums.py` (verify value)
 
 **Validation**: Unit test: mock `make_report` to raise → state = `ReportFailed` → reset → `SystemReady`.
+
+**Implementation notes** (done):
+- `ReportFailed` did not exist in the enum (the plan's "value 11" was wrong — 11 is `GeneratingReport`); added as `SystemState.ReportFailed = 16` (appended, existing values untouched).
+- `ReportController.reportFailed = Signal(str)` carries the error reason; emitted in the existing `except` branch alongside the journal error.
+- `ApplicationController.__on_report_failed(reason)` sets the state and adds a user message ("The report generation failed. Please reset the system.").
+- `__on_transfer_complete()` now stops after a failed generation (state no longer `GeneratingReport`): no report/journal copy, no crash on the missing PDF (previously an unhandled `FileNotFoundError`).
+- `WorkflowController`: `GeneratingReport → ReportFailed` and `ReportFailed → {SystemResetting, SystemShuttingDown}`; reset from `ReportFailed` works (I9 — `reset()` uses `force_state` + `__reset_states`).
+- `ReportFailed` added to the disk-handler locked states: disk changes are ignored while the system waits for a reset.
+- Adjacent bug fixed: `MessagesListModel.__messages` was a class attribute (shared between instances); moved to `__init__`.
 
 #### 10.3 [P1] Scenario 8.8: Source disconnection during analysis
 

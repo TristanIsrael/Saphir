@@ -1160,6 +1160,85 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__set_language("fr")
         self.assertEqual(self.controller.language, "fr")
 
+    # --- __on_report_failed ---
+
+    def test_report_failed_enters_report_failed_state(self):
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.GeneratingReport
+        )
+        self.controller._ApplicationController__on_report_failed("render error")
+        self.assertEqual(self.controller.systemState, SystemState.ReportFailed.value)
+
+    def test_report_failed_adds_message(self):
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.GeneratingReport
+        )
+        messages_model = self.controller._ApplicationController__messages_model
+        count_before = messages_model.rowCount()
+
+        self.controller._ApplicationController__on_report_failed("render error")
+
+        self.assertEqual(messages_model.rowCount(), count_before + 1)
+        self.assertEqual(
+            messages_model.data(messages_model.index(count_before, 0)),
+            "The report generation failed. Please reset the system.",
+        )
+
+    def test_report_failed_logs_error(self):
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.GeneratingReport
+        )
+        self.controller._ApplicationController__on_report_failed("render error")
+        self.__mock_api_instance.error.assert_called()
+        self.assertIn(
+            "render error",
+            self.__mock_api_instance.error.call_args[0][0],
+        )
+
+    # --- __on_transfer_complete with a failed report ---
+
+    def test_transfer_complete_skips_copy_when_report_failed(self):
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.CopyCleanFiles
+        )
+        self.controller._ApplicationController__analysis_end_time = datetime.now()
+        report_controller = self.controller._ApplicationController__report_controller
+
+        def failing_make_report(**kwargs):
+            report_controller.reportFailed.emit("render error")
+
+        with patch.object(
+            report_controller, "make_report", side_effect=failing_make_report
+        ):
+            self.controller._ApplicationController__on_transfer_complete()
+
+        self.assertEqual(self.controller.systemState, SystemState.ReportFailed.value)
+        self.__mock_api_instance.create_file.assert_not_called()
+
+    def test_transfer_complete_copies_report_when_succeeded(self):
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.CopyCleanFiles
+        )
+        self.controller._ApplicationController__analysis_end_time = datetime.now()
+        self.controller._ApplicationController__storage_manager.set_target("target0")
+        report_controller = self.controller._ApplicationController__report_controller
+
+        with (
+            patch.object(report_controller, "make_report"),
+            patch(
+                "builtins.open", MagicMock(read_return_value=b"pdf-data")
+            ) as mock_open,
+            patch.object(type(self.controller._ApplicationController__api_lifecycle), "get_logfile", return_value="/tmp/log"),
+        ):
+            self.controller._ApplicationController__on_transfer_complete()
+
+        self.assertEqual(
+            self.controller.systemState, SystemState.GeneratingReport.value
+        )
+        # The report and the journal are both copied to the target.
+        self.assertEqual(mock_open.call_count, 2)
+        self.assertEqual(self.__mock_api_instance.create_file.call_count, 2)
+
     # --- __dequeue_folder ---
 
     def test_dequeue_folder_internal(self):

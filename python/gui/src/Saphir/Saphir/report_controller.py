@@ -16,6 +16,7 @@ class ReportController(QObject):
     """Renders and writes the PDF scan report (Jinja2 + WeasyPrint)."""
 
     reportGenerated = Signal()
+    reportFailed = Signal(str)
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
@@ -127,3 +128,4 @@ class ReportController(QObject):
 
         except Exception as e:  # noqa: BLE001 - WeasyPrint raises various exception types
             Api().error(f"Report generation failed: {e}")
+            self.reportFailed.emit(str(e))
