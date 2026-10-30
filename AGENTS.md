@@ -61,6 +61,10 @@ docs/            # Developer + user documentation
 - The python dependencies that are used only in development and tests must lie in the file requirements-dev.txt.
 - The python dependencies that are used in production, in developpement and tests must lie in the file requirements.txt.
 
+## Automation rules
+
+- Never make a change on the GUI without confirmation.
+
 ## Coding standards
 
 - Follow the existing naming conventions. The codebase is the reference; when in doubt, match the surrounding code.

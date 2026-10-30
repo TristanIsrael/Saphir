@@ -22,6 +22,9 @@
             "packageManager": "ms-python.python:pip"
         }
     ],
+    "markdown.styles": [
+        ".vscode/markdown-preview.css"
+    ]
     //"python.testing.cwd": "${workspaceFolder}"
     //"python.testing.cwd": "python", 
 }

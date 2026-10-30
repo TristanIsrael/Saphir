@@ -1,8 +1,11 @@
 # Testing Plan — Saphir
 
 > **Status**: Active — refactoring Phases 0-6 complete, testing validates the refactored architecture
+>
 > **Branch**: `refactoring`
+>
 > **Last updated**: 2026-10-28
+>
 > **Reference**: `docs/plans/refactoring-plan.md`, `docs/test-strategy.md`
 
 ---
