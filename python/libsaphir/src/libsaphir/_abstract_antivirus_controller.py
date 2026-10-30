@@ -126,6 +126,14 @@ class AbstractAntivirusController(ABC):
 
         self.__analyse_next_file()
 
+    def _on_analysis_requested(self, filepath: str, fingerprint: str) -> None:
+        """Hook called when an analysis request is received.
+
+        It runs before the file is queued, so a subclass can observe or
+        prepare the file (logging, metrics, dev-mode test fixtures) before
+        the integrity check and the analysis start.
+        """
+
     def __on_api_ready(self):
         self.debug(
             f"Current CPU count is {os.cpu_count()}. Using {self.__max_workers} workers."
@@ -149,6 +157,7 @@ class AbstractAntivirusController(ABC):
 
             filepath = payload.get("filepath")
             fingerprint = payload.get("fingerprint", "")
+            self._on_analysis_requested(filepath, fingerprint)
             self.__files_queue.put((filepath, fingerprint))
             self.__analyse_next_file()
 

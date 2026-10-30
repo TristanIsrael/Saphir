@@ -13,6 +13,8 @@ Usage::
         ...
 """
 
+from __future__ import annotations
+
 import json
 import os
 import subprocess
@@ -32,17 +34,25 @@ class MockAVManager:
     :param infected: set of filepaths to report as infected.
     :param default: default verdict for unlisted files (``"clean"`` or ``"infected"``).
     :param scan_delay: seconds to simulate scan time per file.
+    :param repository_path: local directory emulating the repository; when set,
+        the NFR-1 integrity check in the mock AV runs against it.
+    :param corrupt: set of filepaths to corrupt in the repository on analysis
+        request, so the NFR-1 integrity check rejects them.
     """
 
     def __init__(self,
                  name: str,
                  infected: set[str] | None = None,
                  default: str = "clean",
-                 scan_delay: float = 0.05):
+                 scan_delay: float = 0.05,
+                 repository_path: str | None = None,
+                 corrupt: set[str] | None = None):
         self.name = name
         self._infected = infected or set()
         self._default = default
         self._scan_delay = scan_delay
+        self._repository_path = repository_path
+        self._corrupt = corrupt or set()
         self._process: subprocess.Popen | None = None
         self._config_file: str | None = None
 
@@ -58,6 +68,7 @@ class MockAVManager:
         config = {
             "default": self._default,
             "infected": list(self._infected),
+            "corrupt": list(self._corrupt),
             "scan_delay": self._scan_delay,
         }
         fd, self._config_file = tempfile.mkstemp(suffix=".json", prefix=f"mock_av_{self.name}_")
@@ -73,6 +84,8 @@ class MockAVManager:
         env = os.environ.copy()
         env["DEVMODE"] = "1"
         env["PYTHONPATH"] = self._build_pythonpath()
+        if self._repository_path:
+            env["SAPHIR_REPOSITORY_PATH"] = self._repository_path
 
         self._process = subprocess.Popen(
             cmd,

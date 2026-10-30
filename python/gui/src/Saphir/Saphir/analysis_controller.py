@@ -298,6 +298,12 @@ class AnalysisController(QObject):
         # We work in a critical sectionn because this function may be called by
         # multiple threads at the same time
         with self.__queue_lock:
+            file = self.__files.get(filepath)
+            if file is not None and file.get("status") == FileStatus.FileAnalysisError:
+                # A file already rejected (NFR-1 integrity failure or AV error)
+                # is terminal: ignore stale in-flight results for it.
+                return
+
             # If the file is in an archive we put the results in the file content field
             # We gather all the results inside this file entity
             if self.__archive_mounted_name is None:
@@ -383,6 +389,10 @@ class AnalysisController(QObject):
             return
 
         with self.__queue_lock:
+            if file.get("status") == FileStatus.FileAnalysisError:
+                # Already handled: both AV domains can report the same failure
+                # (e.g. NFR-1 integrity error), count it only once.
+                return
             file["status"] = FileStatus.FileAnalysisError
             file["progress"] = 100
             self.__infected_files_count += 1

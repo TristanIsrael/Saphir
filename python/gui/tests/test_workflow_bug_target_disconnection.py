@@ -50,8 +50,11 @@ def bug_env():
     )
     em.start()
 
-    av1 = MockAVManager("mock-clam", scan_delay=0.01)
-    av2 = MockAVManager("mock-eset", scan_delay=0.01)
+    # Point the mock AVs at the emulator repository so the NFR-1
+    # fingerprint integrity check runs against the real test files.
+    repo_path = os.path.join(tmp, "repo")
+    av1 = MockAVManager("mock-clam", scan_delay=0.01, repository_path=repo_path)
+    av2 = MockAVManager("mock-eset", scan_delay=0.01, repository_path=repo_path)
     av1.start()
     av2.start()
 

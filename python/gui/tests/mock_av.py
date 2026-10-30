@@ -13,21 +13,29 @@ Config file format (JSON)::
     {
         "default": "clean",
         "infected": ["/path/to/file1", "/path/to/file2"],
+        "corrupt": ["/path/to/file3"],
         "scan_delay": 0.1
     }
 
 If no config is provided, all files are reported clean with a 0.05 s delay.
+
+Files listed in ``corrupt`` are altered in the repository right after the
+analysis request, so the NFR-1 integrity check rejects them. The
+``SAPHIR_REPOSITORY_PATH`` environment variable must point at the directory
+that emulates the repository (the emulator's storage path) for the
+integrity check to find the files.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import threading
 import time
 
 from libsaphir import AbstractAntivirusController, FileStatus
-from safecor import ComponentState
+from safecor import ComponentState, Constants
 
 
 class MockAntivirusController(AbstractAntivirusController):
@@ -42,8 +50,25 @@ class MockAntivirusController(AbstractAntivirusController):
         self._name = name
         self._config = config or {}
         self._infected: set[str] = set(self._config.get("infected", []))
+        self._corrupt: set[str] = set(self._config.get("corrupt", []))
         self._default: str = self._config.get("default", "clean")
         self._scan_delay: float = self._config.get("scan_delay", 0.05)
+
+        # In DEVMODE the repository is a local directory, not the appliance
+        # DOMU mount point: point the integrity check at the real test
+        # repository so the fingerprint verification (NFR-1) actually runs.
+        repository_path = os.environ.get("SAPHIR_REPOSITORY_PATH")
+        if repository_path:
+            Constants.DOMU_REPOSITORY_PATH = repository_path
+
+    def _on_analysis_requested(self, filepath: str, fingerprint: str) -> None:
+        # Test fixture: corrupt the repository file before the integrity
+        # check runs, to exercise the NFR-1 mismatch path end-to-end.
+        if filepath in self._corrupt:
+            path = f"{Constants.DOMU_REPOSITORY_PATH}{filepath}"
+            if os.path.exists(path):
+                with open(path, "ab") as f:
+                    f.write(b"CORRUPTED")
 
     def _on_api_ready(self) -> None:
         self.component_state_changed(ComponentState.READY)
