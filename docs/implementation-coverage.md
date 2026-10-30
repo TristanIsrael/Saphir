@@ -85,7 +85,7 @@
 - Files parallelism: `__repository_capacity` + timer (line 80).
 - Engines parallelism: each file sent to all AV (line 199).
 - Consensus: `evaluate_result_consensus` (analysis_helper.py:110) — infected if **one** engine infected.
-- Pause/resume: `stop_analysis`/`start_analysis` + `stop`/`resume` topics (analysis_controller.py:70-86) — the UI button is a **Pause** (suspend + resume), not a hard stop.
+- Pause/resume (F3, #151): `stop_analysis`/`start_analysis` + `stop`/`resume` topics (analysis_controller.py:70-86) — the UI button is a **Pause** (suspend + resume), not a hard stop. On resume, the interrupted files (`GettingFile` / `FileAvailableInRepository` / `FileAnalysing`) are re-queued, the already-analyzed files keep their final status and are not re-analyzed; stale results/errors for a file in a final state are ignored (terminal guard in `__handle_result` / `__handle_error`).
 - Progression: `globalProgress`, `FilesProgress.qml`.
 - ETA: `EMAETAEstimator` (see F16).
 
@@ -430,7 +430,7 @@ These capabilities used to exist in the code without a spec entry. They are now 
 | `[fix]` | F6 | Report template selection according to the language (use `scan_report_fr.html`) |
 | `[fix]` | F6 | PDF generation error handling (end normally) |
 | `[fix]` | F8 | Wire the classification (Safecor) instead of the hardcoded 0 |
-| `[fix]` | F3 | Analysis pause/resume without re-analyzing the processed files (the NFR-3 engine-failure part is done, #149) |
+| `[fix]` | F3 | Analysis pause/resume without re-analyzing the processed files — **Resolved** (#151; the NFR-3 engine-failure part was done in #149) |
 | `[fix]` | F15 | Viewer button + guards (unavailability, config, idle) |
 | `[fix]` | F2 | Enqueue serialization (no concurrent) |
 | `[fix]` | F1/F2 (D7) | Decouple file selection from AV readiness — reach `SystemReady` when the disk-controller is ready (no AV requirement); gate the analysis trigger on ready-to-analyze (AV + core + queue) |

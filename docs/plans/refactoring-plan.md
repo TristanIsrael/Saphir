@@ -732,7 +732,7 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 - `ApplicationController.__on_transfer_error`: user message (EN/FR in fr.ts) + log. The scan report gains a `copy_failures_count` field rendered in red ("Copy failures: N") only when > 0 (`scan_report_en.html` + `scan_report.css`; the FR template is out of date — see F6 backlog).
 - Tests: 10 unit (final check via response error / via events/error: complete+error signal, no error when all copied, all failed, reset, ignored when not copying / already done / already failed / paused, malformed payload), 3 app handlers (`__on_transfer_error` message + log; `__handle_copy_error` delegation + outside-copy log), 1 integration (emulator: a source file lost before the copy → `events/error` → the copy continues, the final check reports "4 file(s) copied for 5 clean file(s), 1 failure(s)", the cycle completes to `SystemMustBeReset`, the 4 other files are on the target).
 
-#### 10.7 [P2] F3: Pause/Resume with partial analysis
+#### 10.7 [P2] F3: Pause/Resume with partial analysis — ✅ Done (#151)
 
 **Spec**: `workflow-rules.md` §8.2 — Pause suspends, resume picks up remaining files, already-analyzed files keep status.
 
@@ -745,6 +745,14 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 **Files**: `analysis_controller.py`
 
 **Validation**: Integration test: analyze 1 of 3 files, stop, start again → verify only 2 files are processed.
+
+**Implementation notes**:
+- `start_analysis()` (resume) normalizes the files interrupted by the stop — `GettingFile` / `FileAvailableInRepository` / `FileAnalysing` → `FileStatusUndefined` (locked=False, progress=0, results={}) so the copy loop picks them up again; files already in a final state (`FileClean` / `FileInfected` / `FileAnalysisError`) and not-yet-started files (`FileStatusUndefined`) are left untouched (F3).
+- Scans in flight when the stop happened keep running in the AV domains (the workers are not cancelled): their results/errors are still delivered after the resume. To keep them consistent with the re-queued cycle, `__handle_result` and `__handle_error` ignore any notification for a file that is already in a final state (terminal guard — protects against a stale result/duplicate being counted in the next cycle).
+- A file interrupted while `FileAnalysing` may therefore be completed by its in-flight scans (no new analysis request) or re-analyzed from scratch: both paths lead to a final state.
+- The integration test (`tests/test_workflow_pause_resume.py`) pauses the real app through a command file (`SAPHIR_TEST_CMD` hook in `test_app_entry.py`), records every analysis request with a timestamp in the mock AVs (`MOCK_AV_REQUEST_LOG`), and asserts: the files already analyzed before the pause receive **no** new analysis request after the resume (F3), and the analysis completes with every file on the target disk.
+
+**Side fix (discovered while debugging, linked to #150)**: `Api().error()` re-publishes on `events/error`, the very topic the app subscribed to in #150 — logging a malformed copy-error payload from `on_copy_error`/`__handle_copy_error` started an infinite loop (tens of thousands of messages). Both handlers now silently ignore payloads that are not platform I/O copy notifications (the Safecor log-broadcast format is filtered in `__handle_copy_error` via `check_payload`).
 
 #### 10.8 [P2] F1: Full-disk analysis (all partitions)
 

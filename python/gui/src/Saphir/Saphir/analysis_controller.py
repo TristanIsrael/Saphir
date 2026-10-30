@@ -92,10 +92,39 @@ class AnalysisController(QObject):
         self.__source_disk = source_disk
 
     def start_analysis(self) -> None:
-        """Start the analysis: resume the AV queue and copy the files to the repository."""
+        """Start the analysis: resume the AV queue and copy the files to the repository.
+
+        On resume (F3), the files interrupted by the previous stop
+        (copy to the repository in flight, or analysis in progress) are
+        re-enqueued; the files already analyzed keep their status and
+        are not processed again.
+        """
         Api().info("Starting the analysis", "AnalysisController")
 
         self.__set_analysis_state(AnalysisState.AnalysisRunning)
+
+        with self.__queue_lock:
+            for file in self.__files.values():
+                status = file.get("status")
+                if status in (
+                    FileStatus.FileStatusUndefined,
+                    FileStatus.FileClean,
+                    FileStatus.FileInfected,
+                    FileStatus.FileAnalysisError,
+                ):
+                    # Not started yet, or already in a final state (F3:
+                    # the already-analyzed files keep their status and
+                    # are not re-analyzed).
+                    continue
+
+                # Interrupted file (GettingFile / FileAvailableInRepository
+                # / FileAnalysing): restart it from the beginning.
+                file["status"] = FileStatus.FileStatusUndefined
+                file["locked"] = False
+                file["progress"] = 0
+                file["results"] = {}
+                self.fileUpdated.emit(file.get("filepath", ""), ["status", "progress"])
+
         self.__files_copy_queue_size = 0
         Api().publish(f"{TOPIC_ANALYSIS}/resume", {})
 
@@ -398,9 +427,15 @@ class AnalysisController(QObject):
         # multiple threads at the same time
         with self.__queue_lock:
             file = self.__files.get(filepath)
-            if file is not None and file.get("status") == FileStatus.FileAnalysisError:
-                # A file already rejected (NFR-1 integrity failure or AV error)
-                # is terminal: ignore stale in-flight results for it.
+            if file is not None and file.get("status") in (
+                FileStatus.FileClean,
+                FileStatus.FileInfected,
+                FileStatus.FileAnalysisError,
+            ):
+                # A file in a final state is terminal: ignore stale or
+                # duplicate results for it (e.g. a scan that was in flight
+                # when the analysis was stopped, then re-analyzed on resume
+                # - F3).
                 return
 
             # If the file is in an archive we put the results in the file content field
@@ -488,7 +523,13 @@ class AnalysisController(QObject):
             return
 
         with self.__queue_lock:
-            if file.get("status") == FileStatus.FileAnalysisError:
+            if file.get("status") in (
+                FileStatus.FileClean,
+                FileStatus.FileInfected,
+                FileStatus.FileAnalysisError,
+            ):
+                # A file in a final state is terminal: ignore stale or
+                # duplicate errors for it.
                 # Already handled: both AV domains can report the same failure
                 # (e.g. NFR-1 integrity error), count it only once.
                 return

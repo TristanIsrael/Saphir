@@ -46,13 +46,15 @@ class MockAVManager:
                  default: str = "clean",
                  scan_delay: float = 0.05,
                  repository_path: str | None = None,
-                 corrupt: set[str] | None = None):
+                 corrupt: set[str] | None = None,
+                 request_log: str | None = None):
         self.name = name
         self._infected = infected or set()
         self._default = default
         self._scan_delay = scan_delay
         self._repository_path = repository_path
         self._corrupt = corrupt or set()
+        self._request_log = request_log
         self._process: subprocess.Popen | None = None
         self._config_file: str | None = None
         self._failure_flag: str | None = None
@@ -89,6 +91,8 @@ class MockAVManager:
         if self._repository_path:
             env["SAPHIR_REPOSITORY_PATH"] = self._repository_path
         env["MOCK_AV_FAILURE_FLAG"] = self._failure_flag
+        if self._request_log:
+            env["MOCK_AV_REQUEST_LOG"] = self._request_log
 
         self._process = subprocess.Popen(
             cmd,

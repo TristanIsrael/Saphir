@@ -1334,6 +1334,109 @@ class TestAnalysisController(unittest.TestCase):
             FileStatus.FileStatusUndefined,
         )
 
+    def test_start_analysis_resume_reenqueues_interrupted_files(self):
+        # F3: pause/resume — the interrupted files are re-enqueued, the
+        # already-analyzed files keep their status and are not re-analyzed.
+        self.__update_queue([
+            {"type": "file", "path": "/", "name": "PauseA.txt", "size": 100},
+            {"type": "file", "path": "/", "name": "PauseB.txt", "size": 100},
+            {"type": "file", "path": "/", "name": "PauseC.txt", "size": 100},
+            {"type": "file", "path": "/", "name": "PauseD.txt", "size": 100},
+            {"type": "file", "path": "/", "name": "PauseE.txt", "size": 100},
+            {"type": "file", "path": "/", "name": "PauseF.txt", "size": 100},
+        ])
+        q = self.__files_queue
+        q["/PauseA.txt"]["status"] = FileStatus.FileClean
+        q["/PauseB.txt"]["status"] = FileStatus.FileInfected
+        q["/PauseC.txt"]["status"] = FileStatus.FileAnalysisError
+        q["/PauseD.txt"]["status"] = FileStatus.FileStatusUndefined
+        q["/PauseE.txt"]["status"] = FileStatus.FileAnalysing
+        q["/PauseE.txt"]["progress"] = 50
+        q["/PauseE.txt"]["results"] = {"av1": {"result": "Clean", "details": "ok"}}
+        q["/PauseE.txt"]["locked"] = True
+        q["/PauseF.txt"]["status"] = FileStatus.GettingFile
+        q["/PauseF.txt"]["locked"] = True
+
+        self.__analysis_controller.start_analysis()
+
+        # Final states are kept: no re-analysis
+        self.assertEqual(q["/PauseA.txt"]["status"], FileStatus.FileClean)
+        self.assertEqual(q["/PauseB.txt"]["status"], FileStatus.FileInfected)
+        self.assertEqual(q["/PauseC.txt"]["status"], FileStatus.FileAnalysisError)
+        # Not started yet: unchanged
+        self.assertEqual(q["/PauseD.txt"]["status"], FileStatus.FileStatusUndefined)
+        # Interrupted files: re-enqueued from the beginning
+        self.assertEqual(q["/PauseE.txt"]["status"], FileStatus.FileStatusUndefined)
+        self.assertFalse(q["/PauseE.txt"]["locked"])
+        self.assertEqual(q["/PauseE.txt"]["progress"], 0)
+        self.assertEqual(q["/PauseE.txt"]["results"], {})
+        self.assertEqual(q["/PauseF.txt"]["status"], FileStatus.FileStatusUndefined)
+        self.assertFalse(q["/PauseF.txt"]["locked"])
+
+    def test_handle_result_ignored_for_file_in_final_state(self):
+        # F3: a stale result (e.g. a scan in flight when the analysis was
+        # stopped) arriving after the file reached a final state must be
+        # ignored, not counted in the next analysis cycle.
+        self.__update_queue([
+            {"type": "file", "path": "/", "name": "Term.txt", "size": 100},
+        ])
+        self.__analysis_controller._AnalysisController__analysis_components[:] = (
+            deepcopy(self.ANALYSIS_COMPONENTS)
+        )
+        self.__files_queue["/Term.txt"]["status"] = FileStatus.FileAnalysing
+
+        spyResultsChanged = QSignalSpy(self.__analysis_controller.resultsChanged)
+
+        self.__analysis_controller._AnalysisController__handle_result(
+            "av1", "/Term.txt", True, ""
+        )
+        self.__analysis_controller._AnalysisController__handle_result(
+            "av2", "/Term.txt", True, ""
+        )
+        self.assertEqual(self.__files_queue["/Term.txt"]["status"], FileStatus.FileClean)
+
+        # A stale result for the now-final file is ignored
+        self.__analysis_controller._AnalysisController__handle_result(
+            "av1", "/Term.txt", False, "stale"
+        )
+        self.assertEqual(self.__files_queue["/Term.txt"]["status"], FileStatus.FileClean)
+        self.assertEqual(spyResultsChanged.count(), 1)
+        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
+
+    def test_handle_error_ignored_for_file_in_final_state(self):
+        # F3: a stale analysis error arriving after the file reached a
+        # final state must not move it to FileAnalysisError.
+        self.__update_queue([
+            {"type": "file", "path": "/", "name": "TermE.txt", "size": 100},
+        ])
+        self.__analysis_controller._AnalysisController__analysis_components[:] = (
+            deepcopy(self.ANALYSIS_COMPONENTS)
+        )
+        self.__files_queue["/TermE.txt"]["status"] = FileStatus.FileClean
+
+        self.__analysis_controller._AnalysisController__handle_error(
+            {"filepath": "/TermE.txt", "error": "stale"}
+        )
+        self.assertEqual(self.__files_queue["/TermE.txt"]["status"], FileStatus.FileClean)
+        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
+
+    def test_start_analysis_resume_keeps_repository_files(self):
+        # F3: a file already in the repository (copy done, analysis pending)
+        # is re-enqueued like any interrupted file.
+        self.__update_queue([
+            {"type": "file", "path": "/", "name": "PauseR.txt", "size": 100},
+        ])
+        self.__files_queue["/PauseR.txt"]["status"] = FileStatus.FileAvailableInRepository
+        self.__files_queue["/PauseR.txt"]["locked"] = True
+
+        self.__analysis_controller.start_analysis()
+
+        self.assertEqual(
+            self.__files_queue["/PauseR.txt"]["status"],
+            FileStatus.FileStatusUndefined,
+        )
+        self.assertFalse(self.__files_queue["/PauseR.txt"]["locked"])
+
     def __update_queue(self, files_list:list[dict]):
         self.__files_queue.clear()
 

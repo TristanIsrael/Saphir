@@ -68,6 +68,10 @@ class MockAntivirusController(AbstractAntivirusController):
         if self._failure_flag:
             threading.Thread(target=self._watch_failure_flag, daemon=True).start()
 
+        # Request observation (F3 tests): every analysis request received
+        # is logged to a file ("<epoch> <component> <filepath>")
+        self._request_log = os.environ.get("MOCK_AV_REQUEST_LOG")
+
     def _watch_failure_flag(self):
         while not os.path.exists(self._failure_flag):
             time.sleep(0.1)
@@ -85,6 +89,10 @@ class MockAntivirusController(AbstractAntivirusController):
             if os.path.exists(path):
                 with open(path, "ab") as f:
                     f.write(b"CORRUPTED")
+
+        if self._request_log:
+            with open(self._request_log, "a") as f:
+                f.write(f"{time.time():.3f} {self._name} {filepath}\n")
 
     def _on_api_ready(self) -> None:
         self.component_state_changed(ComponentState.READY)
