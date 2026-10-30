@@ -949,6 +949,12 @@ class ApplicationController(QObject):
             self.fileUpdated.emit(filepath, ["status"])
 
     def __handle_copy_error(self, payload: dict):
+        # The events/error topic also carries the Safecor log broadcast
+        # (component/module/datetime/description payloads): ignore them,
+        # logging here would be re-published on the same topic and loop.
+        if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
+            return
+
         # Platform error notification (F4): a copy (or a read) failed with
         # an I/O error. The TransferController only acts during the copy
         # phase; an error outside of it (e.g. a read failure during the

@@ -537,12 +537,24 @@ class TestTransferController(unittest.TestCase):
         self.assertEqual(self.transfer.failed_files_count, 0)
         self.assertTrue(self.transfer.is_copy_paused)
 
-    def test_on_copy_error_missing_payload(self):
+    def test_on_copy_error_missing_payload_is_ignored(self):
+        # The events/error topic also carries the Safecor log broadcast
+        # (component/module/datetime/description payloads): those are
+        # ignored silently, logging them would be re-published on the
+        # same topic and loop.
         self._start_with_clean_files("/a.txt")
 
         with patch("Saphir.transfer_controller.Api") as mock_api:
             self.transfer.on_copy_error({"disk": "source"})
-            mock_api().error.assert_called_once()
+            self.transfer.on_copy_error(
+                {
+                    "component": "dom0",
+                    "module": "Api",
+                    "datetime": "2026-01-01 00:00:00",
+                    "description": "some log event",
+                }
+            )
+            mock_api().error.assert_not_called()
 
         self.assertEqual(self.transfer.failed_files_count, 0)
 

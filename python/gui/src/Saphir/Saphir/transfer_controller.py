@@ -177,8 +177,11 @@ class TransferController(QObject):
         response): the file is marked as failed so the copy can complete
         and the final check (copied == clean) can run.
         """
+        # The events/error topic also carries the Safecor log broadcast
+        # (component/module/datetime/description payloads): filter those
+        # out silently, logging here would be re-published on the same
+        # topic and loop.
         if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
-            Api().error("Missing arguments in copy error notification")
             return
 
         if not self._copying:
