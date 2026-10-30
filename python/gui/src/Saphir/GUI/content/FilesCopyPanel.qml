@@ -81,7 +81,9 @@ Item {
             StyledText {
                 Layout.fillWidth: true
                 text: {
-                    if(bindings.targetName === "" && bindings.systemState === Enums.AnalysisCompleted) {
+                    if(bindings.copyPaused) {
+                        return qsTr("Copy paused: a storage was disconnected. Please reconnect it to continue.")
+                    } else if(bindings.targetName === "" && bindings.systemState === Enums.AnalysisCompleted) {
                         return qsTr("Please connect a target storage...")
                     } else {
                         // Transfer in progress
@@ -102,7 +104,9 @@ Item {
                 horizontalAlignment: Qt.AlignHCenter
 
                 color: {
-                    if(bindings.targetName === "") {
+                    if(bindings.copyPaused) {
+                        return Environment.colorWarning
+                    } else if(bindings.targetName === "") {
                         return Environment.colorWarning
                     } else {
                         // Transfer in progress...

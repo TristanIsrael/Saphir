@@ -34,6 +34,7 @@ Item {
     property int targetAvailableSize: ApplicationController.targetAvailableSize
     property real systemLoadingProgress: ApplicationController.systemLoadingProgress
     property bool sourceDisconnected: ApplicationController.sourceDisconnected
+    property bool copyPaused: ApplicationController.copyPaused
 
     /** Models */
     property var sourceFilesListModel: ApplicationController.inputFilesListProxyModel

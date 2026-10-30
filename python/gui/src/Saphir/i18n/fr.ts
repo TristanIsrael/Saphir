@@ -120,6 +120,21 @@
         <source>The source storage is back: the analysis is resumed.</source>
         <translation>Le support source est de retour : l'analyse reprend.</translation>
     </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="1095"/>
+        <source>A storage was disconnected: the copy is paused. Please reconnect the storage to continue.</source>
+        <translation>Un stockage a été déconnecté : la copie est en pause. Veuillez reconnecter le stockage pour continuer.</translation>
+    </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="1101"/>
+        <source>The storage is back: the copy is resumed.</source>
+        <translation>Le stockage est de retour : la copie reprend.</translation>
+    </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="1112"/>
+        <source>The copy could not be resumed: the reconnected storage does not match. Please reset the system.</source>
+        <translation>La copie n'a pas pu reprendre : le stockage reconnecté ne correspond pas. Veuillez réinitialiser le système.</translation>
+    </message>
 </context>
 <context>
     <name>ComponentsModel</name>
@@ -217,6 +232,11 @@
         <location filename="../GUI/content/FilesCopyPanel.qml" line="95"/>
         <source>Please connect a target storage...</source>
         <translation>Veuillez connecter un stockage pour la copie...</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="84"/>
+        <source>Copy paused: a storage was disconnected. Please reconnect it to continue.</source>
+        <translation>Copie en pause : un stockage a été déconnecté. Veuillez le reconnecter pour continuer.</translation>
     </message>
     <message>
         <location filename="../GUI/content/FilesCopyPanel.qml" line="99"/>

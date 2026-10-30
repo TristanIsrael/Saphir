@@ -1,7 +1,9 @@
 # Refactoring Plan - Saphir v3.x
 
 > **Status**: In progress — Phases 0-9 complete, Phases 10-14 pending
-> **Last updated**: 2026-10-30
+>
+> **Last updated**: 2026-10-29
+>
 > **Branch**: `refactoring` (based on `main` post-merge #128)
 
 ---
@@ -373,13 +375,13 @@ These rules must hold throughout refactoring:
 | 7 Linting & static analysis | ✅ Done | `9bdfe42` | #54 | 122+27 ruff errors fixed, format applied, 0 remaining |
 | 8 Alpine package validation | ✅ Done | `4b0b1b2`, `056a659`, `cf86fbd`, `c459924`, `c94d4af` | #141, #142, #143, #144 | 7/8 packages built in the Alpine 3.21.9 chroot, GUI domain boots in DEVMODE; `saphir-container-eset` not buildable (ESET URL 404 - the official CI skips it too) |
 | 9 Documentation debt | ✅ Done | `4038c13` + round 2 | #139 | French→English (incl. accent-free), all class/method/module docstrings, dead code removed; 0 French comments, 0 public class/method without docstring |
-| 10 Missing features & NFRs | ⏳ Pending | — | — | Fingerprint, ReportFailed, disconnect handlers, AV failure |
+| 10 Missing features & NFRs | ⏳ In progress (4/8) | #145, #146, #147, #148 | — | Fingerprint, ReportFailed, disconnect handlers, AV failure |
 | 11 Functional coverage | ⏳ Pending | — | — | Error paths, NFRs, disconnection scenarios |
 | 12 GUI (QML) test coverage | ⏳ Pending | — | — | QML bindings, panel visibility, signal integration |
 | 13 Viewer modernization | ⏳ Pending | — | — | Lint, format, unit tests (0 → 85%) |
 | 14 Semi-automated validation env | ⏳ Pending (Not ready) | — | — | Human-driven test on Safecor emulator (operator console + state observer); blocked on emulator features |
 
-**Test baseline**: 350 passed, 3 skipped, 0 failed (1 known flaky in full suite)
+**Test baseline**: 401 passed, 3 skipped, 0 failed (2026-10-30, after 10.4; known boot-sequence flake in full suite under high load)
 
 ---
 
@@ -584,7 +586,7 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 
 ---
 
-### Phase 10: Missing Features & NFRs Implementation 🔄 IN PROGRESS (10.1, 10.2, 10.3 done)
+### Phase 10: Missing Features & NFRs Implementation ⏳ IN PROGRESS (10.1, 10.2, 10.3, 10.4 done)
 
 **Goal**: Implement the features and NFRs that are specified in `docs/features.md` and `docs/workflow-rules.md` but **not yet coded**. These are prerequisites for Phase 11 (functional coverage testing).
 
@@ -652,14 +654,13 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 **Validation**: Integration test (emulator): start analysis, disconnect source, verify analysis continues on repo files, reconnect, verify resume.
 
 **Implementation notes** (done):
-- The hold is owned by `AnalysisController` (it already receives `DISK_STATE` and owns the stuck files): `sourceHoldChanged = Signal(bool)` is emitted when the source disk disconnects while the analysis is running and when it reconnects. Files whose copy to the repository was in flight (`GettingFile`) are re-queued (`Undefined`, unlocked) on reconnection.
-- The copy loop (`__do_copy_files_into_repository`) reschedules itself while held instead of requesting files from the missing source or exiting.
-- `ApplicationController.__handle_disk_state` no longer resets (or locks into `SystemMustBeReset`) when the source is unplugged during a running analysis; the user is informed via the message list and a warning banner in the `AnalysisPanel` (`sourceDisconnected` property).
-- `__on_file_available` is now idempotent: a stale/duplicate `NEW_FILE` (late notification after a re-request) no longer starts the analysis twice.
-- The hold flag is cleared by `stop_analysis()`/`reset()` so it never leaks into a later session.
-- Out of scope here: inserting a *different* disk during a held analysis still takes the target branch of `__handle_disk_state` (pre-existing behaviour, also present during a plain running analysis); the NFR-4 "different disk → `SystemMustBeReset`" rule for the copy phase is handled in 10.4.
+- The hold is owned by the `AnalysisController` (it owns the copy loop): `sourceHoldChanged = Signal(bool)`, `__source_held` flag. On source DISCONNECTED while `AnalysisRunning` the `GettingFile` files are re-queued (`Undefined`, `locked=False`) so the loop holds; on reconnection they are re-requested.
+- `__do_copy_files_into_repository` checks the hold at the top of each iteration (reschedule, no `read_file`); `__on_file_available` ignores duplicate `NEW_FILE` notifications (idempotency).
+- `ApplicationController` guards `__handle_disk_state` (no reset while `AnalysisRunning`) and exposes `sourceDisconnected` (property + signal) for the QML banner; the flag is cleared on `stop_analysis()`/`reset()`.
+- QML: warning banner in `AnalysisPanel` (visible when analyzing && source disconnected), EN/FR translations.
+- Integration test `test_workflow_source_disconnection_analysis.py`: detach mid-analysis, no reset, re-attach, auto-resume, full nominal cycle.
 
-#### 10.4 [P1] Scenario 8.6: Source/target disconnection during copy + auto-resume
+#### 10.4 [P1] Scenario 8.6: Source/target disconnection during copy + auto-resume — ✅ Done (#148)
 
 **Spec**: `workflow-rules.md` §8.6 — Error flag on `CopyCleanFiles`, auto-resume on same-disk reconnection, `SystemMustBeReset` on different disk.
 
@@ -677,6 +678,15 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 **Files**: `application_controller.py`, `transfer_controller.py`, `workflow_controller.py`
 
 **Validation**: Integration test: start copy, disconnect source, verify pause, reconnect same disk, verify resume; disconnect + reconnect different disk, verify `SystemMustBeReset`.
+
+**Implementation notes** (done):
+- The pause is owned by the `TransferController` (no dedicated state, per spec 8.6): `copyPausedChanged = Signal(bool)` + `coherenceCheckFailed = Signal(str)`, `is_copying`/`is_copy_paused` properties. It subscribes to `DISK_STATE` + `LIST_FILES/response` (via `init()`, called once the API is ready).
+- The copy is request-driven (all `copy_file` requests are issued at once): a disconnected disk makes the in-flight requests fail silently, the files stay `FileClean` and are re-issued on resume — no copy error is declared while paused (`on_copy_file` keeps the file `FileClean` on a failed response while paused, and ignores stale failures for an already-copied file).
+- Coherence check (8.6 step 4) on same-disk reconnection: recursive `LIST_FILES` on the re-inserted disk; the target is checked against the already-copied files (`FileCopySuccess`), the source against the remaining files (`FileClean`). Pass → the flag is cleared and the remaining files are re-copied. Fail (or a different disk re-plugged, NFR-4/I6) → `coherenceCheckFailed` → `SystemMustBeReset` + message.
+- `ApplicationController`: guards in `__handle_disk_state` (source/target DISCONNECTED during an active copy → no reset, names kept; a CONNECTED disk while paused → ignored, the `TransferController` handles it), `copyPaused` property + user messages, `__handle_list_files` skips file listings while the copy is in progress (coherence-check responses).
+- QML: status text "Copy paused: a storage was disconnected..." (warning color) in `FilesCopyPanel`, EN/FR translations.
+- The pre-existing `test_workflow_bug_target_disconnection.py` (C.2) characterized the old behaviour (target disconnect → immediate `SystemMustBeReset`); it was rewritten to the 8.6 semantics (hold + auto-resume).
+- Integration tests: `test_workflow_source_disconnection_copy.py` (source: hold + auto-resume; different disk → `SystemMustBeReset`) and the rewritten C.2 (target: hold + auto-resume). The copy phase is stretched with 40 × 30 MB files so the unplug lands mid-copy even on a loaded machine.
 
 #### 10.5 [P1] NFR-3: AV engine failure during analysis
 

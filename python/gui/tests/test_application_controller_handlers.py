@@ -172,8 +172,10 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         )
 
     def test_handle_disk_state_disconnected_target_during_copy(self):
+        # The copy is over (no active copy): the target disconnection
+        # requires a reset.
         self.controller._ApplicationController__workflow_controller.force_state(
-            SystemState.CopyCleanFiles
+            SystemState.GeneratingReport
         )
         self.controller._ApplicationController__storage_manager.set_source("source0")
         self.controller._ApplicationController__storage_manager.set_target("target0")
@@ -186,6 +188,113 @@ class TestApplicationControllerHandlers(unittest.TestCase):
             self.controller.systemState, SystemState.SystemMustBeReset.value
         )
         self.assertTrue(signals)
+
+    def _set_transfer_copying(self, paused=False):
+        tc = self.controller._ApplicationController__transfer_controller
+        tc._copying = True
+        tc._copy_paused = paused
+        tc._source_name = "source0"
+        tc._target_name = "target0"
+        return tc
+
+    def test_handle_disk_state_disconnected_source_during_copying_holds(self):
+        # Scenario 8.6: the source is unplugged during the copy. The copy
+        # is held (TransferController), the system must not be reset.
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.CopyCleanFiles
+        )
+        self.controller._ApplicationController__storage_manager.set_source("source0")
+        self.controller._ApplicationController__storage_manager.set_target("target0")
+        self.controller._ApplicationController__system_used = True
+        self._set_transfer_copying()
+
+        self.controller._ApplicationController__handle_disk_state(
+            {"disk": "source0", "state": "disconnected"}
+        )
+
+        self.assertEqual(self.controller.systemState, SystemState.CopyCleanFiles.value)
+        self.assertEqual(self.controller.sourceName, "source0")
+
+    def test_handle_disk_state_disconnected_target_during_copying_holds(self):
+        # Scenario 8.6: the target is unplugged during the copy. The copy
+        # is held (TransferController), the system must not be reset and
+        # the target name is kept for the coherence check.
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.CopyCleanFiles
+        )
+        self.controller._ApplicationController__storage_manager.set_source("source0")
+        self.controller._ApplicationController__storage_manager.set_target("target0")
+        self.controller._ApplicationController__system_used = True
+        self._set_transfer_copying()
+
+        self.controller._ApplicationController__handle_disk_state(
+            {"disk": "target0", "state": "disconnected"}
+        )
+
+        self.assertEqual(self.controller.systemState, SystemState.CopyCleanFiles.value)
+        self.assertEqual(self.controller.targetName, "target0")
+
+    def test_handle_disk_state_connected_target_while_copy_paused_ignored(self):
+        # Scenario 8.6: while the copy is paused the reconnection is
+        # handled by the TransferController, the app must not set a new
+        # target or restart the transfer.
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.CopyCleanFiles
+        )
+        self.controller._ApplicationController__storage_manager.set_source("source0")
+        self.controller._ApplicationController__storage_manager.set_target("target0")
+        self._set_transfer_copying(paused=True)
+
+        self.controller._ApplicationController__handle_disk_state(
+            {"disk": "target1", "state": "connected"}
+        )
+
+        self.assertEqual(self.controller.targetName, "target0")
+        self.assertEqual(self.controller.systemState, SystemState.CopyCleanFiles.value)
+
+    def test_on_copy_paused_changed_sets_property_and_messages(self):
+        self.assertFalse(self.controller.copyPaused)
+        messages_model = self.controller._ApplicationController__messages_model
+        count_before = messages_model.rowCount()
+
+        self.controller._ApplicationController__on_copy_paused_changed(True)
+        self.assertTrue(self.controller.copyPaused)
+        self.assertEqual(messages_model.rowCount(), count_before + 1)
+        self.assertIn(
+            "copy is paused",
+            messages_model.data(messages_model.index(count_before, 0)),
+        )
+
+        self.controller._ApplicationController__on_copy_paused_changed(False)
+        self.assertFalse(self.controller.copyPaused)
+        self.assertEqual(messages_model.rowCount(), count_before + 2)
+        self.assertIn(
+            "copy is resumed",
+            messages_model.data(messages_model.index(count_before + 1, 0)),
+        )
+
+    def test_on_coherence_check_failed_sets_mustbereset(self):
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.CopyCleanFiles
+        )
+        signals = []
+        self.controller.systemMustBeReset.connect(lambda: signals.append(True))
+        messages_model = self.controller._ApplicationController__messages_model
+        count_before = messages_model.rowCount()
+
+        self.controller._ApplicationController__on_coherence_check_failed(
+            "Coherence check failed"
+        )
+
+        self.assertEqual(
+            self.controller.systemState, SystemState.SystemMustBeReset.value
+        )
+        self.assertTrue(signals)
+        self.assertEqual(messages_model.rowCount(), count_before + 1)
+        self.assertIn(
+            "could not be resumed",
+            messages_model.data(messages_model.index(count_before, 0)),
+        )
 
     def test_handle_disk_state_locked_ignores(self):
         self.controller._ApplicationController__workflow_controller.force_state(
@@ -551,7 +660,9 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         with (
             patch("Saphir.application_controller.AnalysisController") as mock_ac,
             patch.object(type(energy), "start_polling"),
-            patch("Saphir.translation_manager.Api", return_value=self.__mock_api_instance),
+            patch(
+                "Saphir.translation_manager.Api", return_value=self.__mock_api_instance
+            ),
             patch("Saphir.log_list_model.Api", return_value=self.__mock_api_instance),
         ):
             self.controller._ApplicationController__app_ready()
@@ -573,7 +684,9 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.__mock_api_instance.discover_components.assert_called_once()
 
     def test_on_api_ready_no_re_discover_after_boot(self):
-        self.controller._ApplicationController__set_system_state(SystemState.SystemReady)
+        self.controller._ApplicationController__set_system_state(
+            SystemState.SystemReady
+        )
         with patch("Saphir.api_lifecycle.Api", return_value=self.__mock_api_instance):
             self.__mock_api_instance.subscribe.return_value = (0, 1)
             self.__mock_api_instance.discover_components.reset_mock()
@@ -1273,7 +1386,11 @@ class TestApplicationControllerHandlers(unittest.TestCase):
             patch(
                 "builtins.open", MagicMock(read_return_value=b"pdf-data")
             ) as mock_open,
-            patch.object(type(self.controller._ApplicationController__api_lifecycle), "get_logfile", return_value="/tmp/log"),
+            patch.object(
+                type(self.controller._ApplicationController__api_lifecycle),
+                "get_logfile",
+                return_value="/tmp/log",
+            ),
         ):
             self.controller._ApplicationController__on_transfer_complete()
 

@@ -59,6 +59,7 @@ class ApplicationController(QObject):
 
     __ready = False
     __source_disconnected = False
+    __copy_paused = False
     __file_queue: FileQueue
     __file_browser: FileBrowser
     __storage_manager: StorageManager
@@ -119,6 +120,7 @@ class ApplicationController(QObject):
     systemUsedChanged = Signal()
     systemMustBeReset = Signal()
     sourceDisconnectedChanged = Signal()
+    copyPausedChanged = Signal()
     doResetSystem = Signal()
     # systemInformationChanged = Signal()
     transferStartedChanged = Signal()
@@ -172,6 +174,12 @@ class ApplicationController(QObject):
             self.copiedFilesCountChanged
         )
         self.__transfer_controller.transferComplete.connect(self.__on_transfer_complete)
+        self.__transfer_controller.copyPausedChanged.connect(
+            self.__on_copy_paused_changed
+        )
+        self.__transfer_controller.coherenceCheckFailed.connect(
+            self.__on_coherence_check_failed
+        )
 
         self.__components_model = ComponentsModel(self.__components_helper, self)
 
@@ -435,6 +443,8 @@ class ApplicationController(QObject):
         self.longProcessRunningChanged.emit()
         self.__source_disconnected = False
         self.sourceDisconnectedChanged.emit()
+        self.__copy_paused = False
+        self.copyPausedChanged.emit()
         self.__transfer_controller.reset()
         self.copiedFilesCountChanged.emit()
 
@@ -523,6 +533,7 @@ class ApplicationController(QObject):
         self.__analysis_controller.sourceHoldChanged.connect(
             self.__on_source_hold_changed
         )
+        self.__transfer_controller.init()
 
         self.__log_listmodel.listen_to_logs()
 
@@ -715,6 +726,11 @@ class ApplicationController(QObject):
             # The source has been disconnected
             # If the system has been used the user must reset it
             # Otherwise we let go
+            if self.__transfer_controller.is_copying:
+                # Scenario 8.6: the copy is held by the TransferController
+                # (which monitors the disk states), do not reset.
+                return
+
             if (
                 self.__analysis_controller.get_analysis_state()
                 == AnalysisState.AnalysisRunning
@@ -736,6 +752,12 @@ class ApplicationController(QObject):
             and state == DiskState.CONNECTED.value
         ):
             # The target has been connected
+            if self.__transfer_controller.is_copy_paused:
+                # Scenario 8.6: a reconnection while the copy is paused is
+                # handled by the TransferController (coherence check,
+                # auto-resume or SystemMustBeReset).
+                return
+
             self.__storage_manager.set_target(disk)
 
             # TODO: Verify whether the disk has enough space
@@ -747,6 +769,12 @@ class ApplicationController(QObject):
             and state == DiskState.DISCONNECTED.value
         ):
             # The target has been disconnected
+            if self.__transfer_controller.is_copying:
+                # Scenario 8.6: the copy is held by the TransferController
+                # (which monitors the disk states), do not reset. The target
+                # name is kept for the coherence check on reconnection.
+                return
+
             self.__storage_manager.clear_target()
             if self.__workflow_controller.state in (
                 SystemState.CopyCleanFiles,
@@ -798,8 +826,13 @@ class ApplicationController(QObject):
 
     def __handle_list_files(self, payload: dict) -> None:
         # If the analysis is running we don't care about this message
-        # because the AnalysisController will do
-        if self.__workflow_controller.state == SystemState.SystemAnalysisRunning:
+        # because the AnalysisController will do. If the copy is in
+        # progress the only file listings are the TransferController
+        # coherence checks (8.6).
+        if self.__workflow_controller.state in (
+            SystemState.SystemAnalysisRunning,
+            SystemState.CopyCleanFiles,
+        ):
             return
 
         disk = payload.get("disk")
@@ -1068,6 +1101,42 @@ class ApplicationController(QObject):
 
     def __is_source_disconnected(self) -> bool:
         return self.__source_disconnected
+
+    @Slot(bool)
+    def __on_copy_paused_changed(self, paused: bool):
+        # The source or the target was disconnected (or re-inserted)
+        # during the copy: the copy is held, the already-copied files
+        # are kept (scenario 8.6).
+        self.__copy_paused = paused
+        self.copyPausedChanged.emit()
+        if paused:
+            self.__messages_model.addMessage(
+                self.tr(
+                    "A storage was disconnected: the copy is paused. "
+                    "Please reconnect the storage to continue."
+                )
+            )
+        else:
+            self.__messages_model.addMessage(
+                self.tr("The storage is back: the copy is resumed.")
+            )
+
+    @Slot(str)
+    def __on_coherence_check_failed(self, reason: str):
+        # A different disk was re-inserted or the coherence check failed
+        # after a disconnection: reset required (NFR-4, I6).
+        Api().error(f"Copy coherence check failed: {reason}")
+        self.__set_system_state(SystemState.SystemMustBeReset)
+        self.systemMustBeReset.emit()
+        self.__messages_model.addMessage(
+            self.tr(
+                "The copy could not be resumed: the reconnected storage does not "
+                "match. Please reset the system."
+            )
+        )
+
+    def __is_copy_paused(self) -> bool:
+        return self.__copy_paused
 
     def __make_analysis_report(self):
         Api().info("Generate the analysis report")
@@ -1364,6 +1433,7 @@ class ApplicationController(QObject):
     sourceDisconnected = Property(
         bool, __is_source_disconnected, notify=sourceDisconnectedChanged
     )
+    copyPaused = Property(bool, __is_copy_paused, notify=copyPausedChanged)
     componentsModel = Property(QObject, __get_components_model, constant=True)
     # systemInformation = Property(dict, __get_system_information, notify=systemInformationChanged)
     messagesListModel = Property(QObject, __get_messages_model, constant=True)
