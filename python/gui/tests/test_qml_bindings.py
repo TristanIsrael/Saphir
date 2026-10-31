@@ -11,10 +11,6 @@ tests drive the fake controller and assert the declarative bindings:
 - 12.6: ``SystemLoadingPanel`` progression (step circles, title, opacity)
 """
 
-import contextlib
-import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -26,122 +22,7 @@ sys.path.insert(0, str(_GUI_DIR.parent / "libsaphir" / "src"))
 
 from Saphir.enums import SystemState
 
-
-class QmlClient:
-    """JSON-line client of the QML runner subprocess."""
-
-    def __init__(self, proc: subprocess.Popen):
-        self.proc = proc
-
-    def _read_json(self) -> dict:
-        """Read the next JSON line, skipping stray non-JSON prints.
-
-        The runner imports ``libsaphir`` which prints a DEVMODE banner to
-        stdout at import time; the protocol lines are the only JSON lines.
-        """
-        while True:
-            line = self.proc.stdout.readline()
-            if not line:
-                raise RuntimeError(
-                    "QML runner exited unexpectedly "
-                    f"(rc={self.proc.poll()}, "
-                    f"stderr={self.proc.stderr.read().decode()[:2000]})"
-                )
-            text = line.decode().strip()
-            if not text.startswith("{"):
-                continue
-            return json.loads(text)
-
-    def send(self, cmd: dict) -> dict:
-        self.proc.stdin.write((json.dumps(cmd) + "\n").encode())
-        self.proc.stdin.flush()
-        return self._read_json()
-
-    def set(self, **props):
-        result = self.send({"op": "set", "props": props})
-        assert result["status"] == "ok", result
-
-    def get(self, ref: str):
-        result = self.send({"op": "get", "ref": ref})
-        assert result["status"] == "ok", result
-        return result["value"]
-
-    def wait(self, ref: str, cond: str, value, timeout_ms: int = 3000):
-        result = self.send(
-            {
-                "op": "wait",
-                "ref": ref,
-                "cond": cond,
-                "value": value,
-                "timeout_ms": timeout_ms,
-            }
-        )
-        assert result["status"] == "ok", (
-            f"timeout waiting for {ref} {cond} {value} ({result})"
-        )
-
-
-@pytest.fixture(scope="module")
-def qml():
-    """Starts the QML runner subprocess and yields a connected client."""
-    env = os.environ.copy()
-    env["QT_QPA_PLATFORM"] = "offscreen"
-    # Empty (not "0"): libsaphir treats any non-empty DEVMODE string as True
-    env["DEVMODE"] = ""
-    env["PYTHONPATH"] = os.pathsep.join(
-        [
-            str(_GUI_DIR / "src" / "Saphir"),
-            str(_GUI_DIR.parent / "libsaphir" / "src"),
-            env.get("PYTHONPATH", ""),
-        ]
-    )
-
-    proc = subprocess.Popen(
-        [
-            sys.executable,
-            "-u",
-            str(Path(__file__).parent / "test_qml_bindings_runner.py"),
-        ],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        env=env,
-        cwd=str(_GUI_DIR),
-    )
-
-    client = QmlClient(proc)
-    ready = client._read_json()
-    assert ready["status"] == "ready", ready
-
-    yield client
-
-    with contextlib.suppress(Exception):
-        client.send({"op": "quit"})
-    proc.terminate()
-    try:
-        proc.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
-
-
-def _reset(qml, **overrides):
-    """Brings the fake controller to a known baseline, then applies overrides."""
-    props = {
-        "ready": True,
-        "analysisReady": True,
-        "systemState": SystemState.SystemReady.value,
-        "sourceName": "/mnt/usb0",
-        "cleanFilesCount": 0,
-        "infectedFilesCount": 0,
-        "queueSize": 0,
-        "systemLoadingProgress": 1.0,
-        "sourceDisconnected": False,
-        "copyPaused": False,
-    }
-    props.update(overrides)
-    qml.set(**props)
-
+from tests.qml_test_client import reset_controller
 
 # --- 12.1: panel visibility ---------------------------------------------
 
@@ -321,7 +202,7 @@ def _reset(qml, **overrides):
     ],
 )
 def test_panel_visibility(qml, state, overrides, expected):
-    _reset(qml, systemState=state.value, **overrides)
+    reset_controller(qml, systemState=state.value, **overrides)
     # The loading panel fades with a 1 s opacity behavior: wait for the
     # animation to settle (visible is bound to opacity > 0)
     if expected["pnlLoading"]:
@@ -338,27 +219,27 @@ def test_panel_visibility(qml, state, overrides, expected):
 
 
 def test_state_color_not_ready_wins(qml):
-    _reset(qml, ready=False, infectedFilesCount=2, cleanFilesCount=2)
+    reset_controller(qml, ready=False, infectedFilesCount=2, cleanFilesCount=2)
     assert qml.get("bindings.systemStateColor") == qml.get("env.colorFilterNotReady")
 
 
 def test_state_color_infected(qml):
-    _reset(qml, ready=True, infectedFilesCount=2, cleanFilesCount=0)
+    reset_controller(qml, ready=True, infectedFilesCount=2, cleanFilesCount=0)
     assert qml.get("bindings.systemStateColor") == qml.get("env.colorFilterInfected")
 
 
 def test_state_color_used(qml):
-    _reset(qml, ready=True, infectedFilesCount=0, cleanFilesCount=1)
+    reset_controller(qml, ready=True, infectedFilesCount=0, cleanFilesCount=1)
     assert qml.get("bindings.systemStateColor") == qml.get("env.colorFilterUsed")
 
 
 def test_state_color_ready(qml):
-    _reset(qml, ready=True, infectedFilesCount=0, cleanFilesCount=0)
+    reset_controller(qml, ready=True, infectedFilesCount=0, cleanFilesCount=0)
     assert qml.get("bindings.systemStateColor") == qml.get("env.colorFilterReady")
 
 
 def test_state_color_infected_beats_used(qml):
-    _reset(qml, ready=True, infectedFilesCount=2, cleanFilesCount=5)
+    reset_controller(qml, ready=True, infectedFilesCount=2, cleanFilesCount=5)
     assert qml.get("bindings.systemStateColor") == qml.get("env.colorFilterInfected")
 
 
@@ -369,12 +250,12 @@ def test_state_color_infected_beats_used(qml):
     ),
 )
 def test_infected_with_a_single_infected_file(qml):
-    _reset(qml, ready=True, infectedFilesCount=1, cleanFilesCount=0)
+    reset_controller(qml, ready=True, infectedFilesCount=1, cleanFilesCount=0)
     assert qml.get("bindings.infected") is True
 
 
 def test_counts(qml):
-    _reset(qml, queueSize=10, cleanFilesCount=3, infectedFilesCount=2)
+    reset_controller(qml, queueSize=10, cleanFilesCount=3, infectedFilesCount=2)
     assert qml.get("bindings.nbClean") == 3
     assert qml.get("bindings.nbInfected") == 2
     assert qml.get("bindings.nbWaiting") == 5
@@ -382,17 +263,17 @@ def test_counts(qml):
 
 
 def test_analyzing_flag(qml):
-    _reset(qml, systemState=SystemState.SystemAnalysisRunning.value)
+    reset_controller(qml, systemState=SystemState.SystemAnalysisRunning.value)
     assert qml.get("bindings.analyzing") is True
-    _reset(qml, systemState=SystemState.AnalysisCompleted.value)
+    reset_controller(qml, systemState=SystemState.AnalysisCompleted.value)
     assert qml.get("bindings.analyzing") is False
 
 
 def test_passthrough_flags(qml):
-    _reset(qml, sourceDisconnected=True, copyPaused=True)
+    reset_controller(qml, sourceDisconnected=True, copyPaused=True)
     assert qml.get("bindings.sourceDisconnected") is True
     assert qml.get("bindings.copyPaused") is True
-    _reset(qml, sourceDisconnected=False, copyPaused=False)
+    reset_controller(qml, sourceDisconnected=False, copyPaused=False)
     assert qml.get("bindings.sourceDisconnected") is False
     assert qml.get("bindings.copyPaused") is False
 
@@ -401,22 +282,22 @@ def test_passthrough_flags(qml):
 
 
 def test_start_button_disabled_with_empty_queue(qml):
-    _reset(qml, systemState=SystemState.SystemReady.value, queueSize=0)
+    reset_controller(qml, systemState=SystemState.SystemReady.value, queueSize=0)
     assert qml.get("btnStartStop.enabled") is False
 
 
 def test_start_button_enabled_with_queue(qml):
-    _reset(qml, systemState=SystemState.SystemReady.value, queueSize=5)
+    reset_controller(qml, systemState=SystemState.SystemReady.value, queueSize=5)
     assert qml.get("btnStartStop.enabled") is True
 
 
 def test_start_button_disabled_after_analysis(qml):
-    _reset(qml, systemState=SystemState.AnalysisCompleted.value, queueSize=5)
+    reset_controller(qml, systemState=SystemState.AnalysisCompleted.value, queueSize=5)
     assert qml.get("btnStartStop.enabled") is False
 
 
 def test_start_button_disabled_when_not_analysis_ready(qml):
-    _reset(
+    reset_controller(
         qml,
         systemState=SystemState.SystemReady.value,
         queueSize=5,
@@ -426,17 +307,19 @@ def test_start_button_disabled_when_not_analysis_ready(qml):
 
 
 def test_start_button_icon_start(qml):
-    _reset(qml, systemState=SystemState.SystemReady.value, queueSize=5)
+    reset_controller(qml, systemState=SystemState.SystemReady.value, queueSize=5)
     assert qml.get("btnStartStop.icon") == qml.get("constants.iconStart")
 
 
 def test_start_button_icon_pause_when_analyzing(qml):
-    _reset(qml, systemState=SystemState.SystemAnalysisRunning.value, queueSize=5)
+    reset_controller(
+        qml, systemState=SystemState.SystemAnalysisRunning.value, queueSize=5
+    )
     assert qml.get("btnStartStop.icon") == qml.get("constants.iconPause")
 
 
 def test_progress_gauge_values(qml):
-    _reset(
+    reset_controller(
         qml,
         systemState=SystemState.SystemAnalysisRunning.value,
         queueSize=10,
@@ -448,20 +331,20 @@ def test_progress_gauge_values(qml):
 
 
 def test_source_disconnection_alert(qml):
-    _reset(
+    reset_controller(
         qml,
         systemState=SystemState.SystemAnalysisRunning.value,
         sourceDisconnected=True,
     )
     assert qml.get("srcDisconnectedAlert.visible") is True
-    _reset(
+    reset_controller(
         qml,
         systemState=SystemState.SystemAnalysisRunning.value,
         sourceDisconnected=False,
     )
     assert qml.get("srcDisconnectedAlert.visible") is False
     # The alert is only shown while the analysis is running
-    _reset(
+    reset_controller(
         qml,
         systemState=SystemState.SystemReady.value,
         sourceDisconnected=True,
@@ -473,7 +356,7 @@ def test_source_disconnection_alert(qml):
 
 
 def _show_loading(qml):
-    _reset(
+    reset_controller(
         qml,
         ready=False,
         analysisReady=False,
@@ -490,7 +373,7 @@ def test_loading_panel_shown_while_not_ready(qml):
 
 def test_loading_panel_hidden_when_ready(qml):
     _show_loading(qml)
-    _reset(
+    reset_controller(
         qml,
         ready=True,
         analysisReady=True,
@@ -544,7 +427,7 @@ def test_loading_title_cleaning_when_resetting(qml):
 def test_loading_panel_compact_outside_boot_states(qml):
     # Outside SystemInactive/SystemStarting/SystemResetting the panel keeps
     # its small 60 px form even while fading
-    _reset(
+    reset_controller(
         qml,
         ready=False,
         analysisReady=False,

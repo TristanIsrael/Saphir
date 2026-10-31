@@ -18,6 +18,11 @@ Protocol (one JSON object per line):
 - ``{"op": "wait", "ref": "pnlLoading.opacity", "cond": "lt",
    "value": 0.1, "timeout_ms": 3000}``
   -> ``{"status": "ok"}`` or ``{"status": "timeout"}``
+- ``{"op": "set_queue", "files": [["a.bin", "FileClean"]]}``
+  -> ``{"status": "ok"}`` (replaces the analysis queue content)
+- ``{"op": "set_model_prop", "ref": "fileList", "prop": "filterClean",
+   "value": false}`` -> ``{"status": "ok"}``
+- ``{"op": "click", "ref": "btnFilterClean"}`` -> ``{"status": "ok"}``
 - ``{"op": "refs"}`` -> ``{"status": "ok", "refs": [...]}``
 - ``{"op": "quit"}`` -> exit 0
 
@@ -44,11 +49,14 @@ sys.path.insert(0, str(_LIBSAPHIR))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("DEVMODE", "0")
 
+from libsaphir import FileStatus
 from PySide6.QtCore import (
     Property,
     QAbstractListModel,
     QCoreApplication,
     QObject,
+    QPoint,
+    Qt,
     Signal,
 )
 from PySide6.QtGui import QColor, QGuiApplication
@@ -57,7 +65,9 @@ from PySide6.QtQml import (
     qmlRegisterSingletonInstance,
     qmlRegisterUncreatableType,
 )
+from PySide6.QtTest import QTest
 from Saphir.enums import SystemState
+from Saphir.queue_list_model import QueueListModel
 
 from Saphir import Enums
 
@@ -72,6 +82,18 @@ class _EmptyModel(QAbstractListModel):
 
     def data(self, row, role=0):
         return None
+
+
+class _TestQueueListModel(QueueListModel):
+    """Real ``QueueListModel`` with a test hook to swap the file set.
+
+    The file set is replaced in place (same QObject identity) so the QML
+    ``model:`` binding keeps pointing to the very same model.
+    """
+
+    def set_files(self, files: dict):
+        self._QueueListModel__files = files
+        self.reset()
 
 
 #: (property name, QML type, default value) of the fake controller
@@ -142,11 +164,18 @@ def _build_fake_controller():
         for store, default in inits:
             setattr(self, store, default)
         self._models = {name: _EmptyModel() for name in _MODEL_NAMES}
+        self._models["queueListModel"] = _TestQueueListModel({})
 
     attrs["__init__"] = __init__
 
+    # The models must be real (constant) properties to be visible from QML,
+    # like on the real ApplicationController
     for name in _MODEL_NAMES:
-        attrs[name] = lambda self, _name=name: self._models[_name]
+
+        def model_getter(self, _name=name):
+            return self._models[_name]
+
+        attrs[name] = Property(QObject, model_getter, constant=True)
 
     def _no_op(self, *args):
         """Sink for the controller's QML-called methods."""
@@ -204,6 +233,7 @@ class Runner:
     def __init__(self):
         self.app = QGuiApplication.instance() or QGuiApplication([])
         self.controller = _build_fake_controller()()
+        self.queue_model = self.controller._models["queueListModel"]
         self.refs = {}
 
         qmlRegisterUncreatableType(Enums, "Saphir", 1, 0, "Enums", "Not instanciable")
@@ -352,6 +382,105 @@ class Runner:
             raise RuntimeError("Source-disconnection alert not found")
         refs["srcDisconnectedAlert"] = alert
 
+        # The TopBar (always visible) and its clock / restriction labels.
+        # QML object properties cannot be read via QObject.property()
+        # (converter error), so the children are located in the item tree.
+        topbars = self._find_class("TopBar")
+        if len(topbars) != 1:
+            raise RuntimeError(f"Expected 1 TopBar, got {len(topbars)}")
+        refs["topbar"] = topbars[0]
+
+        topbar_texts = [
+            t
+            for t in self._find_class("StyledText")
+            if self._is_child_of(t, refs["topbar"])
+        ]
+        lbl_restriction = next(
+            (t for t in topbar_texts if "protected" in str(t.property("text")).lower()),
+            None,
+        )
+        lbl_time = next((t for t in topbar_texts if t is not lbl_restriction), None)
+        if lbl_restriction is None or lbl_time is None:
+            raise RuntimeError(
+                f"Expected clock + restriction labels in TopBar, "
+                f"got {len(topbar_texts)}"
+            )
+        refs["lblRestriction"] = lbl_restriction
+        refs["lblTime"] = lbl_time
+
+        # maHour: the MouseArea of the clock label (C++-native QML types
+        # report their C++ class name, e.g. QQuickMouseArea)
+        mouse_areas = [
+            m
+            for m in self._find_class("QQuickMouseArea")
+            if m.parent() is refs["lblTime"]
+        ]
+        if len(mouse_areas) != 1:
+            raise RuntimeError(
+                f"Expected 1 MouseArea on the clock, got {len(mouse_areas)}"
+            )
+        refs["maHour"] = mouse_areas[0]
+
+        # The Energy (battery / plugged) component of the TopBar
+        energies = [
+            e
+            for e in self._find_class("Energy")
+            if self._is_child_of(e, refs["topbar"])
+        ]
+        if len(energies) != 1:
+            raise RuntimeError(f"Expected 1 Energy in TopBar, got {len(energies)}")
+        energy = energies[0]
+        plugged = [t for t in self._find_class("QQuickText") if t.parent() is energy]
+        if len(plugged) != 1:
+            raise RuntimeError(f"Expected 1 plugged Text, got {len(plugged)}")
+        refs["icnPlugged"] = plugged[0]
+        batteries = [b for b in self._find_class("Button") if b.parent() is energy]
+        if len(batteries) != 1:
+            raise RuntimeError(f"Expected 1 battery Button, got {len(batteries)}")
+        refs["icnBattery"] = batteries[0]
+        # The icon image rendered by the battery button (its source is the
+        # battery SVG selected by the batteryLevel binding)
+        icon_images = [
+            i
+            for i in self._find_class("QQuickIconImage")
+            if self._is_child_of(i, refs["icnBattery"])
+        ]
+        if len(icon_images) != 1:
+            raise RuntimeError(
+                f"Expected 1 icon image in the battery button, got {len(icon_images)}"
+            )
+        refs["icnBatteryIcon"] = icon_images[0]
+
+        # The three filter buttons of the analysis panel (handheld row),
+        # ordered left to right: Clean, Infected, Others
+        filters = sorted(
+            [
+                b
+                for b in self._find_class("TwoStatesButton")
+                if self._is_child_of(b, refs["pnlAnalysis"])
+            ],
+            key=lambda b: b.property("x"),
+        )
+        if len(filters) != 3:
+            raise RuntimeError(f"Expected 3 filter buttons, got {len(filters)}")
+        for ref, button in zip(
+            ("btnFilterClean", "btnFilterInfected", "btnFilterOther"), filters
+        ):
+            refs[ref] = button
+
+        # The analysis file list view and its (real) queue model
+        list_views = [
+            lv
+            for lv in self._find_class("QQuickListView")
+            if self._is_child_of(lv, refs["pnlAnalysis"])
+        ]
+        if len(list_views) != 1:
+            raise RuntimeError(
+                f"Expected 1 ListView in AnalysisPanel, got {len(list_views)}"
+            )
+        refs["fileList"] = list_views[0]
+        refs["fileListModel"] = self.queue_model
+
         env = self.engine.singletonInstance("Components", "Environment")
         constants = self.engine.singletonInstance("Components", "Constants")
         if env is None or constants is None:
@@ -388,6 +517,12 @@ class Runner:
                 self._cmd_get(cmd)
             elif op == "wait":
                 self._cmd_wait(cmd)
+            elif op == "set_queue":
+                self._cmd_set_queue(cmd)
+            elif op == "set_model_prop":
+                self._cmd_set_model_prop(cmd)
+            elif op == "click":
+                self._cmd_click(cmd)
             elif op == "refs":
                 self.reply({"status": "ok", "refs": sorted(self.refs)})
             elif op == "quit":
@@ -444,6 +579,82 @@ class Runner:
 
         ok = _wait_until(predicate, timeout_ms)
         self.reply({"status": "ok" if ok else "timeout"})
+
+    def _cmd_set_queue(self, cmd):
+        """Replace the analysis queue: files is a list of [name, status] pairs."""
+        files = {}
+        for name, status_name in cmd.get("files", []):
+            status = getattr(FileStatus, status_name, None)
+            if status is None:
+                self.reply({"status": "error", "detail": f"bad status {status_name}"})
+                return
+            path = f"/mnt/usb0/{name}"
+            files[path] = {
+                "type": "file",
+                "name": name,
+                "path": "/mnt/usb0",
+                "filepath": path,
+                "status": status,
+                "progress": 100,
+            }
+        self.queue_model.set_files(files)
+        _pump(0.1)
+        self.reply({"status": "ok"})
+
+    def _cmd_set_model_prop(self, cmd):
+        """Set a property on the model bound to a list view ref.
+
+        The model is taken from the runner's direct reference (reading the
+        view's ``model`` property would hit the QML converter limitation).
+        """
+        ref = cmd.get("ref", "")
+        if ref != "fileList":
+            self.reply({"status": "error", "detail": f"unsupported model ref {ref}"})
+            return
+        model = self.queue_model
+        prop = cmd.get("prop", "")
+        if not hasattr(model, prop):
+            self.reply({"status": "error", "detail": f"no model property {prop}"})
+            return
+        setattr(model, prop, cmd["value"])
+        _pump(0.1)
+        self.reply({"status": "ok"})
+
+    def _cmd_click(self, cmd):
+        ref = cmd.get("ref", "")
+        obj = self.refs.get(ref)
+        if obj is None:
+            self.reply({"status": "error", "detail": f"bad ref {ref}"})
+            return
+        # Synthesize the click at the item's center in window coordinates.
+        # QTest.mouseClick supports a QWindow (not a QQuick item) and drives
+        # the real Qt6 input dispatch, so the QML MouseArea receives it
+        x, y = self._window_pos(obj)
+        center = QPoint(
+            int(x + obj.property("width") / 2.0),
+            int(y + obj.property("height") / 2.0),
+        )
+        QTest.mouseClick(
+            self.root,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            center,
+        )
+        _pump(0.1)
+        self.reply({"status": "ok"})
+
+    def _window_pos(self, obj):
+        """Top-left corner of the item in window coordinates, accumulating the
+        item offsets up the parent chain (no transform is used in the UI).
+        The accumulation stops at the root window, whose x/y are the screen
+        position, not content coordinates."""
+        x, y = 0.0, 0.0
+        node = obj
+        while node is not None and node is not self.root:
+            x += node.property("x") or 0.0
+            y += node.property("y") or 0.0
+            node = node.parent()
+        return x, y
 
 
 def main():
