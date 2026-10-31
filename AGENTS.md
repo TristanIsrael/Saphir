@@ -125,6 +125,7 @@ Naming conventions:
 
 - Respond in the same language as the prompt's
 - Never commit or push unless explicitly asked to do so
+- When the user asks an open question, don't start modifying the source code unless the discussion is finished and the user validates the changes to be done.
 
 ## Documentation standards
 
