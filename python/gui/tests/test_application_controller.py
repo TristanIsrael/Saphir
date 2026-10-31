@@ -27,12 +27,12 @@ class TestApplicationController(unittest.TestCase):
         self.assertEqual(self.controller.sourceName, "")
 
     def test_source_name_set(self):
-        self.controller._ApplicationController__storage_manager.set_source("disk1")
+        self.controller._ApplicationController__storage_manager.add_source("disk1")
         self.assertEqual(self.controller.sourceName, "disk1")
 
     def test_source_ready(self):
         self.assertFalse(self.controller.sourceReady)
-        self.controller._ApplicationController__storage_manager.set_source("disk1")
+        self.controller._ApplicationController__storage_manager.add_source("disk1")
         self.assertTrue(self.controller.sourceReady)
 
     def test_target_name_initial(self):

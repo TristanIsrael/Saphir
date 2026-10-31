@@ -22,11 +22,12 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         self.assertTrue(self.transfer.is_started)
         self.assertEqual(self.transfer.copied_files_count, 0)
@@ -37,18 +38,20 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         f2 = {
             "name": "b.txt",
             "type": "file",
             "size": 200,
             "status": FileStatus.FileInfected,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self.file_queue.enqueue("/b.txt", f2)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         self.assertEqual(self.transfer.progress, 0)
 
@@ -58,11 +61,12 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         payload = {"filepath": "/a.txt", "status": "ok", "fingerprint": "abc123"}
         self.transfer.on_copy_file(payload)
@@ -76,11 +80,12 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         payload = {"filepath": "/a.txt", "status": "error", "fingerprint": ""}
         self.transfer.on_copy_file(payload)
@@ -94,11 +99,12 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         payload = {"filepath": "/a.txt", "status": "ok", "fingerprint": "abc"}
         self.transfer.on_copy_file(payload)
@@ -113,11 +119,12 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         payload = {"filepath": "/a.txt", "status": "error", "fingerprint": ""}
         self.transfer.on_copy_file(payload)
@@ -132,11 +139,12 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         signals = []
         self.transfer.transferComplete.connect(lambda: signals.append(True))
@@ -152,18 +160,20 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         f2 = {
             "name": "b.txt",
             "type": "file",
             "size": 200,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self.file_queue.enqueue("/b.txt", f2)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         signals = []
         self.transfer.transferComplete.connect(lambda: signals.append(True))
@@ -180,11 +190,12 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         signals = []
         self.transfer.copiedFilesCountChanged.connect(lambda: signals.append(True))
@@ -200,11 +211,12 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         signals = []
         self.transfer.transferProgressChanged.connect(lambda: signals.append(True))
@@ -216,7 +228,7 @@ class TestTransferController(unittest.TestCase):
 
     def test_on_copy_file_nonexistent(self):
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         signals = []
         self.transfer.transferComplete.connect(lambda: signals.append(True))
@@ -232,11 +244,12 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         payload = {"filepath": "/a.txt", "status": "ok", "fingerprint": "abc"}
         self.transfer.on_copy_file(payload)
@@ -253,6 +266,7 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
@@ -266,7 +280,7 @@ class TestTransferController(unittest.TestCase):
         )
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         self.assertGreaterEqual(len(progress_signals), 1)
         self.assertGreaterEqual(len(count_signals), 1)
@@ -277,11 +291,12 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileInfected,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         self.assertEqual(self.transfer.progress, 0)
 
@@ -292,11 +307,12 @@ class TestTransferController(unittest.TestCase):
             "size": 100,
             "status": FileStatus.FileClean,
             "fingerprint": "abc123",
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         payload = {"filepath": "/a.txt", "status": "ok", "fingerprint": "abc123"}
         self.transfer.on_copy_file(payload)
@@ -313,11 +329,12 @@ class TestTransferController(unittest.TestCase):
             "size": 100,
             "status": FileStatus.FileClean,
             "fingerprint": "abc123",
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         payload = {"filepath": "/a.txt", "status": "ok", "fingerprint": "def456"}
         self.transfer.on_copy_file(payload)
@@ -333,11 +350,12 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
         payload = {"filepath": "/a.txt", "status": "ok", "fingerprint": "abc123"}
         self.transfer.on_copy_file(payload)
@@ -352,12 +370,13 @@ class TestTransferController(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "src_disk",
         }
         self.file_queue.enqueue("/a.txt", f1)
 
         with patch("Saphir.transfer_controller.Api") as mock_api:
             with patch("Saphir.transfer_controller.threading.Timer") as mock_timer:
-                self.transfer.start("src_disk", "dst_disk")
+                self.transfer.start(["src_disk"], "dst_disk")
 
             callback = mock_timer.call_args[0][1]
             callback()
@@ -365,6 +384,36 @@ class TestTransferController(unittest.TestCase):
             mock_api().copy_file.assert_called_once_with(
                 "src_disk", "/a.txt", "dst_disk"
             )
+
+    def test_do_start_transfer_multi_source(self):
+        # F1: every clean file is copied from the disk that contains it
+        f1 = {
+            "name": "a.txt",
+            "type": "file",
+            "size": 100,
+            "status": FileStatus.FileClean,
+            "disk": "disk0",
+        }
+        f2 = {
+            "name": "b.txt",
+            "type": "file",
+            "size": 200,
+            "status": FileStatus.FileClean,
+            "disk": "disk1",
+        }
+        self.file_queue.enqueue("/a.txt", f1)
+        self.file_queue.enqueue("/b.txt", f2)
+
+        with patch("Saphir.transfer_controller.Api") as mock_api:
+            with patch("Saphir.transfer_controller.threading.Timer") as mock_timer:
+                self.transfer.start(["disk0", "disk1"], "dst_disk")
+
+            callback = mock_timer.call_args[0][1]
+            callback()
+
+        calls = {c.args[1]: c.args for c in mock_api().copy_file.call_args_list}
+        self.assertEqual(calls["/a.txt"], ("disk0", "/a.txt", "dst_disk"))
+        self.assertEqual(calls["/b.txt"], ("disk1", "/b.txt", "dst_disk"))
 
     def _start_with_clean_files(self, *paths):
         for path in paths:
@@ -375,10 +424,11 @@ class TestTransferController(unittest.TestCase):
                     "type": "file",
                     "size": 100,
                     "status": FileStatus.FileClean,
+                    "disk": "source",
                 },
             )
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
     def test_copy_failure_completes_transfer_with_error(self):
         # F4: 3 clean files, 1 fails -> transferError(1) + transferComplete
@@ -568,7 +618,7 @@ class TestTransferControllerCopyPause(unittest.TestCase):
 
     def _start_transfer(self):
         with patch("Saphir.transfer_controller.threading.Timer"):
-            self.transfer.start("source", "target")
+            self.transfer.start(["source"], "target")
 
     def _on_disk_state(self, disk, state):
         self.transfer._TransferController__on_disk_state(disk, state)
@@ -582,6 +632,7 @@ class TestTransferControllerCopyPause(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self._start_transfer()
@@ -598,6 +649,7 @@ class TestTransferControllerCopyPause(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self._start_transfer()
@@ -612,6 +664,7 @@ class TestTransferControllerCopyPause(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self._start_transfer()
@@ -632,6 +685,7 @@ class TestTransferControllerCopyPause(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self._start_transfer()
@@ -648,6 +702,7 @@ class TestTransferControllerCopyPause(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self._start_transfer()
@@ -665,6 +720,7 @@ class TestTransferControllerCopyPause(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self._start_transfer()
@@ -687,6 +743,7 @@ class TestTransferControllerCopyPause(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self._start_transfer()
@@ -703,6 +760,7 @@ class TestTransferControllerCopyPause(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self._start_transfer()
@@ -723,12 +781,14 @@ class TestTransferControllerCopyPause(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         f2 = {
             "name": "b.txt",
             "type": "file",
             "size": 200,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self.file_queue.enqueue("/b.txt", f2)
@@ -755,12 +815,14 @@ class TestTransferControllerCopyPause(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         f2 = {
             "name": "b.txt",
             "type": "file",
             "size": 200,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self.file_queue.enqueue("/b.txt", f2)
@@ -788,6 +850,7 @@ class TestTransferControllerCopyPause(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self._start_transfer()
@@ -805,18 +868,21 @@ class TestTransferControllerCopyPause(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         f2 = {
             "name": "b.txt",
             "type": "file",
             "size": 200,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         f3 = {
             "name": "c.txt",
             "type": "file",
             "size": 300,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self.file_queue.enqueue("/b.txt", f2)
@@ -851,6 +917,7 @@ class TestTransferControllerCopyPause(unittest.TestCase):
             "type": "file",
             "size": 100,
             "status": FileStatus.FileClean,
+            "disk": "source",
         }
         self.file_queue.enqueue("/a.txt", f1)
         self._start_transfer()

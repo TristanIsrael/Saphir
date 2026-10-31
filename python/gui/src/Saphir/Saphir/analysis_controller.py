@@ -56,7 +56,7 @@ class AnalysisController(QObject):
         self,
         files: dict,
         analysis_components: list,
-        source_disk: str,
+        source_disks: list,
         analysis_mode_: AnalysisMode,
         parent: QObject | None = None,
     ) -> None:
@@ -67,7 +67,7 @@ class AnalysisController(QObject):
         QObject.__init__(self, parent)
 
         self.__files = files
-        self.__source_disk = source_disk
+        self.__source_disks = list(source_disks)
         self.__analysis_components = analysis_components
         self.__analysis_mode = analysis_mode_
         # True while the source disk is disconnected during the analysis:
@@ -87,9 +87,9 @@ class AnalysisController(QObject):
         # Request system info to determine the number of files to analyze concurrently
         Api().request_system_info()
 
-    def set_source_disk(self, source_disk: str):
-        """Set the name of the disk being analyzed."""
-        self.__source_disk = source_disk
+    def set_source_disks(self, source_disks: list):
+        """Set the names of the disks being analyzed."""
+        self.__source_disks = list(source_disks)
 
     def start_analysis(self) -> None:
         """Start the analysis: resume the AV queue and copy the files to the repository.
@@ -291,7 +291,7 @@ class AnalysisController(QObject):
             # Source disconnection during the analysis (scenario 8.8):
             # the analysis continues on the repository files, the copy loop
             # is held until the source is re-inserted.
-            if disk == self.__source_disk:
+            if disk in self.__source_disks:
                 if (
                     state == DiskState.DISCONNECTED.value
                     and self.__analysis_state == AnalysisState.AnalysisRunning
@@ -609,7 +609,8 @@ class AnalysisController(QObject):
                             self.__archive_mounted_name, [file["status"]]
                         )
                         self.__archive_mounted_filepath = file["filepath"]
-                        Api().mount_file(self.__source_disk, file["filepath"])
+                        # The archive is read from the disk that contains it
+                        Api().mount_file(file["disk"], file["filepath"])
                     else:
                         file["status"] = FileStatus.GettingFile
 
@@ -620,13 +621,9 @@ class AnalysisController(QObject):
                                 self.__archive_mounted_name, [file["status"]]
                             )
 
-                        source_disk = (
-                            self.__source_disk
-                            if self.__archive_mounted_name is None
-                            else self.__archive_mounted_name
-                        )
-
-                        Api().read_file(source_disk, filepath)
+                        # The file is read from the disk that contains it
+                        # (the source disk or the mounted archive)
+                        Api().read_file(file["disk"], filepath)
 
                         self.__start_times[filepath] = time.time()
                         self.__files_copy_queue_size += 1

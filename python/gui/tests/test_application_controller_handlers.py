@@ -34,7 +34,7 @@ def _make_mock_analysis_controller():
     mock.start_analysis = MagicMock()
     mock.stop_analysis = MagicMock()
     mock.reset = MagicMock()
-    mock.set_source_disk = MagicMock()
+    mock.set_source_disks = MagicMock()
     return mock
 
 
@@ -94,17 +94,68 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.AnalysisCompleted
         )
-        self.controller._ApplicationController__storage_manager.set_source("source0")
+        self.controller._ApplicationController__storage_manager.add_source("source0")
+        self.controller._ApplicationController__analysis_done = True
         self.controller._ApplicationController__handle_disk_state(
             {"disk": "target0", "state": "connected"}
         )
         self.assertEqual(self.controller.targetName, "target0")
 
+    def test_handle_disk_state_connected_before_scan_is_source(self):
+        # F1: every disk connected before the scan starts is a source
+        # (a partition of the media or an additional media)
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.SystemWaitingForUserAction
+        )
+        self.controller._ApplicationController__storage_manager.add_source("source0")
+        self.controller._ApplicationController__handle_disk_state(
+            {"disk": "source1", "state": "connected"}
+        )
+        self.assertEqual(
+            self.controller._ApplicationController__storage_manager.get_source_disks(),
+            ["source0", "source1"],
+        )
+        self.assertEqual(self.controller.targetName, "")
+
+    def test_handle_disk_state_connected_during_scan_ignored(self):
+        # F1: no new source disk is accepted once the scan has started
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.SystemAnalysisRunning
+        )
+        self.controller._ApplicationController__scan_started = True
+        self.controller._ApplicationController__storage_manager.add_source("source0")
+        self.controller._ApplicationController__handle_disk_state(
+            {"disk": "late0", "state": "connected"}
+        )
+        self.assertEqual(
+            self.controller._ApplicationController__storage_manager.get_source_disks(),
+            ["source0"],
+        )
+        self.assertEqual(self.controller.targetName, "")
+
+    def test_handle_disk_state_connected_after_target_ignored(self):
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.AnalysisCompleted
+        )
+        self.controller._ApplicationController__storage_manager.add_source("source0")
+        self.controller._ApplicationController__analysis_done = True
+        self.controller._ApplicationController__handle_disk_state(
+            {"disk": "target0", "state": "connected"}
+        )
+        self.controller._ApplicationController__handle_disk_state(
+            {"disk": "other0", "state": "connected"}
+        )
+        self.assertEqual(self.controller.targetName, "target0")
+        self.assertNotIn(
+            "other0",
+            self.controller._ApplicationController__storage_manager.get_source_disks(),
+        )
+
     def test_handle_disk_state_disconnected_source_not_used(self):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.SystemWaitingForUserAction
         )
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         self.controller._ApplicationController__handle_disk_state(
             {"disk": "usb0", "state": "disconnected"}
         )
@@ -114,7 +165,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.AnalysisCompleted
         )
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         self.controller._ApplicationController__system_used = True
         signals = []
         self.controller.systemMustBeReset.connect(lambda: signals.append(True))
@@ -132,7 +183,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.SystemAnalysisRunning
         )
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         self.controller._ApplicationController__system_used = True
         self.controller._ApplicationController__analysis_controller.get_analysis_state.return_value = AnalysisState.AnalysisRunning
         self.controller._ApplicationController__handle_disk_state(
@@ -177,7 +228,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.GeneratingReport
         )
-        self.controller._ApplicationController__storage_manager.set_source("source0")
+        self.controller._ApplicationController__storage_manager.add_source("source0")
         self.controller._ApplicationController__storage_manager.set_target("target0")
         signals = []
         self.controller.systemMustBeReset.connect(lambda: signals.append(True))
@@ -193,7 +244,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         tc = self.controller._ApplicationController__transfer_controller
         tc._copying = True
         tc._copy_paused = paused
-        tc._source_name = "source0"
+        tc._source_disks = ["source0"]
         tc._target_name = "target0"
         return tc
 
@@ -203,7 +254,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.CopyCleanFiles
         )
-        self.controller._ApplicationController__storage_manager.set_source("source0")
+        self.controller._ApplicationController__storage_manager.add_source("source0")
         self.controller._ApplicationController__storage_manager.set_target("target0")
         self.controller._ApplicationController__system_used = True
         self._set_transfer_copying()
@@ -222,7 +273,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.CopyCleanFiles
         )
-        self.controller._ApplicationController__storage_manager.set_source("source0")
+        self.controller._ApplicationController__storage_manager.add_source("source0")
         self.controller._ApplicationController__storage_manager.set_target("target0")
         self.controller._ApplicationController__system_used = True
         self._set_transfer_copying()
@@ -241,7 +292,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.CopyCleanFiles
         )
-        self.controller._ApplicationController__storage_manager.set_source("source0")
+        self.controller._ApplicationController__storage_manager.add_source("source0")
         self.controller._ApplicationController__storage_manager.set_target("target0")
         self._set_transfer_copying(paused=True)
 
@@ -376,7 +427,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.SystemWaitingForUserAction
         )
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         self.controller._ApplicationController__file_browser.folders_to_query = 1
         self.controller._ApplicationController__file_browser.is_enqueuing = False
 
@@ -401,7 +452,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.SystemGettingFilesList
         )
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         self.controller._ApplicationController__file_browser.folders_to_query = 1
         self.controller._ApplicationController__file_browser.is_enqueuing = True
 
@@ -424,7 +475,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.SystemGettingFilesList
         )
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         self.controller._ApplicationController__file_browser.folders_to_query = 1
         self.controller._ApplicationController__file_browser.is_enqueuing = True
 
@@ -439,6 +490,35 @@ class TestApplicationControllerHandlers(unittest.TestCase):
             self.controller._ApplicationController__file_browser.folders_to_query, 1
         )
         self.__mock_api_instance.get_files_list.assert_called()
+
+    def test_handle_list_files_folder_subquery_uses_response_disk(self):
+        # F1: the folder sub-query must be issued on the disk that
+        # provided the listing, not on the first source disk
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.SystemGettingFilesList
+        )
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb1")
+        self.controller._ApplicationController__file_browser.folders_to_query = 2
+        self.controller._ApplicationController__file_browser.is_enqueuing = True
+
+        files = [
+            {"type": "folder", "path": "/", "name": "subdir", "size": 0},
+        ]
+        self.controller._ApplicationController__handle_list_files(
+            {"disk": "usb1", "files": files}
+        )
+
+        # The thread pool call is asynchronous: wait for it
+        deadline = time.time() + 5
+        while (
+            not self.__mock_api_instance.get_files_list.called
+            and time.time() < deadline
+        ):
+            time.sleep(0.05)
+        self.__mock_api_instance.get_files_list.assert_called_with(
+            "usb1", False, "/subdir"
+        )
 
     def test_handle_list_files_analysis_running_ignores(self):
         self.controller._ApplicationController__workflow_controller.force_state(
@@ -470,7 +550,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.SystemGettingFilesList
         )
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         self.controller._ApplicationController__analysis_mode = (
             AnalysisMode.AnalyseWholeSource
         )
@@ -798,7 +878,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
     # --- __handle_copy_file ---
 
     def test_handle_copy_file(self):
-        self.controller._ApplicationController__storage_manager.set_source("src")
+        self.controller._ApplicationController__storage_manager.add_source("src")
         self.controller._ApplicationController__storage_manager.set_target("tgt")
         self.__files_queue["/clean.txt"] = {
             "filepath": "/clean.txt",
@@ -983,7 +1063,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.SystemWaitingForUserAction
         )
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         self.__files_queue["/test.txt"] = {
             "filepath": "/test.txt",
             "name": "test.txt",
@@ -1003,7 +1083,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
     # --- start_full_analysis ---
 
     def test_start_full_analysis(self):
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.SystemReady
         )
@@ -1016,10 +1096,37 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.assertTrue(self.controller.longProcessRunning)
         self.__mock_api_instance.get_files_list.assert_called_with("usb0", False, "/")
 
+    def test_start_full_analysis_all_partitions(self):
+        # F1: the full analysis lists the root of every source disk
+        # (every partition of the media and every additional media)
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb1")
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.SystemReady
+        )
+        self.controller.start_full_analysis()
+
+        self.assertEqual(
+            self.controller._ApplicationController__file_browser.folders_to_query, 2
+        )
+        roots = [c[0] for c in self.__mock_api_instance.get_files_list.call_args_list]
+        # The root of every source disk is listed
+        self.assertIn(("usb0", False, "/"), roots)
+        self.assertIn(("usb1", False, "/"), roots)
+
+    def test_start_full_analysis_no_source(self):
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.SystemReady
+        )
+        self.controller.start_full_analysis()
+
+        self.__mock_api_instance.get_files_list.assert_not_called()
+        self.assertFalse(self.controller.longProcessRunning)
+
     # --- enqueue_file / dequeue_file ---
 
     def test_enqueue_file(self):
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         file = {
             "filepath": "/test.txt",
             "name": "test.txt",
@@ -1037,7 +1144,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.assertFalse(self.controller.longProcessRunning)
 
     def test_enqueue_folder(self):
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         folder = {"filepath": "/subdir", "name": "subdir", "size": 0, "type": "folder"}
         self.controller._ApplicationController__file_browser.input_files_list[
             "/subdir"
@@ -1048,7 +1155,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.__mock_api_instance.get_files_list.assert_called()
 
     def test_dequeue_file(self):
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         file = {
             "filepath": "/test.txt",
             "name": "test.txt",
@@ -1068,7 +1175,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.assertFalse(self.controller.longProcessRunning)
 
     def test_dequeue_folder(self):
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         folder = {
             "filepath": "/subdir",
             "name": "subdir",
@@ -1097,14 +1204,14 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         )
 
     def test_dequeue_file_not_found(self):
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         self.controller.dequeue_file("/nonexistent")
         self.__mock_api_instance.error.assert_not_called()
 
     # --- __on_transfer_complete ---
 
     def test_on_transfer_complete(self):
-        self.controller._ApplicationController__storage_manager.set_source("src")
+        self.controller._ApplicationController__storage_manager.add_source("src")
         self.controller._ApplicationController__storage_manager.set_target("tgt")
         self.controller._ApplicationController__analysis_end_time = datetime.now()
         with (
@@ -1136,7 +1243,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
     # --- go_to_folder / go_to_parent_folder ---
 
     def test_go_to_folder(self):
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         self.controller.go_to_folder("/subdir")
         self.assertEqual(self.controller.currentFolder, "/subdir")
         self.__mock_api_instance.get_files_list.assert_called_with(
@@ -1144,7 +1251,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         )
 
     def test_go_to_parent_folder(self):
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         self.controller._ApplicationController__file_browser.current_folder = "/a/b/c"
         self.controller.go_to_parent_folder()
         self.assertEqual(self.controller.currentFolder, "/a/b")
@@ -1289,7 +1396,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
     # --- start_transfer ---
 
     def test_start_transfer(self):
-        self.controller._ApplicationController__storage_manager.set_source("src")
+        self.controller._ApplicationController__storage_manager.add_source("src")
         self.controller._ApplicationController__storage_manager.set_target("tgt")
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.AnalysisCompleted
@@ -1300,7 +1407,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
     # --- __make_analysis_report ---
 
     def test_make_analysis_report(self):
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         self.controller._ApplicationController__analysis_end_time = datetime.now()
         self.__files_queue["/clean.txt"] = {
             "filepath": "/clean.txt",
@@ -1350,7 +1457,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.__mock_api_instance.get_files_list.assert_not_called()
 
     def test_update_source_files_list_with_source(self):
-        self.controller._ApplicationController__storage_manager.set_source("usb0")
+        self.controller._ApplicationController__storage_manager.add_source("usb0")
         self.controller.update_source_files_list()
         self.__mock_api_instance.get_files_list.assert_called_with("usb0", False)
 

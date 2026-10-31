@@ -3,30 +3,85 @@ from Saphir import StorageManager
 
 
 class TestStorageManager(unittest.TestCase):
-
     def setUp(self):
         self.manager = StorageManager()
 
     def test_initial_state(self):
         self.assertEqual(self.manager.source_name, "")
         self.assertFalse(self.manager.source_ready)
+        self.assertEqual(self.manager.get_source_disks(), [])
         self.assertEqual(self.manager.target_name, "")
         self.assertFalse(self.manager.target_ready)
         self.assertEqual(self.manager.get_storages_count(), 0)
 
-    def test_set_source(self):
-        self.manager.set_source("disk1")
+    def test_add_source(self):
+        self.manager.add_source("disk1")
         self.assertEqual(self.manager.source_name, "disk1")
         self.assertTrue(self.manager.source_ready)
+        self.assertEqual(self.manager.get_source_disks(), ["disk1"])
 
-    def test_set_source_emits_signals(self):
+    def test_add_source_multiple_partitions(self):
+        # A multi-partition media produces several disk entries: every
+        # partition is a source disk, the first one is the source name
+        self.manager.add_source("disk1")
+        self.manager.add_source("disk2")
+        self.assertEqual(self.manager.source_name, "disk1")
+        self.assertEqual(self.manager.get_source_disks(), ["disk1", "disk2"])
+
+    def test_add_source_no_duplicate(self):
+        self.manager.add_source("disk1")
+        self.manager.add_source("disk1")
+        self.assertEqual(self.manager.get_source_disks(), ["disk1"])
+
+    def test_add_source_emits_signals(self):
         source_names = []
         source_ready = []
         self.manager.sourceNameChanged.connect(lambda name: source_names.append(name))
-        self.manager.sourceReadyChanged.connect(lambda ready: source_ready.append(ready))
-        self.manager.set_source("disk1")
+        self.manager.sourceReadyChanged.connect(
+            lambda ready: source_ready.append(ready)
+        )
+        self.manager.add_source("disk1")
         self.assertEqual(source_names, ["disk1"])
         self.assertEqual(source_ready, [True])
+        # Adding a second partition does not re-emit the ready signal
+        self.manager.add_source("disk2")
+        self.assertEqual(source_names, ["disk1", "disk1"])
+        self.assertEqual(source_ready, [True])
+
+    def test_set_sources(self):
+        self.manager.set_sources(["disk1", "disk2"])
+        self.assertEqual(self.manager.source_name, "disk1")
+        self.assertEqual(self.manager.get_source_disks(), ["disk1", "disk2"])
+        self.assertTrue(self.manager.source_ready)
+
+    def test_set_sources_empty(self):
+        self.manager.set_sources(["disk1"])
+        self.manager.set_sources([])
+        self.assertEqual(self.manager.source_name, "")
+        self.assertFalse(self.manager.source_ready)
+        self.assertEqual(self.manager.get_source_disks(), [])
+
+    def test_remove_source(self):
+        self.manager.add_source("disk1")
+        self.manager.add_source("disk2")
+        self.manager.remove_source("disk1")
+        self.assertEqual(self.manager.source_name, "disk2")
+        self.assertEqual(self.manager.get_source_disks(), ["disk2"])
+
+    def test_remove_source_last_emits_not_ready(self):
+        source_ready = []
+        self.manager.add_source("disk1")
+        self.manager.sourceReadyChanged.connect(
+            lambda ready: source_ready.append(ready)
+        )
+        self.manager.remove_source("disk1")
+        self.assertEqual(source_ready, [False])
+        self.assertFalse(self.manager.source_ready)
+
+    def test_remove_source_unknown(self):
+        self.manager.add_source("disk1")
+        self.manager.remove_source("unknown")
+        self.assertEqual(self.manager.get_source_disks(), ["disk1"])
 
     def test_set_target(self):
         self.manager.set_target("disk2")
@@ -37,13 +92,15 @@ class TestStorageManager(unittest.TestCase):
         target_names = []
         target_ready = []
         self.manager.targetNameChanged.connect(lambda name: target_names.append(name))
-        self.manager.targetReadyChanged.connect(lambda ready: target_ready.append(ready))
+        self.manager.targetReadyChanged.connect(
+            lambda ready: target_ready.append(ready)
+        )
         self.manager.set_target("disk2")
         self.assertEqual(target_names, ["disk2"])
         self.assertEqual(target_ready, [True])
 
     def test_clear_source(self):
-        self.manager.set_source("disk1")
+        self.manager.add_source("disk1")
         self.manager.clear_source()
         self.assertEqual(self.manager.source_name, "")
         self.assertFalse(self.manager.source_ready)
@@ -91,15 +148,18 @@ class TestStorageManager(unittest.TestCase):
         self.assertEqual(len(signals), 2)
 
     def test_reset(self):
-        self.manager.set_source("disk1")
-        self.manager.set_target("disk2")
+        self.manager.add_source("disk1")
+        self.manager.add_source("disk2")
+        self.manager.set_target("disk3")
         self.manager.on_storage_added("disk1")
         self.manager.on_storage_added("disk2")
+        self.manager.on_storage_added("disk3")
 
         self.manager.reset()
 
         self.assertEqual(self.manager.source_name, "")
         self.assertFalse(self.manager.source_ready)
+        self.assertEqual(self.manager.get_source_disks(), [])
         self.assertEqual(self.manager.target_name, "")
         self.assertFalse(self.manager.target_ready)
         self.assertEqual(self.manager.get_storages_count(), 0)
@@ -112,7 +172,7 @@ class TestStorageManager(unittest.TestCase):
         self.manager.targetNameChanged.connect(lambda name: target_names.append(name))
         self.manager.storagesChanged.connect(lambda: storages_signals.append(True))
 
-        self.manager.set_source("disk1")
+        self.manager.add_source("disk1")
         self.manager.set_target("disk2")
         self.manager.on_storage_added("disk1")
 
@@ -133,7 +193,7 @@ class TestStorageManager(unittest.TestCase):
         self.assertFalse(self.manager.source_ready)
 
         # Simulate: target becomes source, target cleared
-        self.manager.set_source(self.manager.target_name)
+        self.manager.set_sources([self.manager.target_name])
         self.manager.clear_target()
 
         self.assertEqual(self.manager.source_name, "disk1")

@@ -22,18 +22,18 @@
 
 - The system monitors the `DISK_STATE` events emitted by Safecor.
 - A storage media can contain **multiple partitions**. Safecor sends one message per partition, each message representing a "disk". There is no distinction between disk and partition at the GUI level.
-- The **first media** connected becomes the **source**.
-- The **second media** connected becomes the **target**.
+- Every disk connected **before the scan starts** is a **source disk**: the partitions of the source media and additional media to scan at the same time. The first connected disk is the source name.
+- **No new source disk is accepted once the scan has started** (a disk connected during the scan is ignored and logged).
+- The **first disk connected after the analysis completes** becomes the **target** (the single output media).
 - If the disk is disconnected **before** the user has made their choice, the system returns to the initial state (waiting for a media).
 - All media types are treated identically.
 - The mode choice is **irreversible** without a reset.
 
 **Target handling**:
 
-- The second media can be inserted **at any time** (before, during or after the analysis).
-- The system **notes** it immediately (disk name recorded).
-- The **copy is triggered automatically** only when the analysis is finished **and** a target is available.
-- If the target is inserted **after** the end of the analysis, the copy starts immediately.
+- The target is the first disk inserted **after the analysis completes** (the analysis of every source disk must be over before a disk can be the target).
+- The **copy is triggered automatically** when the target is connected (the analysis is finished by definition) and copies every clean file of every source disk to the single target.
+- A disk connected **after** the target is ignored (logged).
 
 **User interaction**:
 
@@ -43,7 +43,6 @@
 
 **Backlog**:
 
-- `[bug]` "Scan all" mode: verify that all partitions of the media are properly analyzed (today only the root `/` of the first disk is requested).
 - `[feature]` Allow the user to undo their mode choice without a reset.
 
 ---
@@ -677,7 +676,6 @@
 
 | Type | Reference | Description |
 |------|-----------|-------------|
-| `[bug]` | F1 | "Scan all" mode: verify that all partitions are properly analyzed |
 | `[feature]` | F1 | Allow the user to undo their mode choice without a reset |
 | `[feature]` | F2 | Mechanism for a full queue drain (clear queue) |
 | `[feature]` | F4 | Check the available space on the target before starting the copy |

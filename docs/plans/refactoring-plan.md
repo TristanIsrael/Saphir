@@ -754,20 +754,50 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 
 **Side fix (discovered while debugging, linked to #150)**: `Api().error()` re-publishes on `events/error`, the very topic the app subscribed to in #150 — logging a malformed copy-error payload from `on_copy_error`/`__handle_copy_error` started an infinite loop (tens of thousands of messages). Both handlers now silently ignore payloads that are not platform I/O copy notifications (the Safecor log-broadcast format is filtered in `__handle_copy_error` via `check_payload`).
 
-#### 10.8 [P2] F1: Full-disk analysis (all partitions)
+#### 10.8 [P2] F1: Full-disk analysis (all partitions) — ✅ DONE
 
 **Spec**: `features.md` F1 — "Scan all" mode must analyze **all partitions** of the media.
 
-**Current state**: `start_full_analysis()` requests only the root `/` of the first disk. Multi-partition disks produce multiple "disk" entries in Safecor, but only the first is analyzed.
+**Design decision (product rule, multi-source)**: a media is made of one or more
+partitions, each partition is a "disk" entry in Safecor. **Every disk connected
+before the scan starts is a source disk** (the partitions of the source media or
+additional media to scan at the same time); **no new source is accepted once the
+scan has started**. The **first disk connected after the analysis completes is
+the target** (the single output media). A disk connected after the target is
+ignored.
 
-**Work**:
-- In `start_full_analysis()`: iterate over **all** storages (partitions) from `StorageManager.get_storages()`, not just the source.
-- Queue files from each partition root.
-- Update `folders_to_query` count accordingly.
+**Implementation**:
+- `StorageManager`: `add_source` / `set_sources` / `remove_source` /
+  `get_source_disks` (a list of source disks, the first one is the source name).
+- `__handle_disk_state` → `__on_disk_connected` / `__on_disk_disconnected`:
+  the source/target assignment follows the product rule above; the
+  `analysis_done` flag marks that the analysis has completed at least once.
+- `start_full_analysis()`: requests the root of **every** source disk,
+  `folders_to_query = len(source disks)`; the folder sub-queries use the disk
+  of the response (`__handle_list_files`).
+- `AnalysisController`: `set_source_disks(list)`, scenario 8.8 holds on any
+  source disk, `read_file` / `mount_file` use the `disk` of the file
+  (each file carries its own disk since the listing).
+- `TransferController`: `copy_file` from the `disk` of each file; the 8.6
+  pause/resume and coherence check work per disk.
+- DEVMODE: the automatic scan start uses a 1 s grace timer (re-armed at every
+  source disk connection) so that the partitions of a media group together.
+- The analysis-completed state is no longer overwritten by the queued
+  `stateChanged(Stopped)` signal.
 
-**Files**: `application_controller.py`, `storage_manager.py` (expose all partitions)
+**Files**: `storage_manager.py`, `application_controller.py`,
+`analysis_controller.py`, `transfer_controller.py`,
+`tests/test_storage_manager.py`, `tests/test_transfer_controller.py`,
+`tests/test_application_controller_handlers.py`, `tests/test_analysis_controller.py`,
+`tests/test_workflow_multi_source.py` (new).
 
-**Validation**: Unit test: 2-partition disk → files from both partitions are queued.
+**Validation**:
+- Unit tests: multi-partition source disks (storage manager, full analysis root
+  listing of every disk, folder sub-query on the response disk, `read_file` /
+  `copy_file` per file disk, disk state rule source/target).
+- Integration: `test_workflow_multi_source.py` — two source disks attached
+  before the scan are both analyzed and every clean file is copied to the
+  single target disk.
 
 ---
 

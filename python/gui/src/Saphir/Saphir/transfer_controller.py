@@ -24,7 +24,7 @@ class TransferController(QObject):
     def __init__(self, file_queue: FileQueue, parent=None):
         super().__init__(parent)
         self._file_queue = file_queue
-        self._source_name: str = ""
+        self._source_disks: list = []
         self._target_name: str = ""
         self._copied_files_count: int = 0
         self._failed_files_count: int = 0
@@ -82,9 +82,9 @@ class TransferController(QObject):
             return 0
         return self._copied_files_count / self._clean_files_total
 
-    def start(self, source_name: str, target_name: str) -> None:
-        """Start copying all the clean files from the source to the target."""
-        self._source_name = source_name
+    def start(self, source_disks: list, target_name: str) -> None:
+        """Start copying all the clean files from the sources to the target."""
+        self._source_disks = list(source_disks)
         self._target_name = target_name
         self._copied_files_count = 0
         self._failed_files_count = 0
@@ -104,7 +104,8 @@ class TransferController(QObject):
 
     def _do_start_transfer(self) -> None:
         for filepath, file in self._file_queue.get_clean_files():
-            Api().copy_file(self._source_name, filepath, self._target_name)
+            # Each file is copied from the disk that contains it
+            Api().copy_file(file["disk"], filepath, self._target_name)
 
     @Slot(dict)
     def on_copy_file(self, payload: dict) -> None:
@@ -245,7 +246,7 @@ class TransferController(QObject):
         self._copy_paused = False
         self._paused_disk = ""
         self._checking_disk = ""
-        self._source_name = ""
+        self._source_disks = []
         self._target_name = ""
 
     ######
@@ -273,7 +274,9 @@ class TransferController(QObject):
             return
 
         if state == DiskState.DISCONNECTED.value:
-            if disk in (self._source_name, self._target_name) and not self._copy_paused:
+            if (
+                disk in self._source_disks or disk == self._target_name
+            ) and not self._copy_paused:
                 self.__set_copy_paused(True, disk)
         elif state == DiskState.CONNECTED.value and self._copy_paused:
             if disk == self._paused_disk:
@@ -301,7 +304,8 @@ class TransferController(QObject):
         self.__set_copy_paused(False)
         self._checking_disk = ""
         for filepath, file in self._file_queue.get_clean_files():
-            Api().copy_file(self._source_name, filepath, self._target_name)
+            # Each file is re-copied from the disk that contains it
+            Api().copy_file(file["disk"], filepath, self._target_name)
 
     def __on_coherence_check_list(self, disk: str, files: list) -> None:
         # Coherence check after a reconnection (8.6 step 4): the content of
@@ -322,11 +326,11 @@ class TransferController(QObject):
                 if f.get("status") == FileStatus.FileCopySuccess
             }
         else:
-            # The remaining files to copy must still be on the source
+            # The remaining files to copy from this disk must still be here
             expected = {
                 filepath
                 for filepath, f in self._file_queue.files.items()
-                if f.get("status") == FileStatus.FileClean
+                if f.get("status") == FileStatus.FileClean and f.get("disk") == disk
             }
 
         missing = expected - listed

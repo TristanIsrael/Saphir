@@ -217,12 +217,20 @@ The workflow is divided into 6 phases. Each phase has an associated **loading pr
 
 These rules are **always true** and must be enforced:
 
-### I1: Source Disk Immutability
-Once a source disk is set, it cannot be changed without a full reset.
+### I1: Source disk assignment rule
+Every disk connected **before the scan starts** is a source disk (the
+partitions of the source media and additional media to scan at the same time);
+no new source is accepted once the scan has started. The **first disk
+connected after the analysis completes** is the target.
 ```python
-# Guard: prevent source change after workflow begins
-if system_used:
-    raise WorkflowError("Source disk locked, reset required")
+# __on_disk_connected(): source before the scan, ignored during the
+# scan, target once the analysis is done
+if analysis_done:
+    storage_manager.set_target(disk)
+elif not scan_started:
+    storage_manager.add_source(disk)
+else:
+    log.warning("disk connected during the scan: ignored")
 ```
 
 ### I2: Queue Completeness

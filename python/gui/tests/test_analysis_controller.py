@@ -53,7 +53,7 @@ class TestAnalysisController(unittest.TestCase):
         Api().subscribe(f"{Topics.DISKS}/+/request")
         # A fresh copy per test: the controller mutates the list in place
         # (e.g. handle_av_failure), the class attribute must stay pristine.
-        self.__analysis_controller = AnalysisController(self.__files_queue, deepcopy(self.ANALYSIS_COMPONENTS), "Archives", AnalysisMode.AnalyseSelection)
+        self.__analysis_controller = AnalysisController(self.__files_queue, deepcopy(self.ANALYSIS_COMPONENTS), ["Archives"], AnalysisMode.AnalyseSelection)
 
     def __on_subscribed(self, mid):
         self.__nb_subscriptions = self.__nb_subscriptions + 1
@@ -1075,6 +1075,70 @@ class TestAnalysisController(unittest.TestCase):
         self.__files_queue["/2"] = { "status": FileStatus.FileClean }
         self.assertEqual(self.__analysis_controller.get_working_files_count(), 0)
 
+    # --- Multi-source analysis (F1) ---
+
+    def test_read_file_uses_file_disk(self):
+        # F1: every file is read from the disk that contains it, the
+        # files can come from different source disks (partitions)
+        self.__files_queue.clear()
+        f1 = {"type": "file", "path": "/", "name": "File1.txt", "size": 100}
+        f2 = {"type": "file", "path": "/", "name": "File2.txt", "size": 100}
+        f1["filepath"] = "/File1.txt"
+        f2["filepath"] = "/File2.txt"
+        f1["inqueue"] = True
+        f2["inqueue"] = True
+        f1["disk"] = "Part0"
+        f2["disk"] = "Part1"
+        self.__files_queue["/File1.txt"] = f1
+        self.__files_queue["/File2.txt"] = f2
+
+        self.__analysis_controller.set_source_disks(["Part0", "Part1"])
+
+        self.__messages_recv.clear()
+        self.__analysis_controller.start_analysis()
+
+        # Wait for the two read requests (the copy loop runs in a timer)
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            reads = {
+                m["payload"]["filepath"]: m["payload"]["disk"]
+                for m in self.__messages_recv
+                if m["topic"] == f"{Topics.READ_FILE}/request"
+            }
+            if len(reads) == 2:
+                break
+            time.sleep(0.1)
+        self.assertEqual(reads, {"/File1.txt": "Part0", "/File2.txt": "Part1"})
+
+    def test_multi_source_disk_disconnection_holds_analysis(self):
+        # Scenario 8.8 with several source disks: the analysis is held
+        # when any of the source disks is disconnected
+        self.__update_queue([
+            {"type": "file", "path": "/", "name": "File1.txt", "size": 100},
+            {"type": "file", "path": "/", "name": "File2.txt", "size": 100},
+        ])
+        self.__analysis_controller.set_source_disks(["Archives", "Part1"])
+        self.__analysis_controller.start_analysis()
+
+        # A disk that is not a source is disconnected: nothing happens
+        payload = NotificationFactory.create_notification_disk_state(
+            "OtherDisk", DiskState.DISCONNECTED
+        )
+        self.__mqtt_client.publish(Topics.DISK_STATE, payload)
+        time.sleep(0.5)
+        self.assertFalse(self.__analysis_controller._AnalysisController__source_held)
+
+        # One of the source disks is disconnected: the analysis is held
+        payload = NotificationFactory.create_notification_disk_state(
+            "Part1", DiskState.DISCONNECTED
+        )
+        self.__mqtt_client.publish(Topics.DISK_STATE, payload)
+
+        deadline = time.time() + 2
+        while not self.__analysis_controller._AnalysisController__source_held and time.time() < deadline:
+            time.sleep(0.05)
+        self.assertTrue(self.__analysis_controller._AnalysisController__source_held)
+
     # --- Source disconnection hold (scenario 8.8) ---
 
     def test_source_disconnection_holds_analysis(self):
@@ -1444,4 +1508,5 @@ class TestAnalysisController(unittest.TestCase):
             filepath = f"{"" if f.get("path") == "/" else f.get("path")}/{f.get("name")}"
             f["filepath"] = filepath
             f["inqueue"] = True
+            f["disk"] = "Archives"
             self.__files_queue[filepath] = f

@@ -15,7 +15,7 @@ class StorageManager(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._source_name: str = ""
+        self._source_disks: list = []
         self._source_ready: bool = False
         self._target_name: str = ""
         self._target_ready: bool = False
@@ -23,12 +23,12 @@ class StorageManager(QObject):
 
     @property
     def source_name(self) -> str:
-        """Return the name of the selected source disk."""
-        return self._source_name
+        """Return the name of the first source disk ("" if none)."""
+        return self._source_disks[0] if self._source_disks else ""
 
     @property
     def source_ready(self) -> bool:
-        """Return whether a source disk is selected and ready."""
+        """Return whether at least one source disk is selected and ready."""
         return self._source_ready
 
     @property
@@ -41,12 +41,41 @@ class StorageManager(QObject):
         """Return whether a target disk is selected and ready."""
         return self._target_ready
 
-    def set_source(self, disk: str) -> None:
-        """Select the source disk and emit the corresponding signals."""
-        self._source_name = disk
+    def add_source(self, disk: str) -> None:
+        """Register an additional source disk and emit the signals.
+
+        A media can have several partitions: every partition is a disk
+        entry in Safecor and each of them is registered as a source disk.
+        The first registered disk is the one returned by `source_name`.
+        """
+        if disk in self._source_disks:
+            return
+        was_ready = self._source_ready
+        self._source_disks.append(disk)
         self._source_ready = True
-        self.sourceNameChanged.emit(self._source_name)
-        self.sourceReadyChanged.emit(self._source_ready)
+        self.sourceNameChanged.emit(self._source_disks[0])
+        if not was_ready:
+            self.sourceReadyChanged.emit(self._source_ready)
+
+    def set_sources(self, disks: list) -> None:
+        """Replace the list of the source disks and emit the signals."""
+        self._source_disks = list(disks)
+        was_ready = self._source_ready
+        self._source_ready = bool(self._source_disks)
+        self.sourceNameChanged.emit(self._source_disks[0] if self._source_disks else "")
+        if was_ready != self._source_ready:
+            self.sourceReadyChanged.emit(self._source_ready)
+
+    def remove_source(self, disk: str) -> None:
+        """Remove a source disk (disconnected) and emit the signals."""
+        if disk not in self._source_disks:
+            return
+        self._source_disks.remove(disk)
+        was_ready = self._source_ready
+        self._source_ready = bool(self._source_disks)
+        self.sourceNameChanged.emit(self._source_disks[0] if self._source_disks else "")
+        if was_ready != self._source_ready:
+            self.sourceReadyChanged.emit(self._source_ready)
 
     def set_target(self, disk: str) -> None:
         """Select the target disk and emit the corresponding signals."""
@@ -55,12 +84,13 @@ class StorageManager(QObject):
         self.targetNameChanged.emit(self._target_name)
         self.targetReadyChanged.emit(self._target_ready)
 
+    def get_source_disks(self) -> list:
+        """Return the list of the registered source disks."""
+        return list(self._source_disks)
+
     def clear_source(self) -> None:
         """Remove the source disk selection."""
-        self._source_name = ""
-        self._source_ready = False
-        self.sourceNameChanged.emit(self._source_name)
-        self.sourceReadyChanged.emit(self._source_ready)
+        self.set_sources([])
 
     def clear_target(self) -> None:
         """Remove the target disk selection."""
@@ -92,12 +122,12 @@ class StorageManager(QObject):
 
     def reset(self) -> None:
         """Reset the storage state to its initial values."""
-        self._source_name = ""
+        self._source_disks = []
         self._source_ready = False
         self._target_name = ""
         self._target_ready = False
         self._storages.clear()
-        self.sourceNameChanged.emit(self._source_name)
+        self.sourceNameChanged.emit("")
         self.sourceReadyChanged.emit(self._source_ready)
         self.targetNameChanged.emit(self._target_name)
         self.targetReadyChanged.emit(self._target_ready)

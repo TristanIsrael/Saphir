@@ -50,6 +50,11 @@ from pathlib import Path
 
 from libsaphir import ANTIVIRUS_NEEDED, DEVMODE
 
+# In DEVMODE the full analysis is started automatically. The grace period
+# (re-armed at every source disk connection) lets the partitions of a
+# multi-partition media group together before the scan starts.
+DEVMODE_SCAN_START_GRACE = 1.0
+
 
 class ApplicationController(QObject):
     "Cette classe gère l'interface entre le socle et la GUI"
@@ -74,6 +79,12 @@ class ApplicationController(QObject):
     __log_listmodel: LogListModel
     __analysis_mode = AnalysisMode.AnalyseSelection
     __analysis_start_time = datetime.now()
+    # True once the analysis has completed at least once: the disks
+    # connected after that are targets, not sources (F1).
+    __analysis_done = False
+    # True once the scan of the sources has started (file listing in
+    # progress or analysis running): no new source disk is accepted.
+    __scan_started = False
     __disk_controller_ready = False
     __long_process_running = False
     __system_used = False
@@ -210,6 +221,8 @@ class ApplicationController(QObject):
         self.__report_controller.reportFailed.connect(self.__on_report_failed)
         self.__system_information_model = SystemInformationModel(self.__handheld)
 
+        self.__devmode_auto_start_timer = None
+
     def start(self, ready_callback):
         """Start the Safecor API connection with the platform or the debug broker."""
         self.__ready_callback = ready_callback
@@ -262,24 +275,28 @@ class ApplicationController(QObject):
 
     @Slot()
     def start_full_analysis(self):
-        """Start the analysis of the whole source disk, file list included."""
-        Api().info("Starting full device analysis")
+        """Start the analysis of every source disk, file list included."""
+        source_disks = self.__storage_manager.get_source_disks()
+        if not source_disks:
+            Api().error("No source disk to analyze")
+            return
+
+        # The scan has started: no new source disk will be accepted
+        self.__scan_started = True
+        Api().info(f"Starting full analysis of {len(source_disks)} disk(s)")
         self.__analysis_mode = AnalysisMode.AnalyseWholeSource
         self.__analysis_start_time = datetime.now()
-        self.__file_browser.folders_to_query = 1
+        self.__file_browser.folders_to_query = len(source_disks)
 
-        # We must retrieve the file list iteratively across the entire source disk.
-        # For this, we enqueue all files from the root directory, then request the
-        # file list of the first subdirectory, and on each response we proceed
-        # with the next directory.
+        # We must retrieve the file list iteratively across each source
+        # disk. For this, we enqueue all files from the root directory of
+        # each disk, then request the file list of the first subdirectory,
+        # and on each response we proceed with the next directory.
         self.__file_browser.is_enqueuing = True
         self.set_long_process_running(True)
 
-        Api().get_files_list(
-            self.__storage_manager.source_name,
-            False,
-            "/",
-        )
+        for disk in source_disks:
+            Api().get_files_list(disk, False, "/")
 
     @Slot(str, str)
     def enqueue_file(self, filetype: str, filepath: str):
@@ -353,6 +370,8 @@ class ApplicationController(QObject):
             and self.__analysis_ready
         ):
             Api().debug("User asked to start the analysis")
+            # The scan has started: no new source disk will be accepted
+            self.__scan_started = True
             self.__analysis_start_time = datetime.now()
             self.__eta_estimator.setup(self.__file_queue.size())
             self.__analysis_controller.start_analysis()
@@ -371,7 +390,8 @@ class ApplicationController(QObject):
 
         self.__set_system_state(SystemState.CopyCleanFiles)
         self.__transfer_controller.start(
-            self.__storage_manager.source_name, self.__storage_manager.target_name
+            self.__storage_manager.get_source_disks(),
+            self.__storage_manager.target_name,
         )
 
     @Slot()
@@ -422,6 +442,8 @@ class ApplicationController(QObject):
     def __reset_states(self):
         # Reset all models
         self.__system_used = False
+        self.__analysis_done = False
+        self.__scan_started = False
         self.__file_browser.current_folder = "/"
         self.__file_browser.input_files_list.clear()
         self.__input_files_listmodel.reset()
@@ -431,7 +453,7 @@ class ApplicationController(QObject):
         self.currentFolderChanged.emit()
         self.__analysis_controller.reset()
         self.__storage_manager.clear_source()
-        self.__analysis_controller.set_source_disk("")
+        self.__analysis_controller.set_source_disks([])
         self.__storage_manager.clear_target()
         self.totalFilesCountChanged.emit(0)
         self.cleanFilesCountChanged.emit(0)
@@ -518,7 +540,7 @@ class ApplicationController(QObject):
         self.__analysis_controller = AnalysisController(
             files=self.__file_queue.files,
             analysis_components=self.__analysis_components,
-            source_disk=self.__storage_manager.source_name,
+            source_disks=self.__storage_manager.get_source_disks(),
             analysis_mode_=self.__analysis_mode,
             parent=self,
         )
@@ -702,9 +724,11 @@ class ApplicationController(QObject):
         if self.__workflow_controller.state in locked_states:
             return
 
-        # in version 3.0 we handle multiple partitions on disks
-        # Each partition is a storage and we let the user choose the storage
-        # By default we consider the first storage notified as the source
+        # A media is made of one or more partitions: Safecor emits one disk
+        # entry per partition. Every disk connected before the analysis
+        # completes is a source disk (a partition of the source media or an
+        # additional media to scan at the same time). The first disk
+        # connected after the analysis completes is the target.
         disk = payload.get("disk")
         if disk is None:
             Api().error("The disk value is missing")
@@ -721,72 +745,69 @@ class ApplicationController(QObject):
         else:
             self.__on_storage_removed(disk)
 
-        if (
-            self.__storage_manager.source_name == ""
-            and state == DiskState.CONNECTED.value
-        ):
-            if self.__system_used:
-                # If the system has already been used and the user is trying
-                # to start over we prevent it
-                self.__set_system_state(SystemState.SystemMustBeReset)
-                self.systemMustBeReset.emit()
+        if state == DiskState.CONNECTED.value:
+            self.__on_disk_connected(disk)
+        else:
+            self.__on_disk_disconnected(disk)
+
+    def __on_disk_connected(self, disk: str) -> None:
+        """Assign a newly connected disk to the sources or to the target.
+
+        Before the analysis completes every connected disk is a source
+        disk (a partition of the source media or an additional media).
+        After the analysis completes, the first connected disk is the
+        target.
+        """
+        if self.__storage_manager.target_name == "":
+            if self.__analysis_done:
+                # The analysis is over: this disk is the target
+                if self.__transfer_controller.is_copy_paused:
+                    # Scenario 8.6: a reconnection while the copy is paused
+                    # is handled by the TransferController (coherence check,
+                    # auto-resume or SystemMustBeReset).
+                    return
+
+                self.__storage_manager.set_target(disk)
+
+                # TODO: Verify whether the disk has enough space
+                self.start_transfer()
+            elif self.__scan_started:
+                # The scan of the sources has already started: no new
+                # source disk is accepted
+                Api().warn(
+                    f"The disk {disk} was connected while the scan is in "
+                    "progress: it is ignored (remove it and re-insert it "
+                    "after the scan, or reset the system)"
+                )
             else:
-                # otherwise we set the first storage as the source
-                self.__storage_manager.set_source(disk)
-                self.__analysis_controller.set_source_disk(disk)
+                # The analysis has not started yet: this disk is a source
+                # (a partition of the source media or an additional media)
+                first_source = self.__storage_manager.source_name == ""
+                self.__storage_manager.add_source(disk)
+                self.__analysis_controller.set_source_disks(
+                    self.__storage_manager.get_source_disks()
+                )
 
                 if DEVMODE:
-                    self.start_full_analysis()
-        elif (
-            self.__storage_manager.source_name != ""
-            and self.__storage_manager.source_name == disk
-            and state == DiskState.DISCONNECTED.value
-        ):
-            # The source has been disconnected
-            # If the system has been used the user must reset it
-            # Otherwise we let go
-            if self.__transfer_controller.is_copying:
-                # Scenario 8.6: the copy is held by the TransferController
-                # (which monitors the disk states), do not reset.
-                return
+                    # Re-arm the grace timer so that the partitions of a
+                    # multi-partition media group together before the
+                    # automatic start. The disk state callbacks arrive on
+                    # the MQTT thread: a QTimer could not be armed from
+                    # here, a plain threading.Timer is used instead (the
+                    # same pattern as the AnalysisController copy loop).
+                    if self.__devmode_auto_start_timer is not None:
+                        self.__devmode_auto_start_timer.cancel()
+                    self.__devmode_auto_start_timer = threading.Timer(
+                        DEVMODE_SCAN_START_GRACE,
+                        self.__on_devmode_auto_start_timeout,
+                    )
+                    self.__devmode_auto_start_timer.start()
+        else:
+            Api().warn(f"The disk {disk} was connected after the target: ignored")
 
-            if (
-                self.__analysis_controller.get_analysis_state()
-                == AnalysisState.AnalysisRunning
-            ):
-                # Scenario 8.8: the analysis continues on the repository
-                # files, the copy loop is held (AnalysisController) until
-                # the source is re-inserted. Do not reset.
-                return
-
-            if self.__system_used:
-                self.__set_system_state(SystemState.SystemMustBeReset)
-                self.systemMustBeReset.emit()
-                return
-
-            self.__reset_states()
-        elif (
-            self.__storage_manager.source_name != ""
-            and self.__storage_manager.source_name != disk
-            and state == DiskState.CONNECTED.value
-        ):
-            # The target has been connected
-            if self.__transfer_controller.is_copy_paused:
-                # Scenario 8.6: a reconnection while the copy is paused is
-                # handled by the TransferController (coherence check,
-                # auto-resume or SystemMustBeReset).
-                return
-
-            self.__storage_manager.set_target(disk)
-
-            # TODO: Verify whether the disk has enough space
-            if True:
-                self.start_transfer()
-        elif (
-            self.__storage_manager.target_name != ""
-            and self.__storage_manager.target_name == disk
-            and state == DiskState.DISCONNECTED.value
-        ):
+    def __on_disk_disconnected(self, disk: str) -> None:
+        """Handle the disconnection of a source or of the target disk."""
+        if self.__storage_manager.target_name == disk:
             # The target has been disconnected
             if self.__transfer_controller.is_copying:
                 # Scenario 8.6: the copy is held by the TransferController
@@ -801,18 +822,67 @@ class ApplicationController(QObject):
             ):
                 self.__set_system_state(SystemState.SystemMustBeReset)
                 self.systemMustBeReset.emit()
+            return
+
+        if disk not in self.__storage_manager.get_source_disks():
+            return
+
+        # A source disk has been disconnected
+        if self.__transfer_controller.is_copying:
+            # Scenario 8.6: the copy is held by the TransferController
+            # (which monitors the disk states), do not reset. The source
+            # registration is kept for the coherence check on reconnection.
+            return
+
+        if (
+            self.__analysis_controller.get_analysis_state()
+            == AnalysisState.AnalysisRunning
+        ):
+            # Scenario 8.8: the analysis continues on the repository
+            # files, the copy loop is held (AnalysisController) until
+            # the source is re-inserted. Do not reset, keep the
+            # registration.
+            return
+
+        self.__storage_manager.remove_source(disk)
+        self.__analysis_controller.set_source_disks(
+            self.__storage_manager.get_source_disks()
+        )
+
         if (
             self.__storage_manager.target_ready
             and not self.__storage_manager.source_ready
         ):
             # If there is only one disk connected it becomes the source
-            self.__storage_manager.set_source(self.__storage_manager.target_name)
-            self.__analysis_controller.set_source_disk(
-                self.__storage_manager.target_name
+            self.__storage_manager.set_sources([self.__storage_manager.target_name])
+            self.__analysis_controller.set_source_disks(
+                self.__storage_manager.get_source_disks()
             )
             self.__storage_manager.clear_target()
             self.__file_browser.input_files_list.clear()
             self.__input_files_listmodel.reset()
+            return
+
+        # If the system has been used the user must reset it
+        # Otherwise we let go
+        if self.__system_used:
+            self.__set_system_state(SystemState.SystemMustBeReset)
+            self.systemMustBeReset.emit()
+            return
+
+        self.__reset_states()
+
+    def __on_devmode_auto_start_timeout(self):
+        """DEVMODE: start the full analysis automatically after the grace period."""
+        if (
+            self.__storage_manager.source_name == ""
+            or self.__storage_manager.target_name != ""
+            or self.__analysis_controller.get_analysis_state()
+            != AnalysisState.AnalysisStopped
+        ):
+            return
+
+        self.start_full_analysis()
 
     def __handle_list_disks(self, payload: dict):
         # If an analysis is running, we let the AnalysisController handle this message
@@ -837,11 +907,23 @@ class ApplicationController(QObject):
 
         Api().debug(f"Disks list received : {disks}")
         if len(disks) > 0:
-            # We set the first disk as the source disk
-            disk = disks[0]
-            self.__storage_manager.set_source(disk)
-            self.__analysis_controller.set_source_disk(disk)
-            Api().info(f"The source disk name is {self.__storage_manager.source_name}")
+            # Every disk listed before the scan starts is a source disk
+            # (a partition of a media or an additional media)
+            if (
+                self.__storage_manager.target_name == ""
+                and not self.__scan_started
+            ):
+                sources = self.__storage_manager.get_source_disks()
+                for disk in disks:
+                    if disk not in sources:
+                        sources.append(disk)
+                self.__storage_manager.set_sources(sources)
+                self.__analysis_controller.set_source_disks(
+                    self.__storage_manager.get_source_disks()
+                )
+            Api().info(
+                f"The source disks are {self.__storage_manager.get_source_disks()}"
+            )
 
     def __handle_list_files(self, payload: dict) -> None:
         # If the analysis is running we don't care about this message
@@ -884,10 +966,11 @@ class ApplicationController(QObject):
                     self.fileUpdated.emit(filepath, ["inqueue"])
                 elif file["type"] == "folder":
                     # It is a folder, so we fetch the files it contains
+                    # on the disk that provided the listing
                     self.__file_browser.folders_to_query += 1
                     self.__thread_pool.submit(
                         Api().get_files_list,
-                        self.__storage_manager.source_name,
+                        disk,
                         False,
                         filepath,
                     )
@@ -1073,6 +1156,7 @@ class ApplicationController(QObject):
             )
             self.__analysis_controller.stop_analysis()
             self.__analysis_end_time = datetime.now()
+            self.__analysis_done = True
             self.__set_system_state(SystemState.AnalysisCompleted)
 
     def __on_disk_controller_state_changed(self, ready: bool):
@@ -1093,6 +1177,12 @@ class ApplicationController(QObject):
             self.__set_system_state(SystemState.SystemAnalysisRunning)
         elif state == AnalysisState.AnalysisStopped:
             Api().info("Analysis is stopped")
+            # The stop at the end of the analysis is handled by the
+            # results handler (AnalysisCompleted): the state change
+            # signal is processed on the main thread after the results
+            # handler ran, do not overwrite the AnalysisCompleted state.
+            if self.__workflow_controller.state == SystemState.AnalysisCompleted:
+                return
             self.__set_system_state(SystemState.SystemWaitingForUserAction)
         else:
             Api().info("Analysis state is unknown")
@@ -1241,10 +1331,10 @@ class ApplicationController(QObject):
     @Slot(str)
     def on_storage_selected(self, disk: str):
         """Set the selected disk as the analysis source and reset the file browser."""
-        print("Storage changed to:", disk)
+        Api().info(f"Storage changed to: {disk}")
 
-        self.__storage_manager.set_source(disk)
-        self.__analysis_controller.set_source_disk(disk)
+        self.__storage_manager.set_sources([disk])
+        self.__analysis_controller.set_source_disks([disk])
         self.__file_browser.input_files_list.clear()
         self.__input_files_listmodel.reset()
 

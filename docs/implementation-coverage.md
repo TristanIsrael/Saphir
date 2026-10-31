@@ -43,19 +43,26 @@
 
 ---
 
-### F1 — Media detection & mode selection 🟡
+### F1 — Media detection & mode selection ✅
 
 **Implemented**:
-- Detection via `DISK_STATE` (`__handle_disk_state`, line 637) and `LIST_DISKS` (`__handle_list_disks`, line 716).
-- First media = source, second = target (lines 662-711).
+- Detection via `DISK_STATE` (`__handle_disk_state`) and `LIST_DISKS` (`__handle_list_disks`).
+- Source/target rule (10.8): every disk connected before the analysis
+  completes is a source (partitions + additional media), the first disk
+  connected after the analysis completes is the target.
 - "Scan the whole media?" dialog (`dlgAnalyseWholeStorage`, `MainScreenUi.ui.qml:372-381`).
 - Choice irreversible without reset.
-- Multi-partitions: `__storages` list + `comboStorages` selector.
+- Multi-partitions: `__storages` list + `comboStorages` selector; the full
+  analysis lists the root of every source disk.
 
 **Gaps / divergences**:
-- ⚠️ **Copy trigger**: currently the copy starts **immediately** on target connection (line 692-694), regardless of the analysis state. The spec requires the copy to start only once the analysis is finished.
-- 🟡 **Automatic resume**: no copy resume after re-insertion (see F4).
-- 🟡 `[bug]` "Scan all" mode only analyzes the root `/` of the first disk (lines 218, 207), not all partitions.
+- **Copy trigger** (resolved, 10.8): the target is, by construction, the first
+  disk connected *after* the analysis completes, so the copy starts only once
+  the analysis is finished.
+- **Automatic resume**: no copy resume after re-insertion (see F4).
+- ✅ `[bug]` (resolved, 10.8) "Scan all" mode now lists the root of **every**
+  source disk (every partition and every additional media) and the copy loop
+  reads each file from the disk that contains it.
 - 🟡 No explicit guard for the return to the initial state if the media is removed before the choice.
 
 ---
