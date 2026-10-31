@@ -1,7 +1,7 @@
 # Saphir Refactoring - Session Context
 
-> **Last update**: 2026-10-31
-> **Session status**: Phases 0-10 done (see `refactoring-plan.md`); in progress: Phase 11 (Functional Coverage)
+> **Last update**: 2026-11-01
+> **Session status**: Phases 0-12 done (see `refactoring-plan.md`); pending: Phase 13 (Viewer modernization) and Phase 14 (blocked on the external Safecor emulator)
 
 ## What was accomplished
 
@@ -18,9 +18,9 @@
 
 ## Current state
 
-- **Phases 0-10 of `refactoring-plan.md` are done** (refactor, tests, lint, Alpine package validation in chroot, documentation debt, missing features & NFRs #145-#152)
-- **In progress**: Phase 11 - Functional Coverage (7/8 sub-tasks already covered by the Phase 10 workflow tests; remaining: 11.8)
-- **Test baseline**: 444 passed, 3 skipped, 0 failed
+- **Phases 0-12 of `refactoring-plan.md` are done** (refactor, tests, lint, Alpine package validation in chroot, documentation debt, missing features & NFRs #145-#152, functional coverage #154, QML layer tests #155 + #156)
+- **Pending**: Phase 13 (Viewer modernization) and Phase 14 (semi-automated validation env, blocked on the external Safecor emulator)
+- **Test baseline**: 503 passed, 3 skipped, 1 xfailed (the single xfail documents the open D8 gap)
 - Package validation: `setup/chroot/chroot-build.sh` (7/8 packages built, GUI boot in DEVMODE validated; `saphir-container-eset` blocked by a dead ESET URL)
 
 ## Key decisions

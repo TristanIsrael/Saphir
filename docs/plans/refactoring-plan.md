@@ -1,6 +1,6 @@
 # Refactoring Plan - Saphir v3.x
 
-> **Status**: In progress — Phases 0-9 complete, Phases 10-14 pending
+> **Status**: In progress — Phases 0-12 complete, Phases 13-14 pending
 >
 > **Last updated**: 2026-10-29
 >
@@ -378,11 +378,11 @@ These rules must hold throughout refactoring:
 | 10 Missing features & NFRs | ✅ Done (8/8) | #145, #146, #147, #148, #149, #150, #151, #152 | — | Fingerprint, ReportFailed, disconnect handlers, AV failure, copy final check, pause/resume, multi-source full analysis |
 | 11 Functional coverage | ✅ Done (8/8 sub-tasks) | #154 (11.8) + Phase 10 tests | — | Error paths, NFRs, disconnection scenarios; ~88% strict |
 | 12.1/12.2/12.4/12.6 QML binding tests | ✅ Done | `f7ec7ad` | #155 | 40 tests: panel visibility (13 states), Bindings.qml, AnalysisPanel, loading panel (offscreen subprocess runner) |
-| 12.3/12.5/12.7 QML signal integration | ⏳ Pending | — | — | Python→QML signals, TopBar, filters |
+| 12.3/12.5/12.7 QML signal integration | ✅ Done | `24e8ae3` | #156 | 19 tests: Python→QML signals (static + dynamic), TopBar (clock, battery, plugged, classification), filter toggles on the real QueueListModel |
 | 13 Viewer modernization | ⏳ Pending | — | — | Lint, format, unit tests (0 → 85%) |
 | 14 Semi-automated validation env | ⏳ Pending (Not ready) | — | — | Human-driven test on Safecor emulator (operator console + state observer); blocked on emulator features |
 
-**Test baseline**: 484 passed, 3 skipped, 1 xfailed (2026-10-31, after Phase 12 binding tests; the single xfail documents the open D8 gap. Known broker-contention flake in the full suite under load — the failing workflow test passes in isolation)
+**Test baseline**: 503 passed, 3 skipped, 1 xfailed (2026-10-31, after Phase 12 signal tests; the single xfail documents the open D8 gap. Known broker-contention flake in the full suite under load — the failing workflow test passes in isolation)
 
 ---
 
@@ -395,9 +395,9 @@ These rules must hold throughout refactoring:
 | Phase 9 | ✅ done | — | Phases 0-8 ✅ |
 | Phase 10 | +400 / +100 | High | Phases 3-6 ✅ |
 | Phase 11 | +300 / +200 | High | Phase 10 |
-| Phase 12 | 12.1/12.2/12.4/12.6 ✅ done (`f7ec7ad`); 12.3/12.5/12.7 remaining ~+100 / +100 | Medium | Phases 5-6, 10 ✅ |
+| Phase 12 | ✅ done (`f7ec7ad`, `24e8ae3`) | Medium | Phases 5-6, 10 ✅ |
 | Phase 14 | +250 / +150 | Medium | Safecor emulator (external, **blocking**) |
-| **Remaining** | **0 / +450** | **~11 days** | — |
+| **Remaining** | **0 / +250** | **~2 days** | — |
 
 > **Note**: Phase 11 depends on Phase 10, and Phase 12 on Phase 10. Phase 14 is blocked on the
 > external Safecor emulator (interactive scenario API / observation hooks not yet built).
@@ -862,7 +862,7 @@ ignored.
 
 ---
 
-### Phase 12: GUI (QML) Test Coverage 🔄 IN PROGRESS (4/7 sub-tasks done)
+### Phase 12: GUI (QML) Test Coverage ✅ DONE (7/7 sub-tasks)
 
 **Goal**: Add automated tests for the QML layer — bindings, panel visibility, state-driven UI transitions, and Python↔QML signal integration. The QML code was **untested** (0% coverage); regressions in visibility logic or bindings were only caught manually.
 
@@ -883,7 +883,13 @@ ignored.
 - The runner registers a **fake `ApplicationController`** (same properties, `<name>Changed` signals and list models as the real one) and the real Python `Enums` singleton, then loads the real `MainScreen.qml`. A JSON-line protocol (`set` / `get` / `wait`) drives the fake controller and reads the QML tree.
 - `visible` is asserted directly for the four main panels; the `SystemLoadingPanel` fades with a 1 s opacity `Behavior`, so the tests wait for the opacity to settle (`visible` is bound to `opacity > 0`).
 - Objects are located by QML component class name (the volatile `_QMLTYPE_N` suffix is stripped) and disambiguated by position/label.
-- 12.3, 12.5, 12.7 (signal integration, TopBar, filters) remain.
+
+**Result (12.3, 12.5, 12.7 — `24e8ae3`, #156)**: 19 tests in `tests/test_qml_signals.py`, reusing the runner (now shared through `tests/qml_test_client.py` + a module-scoped `qml` fixture in `tests/conftest.py`). Key points:
+
+- The runner now owns the **real `QueueListModel`** (not a stub), so the filter tests exercise the production filtering logic.
+- 12.3 (static): every `ApplicationController` property the QML binds to is asserted signal-driven (`hasNotifySignal`) on the **real** controller (Api mocked), and every `ApplicationController.<member>` referenced by the QML exists on the real class. 12.3 (dynamic): setting a property on the fake controller (same `<name>Changed` signals) updates the QML side.
+- 12.5: clock ticks (Zulu by default, local after a synthesized click on `maHour`), battery icon per level, plugged icon visibility, classification label.
+- 12.7: the three filter toggles drive the real model's `filterClean` / `filterInfected` / `filterOther` and the `ListView` count updates; a synthesized click on a `TwoStatesButton` (via `QTest.mouseClick` on the window) toggles the checked state and the model.
 
 #### 12.1 [P0] QML binding tests (panel visibility) — ✅ DONE (#155)
 
@@ -923,7 +929,7 @@ ignored.
 
 **Effort**: Low (half day)
 
-#### 12.3 [P1] Python↔QML signal integration
+#### 12.3 [P1] Python↔QML signal integration — ✅ DONE (#156)
 
 **Gap**: Signals like `systemStateChanged`, `queueSizeChanged`, `infectedChanged`, `cleanChanged` are emitted by Python and consumed by QML. **No test** verifies the end-to-end signal path.
 
@@ -954,7 +960,7 @@ ignored.
 
 **Effort**: Low (half day)
 
-#### 12.5 [P2] TopBar elements
+#### 12.5 [P2] TopBar elements — ✅ DONE (#156)
 
 **Gap**: Clock, battery level, plugged state, classification label. **No test** verifies these bindings.
 
@@ -983,7 +989,7 @@ ignored.
 
 **Effort**: Low (2h)
 
-#### 12.7 [P2] Filter toggles (F17)
+#### 12.7 [P2] Filter toggles (F17) — ✅ DONE (#156)
 
 **Gap**: The three filter toggles (Clean, Infected, Waiting) in `FilesSelectionPanel`. **No test** verifies they correctly filter the proxy model.
 

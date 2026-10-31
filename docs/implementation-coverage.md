@@ -291,6 +291,8 @@ Compliant.
 - Each filter active by default.
 - Filter applies to the display only (underlying data untouched).
 
+**Verified by**: `tests/test_qml_signals.py` (Phase 12, #156) — each toggle drives the real `QueueListModel` filter and the list view count updates; a synthesized click on a filter button toggles the model.
+
 **Gaps / divergences**:
 - 🟡 `[fix]` inconsistent third-filter label ("Waiting" in PC layout, "Other" in tablet layout).
 
