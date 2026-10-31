@@ -1,47 +1,43 @@
 # Saphir Refactoring - Session Context
 
-> **Last update**: 2026-10-29
-> **Session status**: Phases 0-9 ✅ done (see `refactoring-plan.md`); next: Phase 10 (Missing features & NFRs)
+> **Last update**: 2026-10-31
+> **Session status**: Phases 0-10 done (see `refactoring-plan.md`); in progress: Phase 11 (Functional Coverage)
 
 ## What was accomplished
 
-### Documents created in `docs/plans/`
-
-- **`refactoring-plan.md`** — Plan en 5 phases : Foundation, State Machine, Data Controllers, Transfer, QML Cleanup
-- **`workflow-rules.md`** (moved to `docs/`) — Contrat d'états **v2** : 14 états, 25 transitions, 8 invariants, matrix UI, ownership MQTT
+- **`refactoring-plan.md`** — the phased refactoring plan (Phases 0-14)
+- **`workflow-rules.md`** (in `docs/`) — the state contract, v3.1: states, transitions, invariants, UI matrix, MQTT ownership, scenarios 8.1-8.10
 
 ## Reference docs (English, in `docs/`)
 
-- **`features.md`** — F1–F21 + NFR-1–5 (reference spec)
-- **`implementation-coverage.md`** — spec↔code audit
+- **`features.md`** — F1-F21 + NFR-1-5 (reference spec)
+- **`implementation-coverage.md`** — spec-to-code audit
 - **`test-strategy.md`** — test strategy
 - **`architecture.md`** — target architecture (validated)
-- **`workflow-rules.md`** — v2: added `SystemWaitingForTarget` (waiting for 2nd target), Stop/Reset/Cancel transitions, AV error-vs-panic distinction
+- **`workflow-rules.md`** — v3.1: scenarios 8.9/8.10, multi-source disk rule (I1)
 
 ## Current state
 
-- **Phases 0-9 du `refactoring-plan.md` sont terminées** (refactor, tests, lint, validation des paquets Alpine en chroot, dette documentaire)
-- **Prochaine phase**: Phase 10 - Missing features & NFRs (fingerprint NFR-1, ReportFailed, handlers de déconnexion, échec AV)
-- **Test baseline**: 350 passed, 3 skipped, 0 failed
-- Validation des paquets : `setup/chroot/chroot-build.sh` (7/8 paquets buildés, boot GUI DEVMODE validé ; `saphir-container-eset` bloqué par une URL ESET morte)
+- **Phases 0-10 of `refactoring-plan.md` are done** (refactor, tests, lint, Alpine package validation in chroot, documentation debt, missing features & NFRs #145-#152)
+- **In progress**: Phase 11 - Functional Coverage (7/8 sub-tasks already covered by the Phase 10 workflow tests; remaining: 11.8)
+- **Test baseline**: 444 passed, 3 skipped, 0 failed
+- Package validation: `setup/chroot/chroot-build.sh` (7/8 packages built, GUI boot in DEVMODE validated; `saphir-container-eset` blocked by a dead ESET URL)
 
 ## Key decisions
 
-- Un seul client MQTT via `Api()` singleton
-- Communication inter-contrôleurs : signaux Qt + `SystemState` uniquement
-- `WorkflowController` seul maître de `SystemState`
-- Vues modifiées en dernier
-- Handshake conservé (dette)
-- Archives désactivées (`MOUNT_ARCHIVES = False`)
+- A single MQTT client via the `Api()` singleton
+- Inter-controller communication: Qt signals + `SystemState` only
+- `WorkflowController` is the sole owner of `SystemState`
+- Views are modified last
+- Handshake kept (debt)
+- Archives disabled (`MOUNT_ARCHIVES = False`)
+- Multi-source disk rule (10.8): every disk connected before the scan starts is a source, no new source is accepted once the scan has started, the first disk connected after the analysis completes is the target
 
 ## Known issues
 
-> **Note** (2026-10-29) : ces problèmes, relevés à la phase de planification, ont été traités
-> durant les phases 0-7 (voir `refactoring-plan.md`).
+> **Note** (2026-10-29): the issues raised during planning were addressed
+> during Phases 0-7 (see `refactoring-plan.md`).
 
-- God class : `application_controller.py` (1268 lignes)
-- 4 dead states à supprimer
-- Race condition : `storagesCount` vs `systemState` pour visibilité UI
-- Race condition : `__get_transferred_ratio()` sans lock
-- Bug : `infected: nbInfected > 1` devrait être `> 0`
-- Debug leftovers : `/tmp/data.txt`, prints
+- God class: `application_controller.py` (largest controller)
+- Bug: `infected: nbInfected > 1` should be `> 0` (`Bindings.qml`, D8)
+- Broker-contention flake: a workflow test may fail in the full suite under load (passes in isolation)

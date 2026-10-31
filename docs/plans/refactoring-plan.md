@@ -375,13 +375,13 @@ These rules must hold throughout refactoring:
 | 7 Linting & static analysis | ✅ Done | `9bdfe42` | #54 | 122+27 ruff errors fixed, format applied, 0 remaining |
 | 8 Alpine package validation | ✅ Done | `4b0b1b2`, `056a659`, `cf86fbd`, `c459924`, `c94d4af` | #141, #142, #143, #144 | 7/8 packages built in the Alpine 3.21.9 chroot, GUI domain boots in DEVMODE; `saphir-container-eset` not buildable (ESET URL 404 - the official CI skips it too) |
 | 9 Documentation debt | ✅ Done | `4038c13` + round 2 | #139 | French→English (incl. accent-free), all class/method/module docstrings, dead code removed; 0 French comments, 0 public class/method without docstring |
-| 10 Missing features & NFRs | ⏳ In progress (5/8) | #145, #146, #147, #148, #149, #150 | — | Fingerprint, ReportFailed, disconnect handlers, AV failure, copy final check |
-| 11 Functional coverage | ⏳ Pending | — | — | Error paths, NFRs, disconnection scenarios |
+| 10 Missing features & NFRs | ✅ Done (8/8) | #145, #146, #147, #148, #149, #150, #151, #152 | — | Fingerprint, ReportFailed, disconnect handlers, AV failure, copy final check, pause/resume, multi-source full analysis |
+| 11 Functional coverage | ⏳ In progress (7/8 sub-tasks) | — (tests written in Phase 10) + 11.8 | — | Error paths, NFRs, disconnection scenarios; ~88% strict |
 | 12 GUI (QML) test coverage | ⏳ Pending | — | — | QML bindings, panel visibility, signal integration |
 | 13 Viewer modernization | ⏳ Pending | — | — | Lint, format, unit tests (0 → 85%) |
 | 14 Semi-automated validation env | ⏳ Pending (Not ready) | — | — | Human-driven test on Safecor emulator (operator console + state observer); blocked on emulator features |
 
-**Test baseline**: 421 passed, 3 skipped, 0 failed (2026-10-30, after 10.6; known boot-sequence flake in full suite under high load — `test_nominal_cycle` passes in isolation)
+**Test baseline**: 444 passed, 3 skipped, 0 failed (2026-10-31, after 10.8; known broker-contention flake in the full suite under load — the failing workflow test passes in isolation)
 
 ---
 
@@ -586,7 +586,9 @@ boots in DEVMODE. The full scan cycle in DEVMODE is covered by the project test 
 
 ---
 
-### Phase 10: Missing Features & NFRs Implementation ⏳ IN PROGRESS (10.1, 10.2, 10.3, 10.4, 10.5, 10.6 done)
+### Phase 10: Missing Features & NFRs Implementation ✅ DONE
+
+**Status**: Complete — 10.1 (#145), 10.2 (#146), 10.3 (#147), 10.4 (#148), 10.5 (#149), 10.6 (#150), 10.7 (#151), 10.8 (#152), all In review.
 
 **Goal**: Implement the features and NFRs that are specified in `docs/features.md` and `docs/workflow-rules.md` but **not yet coded**. These are prerequisites for Phase 11 (functional coverage testing).
 
@@ -801,92 +803,46 @@ ignored.
 
 ---
 
-### Phase 11: Functional Coverage ⏳ PENDING
+### Phase 11: Functional Coverage ⏳ IN PROGRESS
 
 **Goal**: Increase functional coverage from ~58% (strict) to ≥ 80% by addressing the highest-priority gaps in error paths, NFRs, and disconnection scenarios.
 
-**Current functional coverage** (2026-10-28):
+**Current functional coverage** (2026-10-31, after Phase 10 — the workflow tests written for 10.1–10.8 closed most of the gaps of this phase):
 
 | Category | Items | Covered | Partial | Not covered | Score |
 |----------|:-----:|:-------:|:-------:|:-----------:|:-----:|
-| Features (F1-F21) | 14 | 5 | 9 | 0 | 84% |
-| NFRs (NFR-1/5) | 4 | 1 | 2 | 1 | 59% |
-| Scenarios (8.1-8.8) | 8 | 1 | 5 | 2 | 50% |
-| **Total** | **26** | **7** | **16** | **3** | **~58%** |
+| Features (F1-F21) | 14 | 9 | 5 | 0 | 92% |
+| NFRs (NFR-1/5) | 4 | 3 | 1 | 0 | 75% |
+| Scenarios (8.1-8.10) | 8 | 8 | 0 | 0 | 100% |
+| **Total** | **26** | **20** | **6** | **0** | **~88%** |
+
+> Strict formula: `covered + 0.5 × partial`. The ≥ 80% target is **reached**; the remaining partials are QML-layer items (addressed by Phase 12) and NFR-4 (dirty-on-read explicit test).
 
 #### Sub-tasks (in decreasing priority order)
 
-##### 11.1 [P0] Fingerprint integrity verification (NFR-1)
-- **Gap**: No test verifies that Saphir compares fingerprints at each step (source→repository, repository→AV, repository→target)
-- **Work**:
-  - Add `test_fingerprint_verification.py`
-  - Test that a fingerprint mismatch on copy→repository marks the file as `Error`
-  - Test that a fingerprint mismatch on copy→target marks the file as `CopyError`
-  - Test that a matching fingerprint chain passes through to `CopySuccess`
-- **Files**: `tests/test_fingerprint_verification.py` (new), `analysis_helper.py` (if verification logic needs extraction)
-- **Effort**: Medium (1 day)
+##### 11.1 [P0] Fingerprint integrity verification (NFR-1) — ✅ DONE (Phase 10, #145)
+- Covered by: `test_av_integrity_check.py` (repository→AV: match/mismatch/missing/empty), `test_analysis_controller.py::test_analysis_response_fingerprint_error` (→ `Error`), `test_transfer_controller.py` copy-fingerprint tests (mismatch → `CopyError`, match → `CopySuccess`), `test_workflow_fingerprint_corruption.py` (end-to-end: a corrupted file is not copied).
 
-##### 11.2 [P0] Report generation failure (Scenario 8.7)
-- **Gap**: No test covers the `GeneratingReport → ReportFailed` transition
-- **Work**:
-  - Add test in `test_application_controller_handlers.py`: mock `ReportController.make_report` to raise an exception
-  - Assert state transitions to `ReportFailed`
-  - Assert that `reset()` from `ReportFailed` works
-- **Files**: `tests/test_application_controller_handlers.py` (extend)
-- **Effort**: Low (2h)
+##### 11.2 [P0] Report generation failure (Scenario 8.7) — ✅ DONE (Phase 10, #146)
+- Covered by: `test_workflow_controller.py` (`test_generating_report_to_report_failed`, `test_report_failed_to_resetting`, `test_report_failed_blocks_other_transitions`, `test_report_failure_cycle`) and the `ReportFailed` handler tests in `test_application_controller_handlers.py` (mocked `make_report` failure → state transition → reset).
 
-##### 11.3 [P1] Source disconnection during analysis (Scenario 8.8)
-- **Gap**: No test covers source DISCONNECTED while `SystemAnalysisRunning`
-- **Work**:
-  - Add test: state = `SystemAnalysisRunning`, publish `DISK_STATE` with source `DISCONNECTED`
-  - Assert analysis continues on repository files (AV not interrupted)
-  - Assert error flag is set / user prompted to reconnect
-  - Assert reconnection (same disk) clears the flag and analysis resumes
-- **Files**: `tests/test_application_controller_handlers.py` (extend), `application_controller.py` (if handler needs the error-flag logic)
-- **Effort**: Medium (1 day)
+##### 11.3 [P1] Source disconnection during analysis (Scenario 8.8) — ✅ DONE (Phase 10, #147)
+- Covered by: `test_workflow_source_disconnection_analysis.py` (hold + auto-resume on re-insertion), `test_application_controller_handlers.py::test_handle_disk_state_disconnected_source_analysis_running_holds` and the 8.8 hold tests in `test_analysis_controller.py` (multi-source variant in #152).
 
-##### 11.4 [P1] Source/target disconnection during copy + auto-resume (Scenario 8.6)
-- **Gap**: Only target disconnect → `SystemMustBeReset` is tested. Source disconnect during copy and the auto-resume path are not covered.
-- **Work**:
-  - Add test: state = `CopyCleanFiles`, source DISCONNECTED → error flag set, state stays `CopyCleanFiles`
-  - Add test: source reconnected (same disk) → copy resumes automatically
-  - Add test: source reconnected (different disk) → `SystemMustBeReset` (NFR-4)
-- **Files**: `tests/test_application_controller_handlers.py` (extend), `transfer_controller.py` (if resume logic needs extraction)
-- **Effort**: High (1-2 days)
+##### 11.4 [P1] Source/target disconnection during copy + auto-resume (Scenario 8.6) — ✅ DONE (Phase 10, #148)
+- Covered by: `test_workflow_source_disconnection_copy.py` (source hold + auto-resume + coherence check), `test_workflow_bug_target_disconnection.py` (target disconnect), `test_application_controller_handlers.py` copy-disconnect hold tests and the `transfer_controller.py` pause/resume unit tests.
 
-##### 11.5 [P1] AV engine failure during analysis (NFR-3)
-- **Gap**: No test covers an AV component transitioning to `ERROR`/`OFF` during an active analysis
-- **Work**:
-  - Add test: analysis running, one AV component state → `ERROR`
-  - Assert affected files get `Error` status (not clean)
-  - Assert already-analyzed files keep their status
-  - Assert if both AVs fail → analysis aborts → `SystemWaitingForUserAction`
-- **Files**: `tests/test_analysis_controller.py` (extend), `application_controller.py` (`__check_components_availability` during analysis)
-- **Effort**: Medium (1 day)
+##### 11.5 [P1] AV engine failure during analysis (NFR-3) — ✅ DONE (Phase 10, #149)
+- Covered by: `test_workflow_av_failure_analysis.py` (engine failure → incomplete files `Error`, abort when < `ANTIVIRUS_NEEDED` engines) and the `handle_av_failure` unit tests in `test_analysis_controller.py`.
 
-##### 11.6 [P2] Pause/Resume with partial analysis (Scenario 8.2)
-- **Gap**: Pause is tested, but resume with a partial queue (some files already analyzed) is not
-- **Work**:
-  - Add test: start analysis, analyze 1 of 3 files, pause
-  - Assert remaining files are still in queue with pending status
-  - Resume → assert only the 2 remaining files are analyzed
-  - Assert the already-analyzed file keeps its status
-- **Files**: `tests/test_analysis_controller.py` (extend)
-- **Effort**: Medium (half day)
+##### 11.6 [P2] Pause/Resume with partial analysis (Scenario 8.2) — ✅ DONE (Phase 10, #151)
+- Covered by: `test_workflow_pause_resume.py` (pause mid-analysis, resume → only the remaining files are analyzed, the already-analyzed file keeps its status) and the pause/resume unit tests in `test_analysis_controller.py`.
 
-##### 11.7 [P2] Individual copy failure (F4 error handling)
-- **Gap**: No test covers a single file copy failing while others succeed
-- **Work**:
-  - Add test: 3 clean files in queue, 1 copy returns `status != "ok"`
-  - Assert failed file gets `CopyError` status
-  - Assert other files continue copying
-  - Assert `copied_files_count` reflects only successes
-  - Assert final check detects mismatch (copied ≠ clean count)
-- **Files**: `tests/test_transfer_controller.py` (extend)
-- **Effort**: Low (2h)
+##### 11.7 [P2] Individual copy failure (F4 error handling) — ✅ DONE (Phase 10, #150)
+- Covered by: `test_workflow_copy_failure.py` (one failing file, the others are copied, the final check reports the discrepancy) and the copy-error unit tests in `test_transfer_controller.py`.
 
 ##### 11.8 [P2] Target disconnect before analysis (F1)
-- **Gap**: The "target disconnected before user made their choice → return to initial state" path is not explicitly tested
+- **Gap**: The "disk disconnected while nothing is set (no source, not used) → nothing happens" path is not explicitly tested
 - **Work**:
   - Add test: no source set, no system_used, disk DISCONNECTED
   - Assert state remains `SystemReady` (no source to reset)
@@ -895,12 +851,12 @@ ignored.
 
 #### Target coverage after Phase 11
 
-| Category | Before | After (target) |
-|----------|:------:|:--------------:|
-| Features | 84% | 90% |
-| NFRs | 59% | 85% |
-| Scenarios | 50% | 80% |
-| **Total** | **~58%** | **≥ 80%** |
+| Category | Before (2026-10-28) | Current (2026-10-31) | Target |
+|----------|:------:|:------:|:--------------:|
+| Features | 84% | 92% | 90% |
+| NFRs | 59% | 75% | 85% |
+| Scenarios | 50% | 100% | 80% |
+| **Total** | **~58%** | **~88%** | **≥ 80%** |
 
 **Validation**:
 - All new tests pass (`pytest tests/ -q`)

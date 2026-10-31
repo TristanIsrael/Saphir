@@ -2,7 +2,7 @@
 
 > **Status**: Stable
 >
-> **Last updated**: 2026-10-28
+> **Last updated**: 2026-10-31
 >
 > **v2 changes**: added `SystemWaitingForTarget` (waiting for the 2nd target after analysis), Stop / Reset / Copy-cancellation transitions, and the AV failure distinction (per-file error vs engine panic, NFR-3).
 >
@@ -13,6 +13,8 @@
 > **v2.3 changes**: renamed the analysis **Stop** button to **Pause** — there is **no hard stop**. Pausing suspends the analysis (files already analyzed keep their status) and the user can **resume** it later from the same state.
 >
 > **v3 changes**: added the `ReportFailed` permanent error state (report failure, #4); reviewed and fixed the invariants (I2 completion guard, I5 report failure, I7 consensus, added I9 reset idempotence); completed the error-handling matrix (source/target disconnection during copy **and** analysis, MQTT transport, power loss); added scenarios 8.6–8.8; resolved all open questions (§9). **Contract fully reviewed and validated.**
+>
+> **v3.1 changes**: scenarios 8.9 (AV engine failure during analysis) and 8.10 (individual copy failure + final check); invariant I1 rewritten as the **multi-source disk rule** (10.8): every disk connected before the scan starts is a source, no new source is accepted once the scan has started, and the first disk connected after the analysis completes is the target.
 
 ---
 

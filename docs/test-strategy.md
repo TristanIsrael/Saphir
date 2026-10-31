@@ -1,7 +1,7 @@
 # Validation test strategy — Saphir
 
-> **Status**: Active — pre-refactoring characterization phase
-> **Last updated**: 2026-10-28
+> **Status**: Active
+> **Last updated**: 2026-10-31
 > **Reference**: `docs/features.md` (F1–F21), `docs/workflow-rules.md` (state machine), `docs/plans/testing-plan.md`
 
 ---
@@ -124,21 +124,32 @@ This creates a venv, installs `requirements.txt` + `requirements-dev.txt`, and c
 pytest tests/
 
 # Integration tests only (require emulator + mock AV)
-pytest tests/test_workflow_nominal.py tests/test_workflow_bug_target_disconnection.py
+pytest tests/test_workflow_*.py
 
 # Unit tests only (fast, no external dependencies)
-pytest tests/ --ignore=tests/test_workflow_nominal.py --ignore=tests/test_workflow_bug_target_disconnection.py
+pytest tests/ --ignore=tests/test_workflow_nominal.py --ignore=tests/test_workflow_bug_target_disconnection.py --ignore=tests/test_workflow_pause_resume.py --ignore=tests/test_workflow_copy_failure.py --ignore=tests/test_workflow_fingerprint_corruption.py --ignore=tests/test_workflow_av_failure_analysis.py --ignore=tests/test_workflow_source_disconnection_analysis.py --ignore=tests/test_workflow_source_disconnection_copy.py --ignore=tests/test_workflow_multi_source.py
 ```
 
 ### 4.3 Test files
 
 | File | Level | Description |
 |------|-------|-------------|
-| `tests/test_analysis_controller.py` | Unit/Component | AnalysisController logic (queue, grouping, scan) |
-| `tests/test_ema_estimator.py` | Unit | EMA remaining-time estimator |
+| `tests/test_analysis_controller.py` | Unit/Component | AnalysisController logic (queue, grouping, scan, 8.8 hold, NFR-1, AV failure) |
+| `tests/test_av_integrity_check.py` | Unit | NFR-1 repository→AV fingerprint check (match/mismatch/missing/empty) |
+| `tests/test_eta_ema.py` | Unit | EMA remaining-time estimator |
 | `tests/test_report_controller.py` | Unit | Report generation (Jinja2 + WeasyPrint) |
+| `tests/test_storage_manager.py` | Unit | Multi-source disk storage (`add_source`/`set_sources`/`remove_source`) |
+| `tests/test_transfer_controller.py` | Unit | Copy orchestration, per-file disk, 8.6 pause/resume, NFR-1 target check, 8.10 final check |
+| `tests/test_workflow_controller.py` | Unit | State machine transitions (incl. `ReportFailed`, scenario 8.7) |
 | `tests/test_workflow_nominal.py` | **Integration** | Full nominal cycle (C.1): boot → analysis → copy → report → SystemMustBeReset |
-| `tests/test_workflow_bug_target_disconnection.py` | **Integration** | Bug characterization (C.2): target disconnect during copy → **xfail** (documents the bug) |
+| `tests/test_workflow_bug_target_disconnection.py` | **Integration** | Target disconnect during copy → `SystemMustBeReset` (bug C.2, fixed #148) |
+| `tests/test_workflow_pause_resume.py` | **Integration** | Scenario 8.2: pause mid-analysis, resume → remaining files only |
+| `tests/test_workflow_copy_failure.py` | **Integration** | Scenario 8.10: individual copy failure + final check |
+| `tests/test_workflow_fingerprint_corruption.py` | **Integration** | NFR-1: a corrupted file is not copied |
+| `tests/test_workflow_av_failure_analysis.py` | **Integration** | Scenario 8.9: AV engine failure during analysis |
+| `tests/test_workflow_source_disconnection_analysis.py` | **Integration** | Scenario 8.8: source disconnect during analysis (hold + auto-resume) |
+| `tests/test_workflow_source_disconnection_copy.py` | **Integration** | Scenario 8.6: source/target disconnect during copy (hold + auto-resume, NFR-4) |
+| `tests/test_workflow_multi_source.py` | **Integration** | F1 (10.8): two source disks analyzed, every clean file copied to the single target |
 
 ### 4.4 Test app entry point
 
@@ -159,17 +170,17 @@ The integration tests launch this as a subprocess and observe state transitions 
 
 ## 5. Characterization testing (pre-refactoring)
 
-The current phase uses **characterization testing** (inverse TDD): tests capture the **current behaviour, bugs included**, so the refactoring can be validated against them.
+The refactoring phase used **characterization testing** (inverse TDD): tests captured the **current behaviour, bugs included**, so the refactoring could be validated against them.
 
 - A test that encodes **correct behaviour** must keep passing throughout the refactoring.
-- A test that encodes a **current bug** (marked `xfail`) keeps failing until the refactoring fixes it.
+- A test that encodes a **current bug** (marked `xfail`) kept failing until the refactoring fixed it.
 
-**Current characterization tests**:
+**Characterization tests**:
 
 | Test | Documents | Expected |
 |------|-----------|----------|
 | `test_nominal_cycle` | Full workflow state sequence | **Pass** (valid behaviour) |
-| `test_target_disconnection_during_copy` | Target disconnect ignored during copy (state gate) | **Xfail** (bug, to be fixed by refactoring) |
+| `test_target_disconnection_during_copy` | Target disconnect during copy (bug C.2) | **Pass** — fixed by the refactoring (#148), the `xfail` marker was removed |
 
 ---
 
@@ -180,16 +191,17 @@ The current phase uses **characterization testing** (inverse TDD): tests capture
 | Scenario | Ref. | Level | Status |
 |----------|------|--------|--------|
 | Full nominal cycle (boot → analysis → copy → report → reset) | F1–F6 | Integration | ✅ `test_workflow_nominal.py` |
-| Target disconnection during copy | F4 | Integration | ✅ `test_workflow_bug_target_disconnection.py` (xfail) |
+| Multi-source full analysis (partitions + additional media) | F1 (10.8) | Integration | ✅ `test_workflow_multi_source.py` |
+| Target disconnection during copy | F4 | Integration | ✅ `test_workflow_bug_target_disconnection.py` |
+| Pause / resume during analysis (remaining files only) | F3 (8.2) | Integration | ✅ `test_workflow_pause_resume.py` |
+| Individual copy failure + final check | F4 (8.10) | Integration | ✅ `test_workflow_copy_failure.py` |
+| Fingerprint integrity (injected alteration) | NFR-1 | Integration | ✅ `test_workflow_fingerprint_corruption.py` |
+| AV failure during analysis | NFR-3 (8.9) | Integration | ✅ `test_workflow_av_failure_analysis.py` |
+| Source disconnection during analysis (hold + auto-resume) | 8.8 | Integration | ✅ `test_workflow_source_disconnection_analysis.py` |
+| Source/target disconnection during copy (hold + auto-resume) | F4 (8.6) | Integration | ✅ `test_workflow_source_disconnection_copy.py` |
 | File selection + queue (selection mode) | F2 | Integration | ⬜ backlog |
-| Analysis with infected consensus | F3 | Integration | ⬜ backlog |
-| Pause / resume during analysis | F5 | Integration | ⬜ backlog |
-| Single-disk mode (target inserted later) | F4 | Integration | ⬜ backlog |
-| Source/target disconnection during copy + auto-resume | F4 | Integration | ⬜ backlog |
-| Report generation failure → ReportFailed | F7 | Integration | ⬜ backlog |
-| Source disconnection during analysis | F4 | Integration | ⬜ backlog |
-| AV failure (NFR-3 — minimum number of engines) | NFR-3 | Integration | ⬜ backlog |
-| Fingerprint integrity (NFR-1 — injected alteration) | NFR-1 | Integration | ⬜ backlog |
+| Analysis with infected consensus (integration) | F3 | Integration | ⬜ backlog |
+| Report generation failure → ReportFailed (integration) | 8.7 | Integration | ⬜ backlog (covered at unit level in `test_workflow_controller.py` / `test_application_controller_handlers.py`) |
 | Consensus (pure logic) | F3 | Unit | ✅ existing |
 | EMA / ETA | F16 | Unit | ✅ existing |
 

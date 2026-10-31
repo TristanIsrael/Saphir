@@ -1,7 +1,7 @@
 # Implementation state vs specification
 
 > **Status**: Coverage audit
-> **Last updated**: 2026-10-28
+> **Last updated**: 2026-10-31
 > **Reference**: `docs/features.md` (F1–F21, NFR-1 to NFR-5)
 
 ## Legend
@@ -19,7 +19,7 @@
 
 | Ref. | Feature | Status | Main location |
 |------|----------|--------|------------------------|
-| F1 | Media detection & mode selection | 🟡 | `application_controller.py:637-713` |
+| F1 | Media detection & mode selection | ✅ | `application_controller.py` (`__handle_disk_state`) |
 | F2 | Navigation & file selection | 🟡 | `application_controller.py:182-281`, `FilesSelectionPanel.qml` |
 | F3 | Antivirus analysis | 🟡 | `analysis_controller.py`, `analysis_helper.py` |
 | F4 | Copy of clean files | 🟡 | `application_controller.py:307-325, 839-882` |
@@ -47,9 +47,10 @@
 
 **Implemented**:
 - Detection via `DISK_STATE` (`__handle_disk_state`) and `LIST_DISKS` (`__handle_list_disks`).
-- Source/target rule (10.8): every disk connected before the analysis
-  completes is a source (partitions + additional media), the first disk
-  connected after the analysis completes is the target.
+- Source/target rule (10.8): every disk connected **before the scan starts**
+  is a source (partitions + additional media), **no new source is accepted
+  once the scan has started** (a late disk is ignored and logged), and the
+  first disk connected **after the analysis completes** is the target.
 - "Scan the whole media?" dialog (`dlgAnalyseWholeStorage`, `MainScreenUi.ui.qml:372-381`).
 - Choice irreversible without reset.
 - Multi-partitions: `__storages` list + `comboStorages` selector; the full
@@ -59,7 +60,6 @@
 - **Copy trigger** (resolved, 10.8): the target is, by construction, the first
   disk connected *after* the analysis completes, so the copy starts only once
   the analysis is finished.
-- **Automatic resume**: no copy resume after re-insertion (see F4).
 - ✅ `[bug]` (resolved, 10.8) "Scan all" mode now lists the root of **every**
   source disk (every partition and every additional media) and the copy loop
   reads each file from the disk that contains it.
@@ -93,14 +93,14 @@
 - Engines parallelism: each file sent to all AV (line 199).
 - Consensus: `evaluate_result_consensus` (analysis_helper.py:110) — infected if **one** engine infected.
 - Pause/resume (F3, #151): `stop_analysis`/`start_analysis` + `stop`/`resume` topics (analysis_controller.py:70-86) — the UI button is a **Pause** (suspend + resume), not a hard stop. On resume, the interrupted files (`GettingFile` / `FileAvailableInRepository` / `FileAnalysing`) are re-queued, the already-analyzed files keep their final status and are not re-analyzed; stale results/errors for a file in a final state are ignored (terminal guard in `__handle_result` / `__handle_error`).
+- AV engine failure during analysis (NFR-3, #149): `handle_av_failure` — the files that can no longer reach a valid consensus are declared `Error` (the already-analyzed files keep their status); the analysis aborts to `SystemWaitingForUserAction` when fewer than `ANTIVIRUS_NEEDED` engines remain, otherwise it continues with the survivors (scenario 8.9).
 - Progression: `globalProgress`, `FilesProgress.qml`.
 - ETA: `EMAETAEstimator` (see F16).
 
 **Gaps / divergences**:
 - ⚠️ **Hardened parallelism**: `cpu_count = 8` hardcoded (analysis_controller.py:250, "because of bug #54") instead of the real number of cores.
-- ⚠️ **Ternary status**: the spec requires Clean/Infected/Error. The consensus returns a boolean (clean/infected). The `FileAnalysisError` status exists in the enum but the error handler is **disabled** (analysis_controller.py:346-362, commented code).
-- ❌ **Analysis error handling**: `__handle_error` is a no-op (print only).
-- 🟡 **Fingerprint copy**: see NFR-1 (not verified).
+- ✅ **Ternary status** (D5, resolved #149/#151): `Clean` / `Infected` / `Error` — `__handle_error` sets `FileAnalysisError` (terminal guard: a file in a final state is not re-processed) and removes the file from the repository.
+- ✅ **Fingerprint verification** (NFR-1, resolved #145): see NFR-1.
 
 ---
 
@@ -117,7 +117,7 @@
 
 **Gaps / divergences**:
 - ✅ **No cancellation (by design)**: there is no cancel button for the copy (neither before nor during); the only exits are insert a target, Reset, or Shutdown. `SystemWaitingForTarget` is a stable terminal-ish state (see workflow v2.2).
-- ⚠️ **Trigger** (D2, resolved): implementation triggers the copy immediately on target connection; the spec/workflow requires the copy **after the analysis ends**, triggered by the 2nd-media insertion (`AnalysisCompleted → CopyCleanFiles` / `SystemWaitingForTarget`). **Implementation to fix** (refactoring).
+- ✅ **Trigger** (D2, resolved, 10.8): the target is, by construction, the first disk connected *after* the analysis completes, so the copy starts only once the analysis is finished (`AnalysisCompleted → CopyCleanFiles` / `SystemWaitingForTarget`, workflow).
 - 🟡 `[feature]` No check of the available space on the target.
 - 🟡 **Available space displayed**: `targetAvailableSize` always 0 and `Property(bool, ...)` instead of `int` (application_controller.py:1242) → permanent "Available space: Unknown".
 
@@ -148,7 +148,7 @@ Compliant.
 **Gaps / divergences**:
 - ❌ **Report language selection**: `report_controller.py:68` **always** uses `scan_report_en.html`. The `scan_report_fr.html` template **exists but is never used** → violation of F14/NFR-5.
 - 🟡 **Incomplete content**: `partitions` = `""` (line 54), "total size analyzed" missing, no partition names.
-- ❌ **Error handling**: no `try/except` around WeasyPrint. A generation failure crashes the workflow instead of ending normally (spec divergence).
+- ✅ **Error handling** (resolved, #146): generation is wrapped in `try/except`; a failure ends the workflow in the permanent `ReportFailed` state (scenario 8.7, a Reset is required).
 - ⚠️ **Synchronous generation**: the PDF is generated on the MQTT thread (in `__finish_transfer`), risk of blocking.
 
 ---
@@ -352,20 +352,27 @@ Compliant.
 
 | Ref. | NFR | Status |
 |------|-----|--------|
-| NFR-1 | End-to-end integrity (fingerprint) | ❌ |
+| NFR-1 | End-to-end integrity (fingerprint) | ✅ |
 | NFR-2 | Source media integrity | ✅ |
 | NFR-3 | Minimum number of antivirus engines | ✅ |
 | NFR-4 | Dirty state & locking | 🟡 |
 | NFR-5 | Translatability | 🟡 |
 
-### NFR-1 — Fingerprint ❌
+### NFR-1 — Fingerprint ✅ (resolved #145)
 
-- The fingerprint is **retrieved** (in the file dict, `fingerprint`, application_controller.py:846, analysis_controller.py:117) but **never compared**.
-- ❌ No verification at analysis (the AV components do not re-verify the fingerprint).
-- ❌ No verification on the target copy: `__handle_copy_file` receives the `fingerprint` (line 846) but does **not** compare it to the source one.
-- ❌ No error trigger on divergence.
-
-**This is the most critical gap**: the end-to-end integrity guarantee is not effective.
+- **Source → repository**: the fingerprint is retrieved with the file
+  (`__on_file_available`) and recorded in the queue; the match with the
+  original is guaranteed by Safecor (spec).
+- **Repository → AV**: each AV domain re-verifies the fingerprint of the
+  repository file (`_abstract_antivirus_controller.py`); a mismatch is
+  reported with `fingerprint_error` on the analysis response and the file is
+  declared `Error` (`FileAnalysisError`).
+- **Repository → target**: `TransferController.on_copy_result` compares the
+  fingerprint of the copied file with the recorded one; a mismatch marks the
+  file `FileCopyError` (it is not copied) and the final check (8.10) reports
+  the discrepancy.
+- A verification failure declares the file `Error`, the chain continues on
+  the other files, and the error is traced in the journal and the report.
 
 ### NFR-2 — Source integrity ✅
 
@@ -380,7 +387,7 @@ Compliant.
 
 ### NFR-4 — Dirty state & locking 🟡
 
-- ⚠️ Contamination (D4, resolved): implementation emits `systemUsed` when the file is available in the **repository** (analysis_controller.py:187); the spec requires the system to become dirty at the **read by `disk-controller`** (the earliest, safest point). **Implementation to fix** (refactoring).
+- ✅ Contamination point (D4, resolved): `systemUsed` is emitted in `__on_file_available` — i.e. when the file has been **read by the disk-controller** and made available in the repository (the earliest, safest point).
 - 🟡 **Locking (different disk names)**: partial. The return to `SystemMustBeReset` exists (application_controller.py:666, 680) but the disk-name comparison logic for "same media → continue" is not explicit.
 - ⚠️ **Numeric gate**: `if self.__system_state.value >= SystemState.CopyCleanFiles.value: return` (line 640) — comparison by integer value, fragile.
 
@@ -414,10 +421,10 @@ These capabilities used to exist in the code without a spec entry. They are now 
 | # | Divergence | Spec | Implementation | Resolution |
 |---|-----------|------|----------------|------------|
 | D1 | Default theme (F7) | Light | `dark` (Environment.qml:14) | **Resolved**: keep `dark`; spec F7 updated to match |
-| D2 | Copy trigger (F1/F4) | After end of analysis | Immediate on target connection | **Resolved**: copy runs **after** the analysis, triggered by the 2nd-media insertion (workflow); implementation to fix |
+| D2 | Copy trigger (F1/F4) | After end of analysis | Immediate on target connection | **Resolved (10.8)**: the target is the first disk connected *after* the analysis completes, so the copy runs **after** the analysis |
 | D3 | Multilingual report (F14/NFR-5) | Template per language | Always EN | — (to fix) |
-| D4 | Contamination point (NFR-4) | disk-controller read | Placement in the repository | **Resolved**: dirty at **disk-controller read**; implementation to fix |
-| D5 | File status (F3) | Ternary (Clean/Infected/Error) | Binary + disabled error | — (to fix) |
+| D4 | Contamination point (NFR-4) | disk-controller read | Placement in the repository | **Resolved**: dirty at **disk-controller read** (`__on_file_available`) |
+| D5 | File status (F3) | Ternary (Clean/Infected/Error) | Binary + disabled error | **Resolved (#149/#151)**: `Error` is set via `__handle_error` (terminal guard) |
 | D6 | F11 progression | "Modal" | Panel (equivalent behavior) | — (equivalent behavior, accepted) |
 | D7 | File selection vs AV readiness (F1/F2) | Selection possible dès disk-controller prêt + disque, **sans** attendre les AV; the analysis trigger is separately gated by ready-to-analyze (AV + core + queue) | `SystemReady` gated behind `len(analysis_components) >= ANTIVIRUS_NEEDED` (application_controller.py:612-623) → selection blocked until the AV engines are ready | — (to fix) |
 | D8 | System visual status "Dirty" (F7) | A single infected file flips the visual status to *Dirty* (`nbInfected > 0`) | `Bindings.qml:13` uses `infected: nbInfected > 1` → one infected file is not enough | — (to fix) |
@@ -430,19 +437,19 @@ These capabilities used to exist in the code without a spec entry. They are now 
 
 | Type | Ref. | Description |
 |------|------|-------------|
-| `[bug]` | F1 | "Scan all" mode does not analyze all partitions |
-| `[fix]` | F4/NFR-1 | **End-to-end fingerprint verification** (analysis + target copy) — critical gap |
+| `[fix]` | F4/NFR-1 | **End-to-end fingerprint verification** (analysis + target copy) — **Resolved** (#145) |
 | `[fix]` | F4 | Final check: error if copied ≠ clean — **Resolved** (#150) |
 | `[fix]` | F4 | Source disconnection during copy → error + automatic resume — **Resolved** (#148) |
+| `[fix]` | F1 | "Scan all" mode does not analyze all partitions — **Resolved** (10.8, #152) |
+| `[fix]` | F4 (D2) | Copy trigger: run **after** the analysis ends, triggered by the 2nd-media insertion (not immediate on target connection) — **Resolved** (10.8) |
+| `[fix]` | NFR-4 (D4) | Contamination point: the system becomes dirty at the **disk-controller read** (not at the repository placement) — **Resolved** |
 | `[fix]` | F6 | Report template selection according to the language (use `scan_report_fr.html`) |
-| `[fix]` | F6 | PDF generation error handling (end normally) |
+| `[fix]` | F6 | PDF generation error handling (end normally) — **Resolved** (#146, `ReportFailed`) |
 | `[fix]` | F8 | Wire the classification (Safecor) instead of the hardcoded 0 |
 | `[fix]` | F3 | Analysis pause/resume without re-analyzing the processed files — **Resolved** (#151; the NFR-3 engine-failure part was done in #149) |
 | `[fix]` | F15 | Viewer button + guards (unavailability, config, idle) |
 | `[fix]` | F2 | Enqueue serialization (no concurrent) |
 | `[fix]` | F1/F2 (D7) | Decouple file selection from AV readiness — reach `SystemReady` when the disk-controller is ready (no AV requirement); gate the analysis trigger on ready-to-analyze (AV + core + queue) |
-| `[fix]` | F4 (D2) | Copy trigger: run **after** the analysis ends, triggered by the 2nd-media insertion (not immediate on target connection) |
-| `[fix]` | NFR-4 (D4) | Contamination point: the system becomes dirty at the **disk-controller read** (not at the repository placement) |
 | `[fix]` | F10 | Also interrupt the copy in progress on reset |
 | `[fix]` | F16 | Translate the ETA duration units (`j`/`h`/`min`) — NFR-5 |
 | `[fix]` | F17 | Harmonize the third filter label (Waiting vs Other) |
