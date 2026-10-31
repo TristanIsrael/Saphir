@@ -151,6 +151,21 @@ class TestApplicationControllerHandlers(unittest.TestCase):
             self.controller._ApplicationController__storage_manager.get_source_disks(),
         )
 
+    def test_handle_disk_state_disconnected_nothing_set(self):
+        # Phase 11.8: a disk disconnected while nothing is set (no source,
+        # the system has not been used) must not change the state
+        self.controller._ApplicationController__workflow_controller.force_state(
+            SystemState.SystemReady
+        )
+        self.controller._ApplicationController__handle_disk_state(
+            {"disk": "usb0", "state": "disconnected"}
+        )
+        self.assertEqual(
+            self.controller.systemState, SystemState.SystemReady.value
+        )
+        self.assertEqual(self.controller.sourceName, "")
+        self.assertEqual(self.controller.targetName, "")
+
     def test_handle_disk_state_disconnected_source_not_used(self):
         self.controller._ApplicationController__workflow_controller.force_state(
             SystemState.SystemWaitingForUserAction

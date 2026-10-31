@@ -376,7 +376,7 @@ These rules must hold throughout refactoring:
 | 8 Alpine package validation | ✅ Done | `4b0b1b2`, `056a659`, `cf86fbd`, `c459924`, `c94d4af` | #141, #142, #143, #144 | 7/8 packages built in the Alpine 3.21.9 chroot, GUI domain boots in DEVMODE; `saphir-container-eset` not buildable (ESET URL 404 - the official CI skips it too) |
 | 9 Documentation debt | ✅ Done | `4038c13` + round 2 | #139 | French→English (incl. accent-free), all class/method/module docstrings, dead code removed; 0 French comments, 0 public class/method without docstring |
 | 10 Missing features & NFRs | ✅ Done (8/8) | #145, #146, #147, #148, #149, #150, #151, #152 | — | Fingerprint, ReportFailed, disconnect handlers, AV failure, copy final check, pause/resume, multi-source full analysis |
-| 11 Functional coverage | ⏳ In progress (7/8 sub-tasks) | — (tests written in Phase 10) + 11.8 | — | Error paths, NFRs, disconnection scenarios; ~88% strict |
+| 11 Functional coverage | ✅ Done (8/8 sub-tasks) | #154 (11.8) + Phase 10 tests | — | Error paths, NFRs, disconnection scenarios; ~88% strict |
 | 12 GUI (QML) test coverage | ⏳ Pending | — | — | QML bindings, panel visibility, signal integration |
 | 13 Viewer modernization | ⏳ Pending | — | — | Lint, format, unit tests (0 → 85%) |
 | 14 Semi-automated validation env | ⏳ Pending (Not ready) | — | — | Human-driven test on Safecor emulator (operator console + state observer); blocked on emulator features |
@@ -803,7 +803,7 @@ ignored.
 
 ---
 
-### Phase 11: Functional Coverage ⏳ IN PROGRESS
+### Phase 11: Functional Coverage ✅ DONE
 
 **Goal**: Increase functional coverage from ~58% (strict) to ≥ 80% by addressing the highest-priority gaps in error paths, NFRs, and disconnection scenarios.
 
@@ -841,13 +841,8 @@ ignored.
 ##### 11.7 [P2] Individual copy failure (F4 error handling) — ✅ DONE (Phase 10, #150)
 - Covered by: `test_workflow_copy_failure.py` (one failing file, the others are copied, the final check reports the discrepancy) and the copy-error unit tests in `test_transfer_controller.py`.
 
-##### 11.8 [P2] Target disconnect before analysis (F1)
-- **Gap**: The "disk disconnected while nothing is set (no source, not used) → nothing happens" path is not explicitly tested
-- **Work**:
-  - Add test: no source set, no system_used, disk DISCONNECTED
-  - Assert state remains `SystemReady` (no source to reset)
-- **Files**: `tests/test_application_controller_handlers.py` (extend)
-- **Effort**: Low (1h)
+##### 11.8 [P2] Target disconnect before analysis (F1) — ✅ DONE (#154)
+- Covered by: `test_application_controller_handlers.py::test_handle_disk_state_disconnected_nothing_set` (a disk disconnected while nothing is set leaves the state, the source and the target untouched).
 
 #### Target coverage after Phase 11
 
