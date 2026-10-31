@@ -377,11 +377,12 @@ These rules must hold throughout refactoring:
 | 9 Documentation debt | ✅ Done | `4038c13` + round 2 | #139 | French→English (incl. accent-free), all class/method/module docstrings, dead code removed; 0 French comments, 0 public class/method without docstring |
 | 10 Missing features & NFRs | ✅ Done (8/8) | #145, #146, #147, #148, #149, #150, #151, #152 | — | Fingerprint, ReportFailed, disconnect handlers, AV failure, copy final check, pause/resume, multi-source full analysis |
 | 11 Functional coverage | ✅ Done (8/8 sub-tasks) | #154 (11.8) + Phase 10 tests | — | Error paths, NFRs, disconnection scenarios; ~88% strict |
-| 12 GUI (QML) test coverage | ⏳ Pending | — | — | QML bindings, panel visibility, signal integration |
+| 12.1/12.2/12.4/12.6 QML binding tests | ✅ Done | `f7ec7ad` | #155 | 40 tests: panel visibility (13 states), Bindings.qml, AnalysisPanel, loading panel (offscreen subprocess runner) |
+| 12.3/12.5/12.7 QML signal integration | ⏳ Pending | — | — | Python→QML signals, TopBar, filters |
 | 13 Viewer modernization | ⏳ Pending | — | — | Lint, format, unit tests (0 → 85%) |
 | 14 Semi-automated validation env | ⏳ Pending (Not ready) | — | — | Human-driven test on Safecor emulator (operator console + state observer); blocked on emulator features |
 
-**Test baseline**: 444 passed, 3 skipped, 0 failed (2026-10-31, after 10.8; known broker-contention flake in the full suite under load — the failing workflow test passes in isolation)
+**Test baseline**: 484 passed, 3 skipped, 1 xfailed (2026-10-31, after Phase 12 binding tests; the single xfail documents the open D8 gap. Known broker-contention flake in the full suite under load — the failing workflow test passes in isolation)
 
 ---
 
@@ -394,9 +395,9 @@ These rules must hold throughout refactoring:
 | Phase 9 | ✅ done | — | Phases 0-8 ✅ |
 | Phase 10 | +400 / +100 | High | Phases 3-6 ✅ |
 | Phase 11 | +300 / +200 | High | Phase 10 |
-| Phase 12 | +200 / +150 | Medium | Phases 5-6, 10 |
+| Phase 12 | 12.1/12.2/12.4/12.6 ✅ done (`f7ec7ad`); 12.3/12.5/12.7 remaining ~+100 / +100 | Medium | Phases 5-6, 10 ✅ |
 | Phase 14 | +250 / +150 | Medium | Safecor emulator (external, **blocking**) |
-| **Remaining** | **0 / +550** | **~13 days** | — |
+| **Remaining** | **0 / +450** | **~11 days** | — |
 
 > **Note**: Phase 11 depends on Phase 10, and Phase 12 on Phase 10. Phase 14 is blocked on the
 > external Safecor emulator (interactive scenario API / observation hooks not yet built).
@@ -861,9 +862,9 @@ ignored.
 
 ---
 
-### Phase 12: GUI (QML) Test Coverage ⏳ PENDING
+### Phase 12: GUI (QML) Test Coverage 🔄 IN PROGRESS (4/7 sub-tasks done)
 
-**Goal**: Add automated tests for the QML layer — bindings, panel visibility, state-driven UI transitions, and Python↔QML signal integration. The QML code is currently **untested** (0% coverage); regressions in visibility logic or bindings are only caught manually.
+**Goal**: Add automated tests for the QML layer — bindings, panel visibility, state-driven UI transitions, and Python↔QML signal integration. The QML code was **untested** (0% coverage); regressions in visibility logic or bindings were only caught manually.
 
 **Scope**: The GUI consists of:
 - `MainScreen.qml` — layout container, panel switching
@@ -872,11 +873,19 @@ ignored.
 - `AnalysisPanel.qml` — analysis progress, ETA, pause button
 - `FilesSelectionPanel.qml` — file browser, queue, filters
 - `FilesCopyPanel.qml` — copy progress, target prompt
-- `SystemLoadingPanel.qml` — boot/reset progress
-- `TopBar.qml` — clock, battery, classification
-- `LogDialog.qml`, `SystemInfoDialog.qml` — informational dialogs
+ - `SystemLoadingPanel.qml` — boot/reset progress
+ - `TopBar.qml` — clock, battery, classification
+ - `LogDialog.qml`, `SystemInfoDialog.qml` — informational dialogs
 
-#### 12.1 [P0] QML binding tests (panel visibility)
+**Result (12.1, 12.2, 12.4, 12.6 — `f7ec7ad`, #155)**: 40 tests (39 passed + 1 xfail documenting the open D8 gap) in `tests/test_qml_bindings.py`, driven by a subprocess runner `tests/test_qml_bindings_runner.py`. Key architectural points:
+
+- The QML is loaded **in a subprocess** (offscreen `QGuiApplication`): the handler tests already own a `QCoreApplication` in the pytest process, and a `QGuiApplication` cannot be created afterwards.
+- The runner registers a **fake `ApplicationController`** (same properties, `<name>Changed` signals and list models as the real one) and the real Python `Enums` singleton, then loads the real `MainScreen.qml`. A JSON-line protocol (`set` / `get` / `wait`) drives the fake controller and reads the QML tree.
+- `visible` is asserted directly for the four main panels; the `SystemLoadingPanel` fades with a 1 s opacity `Behavior`, so the tests wait for the opacity to settle (`visible` is bound to `opacity > 0`).
+- Objects are located by QML component class name (the volatile `_QMLTYPE_N` suffix is stripped) and disambiguated by position/label.
+- 12.3, 12.5, 12.7 (signal integration, TopBar, filters) remain.
+
+#### 12.1 [P0] QML binding tests (panel visibility) — ✅ DONE (#155)
 
 **Gap**: Phase 5 made panel visibility 100% declarative (bindings on `systemState`), but there is **no automated test** verifying that the correct panel is shown for each state.
 
@@ -899,7 +908,7 @@ ignored.
 
 **Effort**: Medium (1 day)
 
-#### 12.2 [P0] Bindings.qml derived properties
+#### 12.2 [P0] Bindings.qml derived properties — ✅ DONE (#155)
 
 **Gap**: `Bindings.qml` computes `systemStateColor`, status (Ready/Used/Dirty), and other derived values. **No tests** verify these computations.
 
@@ -930,7 +939,7 @@ ignored.
 
 **Effort**: Medium (1 day)
 
-#### 12.4 [P1] AnalysisPanel state transitions
+#### 12.4 [P1] AnalysisPanel state transitions — ✅ DONE (#155)
 
 **Gap**: The analysis panel shows different UI elements depending on analysis state (progress bar, ETA, pause button). **No test** verifies these transitions.
 
@@ -959,7 +968,7 @@ ignored.
 
 **Effort**: Low (2h)
 
-#### 12.6 [P2] SystemLoadingPanel progression
+#### 12.6 [P2] SystemLoadingPanel progression — ✅ DONE (#155)
 
 **Gap**: The loading panel shows progress (0→1.0) with step indicators. **No test** verifies the progression bindings.
 

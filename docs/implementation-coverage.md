@@ -427,7 +427,7 @@ These capabilities used to exist in the code without a spec entry. They are now 
 | D5 | File status (F3) | Ternary (Clean/Infected/Error) | Binary + disabled error | **Resolved (#149/#151)**: `Error` is set via `__handle_error` (terminal guard) |
 | D6 | F11 progression | "Modal" | Panel (equivalent behavior) | — (equivalent behavior, accepted) |
 | D7 | File selection vs AV readiness (F1/F2) | Selection possible dès disk-controller prêt + disque, **sans** attendre les AV; the analysis trigger is separately gated by ready-to-analyze (AV + core + queue) | `SystemReady` gated behind `len(analysis_components) >= ANTIVIRUS_NEEDED` (in `__handle_av_state`) → selection blocked until the AV engines are ready | — (to fix) |
-| D8 | System visual status "Dirty" (F7) | A single infected file flips the visual status to *Dirty* (`nbInfected > 0`) | `Bindings.qml:13` uses `infected: nbInfected > 1` → one infected file is not enough | — (to fix) |
+| D8 | System visual status "Dirty" (F7) | A single infected file flips the visual status to *Dirty* (`nbInfected > 0`) | `Bindings.qml:13` uses `infected: nbInfected > 1` → one infected file is not enough | — (to fix; documented by an `xfail` in `tests/test_qml_bindings.py`) |
 
 ---
 
@@ -474,12 +474,12 @@ _(none — D1/D2/D4 resolved; the remaining divergences D3/D5/D7/D8 are tracked 
 
 | Type | Location | Description |
 |------|-------------|-------------|
-| `[debt]` | `Bindings.qml:13` | `infected: nbInfected > 1` should be `> 0` |
+| `[debt]` | `Bindings.qml:13` | `infected: nbInfected > 1` should be `> 0` (D8, `xfail` in `tests/test_qml_bindings.py`) |
 | `[debt]` | `__handle_sysinfo` (`analysis_controller.py`) | `cpu_count = 8` hardcoded (bug #54) |
 | `[debt]` | `Progress.qml` | Unreferenced component |
 | `[debt]` | `Brightness.qml` | Dead feature (F19) |
 | `[debt]` | `MessagesPanel` | Hidden panel (F18) |
-| `[debt]` | `GUI/Saphir/Enums.qml` | Obsolete QML singleton (shadowed by Python) |
+| `[debt]` | `GUI/Saphir/Enums.qml` | Obsolete QML singleton (shadowed by Python) — confirmed by the QML binding tests, the Python `Enums` is the effective one |
 | `[debt]` | `scan_report_fr.html` | Orphan unused template |
 | `[debt]` | `targetAvailableSize` property | typed `bool` instead of `int` |
 | `[debt]` | `AnalysisPanel.qml` | Dead PC layout (handheld always true) (F21) |

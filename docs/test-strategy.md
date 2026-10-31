@@ -150,6 +150,8 @@ pytest tests/ --ignore=tests/test_workflow_nominal.py --ignore=tests/test_workfl
 | `tests/test_workflow_source_disconnection_analysis.py` | **Integration** | Scenario 8.8: source disconnect during analysis (hold + auto-resume) |
 | `tests/test_workflow_source_disconnection_copy.py` | **Integration** | Scenario 8.6: source/target disconnect during copy (hold + auto-resume, NFR-4) |
 | `tests/test_workflow_multi_source.py` | **Integration** | F1 (10.8): two source disks analyzed, every clean file copied to the single target |
+| `tests/test_qml_bindings.py` | **Component** | QML declarative bindings (Phase 12): panel visibility for every `SystemState`, `Bindings.qml` derived properties, `AnalysisPanel` state transitions, `SystemLoadingPanel` progression |
+| `tests/test_qml_bindings_runner.py` | **Component** | Offscreen subprocess runner: loads the real `MainScreen.qml` against a fake `ApplicationController` (see §4.6) |
 
 ### 4.4 Test app entry point
 
@@ -165,6 +167,17 @@ The integration tests launch this as a subprocess and observe state transitions 
 
 `tests/mock_av.py` — the mock antivirus controller (inherits `AbstractAntivirusController`).
 `tests/mock_av_manager.py` — lifecycle manager (start/stop subprocess, temp config).
+
+### 4.6 QML binding test runner
+
+The QML layer is tested offscreen with the **real** `MainScreen.qml` (Phase 12, #155). Two constraints shape the design:
+
+- A `QGuiApplication` cannot be created in the pytest process (the handler tests already own a `QCoreApplication`), so the QML runs **in a subprocess**: `tests/test_qml_bindings_runner.py`.
+- The app must boot **without an appliance**: the runner registers a **fake `ApplicationController`** (same `@Property` surface, `<name>Changed` signals and list models as the real one) plus the real Python `Enums` singleton, then loads the real QML.
+
+`tests/test_qml_bindings.py` (pytest) drives the runner over a JSON-line protocol (`set` / `get` / `wait`) and asserts on the live QML tree: panel `visible` per `SystemState`, `Bindings.qml` derived properties, `AnalysisPanel` transitions and `SystemLoadingPanel` progression. Objects are located by QML component class name (the volatile `_QMLTYPE_N` suffix is stripped); the loading panel's 1 s opacity fade is handled by waiting for the opacity to settle.
+
+Known limitation: the runner stubs the QML singletons `Sensors`/`Energy` (not needed by the tested bindings), and the open D8 gap (`infected: nbInfected > 1` should be `> 0`) is documented as an `xfail`.
 
 ---
 
