@@ -128,6 +128,14 @@ pytest tests/test_workflow_*.py
 
 # Unit tests only (fast, no external dependencies)
 pytest tests/ --ignore=tests/test_workflow_nominal.py --ignore=tests/test_workflow_bug_target_disconnection.py --ignore=tests/test_workflow_pause_resume.py --ignore=tests/test_workflow_copy_failure.py --ignore=tests/test_workflow_fingerprint_corruption.py --ignore=tests/test_workflow_av_failure_analysis.py --ignore=tests/test_workflow_source_disconnection_analysis.py --ignore=tests/test_workflow_source_disconnection_copy.py --ignore=tests/test_workflow_multi_source.py
+
+# Viewer suite (shares the GUI venv)
+cd python/viewer
+DEVMODE=1 pytest tests/ -q
+
+# Viewer coverage
+DEVMODE=1 ../gui/.venv/bin/coverage run --source=src/viewer/Viewer -m pytest tests/ -q
+../gui/.venv/bin/coverage report -m
 ```
 
 ### 4.3 Test files
@@ -154,6 +162,15 @@ pytest tests/ --ignore=tests/test_workflow_nominal.py --ignore=tests/test_workfl
 | `tests/test_qml_signals.py` | **Component** | QML signal integration (Phase 12): Python→QML signal path (static notify check on the real controller + dynamic updates), `TopBar` (clock, battery, plugged, classification), analysis list filter toggles on the real `QueueListModel` |
 | `tests/test_qml_panels.py` | **Component** | QML panel functional tests (Phase 12): `FilesCopyPanel` (status switch + colors, header, gauge), main menu & dialogs (open triggers, accepted/rejected actions), `FilesSelectionPanel` (queue counter, folder navigation, enqueue/dequeue, source rows) |
 | `tests/test_qml_bindings_runner.py` | **Component** | Offscreen subprocess runner: loads the real `MainScreen.qml` against a fake `ApplicationController` (see §4.6) |
+
+The viewer suite (`python/viewer/tests/`, run with `DEVMODE=1 pytest tests/ -q`, 99% coverage):
+
+| File | Level | Description |
+|------|-------|-------------|
+| `tests/test_application_controller.py` | Component | Viewer ApplicationController (Phase 13): init, DEVMODE/production `start()`, subscription → ready flow, disk state / list disks / list files handlers, new-file Office→PDF conversion, energy state, message dispatch, slots, file-type detection, setters, translations |
+| `tests/test_models.py` | Unit | `SafecorInputFilesListModel` (roles, data, reset), `SafecorInputFilesListProxyModel` (rows, `currentFolder` signal/property), `FileType`/`Roles`/`SystemState` enums |
+| `tests/test_office_helper.py` | Unit | `OfficeHelper.convert_to_pdf` (DEVMODE vs production LibreOffice path, error path, extension stripping) |
+| `tests/test_constants.py` | Unit | `ViewerConstants` extension lists and `FILES_FILTERS` union |
 
 ### 4.4 Test app entry point
 

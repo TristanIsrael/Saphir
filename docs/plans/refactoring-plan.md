@@ -397,6 +397,7 @@ These rules must hold throughout refactoring:
 | Phase 10 | +400 / +100 | High | Phases 3-6 ✅ |
 | Phase 11 | +300 / +200 | High | Phase 10 |
 | Phase 12 | ✅ done (`f7ec7ad`, `24e8ae3`, `2ff186f`) | Medium | Phases 5-6, 10 ✅ |
+| Phase 13 | ✅ done | Low | — |
 | Phase 14 | +250 / +150 | Medium | Safecor emulator (external, **blocking**) |
 | **Remaining** | **0 / +250** | **~2 days** | — |
 
@@ -1046,7 +1047,7 @@ ignored.
 
 ---
 
-### Phase 13: Viewer Modernization ⏳ PENDING
+### Phase 13: Viewer Modernization ✅ DONE (5/5 sub-tasks)
 
 **Goal**: Bring the Viewer app to the same quality level as the main GUI — lint, format, type-annotate, and add unit tests. The viewer currently has **0 tests**, **50 ruff errors**, and no ruff config.
 
@@ -1151,17 +1152,26 @@ ignored.
 
 **Effort**: Low (1h)
 
-#### Viewer coverage target
+| Sub-task | Status | Commit | Issue | Notes |
+|----------|:------:|--------|-------|-------|
+| 13.1 Ruff lint & format | ✅ Done | (Phase 13) | #158 | 58 errors → 0; `[tool.ruff]` config added; py39 f-string fixed; circular import in `__init__.py` preserved with `# ruff: noqa: I001` |
+| 13.2 application_controller tests | ✅ Done | (Phase 13) | #158 | 50 tests; 100% coverage; fixed latent crash in `__handle_energy_state` (referenced a non-existent `__system_information_model`) |
+| 13.3 models & enums tests | ✅ Done | (Phase 13) | #158 | 19 tests; 100% coverage; fixed missing `currentFolderChanged` signal / `currentFolder` property on the proxy model (parity with the GUI model) |
+| 13.4 office_helper & constants tests | ✅ Done | (Phase 13) | #158 | 8 tests; 100% coverage; added the missing `IMPRESS_EXTENSIONS` (`.pptx` & co were not listed/converted) |
+| 13.5 main.py cleanup | ✅ Done | (Phase 13) | #158 | 7 unused imports removed, dead comment removed, French comment translated |
 
-| Module | Before | After (target) |
-|--------|:------:|:--------------:|
-| `application_controller.py` | 0% | ≥ 85% |
-| `safecor_input_files_list_model.py` | 0% | ≥ 85% |
-| `safecor_input_files_list_proxy_model.py` | 0% | ≥ 85% |
-| `enums.py` | 0% | 100% |
-| `constants.py` | 0% | 100% |
-| `office_helper.py` | 0% | ≥ 85% |
-| **Overall viewer** | **0%** | **≥ 85%** |
+#### Viewer coverage (actual result)
+
+| Module | Before | Target | After |
+|--------|:------:|:------:|:-----:|
+| `application_controller.py` | 0% | ≥ 85% | 100% |
+| `safecor_input_files_list_model.py` | 0% | ≥ 85% | 100% |
+| `safecor_input_files_list_proxy_model.py` | 0% | ≥ 85% | 100% |
+| `enums.py` | 0% | 100% | 100% |
+| `constants.py` | 0% | 100% | 100% |
+| `office_helper.py` | 0% | ≥ 85% | 100% |
+| `devmode_helper.py` | 0% | — (dev-only helper) | 74% |
+| **Overall viewer** | **0%** | **≥ 85%** | **99%** |
 
 **Prerequisites**:
 - `python/viewer` needs a `tests/` directory and `conftest.py` (doesn't exist yet)

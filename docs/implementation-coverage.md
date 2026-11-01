@@ -272,6 +272,7 @@ Compliant.
 
 **Implemented**:
 - Backend: `switch_to_viewer()` → `Api().switch_gui("saphir-viewer")`.
+- The Viewer backend itself is now lint-clean and unit-tested (Phase 13, #158: 77 tests, 99% coverage; `*.pptx`/Impress files are now listed and converted).
 
 **Gaps (major)**:
 - ❌ **Hidden button**: `btnShowViewer` has `visible: false // Hidden until 3.2` (`MainScreenUi.ui.qml`).
