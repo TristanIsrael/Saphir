@@ -89,6 +89,47 @@ class QmlClient:
         result = self.send({"op": "click", "ref": ref})
         assert result["status"] == "ok", result
 
+    def set_source(self, rows: list):
+        """Replace the source file list rows: [type, filename, filepath, inqueue]."""
+        result = self.send({"op": "set_source", "rows": rows})
+        assert result["status"] == "ok", result
+
+    def source_row(self, index: int):
+        """Return one source file list row as a dict (test inspection)."""
+        result = self.send({"op": "source_row", "index": index})
+        assert result["status"] == "ok", result
+        return result["value"]
+
+    def get_calls(self, method=None):
+        """The fake-controller call log, optionally filtered by method name."""
+        cmd = {"op": "get_calls"}
+        if method is not None:
+            cmd["method"] = method
+        result = self.send(cmd)
+        assert result["status"] == "ok", result
+        return result["value"]
+
+    def clear_calls(self):
+        result = self.send({"op": "clear_calls"})
+        assert result["status"] == "ok", result
+
+    def call(self, method: str, *args):
+        """Call a fake-controller method (the QML-side @Slot equivalent)."""
+        result = self.send({"op": "call", "method": method, "args": list(args)})
+        assert result["status"] == "ok", result
+
+    def call_func(self, ref: str, func: str):
+        """Call a QML function without arguments (e.g. a Bindings.qml wrapper)."""
+        result = self.send({"op": "call_func", "ref": ref, "func": func})
+        assert result["status"] == "ok", result
+
+    def emit(self, ref: str, signal: str, *args):
+        """Emit a QML signal on a ref (drives the Connections handlers)."""
+        result = self.send(
+            {"op": "emit", "ref": ref, "signal": signal, "args": list(args)}
+        )
+        assert result["status"] == "ok", result
+
 
 def launch_qml_runner():
     """Start the QML runner subprocess and wait for its ready handshake.
@@ -148,17 +189,30 @@ _RESET_PROPS = {
     "analysisReady": True,
     "systemState": SystemState.SystemReady.value,
     "sourceName": "/mnt/usb0",
+    "targetName": "",
+    "currentFolder": "/",
     "cleanFilesCount": 0,
     "infectedFilesCount": 0,
     "queueSize": 0,
+    "copiedFilesCount": 0,
+    "cleanFilesSize": 0,
     "systemLoadingProgress": 1.0,
     "sourceDisconnected": False,
     "copyPaused": False,
+    "sourceReady": False,
+    "analysisMode": 0,
+    "storages": ["/mnt/usb0"],
+    "storagesCount": 1,
 }
 
 
 def reset_controller(client: QmlClient, **overrides):
-    """Brings the fake controller to a known baseline, then applies overrides."""
+    """Brings the fake controller to a known baseline, then applies overrides.
+
+    Also empties the source file list and the controller call log.
+    """
     props = dict(_RESET_PROPS)
     props.update(overrides)
     client.set(**props)
+    client.set_source([])
+    client.clear_calls()

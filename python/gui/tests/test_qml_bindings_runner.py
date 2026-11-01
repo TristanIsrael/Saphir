@@ -23,6 +23,21 @@ Protocol (one JSON object per line):
 - ``{"op": "set_model_prop", "ref": "fileList", "prop": "filterClean",
    "value": false}`` -> ``{"status": "ok"}``
 - ``{"op": "click", "ref": "btnFilterClean"}`` -> ``{"status": "ok"}``
+- ``{"op": "set_source",
+   "rows": [["folder", "sub", "/sub"], ["file", "a.txt", "/a.txt"]]}``
+  -> ``{"status": "ok"}`` (replaces the source file list content)
+- ``{"op": "get_calls", "method": "reset"}``
+  -> ``{"status": "ok", "value": [["reset"]]}`` (fake-controller call log)
+- ``{"op": "clear_calls"}`` -> ``{"status": "ok"}``
+- ``{"op": "call", "method": "go_to_folder", "args": ["/sub"]}``
+  -> ``{"status": "ok"}`` (calls a fake-controller method)
+- ``{"op": "call_func", "ref": "bindings", "func": "goToParentFolder"}``
+  -> ``{"status": "ok"}`` (calls a QML function without arguments)
+- ``{"op": "source_row", "index": 0}``
+  -> ``{"status": "ok", "value": {"filename": ..., "inqueue": ...}}``
+- ``{"op": "emit", "ref": "dlgRestart", "signal": "accepted"}``
+  -> ``{"status": "ok"}`` (emits a QML signal; used for the dialog actions
+  whose buttons are Repeater items never instantiated offscreen)
 - ``{"op": "refs"}`` -> ``{"status": "ok", "refs": [...]}``
 - ``{"op": "quit"}`` -> exit 0
 
@@ -54,10 +69,12 @@ from PySide6.QtCore import (
     Property,
     QAbstractListModel,
     QCoreApplication,
+    QMetaObject,
     QObject,
     QPoint,
     Qt,
     Signal,
+    Slot,
 )
 from PySide6.QtGui import QColor, QGuiApplication
 from PySide6.QtQml import (
@@ -94,6 +111,60 @@ class _TestQueueListModel(QueueListModel):
     def set_files(self, files: dict):
         self._QueueListModel__files = files
         self.reset()
+
+
+class _TestSourceModel(QAbstractListModel):
+    """Fake of the controller's source-files proxy model.
+
+    Exposes the same role names as the real
+    ``SafecorInputFilesListModel`` (``type`` / ``filename`` / ``filepath`` /
+    ``inqueue`` / ...) with test hooks to swap the rows and to flip the
+    ``inqueue`` flag of a row.
+    """
+
+    _ROLE_NAMES = {
+        Qt.ItemDataRole.UserRole + 1: "type",
+        Qt.ItemDataRole.UserRole + 2: "filename",
+        Qt.ItemDataRole.UserRole + 3: "path",
+        Qt.ItemDataRole.UserRole + 4: "selected",
+        Qt.ItemDataRole.UserRole + 6: "progress",
+        Qt.ItemDataRole.UserRole + 7: "inqueue",
+        Qt.ItemDataRole.UserRole + 8: "status",
+        Qt.ItemDataRole.UserRole + 9: "filepath",
+    }
+
+    def __init__(self):
+        super().__init__()
+        self._rows = []
+
+    def rowCount(self, parent=None):
+        return len(self._rows)
+
+    def data(self, index, role=0):
+        if not index.isValid():
+            return None
+        name = self._ROLE_NAMES.get(role)
+        if name is None:
+            return None
+        return self._rows[index.row()].get(name)
+
+    def roleNames(self):
+        return {role: name.encode() for role, name in self._ROLE_NAMES.items()}
+
+    def set_rows(self, rows: list):
+        self.beginResetModel()
+        self._rows = [dict(row) for row in rows]
+        self.endResetModel()
+
+    def set_inqueue(self, filepath: str, value: bool):
+        for index, row in enumerate(self._rows):
+            if row.get("filepath") == filepath:
+                row["inqueue"] = value
+                model_index = self.index(index)
+                self.dataChanged.emit(
+                    model_index, model_index, [Qt.ItemDataRole.UserRole + 7]
+                )
+                return
 
 
 #: (property name, QML type, default value) of the fake controller
@@ -163,8 +234,11 @@ def _build_fake_controller():
         QObject.__init__(self)
         for store, default in inits:
             setattr(self, store, default)
+        self.source_model = _TestSourceModel()
         self._models = {name: _EmptyModel() for name in _MODEL_NAMES}
         self._models["queueListModel"] = _TestQueueListModel({})
+        self._models["inputFilesListProxyModel"] = self.source_model
+        self.calls = []
 
     attrs["__init__"] = __init__
 
@@ -177,23 +251,74 @@ def _build_fake_controller():
 
         attrs[name] = Property(QObject, model_getter, constant=True)
 
-    def _no_op(self, *args):
-        """Sink for the controller's QML-called methods."""
+    # --- QML-called methods ------------------------------------------------
+    # The real controller exposes @Slot methods to the QML. The fake keeps
+    # the same names and makes them stateful (they update the properties the
+    # QML binds to) while recording every call in ``self.calls`` so a test
+    # can assert on it.
 
-    for name in (
-        "go_to_folder",
-        "go_to_parent_folder",
-        "enqueue_file",
-        "dequeue_file",
-        "on_storage_selected",
-        "start_full_analysis",
-        "start_stop_analysis",
-        "reset",
-        "shutdown",
-        "switch_to_viewer",
-        "update_source_files_list",
-    ):
-        attrs[name] = _no_op
+    def _log_call(self, name, *args):
+        self.calls.append([name, *args])
+
+    attrs["_log_call"] = _log_call
+
+    def go_to_folder(self, folder):
+        self._log_call("go_to_folder", folder)
+        self.currentFolder = folder
+
+    def go_to_parent_folder(self):
+        self._log_call("go_to_parent_folder")
+        folder = (self.currentFolder or "/").rstrip("/")
+        parent = "/".join(folder.split("/")[:-1]) or "/"
+        self.currentFolder = parent
+
+    def on_storage_selected(self, name):
+        self._log_call("on_storage_selected", name)
+        self.sourceName = name
+
+    def enqueue_file(self, filetype, filepath):
+        self._log_call("enqueue_file", filetype, filepath)
+        self.queueSize = self.queueSize + 1
+        self.source_model.set_inqueue(filepath, True)
+
+    def dequeue_file(self, filepath):
+        self._log_call("dequeue_file", filepath)
+        self.queueSize = max(self.queueSize - 1, 0)
+        self.source_model.set_inqueue(filepath, False)
+
+    def update_source_files_list(self):
+        self._log_call("update_source_files_list")
+
+    def start_full_analysis(self):
+        self._log_call("start_full_analysis")
+
+    def start_stop_analysis(self):
+        self._log_call("start_stop_analysis")
+
+    def reset(self):
+        self._log_call("reset")
+
+    def shutdown(self):
+        self._log_call("shutdown")
+
+    def switch_to_viewer(self):
+        self._log_call("switch_to_viewer")
+
+    attrs.update(
+        {
+            "go_to_folder": Slot(str)(go_to_folder),
+            "go_to_parent_folder": Slot()(go_to_parent_folder),
+            "on_storage_selected": Slot(str)(on_storage_selected),
+            "enqueue_file": Slot(str, str)(enqueue_file),
+            "dequeue_file": Slot(str)(dequeue_file),
+            "update_source_files_list": Slot()(update_source_files_list),
+            "start_full_analysis": Slot()(start_full_analysis),
+            "start_stop_analysis": Slot()(start_stop_analysis),
+            "reset": Slot()(reset),
+            "shutdown": Slot()(shutdown),
+            "switch_to_viewer": Slot()(switch_to_viewer),
+        }
+    )
 
     return type("FakeApplicationController", (QObject,), attrs)
 
@@ -234,6 +359,7 @@ class Runner:
         self.app = QGuiApplication.instance() or QGuiApplication([])
         self.controller = _build_fake_controller()()
         self.queue_model = self.controller._models["queueListModel"]
+        self.source_model = self.controller._models["inputFilesListProxyModel"]
         self.refs = {}
 
         qmlRegisterUncreatableType(Enums, "Saphir", 1, 0, "Enums", "Not instanciable")
@@ -481,12 +607,165 @@ class Runner:
         refs["fileList"] = list_views[0]
         refs["fileListModel"] = self.queue_model
 
-        env = self.engine.singletonInstance("Components", "Environment")
+        # --- FilesCopyPanel --------------------------------------------------
+        copy_panel = refs["pnlFilesCopy"]
+        copy_texts = [
+            t
+            for t in self._find_class("StyledText")
+            if self._is_child_of(t, copy_panel)
+        ]
+
+        def _copy_text(prefix):
+            return next(
+                (t for t in copy_texts if str(t.property("text")).startswith(prefix)),
+                None,
+            )
+
+        copy_volume = _copy_text("Volume of files to copy")
+        copy_destination = _copy_text("Destination:")
+        # In the initial (SystemReady) state the status switch falls through
+        # to its "unknown state" fallback
+        copy_status = _copy_text("Unknown state")
+        if not (copy_volume and copy_destination and copy_status):
+            raise RuntimeError("FilesCopyPanel texts not found")
+        refs["copyVolume"] = copy_volume
+        refs["copyDestination"] = copy_destination
+        refs["copyStatus"] = copy_status
+        copy_progress = [
+            p
+            for p in self._find_class("FilesProgress")
+            if self._is_child_of(p, copy_panel)
+        ]
+        if len(copy_progress) != 1:
+            raise RuntimeError(
+                f"Expected 1 FilesProgress in FilesCopyPanel, got {len(copy_progress)}"
+            )
+        refs["copyProgress"] = copy_progress[0]
+
+        # --- Main menu buttons (identified by their Material icon) -----------
         constants = self.engine.singletonInstance("Components", "Constants")
-        if env is None or constants is None:
-            raise RuntimeError("Environment/Constants singletons not found")
+        menu_icons = {
+            "btnMainMenu": constants.property("iconMenu"),
+            "btnMenuHelp": constants.property("iconHelp"),
+            "btnMenuSystemState": constants.property("iconSystemState"),
+            "btnMenuLog": constants.property("iconLog"),
+            "btnMenuRestart": constants.property("iconRestart"),
+            "btnMenuShutdown": constants.property("iconShutdown"),
+        }
+        for ref, icon in menu_icons.items():
+            buttons = [
+                b for b in self._find_class("RoundButton") if b.property("icon") == icon
+            ]
+            if len(buttons) != 1:
+                raise RuntimeError(
+                    f"Expected 1 menu button for {ref}, got {len(buttons)}"
+                )
+            refs[ref] = buttons[0]
+
+        # --- Dialogs (identified by their label) ------------------------------
+        dialogs = {
+            str(d.property("label")): d for d in self._find_class("MessageDialog")
+        }
+        dialog_labels = {
+            "dlgAnalyseWholeStorage": "Do you want to analyze\nthe whole storage?",
+            "dlgRestart": (
+                "Do you want to clean the system?\nThe inputs won't be "
+                "available\nduring the process"
+            ),
+            "dlgShutdown": "Do you want to shutdown the system?",
+        }
+        for ref, label in dialog_labels.items():
+            if label not in dialogs:
+                raise RuntimeError(f"Dialog {ref} (label {label!r}) not found")
+            refs[ref] = dialogs[label]
+
+        # The system-state and log dialogs are SimpleDialog-based
+        state_dialogs = self._find_class("SystemStateDialog")
+        log_dialogs = self._find_class("LogDialog")
+        if len(state_dialogs) != 1 or len(log_dialogs) != 1:
+            raise RuntimeError("SystemStateDialog/LogDialog not found")
+        refs["dlgSystemState"] = state_dialogs[0]
+        refs["dlgLog"] = log_dialogs[0]
+
+        # Note: dynamically instantiated QML items (Repeater items, ListView
+        # delegates) are never materialized in the offscreen platform (Qt 6.12
+        # limitation). Consequently:
+        # - dialog buttons (Repeater items) are driven through the "emit" op
+        #   (QMetaObject.invokeMethod on the dialog's signals), which still
+        #   exercises the full QML wiring (signal -> Connections handler ->
+        #   controller method);
+        # - the file rows of the selection panel are driven through the
+        #   "call" / "call_func" ops (controller methods and Bindings.qml
+        #   functions), which exercise the same wiring a row click would.
+
+        # --- FilesSelectionPanel ---------------------------------------------
+        selection = refs["pnlFileSelection"]
+        sel_texts = [
+            t for t in self._find_class("StyledText") if self._is_child_of(t, selection)
+        ]
+        sel_queue_count = next(
+            (
+                t
+                for t in sel_texts
+                if str(t.property("text")).startswith("Files in queue")
+            ),
+            None,
+        )
+        sel_current_folder = next(
+            (
+                t
+                for t in sel_texts
+                if str(t.property("text")).startswith("Current folder")
+            ),
+            None,
+        )
+        if not (sel_queue_count and sel_current_folder):
+            raise RuntimeError("FilesSelectionPanel texts not found")
+        refs["selQueueCount"] = sel_queue_count
+        refs["selCurrentFolder"] = sel_current_folder
+
+        parent_rows = [
+            rl
+            for rl in self._find_class("QQuickRowLayout")
+            if self._is_child_of(rl, selection)
+            and any(
+                str(c.property("text")) == "Folder up"
+                for c in rl.findChildren(QObject)
+                if self._base_class(c.metaObject().className()) == "StyledText"
+            )
+        ]
+        if len(parent_rows) != 1:
+            raise RuntimeError(f"Expected 1 parent-folder row, got {len(parent_rows)}")
+        refs["selParentRow"] = parent_rows[0]
+
+        sel_views = [
+            lv
+            for lv in self._find_class("QQuickListView")
+            if self._is_child_of(lv, selection)
+        ]
+        if len(sel_views) != 1:
+            raise RuntimeError(
+                f"Expected 1 ListView in FilesSelectionPanel, got {len(sel_views)}"
+            )
+        refs["selListView"] = sel_views[0]
+
+        combos = [
+            c
+            for c in self._find_class("StyledComboBox")
+            if self._is_child_of(c, selection)
+        ]
+        if len(combos) != 1:
+            raise RuntimeError(f"Expected 1 storage combo, got {len(combos)}")
+        refs["comboStorages"] = combos[0]
+
+        env = self.engine.singletonInstance("Components", "Environment")
+        if env is None:
+            raise RuntimeError("Environment singleton not found")
         refs["env"] = env
         refs["constants"] = constants
+
+        # The fake controller itself (property inspection)
+        refs["controller"] = self.controller
 
     @staticmethod
     def _is_child_of(obj, ancestor) -> bool:
@@ -523,6 +802,20 @@ class Runner:
                 self._cmd_set_model_prop(cmd)
             elif op == "click":
                 self._cmd_click(cmd)
+            elif op == "set_source":
+                self._cmd_set_source(cmd)
+            elif op == "get_calls":
+                self._cmd_get_calls(cmd)
+            elif op == "clear_calls":
+                self._cmd_clear_calls(cmd)
+            elif op == "call":
+                self._cmd_call(cmd)
+            elif op == "call_func":
+                self._cmd_call_func(cmd)
+            elif op == "source_row":
+                self._cmd_source_row(cmd)
+            elif op == "emit":
+                self._cmd_emit(cmd)
             elif op == "refs":
                 self.reply({"status": "ok", "refs": sorted(self.refs)})
             elif op == "quit":
@@ -626,21 +919,9 @@ class Runner:
         if obj is None:
             self.reply({"status": "error", "detail": f"bad ref {ref}"})
             return
-        # Synthesize the click at the item's center in window coordinates.
         # QTest.mouseClick supports a QWindow (not a QQuick item) and drives
         # the real Qt6 input dispatch, so the QML MouseArea receives it
-        x, y = self._window_pos(obj)
-        center = QPoint(
-            int(x + obj.property("width") / 2.0),
-            int(y + obj.property("height") / 2.0),
-        )
-        QTest.mouseClick(
-            self.root,
-            Qt.MouseButton.LeftButton,
-            Qt.KeyboardModifier.NoModifier,
-            center,
-        )
-        _pump(0.1)
+        self._click_item(obj)
         self.reply({"status": "ok"})
 
     def _window_pos(self, obj):
@@ -655,6 +936,121 @@ class Runner:
             y += node.property("y") or 0.0
             node = node.parent()
         return x, y
+
+    def _click_item(self, obj):
+        """Synthesize a left click at the item's center in window coordinates."""
+        x, y = self._window_pos(obj)
+        center = QPoint(
+            int(x + obj.property("width") / 2.0),
+            int(y + obj.property("height") / 2.0),
+        )
+        QTest.mouseClick(
+            self.root,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+            center,
+        )
+        _pump(0.1)
+
+    def _cmd_set_source(self, cmd):
+        """Replace the source file list rows: [type, filename, filepath, inqueue]."""
+        rows = []
+        for row in cmd.get("rows", []):
+            file_type, filename, filepath = row[0], row[1], row[2]
+            inqueue = bool(row[3]) if len(row) > 3 else False
+            rows.append(
+                {
+                    "type": file_type,
+                    "filename": filename,
+                    "filepath": filepath,
+                    "path": "/".join(filepath.split("/")[:-1]) or "/",
+                    "inqueue": inqueue,
+                    "selected": False,
+                    "progress": 0,
+                    "status": 0,
+                }
+            )
+        self.source_model.set_rows(rows)
+        _pump(0.1)
+        self.reply({"status": "ok"})
+
+    def _cmd_get_calls(self, cmd):
+        method = cmd.get("method")
+        calls = self.controller.calls
+        if method is not None:
+            calls = [c for c in calls if c[0] == method]
+        self.reply({"status": "ok", "value": calls})
+
+    def _cmd_clear_calls(self, cmd):
+        self.controller.calls = []
+        self.reply({"status": "ok"})
+
+    def _cmd_call(self, cmd):
+        """Call a fake-controller method (the QML-side @Slot equivalent)."""
+        method = cmd.get("method", "")
+        args = cmd.get("args", [])
+        fn = getattr(self.controller, method, None)
+        if fn is None or not callable(fn):
+            self.reply({"status": "error", "detail": f"no controller method {method}"})
+            return
+        fn(*args)
+        _pump(0.1)
+        self.reply({"status": "ok"})
+
+    def _cmd_call_func(self, cmd):
+        """Call a QML function without arguments (e.g. Bindings.qml wrappers)."""
+        ref = cmd.get("ref", "")
+        obj = self.refs.get(ref)
+        if obj is None:
+            self.reply({"status": "error", "detail": f"bad ref {ref}"})
+            return
+        func = cmd.get("func", "")
+        try:
+            ok = QMetaObject.invokeMethod(obj, func, Qt.ConnectionType.DirectConnection)
+        except TypeError as exc:
+            self.reply({"status": "error", "detail": str(exc)})
+            return
+        _pump(0.1)
+        if not ok:
+            self.reply({"status": "error", "detail": f"no function {func} on {ref}"})
+            return
+        self.reply({"status": "ok"})
+
+    def _cmd_source_row(self, cmd):
+        """Return one source file list row as a dict (test inspection)."""
+        index = int(cmd.get("index", 0))
+        rows = self.source_model._rows
+        if not 0 <= index < len(rows):
+            self.reply({"status": "error", "detail": f"no row {index}"})
+            return
+        self.reply({"status": "ok", "value": dict(rows[index])})
+
+    def _cmd_emit(self, cmd):
+        """Emit a QML-defined signal on a ref (drives the Connections handlers).
+
+        The dialogs' handheld buttons are Repeater items, which the offscreen
+        platform never instantiates (Qt 6.12), so dialog actions are tested
+        by emitting their signals directly.
+        """
+        ref = cmd.get("ref", "")
+        obj = self.refs.get(ref)
+        if obj is None:
+            self.reply({"status": "error", "detail": f"bad ref {ref}"})
+            return
+        signal = cmd.get("signal", "")
+        args = cmd.get("args", [])
+        try:
+            ok = QMetaObject.invokeMethod(
+                obj, signal, Qt.ConnectionType.DirectConnection, *args
+            )
+        except TypeError as exc:
+            self.reply({"status": "error", "detail": str(exc)})
+            return
+        _pump(0.1)
+        if not ok:
+            self.reply({"status": "error", "detail": f"no signal {signal} on {ref}"})
+            return
+        self.reply({"status": "ok"})
 
 
 def main():
