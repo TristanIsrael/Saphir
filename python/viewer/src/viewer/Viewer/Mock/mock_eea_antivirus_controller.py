@@ -1,14 +1,15 @@
-from libsaphir import AbstractAntivirusController
-from Saphir import DevModeHelper
-from safecor import ComponentState, Constants
-import threading
 import os
-import time
 import random
+import threading
+import time
+
+from libsaphir import AbstractAntivirusController
+from safecor import ComponentState, Constants
+from Saphir import DevModeHelper
+
 
 class MockEeaAntivirusController(AbstractAntivirusController):
-
-    RATE = 2 # Analysis rate in megabytes per second
+    RATE = 2  # Analysis rate in megabytes per second
 
     def __init__(self):
         super().__init__("Mock ESET", "Mock ESET antivirus", 1)
@@ -16,10 +17,10 @@ class MockEeaAntivirusController(AbstractAntivirusController):
 
     def _on_api_ready(self) -> None:
         pass
-    
+
     def _get_component_state(self) -> ComponentState:
         return ComponentState.READY
-    
+
     def _analyse_file(self, filepath: str) -> None:
         self.debug(f"Analysis triggered for the file {filepath}")
 
@@ -30,9 +31,9 @@ class MockEeaAntivirusController(AbstractAntivirusController):
             self.error(errstr)
             self.publish_result(filepath, False, errstr)
             return
-        
-        filesize = os.path.getsize(storage_filepath) / (1024*1024)
-        duration_in_seconds = filesize/self.RATE
+
+        filesize = os.path.getsize(storage_filepath) / (1024 * 1024)
+        duration_in_seconds = filesize / self.RATE
         time.sleep(duration_in_seconds)
 
         result = random.choices([0, 1], weights=[10, 90])[0]
@@ -47,6 +48,7 @@ class MockEeaAntivirusController(AbstractAntivirusController):
 
     def _get_component_description(self) -> str:
         return "Version mock"
+
 
 if __name__ == "__main__":
     mock = MockEeaAntivirusController()

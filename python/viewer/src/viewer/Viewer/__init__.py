@@ -1,7 +1,9 @@
+# ruff: noqa: I001
+# Import order is dependency-driven (circular import avoidance), not alphabetical.
 __author__ = "Tristan Israël (tristan.israel@alefbet.net)"
-__version__ = '1.0.0'
+__version__ = "1.0.0"
 
-from .enums import Roles, Enums, SystemState, FileType
+from .enums import Enums, FileType, Roles, SystemState
 from .constants import ViewerConstants
 from .devmode_helper import DevModeHelper
 from .safecor_input_files_list_model import SafecorInputFilesListModel
@@ -10,9 +12,14 @@ from .office_helper import OfficeHelper
 from .application_controller import ApplicationController
 
 __all__ = [
-    "Roles", "Enums", "SystemState", "ViewerConstants", "FileType",
+    "ApplicationController",
     "DevModeHelper",
-    "SafecorInputFilesListModel", "SafecorInputFilesListProxyModel",
+    "Enums",
+    "FileType",
     "OfficeHelper",
-    "ApplicationController"
+    "Roles",
+    "SafecorInputFilesListModel",
+    "SafecorInputFilesListProxyModel",
+    "SystemState",
+    "ViewerConstants",
 ]

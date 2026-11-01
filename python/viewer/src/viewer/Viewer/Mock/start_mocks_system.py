@@ -1,13 +1,16 @@
 import threading
 from pathlib import Path
-from safecor import MockSysUsbController
+
 from mock_dom0_controller import MockDom0Controller
+from safecor import MockSysUsbController
 from Saphir import DevModeHelper
 
 DISKS = {
     "Downloads": Path("/Users/tristanisrael/Downloads").resolve().as_posix(),
     "Documents": Path("/Users/tristanisrael/Documents").resolve().as_posix(),
-    "Archives": Path("/Users/tristanisrael/Downloads/Temp/Saphir-test").resolve().as_posix()
+    "Archives": Path("/Users/tristanisrael/Downloads/Temp/Saphir-test")
+    .resolve()
+    .as_posix(),
 }
 
 if __name__ == "__main__":
@@ -22,7 +25,11 @@ if __name__ == "__main__":
 
     print("... Starting Mock sys-usb controller")
     mockUSB = MockSysUsbController(verrou_synchro)
-    mockUSB.start(DISKS, DevModeHelper.get_storage_path(), DevModeHelper.get_mocked_destination_disk_path())
+    mockUSB.start(
+        DISKS,
+        DevModeHelper.get_storage_path(),
+        DevModeHelper.get_mocked_destination_disk_path(),
+    )
     verrou_synchro.wait()
 
     print("System mocks started")
