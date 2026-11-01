@@ -120,6 +120,7 @@ Naming conventions:
 - **Never push** without adding unit tests on the added code.
 - **Never push** when the code coverage is under 85%.
 - After push, the Github issue must be updated (task and status).
+- **Never commit** before updating the documentation and the plans if needed.
 
 ## Chat rules
 
@@ -135,3 +136,4 @@ Naming conventions:
 - Keep `README.fr.md` (French language) and `README.md` (English language) in sync together.
 - Use the documentation from **Safecor** to adapt the behaviour of Saphir.
 - All the interactions of Saphir and Safecor must use Safecor's API.
+- The integration layer between Saphir and the machine is Safecor **exclusively**.
