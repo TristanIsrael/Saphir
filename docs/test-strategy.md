@@ -152,6 +152,7 @@ pytest tests/ --ignore=tests/test_workflow_nominal.py --ignore=tests/test_workfl
 | `tests/test_workflow_multi_source.py` | **Integration** | F1 (10.8): two source disks analyzed, every clean file copied to the single target |
 | `tests/test_qml_bindings.py` | **Component** | QML declarative bindings (Phase 12): panel visibility for every `SystemState`, `Bindings.qml` derived properties, `AnalysisPanel` state transitions, `SystemLoadingPanel` progression |
 | `tests/test_qml_signals.py` | **Component** | QML signal integration (Phase 12): Python→QML signal path (static notify check on the real controller + dynamic updates), `TopBar` (clock, battery, plugged, classification), analysis list filter toggles on the real `QueueListModel` |
+| `tests/test_qml_panels.py` | **Component** | QML panel functional tests (Phase 12): `FilesCopyPanel` (status switch + colors, header, gauge), main menu & dialogs (open triggers, accepted/rejected actions), `FilesSelectionPanel` (queue counter, folder navigation, enqueue/dequeue, source rows) |
 | `tests/test_qml_bindings_runner.py` | **Component** | Offscreen subprocess runner: loads the real `MainScreen.qml` against a fake `ApplicationController` (see §4.6) |
 
 ### 4.4 Test app entry point
@@ -176,18 +177,20 @@ The QML layer is tested offscreen with the **real** `MainScreen.qml` (Phase 12, 
 - A `QGuiApplication` cannot be created in the pytest process (the handler tests already own a `QCoreApplication`), so the QML runs **in a subprocess**: `tests/test_qml_bindings_runner.py`.
 - The app must boot **without an appliance**: the runner registers a **fake `ApplicationController`** (same `@Property` surface, `<name>Changed` signals and list models as the real one) plus the real Python `Enums` singleton, then loads the real QML.
 
-The client side is shared between the two QML test modules through `tests/qml_test_client.py` (`QmlClient` + `launch_qml_runner`/`shutdown_qml_runner`/`reset_controller`) and a module-scoped `qml` fixture in `tests/conftest.py`, so the runner starts **once per test module**.
+The client side is shared between the three QML test modules through `tests/qml_test_client.py` (`QmlClient` + `launch_qml_runner`/`shutdown_qml_runner`/`reset_controller`) and a module-scoped `qml` fixture in `tests/conftest.py`, so the runner starts **once per test module**.
 
 The tests drive the runner over a JSON-line protocol and assert on the live QML tree:
 
 - `set` / `get` / `wait` — set fake-controller properties (which emit the same `<name>Changed` signals as the real controller), read any QML property, wait for a change
-- `set_queue` — populate the runner's **real `QueueListModel`** with `(filename, status)` rows, so the filter tests exercise the production filtering logic
-- `set_model_prop` — set a property on the queue model bound to the analysis list view
+- `set_queue` / `set_model_prop` — populate the runner's **real `QueueListModel`** with `(filename, status)` rows (production filtering logic) and set properties on the queue model bound to the analysis list view
+- `set_source` / `source_row` — populate/inspect the source file list model (a `QAbstractListModel` with the real role names: `type`, `filename`, `filepath`, `inqueue`, ...)
 - `click` — synthesize a mouse click at an item's center (`QTest.mouseClick` on the window, which drives the real Qt6 input dispatch the QML `MouseArea`s listen to)
+- `call` / `call_func` / `emit` — call a fake-controller `@Slot` method, a QML function without arguments (e.g. a `Bindings.qml` wrapper) or emit a QML signal (`QMetaObject.invokeMethod`), driving the same wiring a click would
+- `get_calls` / `clear_calls` — inspect/clear the fake controller's call log (its `@Slot` methods record every QML-side call)
 
 Objects are located by QML component class name (the volatile `_QMLTYPE_N` suffix is stripped; C++-native QML types report their C++ name, e.g. `QQuickMouseArea`); the loading panel's 1 s opacity fade is handled by waiting for the opacity to settle.
 
-Known limitation: the runner stubs the QML singletons `Sensors`/`Energy` (not needed by the tested bindings), and the open D8 gap (`infected: nbInfected > 1` should be `> 0`) is documented as an `xfail`.
+Known limitations: the runner stubs the QML singletons `Sensors`/`Energy` (not needed by the tested bindings); the open D8 gap (`infected: nbInfected > 1` should be `> 0`) is documented as an `xfail`; and in the offscreen platform (Qt 6.12) dynamically instantiated QML items (Repeater items, ListView delegates) are never materialized and item-activation notifications (`onVisibleChanged`) are never delivered — the affected QML paths (dialog buttons, file rows, panel show) are driven through the `call` / `call_func` / `emit` ops or verified statically, which exercise the same wiring as a click.
 
 ---
 

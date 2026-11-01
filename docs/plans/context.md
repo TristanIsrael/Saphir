@@ -18,9 +18,9 @@
 
 ## Current state
 
-- **Phases 0-12 of `refactoring-plan.md` are done** (refactor, tests, lint, Alpine package validation in chroot, documentation debt, missing features & NFRs #145-#152, functional coverage #154, QML layer tests #155 + #156)
+- **Phases 0-12 of `refactoring-plan.md` are done** (refactor, tests, lint, Alpine package validation in chroot, documentation debt, missing features & NFRs #145-#152, functional coverage #154, QML layer tests #155 + #156 + #157)
 - **Pending**: Phase 13 (Viewer modernization) and Phase 14 (semi-automated validation env, blocked on the external Safecor emulator)
-- **Test baseline**: 503 passed, 3 skipped, 1 xfailed (the single xfail documents the open D8 gap)
+- **Test baseline**: 530 passed, 3 skipped, 1 xfailed (the single xfail documents the open D8 gap)
 - Package validation: `setup/chroot/chroot-build.sh` (7/8 packages built, GUI boot in DEVMODE validated; `saphir-container-eset` blocked by a dead ESET URL)
 
 ## Key decisions

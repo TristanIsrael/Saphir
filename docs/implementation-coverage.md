@@ -65,6 +65,8 @@
   reads each file from the disk that contains it.
 - 🟡 No explicit guard for the return to the initial state if the media is removed before the choice.
 
+**Verified by**: `tests/test_qml_panels.py` (Phase 12, #157) — the `dlgAnalyseWholeStorage` QML wiring: it opens as soon as a source storage is ready (`sourceReady`), `accepted` selects the whole-source analysis mode and starts the full analysis, `rejected` keeps the selection mode.
+
 ---
 
 ### F2 — Navigation & selection 🟡
@@ -75,6 +77,8 @@
 - File → queue: `enqueue_file`.
 - Folder → recursive: `__is_enqueuing` + `folders_to_query`.
 - Deselection: `dequeue_file`.
+
+**Verified by**: `tests/test_qml_panels.py` (Phase 12, #157) — the `FilesSelectionPanel` QML: queue counter, current-folder breadcrumb and parent row, folder navigation (`go_to_folder` / `goToParentFolder`), enqueue/dequeue (queue size, counter and `inqueue` role), source list rows, storage combo.
 
 **Gaps / divergences**:
 - ⚠️ **File selection blocked behind AV readiness (D7)**: the spec (workflow v2.1) allows selecting files as soon as the disk-controller is ready and a disk is connected, **even if the AV engines are not ready**; the analysis trigger is separately gated by the ready-to-analyze condition. The implementation gates `SystemReady` (and thus file selection) behind `len(analysis_components) >= ANTIVIRUS_NEEDED` in `__handle_av_state`, so selection is not possible until the AV engines are ready.
@@ -120,6 +124,8 @@
 - ✅ **Trigger** (D2, resolved, 10.8): the target is, by construction, the first disk connected *after* the analysis completes, so the copy starts only once the analysis is finished (`AnalysisCompleted → CopyCleanFiles` / `SystemWaitingForTarget`, workflow).
 - 🟡 `[feature]` No check of the available space on the target.
 - 🟡 **Available space displayed**: `targetAvailableSize` always 0 and `Property(bool, ...)` instead of `int` (the `targetAvailableSize` property) → permanent "Available space: Unknown".
+
+**Verified by**: `tests/test_qml_panels.py` (Phase 12, #157) — the `FilesCopyPanel` QML: every status-switch branch (in progress, report, failed, waiting target, paused) with its warning color, the header texts (formatted volume, destination) and the copy progress gauge.
 
 ---
 
@@ -208,6 +214,8 @@ Compliant. **Note**: the DEBUG mode is not explicitly verified as displayed (to 
 - ⚠️ **Incomplete interruption**: `reset()` clears the `TransferController` state (via `__reset_states`) but **does not interrupt the in-flight copy loop** (`_do_start_transfer`): the copy requests already issued run to the end of the queue.
 - 🟡 **Media reconnection**: no explicit handling of the media disconnection/reconnection during the reset (the behavior relies on Safecor messages).
 
+**Verified by**: `tests/test_qml_panels.py` (Phase 12, #157) — the reset dialog QML wiring: opened from the main menu, `accepted` calls `reset()` and closes the dialog, `rejected` only closes it.
+
 ---
 
 ### F11 — Startup/cleaning progression ✅
@@ -230,6 +238,8 @@ Compliant. **Note**: the spec says "modal"; it is a panel (not strictly modal), 
 - Confirmation: `dlgShutdown`.
 - Immediate interruption: `shutdown()`.
 - Call to the Safecor API: `Api().shutdown()` (in `shutdown()`).
+
+**Verified by**: `tests/test_qml_panels.py` (Phase 12, #157) — the shutdown dialog QML wiring: opened from the main menu, `accepted` calls `shutdown()` and closes the dialog.
 
 Compliant.
 

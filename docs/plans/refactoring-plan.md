@@ -379,10 +379,11 @@ These rules must hold throughout refactoring:
 | 11 Functional coverage | ✅ Done (8/8 sub-tasks) | #154 (11.8) + Phase 10 tests | — | Error paths, NFRs, disconnection scenarios; ~88% strict |
 | 12.1/12.2/12.4/12.6 QML binding tests | ✅ Done | `f7ec7ad` | #155 | 40 tests: panel visibility (13 states), Bindings.qml, AnalysisPanel, loading panel (offscreen subprocess runner) |
 | 12.3/12.5/12.7 QML signal integration | ✅ Done | `24e8ae3` | #156 | 19 tests: Python→QML signals (static + dynamic), TopBar (clock, battery, plugged, classification), filter toggles on the real QueueListModel |
+| 12.8 QML panel functional tests | ✅ Done | `2ff186f` | #157 | 27 tests: FilesCopyPanel (status switch, colors, header, gauge), main menu & dialogs (open triggers, accepted/rejected actions), FilesSelectionPanel (queue counter, folder navigation, enqueue/dequeue, source rows) |
 | 13 Viewer modernization | ⏳ Pending | — | — | Lint, format, unit tests (0 → 85%) |
 | 14 Semi-automated validation env | ⏳ Pending (Not ready) | — | — | Human-driven test on Safecor emulator (operator console + state observer); blocked on emulator features |
 
-**Test baseline**: 503 passed, 3 skipped, 1 xfailed (2026-10-31, after Phase 12 signal tests; the single xfail documents the open D8 gap. Known broker-contention flake in the full suite under load — the failing workflow test passes in isolation)
+**Test baseline**: 530 passed, 3 skipped, 1 xfailed (2026-11-01, after Phase 12 panel tests; the single xfail documents the open D8 gap. Known broker-contention flake in the full suite under load — the failing workflow test passes in isolation)
 
 ---
 
@@ -395,7 +396,7 @@ These rules must hold throughout refactoring:
 | Phase 9 | ✅ done | — | Phases 0-8 ✅ |
 | Phase 10 | +400 / +100 | High | Phases 3-6 ✅ |
 | Phase 11 | +300 / +200 | High | Phase 10 |
-| Phase 12 | ✅ done (`f7ec7ad`, `24e8ae3`) | Medium | Phases 5-6, 10 ✅ |
+| Phase 12 | ✅ done (`f7ec7ad`, `24e8ae3`, `2ff186f`) | Medium | Phases 5-6, 10 ✅ |
 | Phase 14 | +250 / +150 | Medium | Safecor emulator (external, **blocking**) |
 | **Remaining** | **0 / +250** | **~2 days** | — |
 
@@ -891,6 +892,8 @@ ignored.
 - 12.5: clock ticks (Zulu by default, local after a synthesized click on `maHour`), battery icon per level, plugged icon visibility, classification label.
 - 12.7: the three filter toggles drive the real model's `filterClean` / `filterInfected` / `filterOther` and the `ListView` count updates; a synthesized click on a `TwoStatesButton` (via `QTest.mouseClick` on the window) toggles the checked state and the model.
 
+**Result (12.8 — `2ff186f`, #157)**: 27 tests in `tests/test_qml_panels.py` (FilesCopyPanel, main menu & dialogs, FilesSelectionPanel). The fake controller became stateful (its QML-called `@Slot` methods update properties and log their calls), and the runner gained a `_TestSourceModel` plus `set_source` / `source_row` / `call` / `call_func` / `emit` / `get_calls` / `clear_calls` ops. Dialog actions are driven by emitting the dialog's signals (`QMetaObject.invokeMethod`): the handheld buttons are Repeater items the offscreen platform never instantiates (Qt 6.12 limitation), and emitting the signal exercises the identical QML wiring (signal → Connections handler → controller method → QML update).
+
 #### 12.1 [P0] QML binding tests (panel visibility) — ✅ DONE (#155)
 
 **Gap**: Phase 5 made panel visibility 100% declarative (bindings on `systemState`), but there is **no automated test** verifying that the correct panel is shown for each state.
@@ -1002,6 +1005,24 @@ ignored.
 **Files**: `tests/test_qml_signals.py` (extend)
 
 **Effort**: Low (2h)
+
+#### 12.8 [P2] QML panel functional tests — ✅ DONE (#157)
+
+**Gap**: The three functional QML areas left untested by 12.1-12.7: `FilesCopyPanel` (status switch, warning colors, header texts, progress gauge), the main menu & dialogs (open triggers and accepted/rejected actions) and `FilesSelectionPanel` (queue counter, folder navigation, enqueue/dequeue, source list rows).
+
+**Work**:
+- In `tests/test_qml_panels.py`:
+  - `FilesCopyPanel`: one test per status-switch branch (in progress, report, failed, waiting target, paused) asserting the text **and** the warning/normal color; header texts (`formatFileSize`, destination); the gauge (`nbCopied`/`nbClean`)
+  - main menu & dialogs: menu toggle; dialog open triggers (menu buttons, `sourceReady`, `SystemMustBeReset`, missing source); `accepted`/`rejected` actions through the dialog signals (reset, shutdown, `start_full_analysis`, analysis mode selection)
+  - `FilesSelectionPanel`: queue counter, current-folder breadcrumb + parent row, folder navigation (`go_to_folder`, `goToParentFolder` through the Bindings.qml wrapper), enqueue/dequeue (counter + `inqueue` role), source list rows, `update_source_files_list` on panel show (static wiring), storage combo
+- Runner extensions (`test_qml_bindings_runner.py`): a stateful fake controller (methods log their calls), a `_TestSourceModel` QAbstractListModel, and new ops: `set_source` / `source_row` (model content), `call` / `call_func` / `emit` (controller methods, QML functions, QML signals), `get_calls` / `clear_calls` (call log)
+- Shared client (`qml_test_client.py`): matching helpers + an extended `reset_controller` baseline
+
+**Known offscreen limitation (documented in the test module)**: dynamically instantiated QML items (Repeater items, ListView delegates) are never materialized and item-activation notifications (`onVisibleChanged`) are never delivered in the offscreen platform (Qt 6.12). Dialog buttons and file rows are therefore driven through the `emit` / `call` / `call_func` ops, which exercise the same QML wiring (signal/function → controller method → QML update) as a click.
+
+**Files**: `tests/test_qml_panels.py` (new), `tests/test_qml_bindings_runner.py` (extend), `tests/qml_test_client.py` (extend)
+
+**Effort**: Medium (1 day)
 
 #### GUI coverage target
 
