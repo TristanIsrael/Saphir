@@ -32,6 +32,7 @@ This document is an entry point to the documentation of Saphir, the robust sheep
 | [`plans/refactoring-plan.md`](plans/refactoring-plan.md) | Refactoring phases & effort |
 | [`plans/context.md`](plans/context.md) | Session context / resume point |
 | [`test-strategy.md`](test-strategy.md) | Validation / test strategy (unit → system, DevMode, simulator) |
+| [`validation-guide.md`](validation-guide.md) | Manual validation environment (launcher, operator runbook, scenarios) |
 
 ## Development & packaging
 

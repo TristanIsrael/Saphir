@@ -184,8 +184,10 @@ The integration tests launch this as a subprocess and observe state transitions 
 
 ### 4.5 Mock AV helper
 
-`tests/mock_av.py` — the mock antivirus controller (inherits `AbstractAntivirusController`).
+`libsaphir/_mock_antivirus_controller.py` — the mock antivirus controller (inherits `AbstractAntivirusController`, standalone-runnable).
 `tests/mock_av_manager.py` — lifecycle manager (start/stop subprocess, temp config).
+
+See `docs/validation-guide.md` for the manual validation environment (launcher + operator runbook).
 
 ### 4.6 QML test runner
 

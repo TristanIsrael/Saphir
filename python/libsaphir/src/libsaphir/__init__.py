@@ -18,6 +18,7 @@ from ._enums import FileStatus
 from ._abstract_antivirus_controller import AbstractAntivirusController
 from ._clam_antivirus_controller import ClamAntivirusController
 from ._eea_antivirus_controller import EeaAntivirusController
+from ._mock_antivirus_controller import MockAntivirusController
 
 __all__ = [
     "ANTIVIRUS_NEEDED",
@@ -30,6 +31,7 @@ __all__ = [
     "ClamAntivirusController",
     "EeaAntivirusController",
     "FileStatus",
+    "MockAntivirusController",
 ]
 
 logging.getLogger(__name__).addHandler(NullHandler())

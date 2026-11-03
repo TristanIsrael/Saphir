@@ -24,7 +24,6 @@ import time
 from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
-_MOCK_AV_SCRIPT = _SCRIPT_DIR / "mock_av.py"
 
 
 class MockAVManager:
@@ -81,7 +80,7 @@ class MockAVManager:
         self._failure_flag = self._config_file + ".fail"
         python = sys.executable
         cmd = [
-            python, "-u", str(_MOCK_AV_SCRIPT),
+            python, "-u", "-m", "libsaphir._mock_antivirus_controller",
             "--name", self.name,
             "--config", self._config_file,
         ]

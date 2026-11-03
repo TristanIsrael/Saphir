@@ -1,12 +1,17 @@
-"""Mock antivirus controller non-regression tests.
+"""Mock antivirus controller (DEVMODE).
 
-Inherits from :class:`AbstractAntivirusController` to be fully representative
-of a real AV domain. Runs in a subprocess because the ``Api()`` singleton
-allows only one MQTT client per process.
+A representative mock of a real AV domain: it inherits from
+:class:`AbstractAntivirusController` and returns static, pre-configured results
+over MQTT. It is used in DEVMODE (no appliance) to stand in for the ClamAV and
+ESET domains so the Saphir GUI can reach ``SystemReady`` (``ANTIVIRUS_NEEDED``)
+and run the full scan cycle.
 
-Usage (from the test helper)::
+It runs in a standalone process because the ``Api()`` singleton allows only one
+MQTT client per process.
 
-    python mock_av.py --name mock-clam [--config results.json]
+Usage (standalone)::
+
+    python -m libsaphir._mock_antivirus_controller --name mock-clam [--config results.json]
 
 Config file format (JSON)::
 
@@ -34,8 +39,10 @@ import os
 import threading
 import time
 
-from libsaphir import AbstractAntivirusController, FileStatus
 from safecor import ComponentState, Constants
+
+from ._abstract_antivirus_controller import AbstractAntivirusController
+from ._enums import FileStatus
 
 
 class MockAntivirusController(AbstractAntivirusController):
