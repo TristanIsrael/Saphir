@@ -398,11 +398,12 @@ These rules must hold throughout refactoring:
 | Phase 11 | +300 / +200 | High | Phase 10 |
 | Phase 12 | ✅ done (`f7ec7ad`, `24e8ae3`, `2ff186f`) | Medium | Phases 5-6, 10 ✅ |
 | Phase 13 | ✅ done | Low | — |
-| Phase 14 | +250 / +150 | Medium | Safecor emulator (external, **blocking**) |
+| Phase 14 | +250 / +150 | Medium | 14.1 ✅ done (#159); 14.2+ blocked on Safecor emulator |
 | **Remaining** | **0 / +250** | **~2 days** | — |
 
-> **Note**: Phase 11 depends on Phase 10, and Phase 12 on Phase 10. Phase 14 is blocked on the
-> external Safecor emulator (interactive scenario API / observation hooks not yet built).
+> **Note**: Phase 11 depends on Phase 10, and Phase 12 on Phase 10. Phase 14.1 is done;
+> 14.2+ is blocked on the external Safecor emulator (interactive scenario API / observation
+> hooks not yet built).
 
 ---
 
@@ -1186,7 +1187,7 @@ ignored.
 
 ---
 
-### Phase 14: Semi-Automated Validation Environment ⏳ PENDING (blocked on Safecor emulator)
+### Phase 14: Semi-Automated Validation Environment (14.1 ✅ done; 14.2+ ⏳ blocked on Safecor emulator)
 
 **Goal**: Let a **human** test Saphir in a **non-representative environment** (no appliance, no
 physical USB disks) while using the **Safecor emulator** as the platform. The tester drives the
@@ -1213,16 +1214,17 @@ counts, copy progress, ETA) to check the behavior against `docs/workflow-rules.m
 > status semantics). The Saphir-side work below is only unblocked once the emulator support
 > lands.
 
-#### 14.1 [P0] Runbook + launch tooling
+#### 14.1 [P0] Runbook + launch tooling ✅ DONE (#159, `9c4b1fc`)
 - **Gap**: running "emulator + real Saphir GUI" today is ad-hoc knowledge from the
   integration tests; there is no documented, one-command way to start the validation
   environment.
-- **Work**:
-  - A launcher script (e.g. `setup/emulator/run-validation-env.sh`) that starts the emulator
-    (broker + mock components) and the Saphir GUI pointed at it, with the AV layer mocked
-    (reuse the DEVMODE mock AVs if they can run alongside a real MQTT broker).
-  - A runbook in `docs/` (steps, prerequisites, how to stop, how to read the state view).
-- **Files**: `setup/emulator/` (new), `docs/` (new runbook)
+- **Work** (done):
+  - Launcher script `python/gui/validate_env.sh` — starts the two mock AVs in the
+    background + the Saphir GUI on-screen; cleans up on SIGINT/SIGTERM.
+  - Operator guide `docs/validation-guide.md` — architecture, prerequisites, setup,
+    six validation scenarios (nominal, infected, disconnect, AV failure, multi-source),
+    troubleshooting.
+  - Mock AV controller moved to `libsaphir._mock_antivirus_controller` (standalone-runnable).
 - **Effort**: Low-Medium (1 day)
 
 #### 14.2 [P0] Interactive emulator operator (human-facing)
