@@ -76,3 +76,18 @@ This document contains the observations made during the validation tests of the 
   - Periodic `discover/components` timer removed from `ComponentsPanel.qml`.
   - All disk/file dialogs use `selectFolder` for directory selection.
 - **Saphir `8bf1376`**: `validate_env.sh` accepts `--config <file.json>` to control mock AV behaviour (infected/clean files). Usage: `bash validate_env.sh --config /path/to/av_config.json`.
+
+## Run 5
+
+- Step: Infected file (F3 consensus)
+- Emulator started with no disk attached
+- Saphir starts and waits for a source disk
+- Attach the `src` disk in the Emulator
+  - The analysis starts immediatly and the dialog `Do you want to analyze the whole storage?` is also visible
+  - The analysis does not finish, it is stucked at around 25% and after a moment the app crashes
+
+### Corrections applied (`4c147e5`)
+
+- **Root cause**: In DEVMODE, a 1s grace timer (`DEVMODE_SCAN_START_GRACE`) automatically called `start_full_analysis()` after disk attachment, bypassing the user confirmation dialog. The analysis started before the mock AVs were ready, causing the crash.
+- **Fix**: New env var `DEVMODE_AUTO_START` (default `1` for tests). `validate_env.sh` sets `DEVMODE_AUTO_START=0` so the operator must manually confirm via the dialog.
+- **Validation guide updated**: scenarios now explicitly say "accept the analysis" instead of "let analysis start".
