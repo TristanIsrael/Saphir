@@ -62,6 +62,14 @@ fi
 "${VENV_DIR}/bin/pip" install --quiet -r "${SCRIPT_DIR}/requirements-dev.txt"
 
 # 3. Create .pth files for local Safecor packages
+if [[ ! -d "${SAFECOR_ROOT}/python/lib/src" ]]; then
+    echo ""
+    echo "ERROR: Safecor not found at ${SAFECOR_ROOT}"
+    echo "Set SAFECOR_ROOT to the path of your Safecor repository checkout."
+    echo "  Example: SAFECOR_ROOT=/path/to/Safecor bash setup_dev_env.sh"
+    exit 1
+fi
+
 SITE_PACKAGES="${VENV_DIR}/lib/python$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')/site-packages"
 
 echo "[3/4] Creating .pth files for local Safecor packages..."
