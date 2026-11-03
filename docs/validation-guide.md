@@ -57,7 +57,7 @@ The **operator console** (a separate terminal) is used to drive the scenario.
 | Requirement | Check |
 |-------------|-------|
 | Saphir dev environment | `bash python/gui/setup_dev_env.sh` (venv + Safecor `.pth` links) |
-| Safecor emulator installed | `python/emulator/` in the Safecor repo, importable from the GUI venv |
+| Safecor repository checkout | A local clone of the Safecor repo (path set via `SAFECOR_ROOT`) |
 | A local directory emulating the source disk | e.g. `/tmp/source-disk/` with a few files |
 | A local directory emulating the target disk | e.g. `/tmp/target-disk/` (empty) |
 | Mosquitto broker | Auto-started by the emulator on port 1883 |
@@ -68,9 +68,12 @@ The **operator console** (a separate terminal) is used to drive the scenario.
 
 ```bash
 cd /path/to/Saphir/python/gui
-bash setup_dev_env.sh
-source .venv/bin/activate
+SAFECOR_ROOT=/path/to/Safecor bash setup_dev_env.sh
+source .venv/bin/activate   # or venv.nosync/bin/activate on macOS
 ```
+
+`SAFECOR_ROOT` must point to the root of your Safecor repository checkout
+(the directory containing `python/lib/src` and `python/emulator/src`).
 
 > **macOS**: the venv is created in `venv.nosync` by default (Time Machine
 > friendly). Linux-only dependencies (`evdev`, `inotify_simple`, `pyudev`) are
