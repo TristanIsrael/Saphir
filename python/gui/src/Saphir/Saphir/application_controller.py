@@ -232,6 +232,9 @@ class ApplicationController(QObject):
 
         if DEVMODE:
             self.__mqtt_client = DevModeHelper.create_mqtt_client("GUI")
+            repo_path = os.environ.get("SAPHIR_REPOSITORY_PATH")
+            if repo_path:
+                Constants.DOMU_REPOSITORY_PATH = repo_path
         else:
             self.__mqtt_client = MqttFactory.create_mqtt_client_domu("GUI")
 
