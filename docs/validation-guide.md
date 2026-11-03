@@ -90,7 +90,7 @@ python -c "from safecor_emulator import Emulator, default_profile; print('OK')"
 Launch the Safecor emulator GUI:
 
 ```bash
-safecor-emulator
+python -m safecor_emulator.cli
 ```
 
 The GUI provides:
