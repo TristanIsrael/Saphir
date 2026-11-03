@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_DIR="${SCRIPT_DIR}/.venv"
+VENV_DIR="${SAPHIR_VENV_DIR:-${SCRIPT_DIR}/.venv}"
 SAFECOR_ROOT="${SAFECOR_ROOT:-/home/onyxia/work/Safecor}"
 
 echo "=== Saphir GUI dev environment setup ==="
@@ -19,17 +19,22 @@ fi
 echo "[2/4] Installing production + dev dependencies..."
 "${VENV_DIR}/bin/pip" install --quiet --upgrade pip
 
-# libvirt-python requires the system libvirt-dev package; skip it if unavailable
-# (the Safecor library handles its absence gracefully)
-REQUIREMENTS_NO_LIBVIRT=$(mktemp)
-grep -v '^libvirt-python' "${SCRIPT_DIR}/requirements.txt" > "${REQUIREMENTS_NO_LIBVIRT}"
-"${VENV_DIR}/bin/pip" install --quiet -r "${REQUIREMENTS_NO_LIBVIRT}"
-rm "${REQUIREMENTS_NO_LIBVIRT}"
+# Linux-only and optional dependencies: try to install, warn if unavailable
+OPTIONAL_DEPS=(libvirt-python evdev inotify_simple pyudev)
+# Install the main requirements minus the optional deps
+REQUIREMENTS_FILTERED=$(mktemp)
+for dep in "${OPTIONAL_DEPS[@]}"; do
+    grep -v "^${dep}" "${SCRIPT_DIR}/requirements.txt" >> "${REQUIREMENTS_FILTERED}" || true
+done
+"${VENV_DIR}/bin/pip" install --quiet -r "${REQUIREMENTS_FILTERED}"
+rm "${REQUIREMENTS_FILTERED}"
 
-if ! "${VENV_DIR}/bin/pip" install --quiet libvirt-python 2>/dev/null; then
-    echo "  WARNING: libvirt-python not installed (requires system libvirt-dev)."
-    echo "  This is optional for emulator-based development."
-fi
+# Try optional deps one by one
+for dep in "${OPTIONAL_DEPS[@]}"; do
+    if ! "${VENV_DIR}/bin/pip" install --quiet "${dep}" 2>/dev/null; then
+        echo "  WARNING: ${dep} not installed (platform-specific or system dependency missing)."
+    fi
+done
 
 "${VENV_DIR}/bin/pip" install --quiet -r "${SCRIPT_DIR}/requirements-dev.txt"
 

@@ -13,7 +13,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV="${SCRIPT_DIR}/.venv"
+VENV="${SAPHIR_VENV_DIR:-${SCRIPT_DIR}/.venv}"
 
 if [[ ! -d "$VENV" ]]; then
     echo "ERROR: venv not found at $VENV" >&2

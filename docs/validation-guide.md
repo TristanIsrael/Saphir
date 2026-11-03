@@ -72,6 +72,10 @@ bash setup_dev_env.sh
 source .venv/bin/activate
 ```
 
+> **macOS**: the venv directory is configurable via `SAPHIR_VENV_DIR` (e.g.
+> `SAPHIR_VENV_DIR=./venv.nosync bash setup_dev_env.sh`). Linux-only dependencies
+> (`evdev`, `inotify_simple`, `pyudev`) are skipped automatically with a warning.
+
 Verify the emulator is importable:
 
 ```bash
