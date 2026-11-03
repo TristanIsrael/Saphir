@@ -21,32 +21,28 @@ without a Safecor appliance.
 │                                                                 │
 │  ┌────────────────────┐    MQTT (localhost:1883)   ┌────────┐  │
 │  │  Safecor Emulator  │ ◄─────────────────────────► │  GUI   │  │
-│  │  (mosquitto +      │                             │ (Qt,   │  │
-│  │   mock Dom0 +      │ ◄─────────────────────────► │ on-    │  │
-│  │   mock SysUSB)     │                             │ screen)│  │
-│  └────────────────────┘                             └────────┘  │
+│  │  (GUI app:         │                             │ (Qt,   │  │
+│  │   mosquitto +      │ ◄─────────────────────────► │ on-    │  │
+│  │   mock Dom0 +      │                             │ screen)│  │
+│  │   mock SysUSB +    │                             └────────┘  │
+│  │   operator panel)  │                                         │
+│  └────────────────────┘                                         │
 │           ▲                                                     │
 │           │ MQTT                                                 │
 │  ┌────────┴────────┐  ┌──────────────────┐                      │
 │  │  mock-clam      │  │  mock-eset       │                      │
 │  │  (subprocess)   │  │  (subprocess)    │                      │
 │  └─────────────────┘  └──────────────────┘                      │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │  Operator Console (safecor-emulator CLI)                │    │
-│  │  — attach/detach disks, set energy, restart domains     │    │
-│  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-Four processes must be running simultaneously:
+Three components must be running simultaneously:
 
-| # | Process | Role | Started by |
-|---|---------|------|------------|
-| 1 | **Emulator** | Mosquitto broker + mock Dom0 + mock SysUSB | Operator (prerequisite) |
-| 2 | **mock-clam** | Mock antivirus engine #1 | `validate_env.sh` |
-| 3 | **mock-eset** | Mock antivirus engine #2 | `validate_env.sh` |
-| 4 | **Saphir GUI** | The application under test (on-screen) | `validate_env.sh` |
+| # | Component | Role | Started by |
+|---|-----------|------|------------|
+| 1 | **Emulator GUI** | Mosquitto broker + mock Dom0 + mock SysUSB + operator controls | Operator (prerequisite) |
+| 2 | **mock-clam / mock-eset** | Mock antivirus engines | `validate_env.sh` |
+| 3 | **Saphir GUI** | The application under test (on-screen) | `validate_env.sh` |
 
 The **operator console** (a separate terminal) is used to drive the scenario.
 
@@ -89,45 +85,24 @@ python -c "from safecor_emulator import Emulator, default_profile; print('OK')"
 
 ## 4. Running the validation environment
 
-### Terminal 1 — Emulator
+### Terminal 1 — Emulator (GUI)
 
-Start the Safecor emulator with a source disk and a storage path:
-
-```bash
-python -c "
-from safecor_emulator import Emulator, default_profile
-
-em = Emulator(
-    profile=default_profile(),
-    source_disks={'disk0': '/tmp/source-disk'},
-    storage_path='/tmp/repo',
-    destination_disk_path='/tmp/target-disk',
-)
-em.start()
-print('Emulator started. Attach/detach disks via the operator console.')
-import time
-time.sleep(3600)  # keep alive
-"
-```
-
-> **Note**: In a production operator workflow, the emulator is started
-> programmatically from the operator console. For manual validation, running
-> it as a one-liner (or a small script) is sufficient.
-
-### Terminal 2 — Operator console
+Launch the Safecor emulator GUI:
 
 ```bash
 safecor-emulator
 ```
 
-This interactive CLI lets you:
-- `attach_disk disk1 /tmp/target-disk` — connect the target disk
-- `detach_disk disk1` — disconnect the target disk
-- `set_energy_state battery` — simulate battery mode
-- `restart_domain saphir-av-clamav` — simulate an AV domain crash
-- `attach_disk disk2 /tmp/other-source` — add a second source
+The GUI provides:
+- Configuration of source disks, storage path, and target disk
+- Starting/stopping the emulator (mosquitto broker + mock Dom0 + mock SysUSB)
+- Interactive controls: attach/detach disks, set energy state, restart domains,
+  set language
 
-### Terminal 3 — Saphir (GUI + mock AVs)
+Use the GUI to configure the scenario (source disk path, target disk path,
+storage path) before starting the emulator.
+
+### Terminal 2 — Saphir (GUI + mock AVs)
 
 ```bash
 cd /path/to/Saphir/python/gui
@@ -156,7 +131,7 @@ Use the operator console (Terminal 2) to drive events.
 | 1 | Emulator running, source disk attached at boot | `SystemLoading` → `SystemReady` |
 | 2 | Wait for auto-analysis (DEVMODE auto-pilot) | `SystemAnalysisRunning` |
 | 3 | Analysis completes | `SystemAnalysisFinished` |
-| 4 | Attach target disk: `attach_disk disk1 /tmp/target-disk` | Copy starts → `SystemCopyRunning` |
+| 4 | Attach target disk via emulator GUI | Copy starts → `SystemCopyRunning` |
 | 5 | Copy completes | `SystemReportGeneration` → `SystemMustBeReset` |
 | 6 | Verify `/tmp/target-disk/` contains clean files + PDF report | — |
 
@@ -187,15 +162,15 @@ tab and **not** be copied to the target.
 | Step | Action | Expected |
 |------|--------|----------|
 | 1 | Let analysis start | `SystemAnalysisRunning` |
-| 2 | `detach_disk disk0` | GUI shows "source disconnected" prompt, analysis holds |
-| 3 | `attach_disk disk0 /tmp/source-disk` | Analysis resumes (remaining files only) |
+| 2 | Detach source disk via emulator GUI | GUI shows "source disconnected" prompt, analysis holds |
+| 3 | Attach source disk via emulator GUI | Analysis resumes (remaining files only) |
 
 ### 5.4 AV engine failure (NFR-3, 8.9)
 
 | Step | Action | Expected |
 |------|--------|----------|
 | 1 | Let analysis start | `SystemAnalysisRunning` |
-| 2 | `restart_domain saphir-av-clamav` | GUI detects AV failure, shows NFR-3 message |
+| 2 | Restart AV domain via emulator GUI | GUI detects AV failure, shows NFR-3 message |
 | 3 | Wait | System transitions to error state |
 
 ### 5.5 Target disconnection during copy (F4, 8.6)
@@ -203,15 +178,15 @@ tab and **not** be copied to the target.
 | Step | Action | Expected |
 |------|--------|----------|
 | 1 | Reach `SystemCopyRunning` | Copy in progress |
-| 2 | `detach_disk disk1` | Copy pauses, GUI shows reconnection prompt |
-| 3 | `attach_disk disk1 /tmp/target-disk` | Copy resumes |
+| 2 | Detach target disk via emulator GUI | Copy pauses, GUI shows reconnection prompt |
+| 3 | Attach target disk via emulator GUI | Copy resumes |
 
 ### 5.6 Multi-source (F1, 10.8)
 
 | Step | Action | Expected |
 |------|--------|----------|
 | 1 | Boot with one source | Analysis starts on disk0 |
-| 2 | `attach_disk disk2 /tmp/other-source` | Second source appears in the GUI |
+| 2 | Attach second source via emulator GUI | Second source appears in the GUI |
 | 3 | Analysis covers both disks | All clean files from both disks are copied |
 
 ### 5.7 Power loss during scan (NFR-5)
@@ -219,7 +194,7 @@ tab and **not** be copied to the target.
 | Step | Action | Expected |
 |------|--------|----------|
 | 1 | Let analysis start | `SystemAnalysisRunning` |
-| 2 | `set_energy_state battery` then `set_energy_state off` | GUI shows low-power / shutdown message |
+| 2 | Set energy state to "off" via emulator GUI | GUI shows low-power / shutdown message |
 | 3 | System transitions to shutdown | `SystemShuttingDown` in state log |
 
 ### 5.8 Language change (F19)
@@ -227,7 +202,7 @@ tab and **not** be copied to the target.
 | Step | Action | Expected |
 |------|--------|----------|
 | 1 | System in `SystemReady` | UI in default language (EN) |
-| 2 | `set_default_language fr` via operator console | GUI retranslates to French |
+| 2 | Set default language to "fr" via emulator GUI | GUI retranslates to French |
 | 3 | Verify labels, buttons, messages | All strings in French |
 
 ---
@@ -235,7 +210,7 @@ tab and **not** be copied to the target.
 ## 6. State observer (DevMode)
 
 In DEVMODE, the `WorkflowController` writes every state transition to
-`/tmp/saphir_state.log`. Open a **4th terminal** and tail it live:
+`/tmp/saphir_state.log`. Open a separate terminal and tail it live:
 
 ```bash
 tail -f /tmp/saphir_state.log
