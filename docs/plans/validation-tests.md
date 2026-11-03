@@ -23,3 +23,27 @@ This document contains the observations made during the validation tests of the 
 
 ## Run 3
 
+- Step: Nominal cycle (C.1)
+- In the emulator GUI there is no button to select the path of the disk. We need one.
+- In the step 1, the real state of the system is `SystemWaitingForUserAction` and Saphir's GUI show the panel `Do you want to analyze the whole storage?` which is the expected behaviour and the expected state.
+- The actions are not detailed enough: we miss an action between step 1 and 2 saying `Accept the whole storage analysis` or maybe we expect the system to automatically trigger the whole storage analysis?
+- The scenarios chapters should begin with a short description of the scenario and the expected behaviour.
+- In the emulator GUI the fields `id` and the path of the disk should be reset after a disk has been attached, otherwise it is confusing.
+- The states are not correct: at the end of the step 3 the state is `AnalysisCompleted`, the step 4 begins with the state `CopyCleanFiles` then `Generating Report` and finally `SystemMustBeReset`.
+- The action in step 6 should not mention `/tmp/target-disk` because we don't know which target path the user choosed.
+- **BUG**: I defined the target path `/tmp/out` and all the files were copied to `/tmp`, including the log file and the report.
+
+### Corrections applied (validation guide)
+
+- **States corrected**: `AnalysisCompleted`, `CopyCleanFiles`, `GeneratingReport`, `SystemMustBeReset`.
+- **Missing action added**: "Accept the whole storage analysis" between steps 1 and 2.
+- **Scenario descriptions added** to all 8 scenarios.
+- **Generic target path** in step 6 (no hardcoded `/tmp/target-disk`).
+
+### Open items
+
+| # | Item | Repo | Status |
+|---|------|------|--------|
+| 1 | Emulator GUI: no button to select disk path | Safecor | TODO |
+| 2 | Emulator GUI: reset `id` + path fields after attach | Safecor | TODO |
+| 3 | **Files copied to wrong path** (`/tmp` instead of `/tmp/out`) | Saphir | **BUG — to investigate** |

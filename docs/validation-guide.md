@@ -126,16 +126,25 @@ Use the operator console (Terminal 2) to drive events.
 
 ### 5.1 Nominal cycle (C.1)
 
-| Step | Action | Expected GUI state |
-|------|--------|--------------------|
-| 1 | Emulator running, source disk attached at boot | `SystemLoading` → `SystemReady` |
-| 2 | Wait for auto-analysis (DEVMODE auto-pilot) | `SystemAnalysisRunning` |
-| 3 | Analysis completes | `SystemAnalysisFinished` |
-| 4 | Attach target disk via emulator GUI | Copy starts → `SystemCopyRunning` |
-| 5 | Copy completes | `SystemReportGeneration` → `SystemMustBeReset` |
-| 6 | Verify `/tmp/target-disk/` contains clean files + PDF report | — |
+### 5.1 Nominal cycle (C.1)
+
+**Description**: Full end-to-end scan. A source disk is connected at boot, the
+operator accepts the analysis, clean files are copied to the target, and a PDF
+report is generated.
+
+| Step | Action | Expected state |
+|------|--------|----------------|
+| 1 | Emulator running, source disk attached at boot | `SystemWaitingForUserAction` (GUI: "Do you want to analyze the whole storage?") |
+| 2 | Accept the whole storage analysis (click "Yes") | `SystemAnalysisRunning` |
+| 3 | Analysis completes | `AnalysisCompleted` |
+| 4 | Attach target disk via emulator GUI | `CopyCleanFiles` |
+| 5 | Copy + report complete | `GeneratingReport` → `SystemMustBeReset` |
+| 6 | Verify the target path contains clean files + PDF report | — |
 
 ### 5.2 Infected file (F3 consensus)
+
+**Description**: One file is reported as infected by a mock AV engine. The
+consensus rule marks it as infected; it is excluded from the copy.
 
 Pre-configure one of the mock AVs to report a file as infected. This requires
 a custom config file:
@@ -143,7 +152,7 @@ a custom config file:
 ```json
 {
     "default": "clean",
-    "infected": ["/tmp/source-disk/bad.txt"],
+    "infected": ["/path/to/source-disk/bad.txt"],
     "scan_delay": 0.1
 }
 ```
@@ -159,6 +168,10 @@ tab and **not** be copied to the target.
 
 ### 5.3 Source disconnection during analysis (8.8)
 
+**Description**: The source disk is disconnected while analysis is running.
+The system holds, then auto-resumes when the disk is reconnected (remaining
+files only).
+
 | Step | Action | Expected |
 |------|--------|----------|
 | 1 | Let analysis start | `SystemAnalysisRunning` |
@@ -166,6 +179,9 @@ tab and **not** be copied to the target.
 | 3 | Attach source disk via emulator GUI | Analysis resumes (remaining files only) |
 
 ### 5.4 AV engine failure (NFR-3, 8.9)
+
+**Description**: An antivirus engine domain crashes during analysis. The
+system detects the failure and transitions to an error state.
 
 | Step | Action | Expected |
 |------|--------|----------|
@@ -175,6 +191,9 @@ tab and **not** be copied to the target.
 
 ### 5.5 Target disconnection during copy (F4, 8.6)
 
+**Description**: The target disk is disconnected while files are being copied.
+The copy pauses; it auto-resumes when the target is reconnected.
+
 | Step | Action | Expected |
 |------|--------|----------|
 | 1 | Reach `SystemCopyRunning` | Copy in progress |
@@ -182,6 +201,9 @@ tab and **not** be copied to the target.
 | 3 | Attach target disk via emulator GUI | Copy resumes |
 
 ### 5.6 Multi-source (F1, 10.8)
+
+**Description**: Two source disks are connected. All files from both disks are
+analyzed; clean files from both are copied to the single target.
 
 | Step | Action | Expected |
 |------|--------|----------|
@@ -191,6 +213,9 @@ tab and **not** be copied to the target.
 
 ### 5.7 Power loss during scan (NFR-5)
 
+**Description**: The system loses power during analysis. It should transition
+to shutdown gracefully.
+
 | Step | Action | Expected |
 |------|--------|----------|
 | 1 | Let analysis start | `SystemAnalysisRunning` |
@@ -198,6 +223,9 @@ tab and **not** be copied to the target.
 | 3 | System transitions to shutdown | `SystemShuttingDown` in state log |
 
 ### 5.8 Language change (F19)
+
+**Description**: The default language is changed while the system is running.
+The GUI retranslates all strings immediately.
 
 | Step | Action | Expected |
 |------|--------|----------|
