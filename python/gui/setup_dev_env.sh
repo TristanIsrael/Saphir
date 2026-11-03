@@ -27,10 +27,16 @@ echo "[2/4] Installing production + dev dependencies..."
 "${VENV_DIR}/bin/pip" install --quiet --upgrade pip
 
 # Linux-only and optional dependencies: try to install, warn if unavailable
-OPTIONAL_DEPS=(libvirt-python evdev inotify_simple pyudev)
-# Install the main requirements minus the optional deps
+# On macOS, skip Linux-only deps entirely (no wheel, build from source would fail)
+LINUX_ONLY_DEPS=(evdev inotify_simple pyudev)
+OPTIONAL_DEPS=(libvirt-python)
+if [[ "$(uname)" != "Darwin" ]]; then
+    OPTIONAL_DEPS=("${OPTIONAL_DEPS[@]}" "${LINUX_ONLY_DEPS[@]}")
+fi
+
+# Install the main requirements minus all optional deps
 REQUIREMENTS_FILTERED=$(mktemp)
-for dep in "${OPTIONAL_DEPS[@]}"; do
+for dep in "${OPTIONAL_DEPS[@]}" "${LINUX_ONLY_DEPS[@]}"; do
     grep -v "^${dep}" "${SCRIPT_DIR}/requirements.txt" >> "${REQUIREMENTS_FILTERED}" || true
 done
 "${VENV_DIR}/bin/pip" install --quiet -r "${REQUIREMENTS_FILTERED}"
@@ -42,6 +48,9 @@ for dep in "${OPTIONAL_DEPS[@]}"; do
         echo "  WARNING: ${dep} not installed (platform-specific or system dependency missing)."
     fi
 done
+if [[ "$(uname)" == "Darwin" ]]; then
+    echo "  INFO: Linux-only deps (evdev, inotify_simple, pyudev) skipped on macOS."
+fi
 
 "${VENV_DIR}/bin/pip" install --quiet -r "${SCRIPT_DIR}/requirements-dev.txt"
 
