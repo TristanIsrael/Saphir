@@ -94,19 +94,19 @@ python -m safecor_emulator.cli --gui
 ```
 
 The GUI provides:
-- Configuration of source disks, storage path, and target disk
+- Configuration of topology, storage path (repository), and source disks
 - Starting/stopping the emulator (mosquitto broker + mock Dom0 + mock SysUSB)
 - Interactive controls: attach/detach disks, set energy state, restart domains,
   set language
 
-Use the GUI to configure the scenario (source disk path, target disk path,
-storage path) before starting the emulator.
+**Important**: there is no "target disk" in the emulator setup. The **last
+attached disk** is automatically considered the copy target by Saphir.
 
 ### Terminal 2 — Saphir (GUI + mock AVs)
 
 ```bash
 cd /path/to/Saphir/python/gui
-bash validate_env.sh
+bash validate_env.sh [--config /path/to/av_config.json]
 ```
 
 The script:
@@ -114,7 +114,22 @@ The script:
 2. Starts `mock-clam` and `mock-eset` as background subprocesses.
 3. Launches the Saphir GUI **on-screen** (native platform, kiosk layout).
 
-Stop everything with **Ctrl+C** in Terminal 3 (mock AVs are cleaned up
+> **`--config`**: optional JSON file that controls the mock AV behaviour
+> (which files are infected/clean). Without it, all files are reported clean.
+> Example:
+> ```json
+> {
+>     "default": "clean",
+>     "infected": ["/tmp/source-disk/bad.txt"],
+>     "scan_delay": 0.1
+> }
+> ```
+
+> **Auto-start disabled**: `validate_env.sh` sets `DEVMODE_AUTO_START=0`, so
+> the analysis does **not** start automatically. The operator must click
+> "Yes" on the "Do you want to analyze the whole storage?" dialog.
+
+Stop everything with **Ctrl+C** in Terminal 2 (mock AVs are cleaned up
 automatically).
 
 ---
@@ -126,45 +141,45 @@ Use the operator console (Terminal 2) to drive events.
 
 ### 5.1 Nominal cycle (C.1)
 
-### 5.1 Nominal cycle (C.1)
-
-**Description**: Full end-to-end scan. A source disk is connected at boot, the
+**Description**: Full end-to-end scan. A source disk is attached, the
 operator accepts the analysis, clean files are copied to the target, and a PDF
 report is generated.
 
 | Step | Action | Expected state |
 |------|--------|----------------|
-| 1 | Emulator running, source disk attached at boot | `SystemWaitingForUserAction` (GUI: "Do you want to analyze the whole storage?") |
-| 2 | Accept the whole storage analysis (click "Yes") | `SystemAnalysisRunning` |
-| 3 | Analysis completes | `AnalysisCompleted` |
-| 4 | Attach target disk via emulator GUI | `CopyCleanFiles` |
-| 5 | Copy + report complete | `GeneratingReport` → `SystemMustBeReset` |
-| 6 | Verify the target path contains clean files + PDF report | — |
+| 1 | Emulator running, no disk attached. Start Saphir via `validate_env.sh` | `SystemReady` |
+| 2 | Attach source disk via emulator GUI (Disks → id + path → Attach) | `SystemWaitingForUserAction` (GUI: "Do you want to analyze the whole storage?") |
+| 3 | Accept the whole storage analysis (click "Yes") | `SystemAnalysisRunning` |
+| 4 | Analysis completes | `AnalysisCompleted` |
+| 5 | Attach target disk via emulator GUI (last attached = target) | `CopyCleanFiles` |
+| 6 | Copy + report complete | `GeneratingReport` → `SystemMustBeReset` |
+| 7 | Verify the target path contains clean files + PDF report | — |
 
 ### 5.2 Infected file (F3 consensus)
 
 **Description**: One file is reported as infected by a mock AV engine. The
 consensus rule marks it as infected; it is excluded from the copy.
 
-Pre-configure one of the mock AVs to report a file as infected. This requires
-a custom config file:
+Create a config file (e.g. `/tmp/infected.json`):
 
 ```json
 {
     "default": "clean",
-    "infected": ["/path/to/source-disk/bad.txt"],
+    "infected": ["/bad.txt"],
     "scan_delay": 0.1
 }
 ```
 
-Start the mock with:
+> File paths are relative to the source disk root.
+
+Start Saphir with the config:
+
 ```bash
-DEVMODE=1 python -m libsaphir._mock_antivirus_controller --name mock-clam --config /tmp/infected.json
+bash validate_env.sh --config /tmp/infected.json
 ```
 
-Then run `validate_env.sh` but skip the `mock-clam` startup (edit the script
-or start only `mock-eset`). The infected file should appear in the "Infected"
-tab and **not** be copied to the target.
+Then attach the source disk and accept the analysis. The infected file should
+appear in the "Infected" tab and **not** be copied to the target.
 
 ### 5.3 Source disconnection during analysis (8.8)
 
@@ -174,7 +189,7 @@ files only).
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Let analysis start | `SystemAnalysisRunning` |
+| 1 | Attach source disk, accept analysis | `SystemAnalysisRunning` |
 | 2 | Detach source disk via emulator GUI | GUI shows "source disconnected" prompt, analysis holds |
 | 3 | Attach source disk via emulator GUI | Analysis resumes (remaining files only) |
 
@@ -185,7 +200,7 @@ system detects the failure and transitions to an error state.
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Let analysis start | `SystemAnalysisRunning` |
+| 1 | Attach source disk, accept analysis | `SystemAnalysisRunning` |
 | 2 | Restart AV domain via emulator GUI | GUI detects AV failure, shows NFR-3 message |
 | 3 | Wait | System transitions to error state |
 
@@ -196,7 +211,7 @@ The copy pauses; it auto-resumes when the target is reconnected.
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Reach `SystemCopyRunning` | Copy in progress |
+| 1 | Reach `CopyCleanFiles` (after analysis + target attach) | Copy in progress |
 | 2 | Detach target disk via emulator GUI | Copy pauses, GUI shows reconnection prompt |
 | 3 | Attach target disk via emulator GUI | Copy resumes |
 
@@ -207,9 +222,10 @@ analyzed; clean files from both are copied to the single target.
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Boot with one source | Analysis starts on disk0 |
-| 2 | Attach second source via emulator GUI | Second source appears in the GUI |
-| 3 | Analysis covers both disks | All clean files from both disks are copied |
+| 1 | Attach first source disk via emulator GUI | `SystemWaitingForUserAction` |
+| 2 | Attach second source disk via emulator GUI | Both sources appear in the GUI |
+| 3 | Accept the analysis (click "Yes") | `SystemAnalysisRunning` (covers both disks) |
+| 4 | Analysis completes, attach target | Clean files from both disks are copied |
 
 ### 5.7 Power loss during scan (NFR-5)
 
@@ -218,7 +234,7 @@ to shutdown gracefully.
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Let analysis start | `SystemAnalysisRunning` |
+| 1 | Attach source disk, accept analysis | `SystemAnalysisRunning` |
 | 2 | Set energy state to "off" via emulator GUI | GUI shows low-power / shutdown message |
 | 3 | System transitions to shutdown | `SystemShuttingDown` in state log |
 
@@ -276,10 +292,9 @@ The file is truncated on each app start (DEVMODE only). No impact in production.
 After validation:
 
 ```bash
-# Terminal 3: Ctrl+C (stops GUI + mock AVs)
+# Terminal 2: Ctrl+C (stops GUI + mock AVs)
 # Terminal 1: Ctrl+C (stops emulator)
-# Terminal 2: exit (closes operator console)
 
 # Clean up temp directories
-rm -rf /tmp/source-disk /tmp/target-disk /tmp/repo
+rm -rf /tmp/source-disk /tmp/target-disk /tmp/safecor/storage
 ```
