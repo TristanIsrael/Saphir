@@ -46,4 +46,4 @@ This document contains the observations made during the validation tests of the 
 |---|------|------|--------|
 | 1 | Emulator GUI: no button to select disk path | Safecor | TODO |
 | 2 | Emulator GUI: reset `id` + path fields after attach | Safecor | TODO |
-| 3 | **Files copied to wrong path** (`/tmp` instead of `/tmp/out`) | Saphir | **BUG — to investigate** |
+| 3 | **Files copied to `/tmp` instead of the target path** | Safecor | **BUG** — `destination_disk_path` is fixed at `Emulator` construction time (`emulator.py:436` defaults to `/tmp`). The GUI must expose a "target disk path" field in Setup and pass it to the constructor before `start()`. No runtime update mechanism exists. |
