@@ -2,7 +2,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_DIR="${SAPHIR_VENV_DIR:-${SCRIPT_DIR}/.venv}"
+# Default venv dir: venv.nosync on macOS (Time Machine friendly), .venv elsewhere
+if [[ "${SAPHIR_VENV_DIR:-}" ]]; then
+    VENV_DIR="${SAPHIR_VENV_DIR}"
+elif [[ "$(uname)" == "Darwin" ]]; then
+    VENV_DIR="${SCRIPT_DIR}/venv.nosync"
+else
+    VENV_DIR="${SCRIPT_DIR}/.venv"
+fi
 SAFECOR_ROOT="${SAFECOR_ROOT:-/home/onyxia/work/Safecor}"
 
 echo "=== Saphir GUI dev environment setup ==="
