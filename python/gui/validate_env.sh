@@ -51,6 +51,7 @@ source "$VENV/bin/activate"
 PYTHONPATH="${SCRIPT_DIR}/src/Saphir:${SCRIPT_DIR}/../libsaphir/src:${PYTHONPATH:-}"
 export PYTHONPATH
 export DEVMODE=1
+export DEVMODE_AUTO_START=0
 
 # Check that the broker is reachable (emulator prerequisite)
 if ! python -c "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost',1883)); s.close()" 2>/dev/null; then

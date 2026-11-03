@@ -1,5 +1,6 @@
 """Central mediator between the Safecor platform and the QML UI. Owns the system state machine."""
 
+import os
 import sys
 
 from libsaphir import FileStatus
@@ -53,7 +54,9 @@ from libsaphir import ANTIVIRUS_NEEDED, DEVMODE
 # In DEVMODE the full analysis is started automatically. The grace period
 # (re-armed at every source disk connection) lets the partitions of a
 # multi-partition media group together before the scan starts.
+# Set DEVMODE_AUTO_START=0 to require manual confirmation (validation).
 DEVMODE_SCAN_START_GRACE = 1.0
+DEVMODE_AUTO_START = os.environ.get("DEVMODE_AUTO_START", "1") != "0"
 
 
 class ApplicationController(QObject):
@@ -788,13 +791,7 @@ class ApplicationController(QObject):
                     self.__storage_manager.get_source_disks()
                 )
 
-                if DEVMODE:
-                    # Re-arm the grace timer so that the partitions of a
-                    # multi-partition media group together before the
-                    # automatic start. The disk state callbacks arrive on
-                    # the MQTT thread: a QTimer could not be armed from
-                    # here, a plain threading.Timer is used instead (the
-                    # same pattern as the AnalysisController copy loop).
+                if DEVMODE and DEVMODE_AUTO_START:
                     if self.__devmode_auto_start_timer is not None:
                         self.__devmode_auto_start_timer.cancel()
                     self.__devmode_auto_start_timer = threading.Timer(
