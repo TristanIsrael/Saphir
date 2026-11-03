@@ -34,11 +34,18 @@ if [[ "$(uname)" != "Darwin" ]]; then
     OPTIONAL_DEPS=("${OPTIONAL_DEPS[@]}" "${LINUX_ONLY_DEPS[@]}")
 fi
 
-# Install the main requirements minus all optional deps
-REQUIREMENTS_FILTERED=$(mktemp)
-for dep in "${OPTIONAL_DEPS[@]}" "${LINUX_ONLY_DEPS[@]}"; do
-    grep -v "^${dep}" "${SCRIPT_DIR}/requirements.txt" >> "${REQUIREMENTS_FILTERED}" || true
+# Install the main requirements minus all optional deps (single grep pass)
+ALL_SKIP_DEPS=("${OPTIONAL_DEPS[@]}" "${LINUX_ONLY_DEPS[@]}")
+SKIP_PATTERN=""
+for dep in "${ALL_SKIP_DEPS[@]}"; do
+    if [[ -n "${SKIP_PATTERN}" ]]; then
+        SKIP_PATTERN="${SKIP_PATTERN}|^${dep}$"
+    else
+        SKIP_PATTERN="^${dep}$"
+    fi
 done
+REQUIREMENTS_FILTERED=$(mktemp)
+grep -Ev "${SKIP_PATTERN}" "${SCRIPT_DIR}/requirements.txt" > "${REQUIREMENTS_FILTERED}" || true
 "${VENV_DIR}/bin/pip" install --quiet -r "${REQUIREMENTS_FILTERED}"
 rm "${REQUIREMENTS_FILTERED}"
 
