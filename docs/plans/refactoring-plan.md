@@ -394,14 +394,14 @@ These rules must hold throughout refactoring:
 | Phase 7 | ✅ done | — | Phases 3-5 ✅ |
 | Phase 8 | ✅ done | — | Phases 3-5 ✅ |
 | Phase 9 | ✅ done | — | Phases 0-8 ✅ |
-| Phase 10 | +400 / +100 | High | Phases 3-6 ✅ |
-| Phase 11 | +300 / +200 | High | Phase 10 |
+| Phase 10 | ✅ done (#145–#152) | High | Phases 3-6 ✅ |
+| Phase 11 | ✅ done (#154) | High | Phase 10 ✅ |
 | Phase 12 | ✅ done (`f7ec7ad`, `24e8ae3`, `2ff186f`) | Medium | Phases 5-6, 10 ✅ |
 | Phase 13 | ✅ done | Low | — |
 | Phase 14 | ✅ done | Medium | 14.1–14.4 all done (#159 + Safecor) |
-| **Remaining** | **+700 / +300** | **~5-6 days** | Phases 10–11 |
+| **Remaining** | **0** | **0** | — |
 
-> **Note**: Phase 11 depends on Phase 10. Phase 14 is fully done.
+> **Note**: All phases (0–14) are complete.
 
 ---
 

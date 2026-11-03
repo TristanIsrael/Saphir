@@ -1,7 +1,7 @@
 # Saphir Refactoring - Session Context
 
 > **Last update**: 2026-11-03
-> **Session status**: Phases 0-13 + Phase 14 done; pending: Phases 10-11 (new features F1-F5)
+> **Session status**: All phases (0–14) complete. Refactoring plan is done.
 
 ## What was accomplished
 
@@ -20,7 +20,7 @@
 
 - **Phases 0-13 of `refactoring-plan.md` are done** (refactor, tests, lint, Alpine package validation in chroot, documentation debt, missing features & NFRs #145-#152, functional coverage #154, QML layer tests #155 + #156 + #157, Viewer modernization #158)
 - **Phase 14** done (#159 + Safecor): validation launcher, operator guide, state observer, scenario catalog
-- **Pending**: Phases 10–11 (new features: F1 full-disk, F3 pause/resume, F4 disconnect handling, NFR-1/3)
+- **All phases (0–14) are complete.** The refactoring plan is done.
 - **Test baseline**: 530 passed, 3 skipped, 1 xfailed (GUI) + 77 passed (viewer, 99% coverage) — the single xfail documents the open D8 gap
 - Package validation: `setup/chroot/chroot-build.sh` (7/8 packages built, GUI boot in DEVMODE validated; `saphir-container-eset` blocked by a dead ESET URL)
 
