@@ -398,11 +398,10 @@ These rules must hold throughout refactoring:
 | Phase 11 | +300 / +200 | High | Phase 10 |
 | Phase 12 | ✅ done (`f7ec7ad`, `24e8ae3`, `2ff186f`) | Medium | Phases 5-6, 10 ✅ |
 | Phase 13 | ✅ done | Low | — |
-| Phase 14 | +250 / +150 | Medium | 14.1–14.3 ✅ done (#159 + Safecor); 14.4+ ⏳ |
-| **Remaining** | **0 / +250** | **~2 days** | — |
+| Phase 14 | ✅ done | Medium | 14.1–14.4 all done (#159 + Safecor) |
+| **Remaining** | **+700 / +300** | **~5-6 days** | Phases 10–11 |
 
-> **Note**: Phase 11 depends on Phase 10, and Phase 12 on Phase 10. Phase 14.1–14.3 are done;
-> 14.4+ (scenario catalog, automation) remains.
+> **Note**: Phase 11 depends on Phase 10. Phase 14 is fully done.
 
 ---
 
@@ -1186,7 +1185,7 @@ ignored.
 
 ---
 
-### Phase 14: Semi-Automated Validation Environment (14.1–14.3 ✅ done; 14.4+ ⏳)
+### Phase 14: Semi-Automated Validation Environment (14.1–14.4 ✅ done)
 
 **Goal**: Let a **human** test Saphir in a **non-representative environment** (no appliance, no
 physical USB disks) while using the **Safecor emulator** as the platform. The tester drives the
@@ -1242,17 +1241,12 @@ counts, copy progress, ETA) to check the behavior against `docs/workflow-rules.m
   production impact.
 - **Constraint**: must not change production behavior (flag/env-var gated, like DEVMODE). ✅
 
-#### 14.4 [P1] Manual scenario catalog
+#### 14.4 [P1] Manual scenario catalog ✅ DONE (#159)
 - **Gap**: no curated list of what a human should try in this environment, nor the expected
   workflow states per scenario.
-- **Work**: a checklist of manual scenarios with expected `SystemState` transitions
-  (cross-referenced with `docs/workflow-rules.md`):
-  - Nominal cycle: attach source → analyze → attach target → copy → report → reset
-  - Source disconnect during analysis; target disconnect during copy (bug C.2 path)
-  - Power loss at boot / during scan; language change; domain restart
-  - AV error path (mock AV forced failure)
-- **Files**: `docs/` (new manual-scenarios doc)
-- **Effort**: Low (half day)
+- **Work** (done): `docs/validation-guide.md` §5 — 8 scenarios with expected `SystemState`
+  transitions (nominal, infected, source disconnect, AV failure, target disconnect,
+  multi-source, power loss, language change), cross-referenced with `workflow-rules.md`.
 
 **Validation**:
 - A human completes the nominal end-to-end cycle and at least 3 error scenarios in the

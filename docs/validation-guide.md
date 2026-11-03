@@ -207,6 +207,22 @@ tab and **not** be copied to the target.
 | 2 | `attach_disk disk2 /tmp/other-source` | Second source appears in the GUI |
 | 3 | Analysis covers both disks | All clean files from both disks are copied |
 
+### 5.7 Power loss during scan (NFR-5)
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | Let analysis start | `SystemAnalysisRunning` |
+| 2 | `set_energy_state battery` then `set_energy_state off` | GUI shows low-power / shutdown message |
+| 3 | System transitions to shutdown | `SystemShuttingDown` in state log |
+
+### 5.8 Language change (F19)
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | System in `SystemReady` | UI in default language (EN) |
+| 2 | `set_default_language fr` via operator console | GUI retranslates to French |
+| 3 | Verify labels, buttons, messages | All strings in French |
+
 ---
 
 ## 6. State observer (DevMode)
