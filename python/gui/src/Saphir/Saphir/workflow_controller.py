@@ -1,10 +1,14 @@
 """Single state authority for the system workflow with transition validation."""
 
+import time
 from typing import ClassVar
 
+from libsaphir import DEVMODE
 from PySide6.QtCore import QObject, Signal
 
 from .enums import SystemState
+
+_STATE_DUMP_FILE = "/tmp/saphir_state.log"
 
 
 class WorkflowController(QObject):
@@ -73,6 +77,13 @@ class WorkflowController(QObject):
     def __init__(self, parent=None):
         QObject.__init__(self, parent)
         self._state = SystemState.SystemStarting
+        if DEVMODE:
+            open(_STATE_DUMP_FILE, "w").close()
+
+    def _dump_state(self, event: str):
+        if DEVMODE:
+            with open(_STATE_DUMP_FILE, "a") as f:
+                f.write(f"{time.time():.3f} {event} {self._state.name}\n")
 
     @property
     def state(self) -> SystemState:
@@ -88,16 +99,23 @@ class WorkflowController(QObject):
         """Validate and apply a state transition, returning whether it was accepted."""
         if not self.can_transition(to):
             print(f"[WorkflowController] BLOCKED: {self._state.name} -> {to.name}")
+            if DEVMODE:
+                with open(_STATE_DUMP_FILE, "a") as f:
+                    f.write(
+                        f"{time.time():.3f} BLOCKED {self._state.name} -> {to.name}\n"
+                    )
             return False
 
         self._state = to
         print(f"[WorkflowController] {self._state.name}")
+        self._dump_state("TRANSITION")
         self.systemStateChanged.emit(self._state.value)
         return True
 
     def force_state(self, state: SystemState):
         """Set state without validation. Use only for initialization or reset."""
         self._state = state
+        self._dump_state("FORCE")
         self.systemStateChanged.emit(self._state.value)
 
     def is_in_states(self, states: set[SystemState]) -> bool:

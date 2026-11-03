@@ -1,7 +1,9 @@
 # Saphir Validation Environment Guide
 
 > **Status**: Active
+>
 > **Last updated**: 2026-11-03
+>
 > **Reference**: `docs/test-strategy.md` §3–4, `docs/workflow-rules.md`
 
 This guide describes how to set up and use the **semi-automated validation
@@ -207,7 +209,31 @@ tab and **not** be copied to the target.
 
 ---
 
-## 6. Troubleshooting
+## 6. State observer (DevMode)
+
+In DEVMODE, the `WorkflowController` writes every state transition to
+`/tmp/saphir_state.log`. Open a **4th terminal** and tail it live:
+
+```bash
+tail -f /tmp/saphir_state.log
+```
+
+Output format (one line per event):
+
+```
+1793720794.772 TRANSITION SystemReady
+1793720794.801 TRANSITION SystemGettingFilesList
+1793720795.102 BLOCKED SystemAnalysisRunning -> SystemReady
+```
+
+- `TRANSITION` — a valid state change was applied.
+- `BLOCKED` — a transition was **rejected** by the state machine (indicates a bug).
+
+The file is truncated on each app start (DEVMODE only). No impact in production.
+
+---
+
+## 7. Troubleshooting
 
 | Symptom | Cause / Fix |
 |---------|-------------|
@@ -219,7 +245,7 @@ tab and **not** be copied to the target.
 
 ---
 
-## 7. Cleanup
+## 8. Cleanup
 
 After validation:
 

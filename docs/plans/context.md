@@ -1,7 +1,7 @@
 # Saphir Refactoring - Session Context
 
 > **Last update**: 2026-11-03
-> **Session status**: Phases 0-13 done; Phase 14.1 done (#159: validation launcher + guide); pending: Phase 14.2+ (additional validation scenarios, automation)
+> **Session status**: Phases 0-13 done; Phase 14.1–14.3 done (#159); pending: Phase 14.4+ (scenario catalog, automation)
 
 ## What was accomplished
 
@@ -20,7 +20,9 @@
 
 - **Phases 0-13 of `refactoring-plan.md` are done** (refactor, tests, lint, Alpine package validation in chroot, documentation debt, missing features & NFRs #145-#152, functional coverage #154, QML layer tests #155 + #156 + #157, Viewer modernization #158)
 - **Phase 14.1** done (#159): mock AV moved to `libsaphir`, `validate_env.sh` launcher, `docs/validation-guide.md` operator runbook
-- **Pending**: Phase 14.2+ (additional validation scenarios, automation of the operator console steps)
+- **Phase 14.2** done (Safecor repo): `safecor-emulator` operator console
+- **Phase 14.3** done (#159): DEVMODE state dump in `WorkflowController` → `/tmp/saphir_state.log`
+- **Pending**: Phase 14.4+ (scenario catalog, automation)
 - **Test baseline**: 530 passed, 3 skipped, 1 xfailed (GUI) + 77 passed (viewer, 99% coverage) — the single xfail documents the open D8 gap
 - Package validation: `setup/chroot/chroot-build.sh` (7/8 packages built, GUI boot in DEVMODE validated; `saphir-container-eset` blocked by a dead ESET URL)
 
