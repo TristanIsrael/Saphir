@@ -60,3 +60,19 @@ This document contains the observations made during the validation tests of the 
 - **#242**: `SetupPanel.qml` — new "Target disk" TextField + Browse button; `ConsoleController` exposes `destinationPath` property; `start_emulator()` passes it to `Emulator(destination_disk_path=...)`.
 - **#243**: `ControlPanel.qml` — "Browse..." button (folder picker) next to the disk path field.
 - **#244**: `ConsoleController` emits `diskAttached` signal after successful attach; `ControlPanel.qml` clears `diskIdField` + `diskPathField` on that signal.
+
+## Run 4
+
+- Step: Infected file (F3 consensus)
+- When Saphir has started it keeps showing `System state: SystemState.SystemReady` in the log
+- The procedure is to complex. The configuration file for the behaviour of the mock AV should be provided to the same script `validate_env.sh` that should be used for all the tests.
+
+### Corrections applied
+
+- **Safecor PR #246 + #247** (merged into `feature-241`):
+  - `destination_disk_path` removed: the last attached disk is the copy target.
+  - Repository path field added in Disks panel (default `/tmp/safecor/storage`, folder picker).
+  - Topology, Configuration, Repository fields are read-only while the emulator is running.
+  - Periodic `discover/components` timer removed from `ComponentsPanel.qml`.
+  - All disk/file dialogs use `selectFolder` for directory selection.
+- **Saphir `8bf1376`**: `validate_env.sh` accepts `--config <file.json>` to control mock AV behaviour (infected/clean files). Usage: `bash validate_env.sh --config /path/to/av_config.json`.
