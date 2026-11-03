@@ -398,12 +398,11 @@ These rules must hold throughout refactoring:
 | Phase 11 | +300 / +200 | High | Phase 10 |
 | Phase 12 | ✅ done (`f7ec7ad`, `24e8ae3`, `2ff186f`) | Medium | Phases 5-6, 10 ✅ |
 | Phase 13 | ✅ done | Low | — |
-| Phase 14 | +250 / +150 | Medium | 14.1 ✅ done (#159); 14.2+ blocked on Safecor emulator |
+| Phase 14 | +250 / +150 | Medium | 14.1–14.2 ✅ done (#159 + Safecor); 14.3+ ⏳ |
 | **Remaining** | **0 / +250** | **~2 days** | — |
 
-> **Note**: Phase 11 depends on Phase 10, and Phase 12 on Phase 10. Phase 14.1 is done;
-> 14.2+ is blocked on the external Safecor emulator (interactive scenario API / observation
-> hooks not yet built).
+> **Note**: Phase 11 depends on Phase 10, and Phase 12 on Phase 10. Phase 14.1–14.2 are done;
+> 14.3+ (state observer, automation) remains.
 
 ---
 
@@ -1187,7 +1186,7 @@ ignored.
 
 ---
 
-### Phase 14: Semi-Automated Validation Environment (14.1 ✅ done; 14.2+ ⏳ blocked on Safecor emulator)
+### Phase 14: Semi-Automated Validation Environment (14.1–14.2 ✅ done; 14.3+ ⏳)
 
 **Goal**: Let a **human** test Saphir in a **non-representative environment** (no appliance, no
 physical USB disks) while using the **Safecor emulator** as the platform. The tester drives the
@@ -1227,14 +1226,12 @@ counts, copy progress, ETA) to check the behavior against `docs/workflow-rules.m
   - Mock AV controller moved to `libsaphir._mock_antivirus_controller` (standalone-runnable).
 - **Effort**: Low-Medium (1 day)
 
-#### 14.2 [P0] Interactive emulator operator (human-facing)
+#### 14.2 [P0] Interactive emulator operator (human-facing) ✅ DONE (Safecor repo)
 - **Gap**: the scenario API is programmatic; a human has no way to trigger
   attach/detach/energy events on demand.
-- **Work**: a small interactive console (CLI/TUI, or a minimal widget) wrapping the emulator
-  scenario API: `attach source`, `detach source`, `attach target`, `power on/off`,
-  `set language`, `restart domain`, plus a live log of the platform events sent.
-- **Depends on**: emulator exposing its scenario API as a stable, external entry point.
-- **Effort**: Medium (1-2 days, emulator side)
+- **Work** (done in Safecor repo): `safecor-emulator` CLI operator console — interactive
+  commands (`attach_disk`, `detach_disk`, `set_energy_state`, `restart_domain`, …) with a
+  live event log. Documented as a prerequisite in `docs/validation-guide.md`.
 
 #### 14.3 [P1] Internal state observer
 - **Gap**: the tester cannot see Saphir's internal state (workflow state, analysis queue,
