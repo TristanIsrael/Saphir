@@ -21,6 +21,13 @@ This document contains the observations made during the validation tests of the 
 - In the last step (`[4/4] Verifying imports...`), it fails to import safecor
 - Tests are stucked at this step.
 
+### Corrections applied (`88dd0db`)
+
+- **Root cause**: `SAFECOR_ROOT` defaults to `/home/onyxia/work/Safecor` which doesn't exist on the validator's machine. The `.pth` files pointed to a non-existent path.
+- **Fix**: `setup_dev_env.sh` now validates that `SAFECOR_ROOT/python/lib/src` exists before creating `.pth` files. If not, it exits with a clear error message.
+- **Usage**: `SAFECOR_ROOT=/path/to/Safecor bash setup_dev_env.sh`
+- Validation guide updated with the `SAFECOR_ROOT` prerequisite.
+
 ## Run 3
 
 - Step: Nominal cycle (C.1)
