@@ -6,11 +6,30 @@
 # and the operator console must already be running as prerequisites.
 #
 # Usage:
-#   bash validate_env.sh
+#   bash validate_env.sh [--config /path/to/av_config.json]
 #
 # Stop with Ctrl+C (SIGINT) — the mock AVs are cleaned up automatically.
 
 set -euo pipefail
+
+CONFIG=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --config)
+            CONFIG="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            exit 1
+            ;;
+    esac
+done
+
+if [[ -n "$CONFIG" && ! -f "$CONFIG" ]]; then
+    echo "ERROR: config file not found: $CONFIG" >&2
+    exit 1
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [[ "${SAPHIR_VENV_DIR:-}" ]]; then
@@ -57,7 +76,11 @@ trap cleanup SIGINT SIGTERM
 
 start_mock_av() {
     local name="$1"
-    python -u -m libsaphir._mock_antivirus_controller --name "$name" &
+    if [[ -n "$CONFIG" ]]; then
+        python -u -m libsaphir._mock_antivirus_controller --name "$name" --config "$CONFIG" &
+    else
+        python -u -m libsaphir._mock_antivirus_controller --name "$name" &
+    fi
     local pid=$!
     MOCK_PIDS+=("$pid")
     echo "Started mock AV '$name' (pid $pid)"
