@@ -136,9 +136,19 @@ def main():
     ctrl = MockAntivirusController(name=args.name, config=config)
     ctrl.start()
 
-    # In DEVMODE, start() returns immediately. Block forever so the
-    # MQTT client thread stays alive to process messages.
-    threading.Event().wait()
+    # In DEVMODE, start() returns immediately. Block until SIGTERM/SIGINT.
+    import signal
+
+    stop_event = threading.Event()
+
+    def _handle_signal(signum, frame):
+        stop_event.set()
+
+    signal.signal(signal.SIGTERM, _handle_signal)
+    signal.signal(signal.SIGINT, _handle_signal)
+
+    stop_event.wait()
+    ctrl.stop()
 
 
 if __name__ == "__main__":
