@@ -26,18 +26,17 @@ class EeaAntivirusController(AbstractAntivirusController):
             component_description="ESET Endpoint Antivirus controller",
             max_workers=1,
         )
-
-        self.__state = ComponentState.UNKNOWN
+        self.__engine_ready = False
 
     def _on_api_ready(self) -> None:
         self.info("ESET antivirus controller is starting.")
-        self.__state = ComponentState.STARTING
-
-        # Verify the daemon is ready
         threading.Timer(0.5, self.__ping_eea).start()
 
+    def _engine_is_ready(self) -> bool:
+        return self.__engine_ready
+
     def _analyse_file(self, filepath: str) -> None:
-        if self.__state != ComponentState.READY:
+        if self._get_component_state() != ComponentState.READY:
             self.error("The component is not ready.")
 
             self.analysis_finished(False)
@@ -238,9 +237,6 @@ class EeaAntivirusController(AbstractAntivirusController):
         # print("non handled")
         # return True, False, "Unhandled case"
 
-    def _get_component_state(self):
-        return self.__state
-
     def _stop_immediately(self):
         subprocess.run(["/usr/lib/saphir/bin/stop-all-scans.sh"], check=False)
         # subprocess.run(self.__lxc_cmd + cmd)
@@ -298,11 +294,8 @@ class EeaAntivirusController(AbstractAntivirusController):
         else:
             state = result.stdout.strip()
             if state == "RUNNING":
-                self.__state = ComponentState.READY
-                self.debug(
-                    f"Antivirus is ready. The storage path is {Constants.DOMU_REPOSITORY_PATH}"
-                )
-                self.component_state_changed()
+                self.__engine_ready = True
+                self._notify_engine_ready()
 
     def __translate_odscan_return(self, returncode: int) -> str:
         if returncode == 0:

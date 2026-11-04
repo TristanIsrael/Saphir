@@ -91,3 +91,50 @@ This document contains the observations made during the validation tests of the 
 - **Root cause**: In DEVMODE, a 1s grace timer (`DEVMODE_SCAN_START_GRACE`) automatically called `start_full_analysis()` after disk attachment, bypassing the user confirmation dialog. The analysis started before the mock AVs were ready, causing the crash.
 - **Fix**: New env var `DEVMODE_AUTO_START` (default `1` for tests). `validate_env.sh` sets `DEVMODE_AUTO_START=0` so the operator must manually confirm via the dialog.
 - **Validation guide updated**: scenarios now explicitly say "accept the analysis" instead of "let analysis start".
+
+## Run 6
+
+- Step: Infected file (F3 consensus)
+- Emulator started with no disk attached
+- Saphir starts and waits for a source disk
+- Attach the `src` disk in the Emulator
+  - The 8 first files are copied into the storage
+  - The files are not analysed, their status is `File ready` in the GUI
+  - The logs are:
+```
+System state: SystemState.SystemAnalysisRunning
+File /var/folders/ph/ckhh2rkx24dcxpb7mbs6002r0000gn/T/saphir.log opened in a mode.
+Antivirus start thread for file /cat
+An error occured while calculating the fingerprint of the file /mnt/storage/cat
+[Errno 2] No such file or directory: '/mnt/storage/cat'
+Antivirus start thread for file /echo
+An error occured while calculating the fingerprint of the file /mnt/storage/echo
+[Errno 2] No such file or directory: '/mnt/storage/echo'
+AV controller says that the analysis is finished without error
+Antivirus start thread for file /launchctl
+An error occured while calculating the fingerprint of the file /mnt/storage/launchctl
+[Errno 2] No such file or directory: '/mnt/storage/launchctl'
+AV controller says that the analysis is finished without error
+Antivirus start thread for file /df
+An error occured while calculating the fingerprint of the file /mnt/storage/df
+[Errno 2] No such file or directory: '/mnt/storage/df'
+AV controller says that the analysis is finished without error
+Antivirus start thread for file /pwd
+An error occured while calculating the fingerprint of the file /mnt/storage/pwd
+AV controller says that the analysis is finished without error[Errno 2] No such file or directory: '/mnt/storage/pwd'
+
+Antivirus start thread for file /test
+An error occured while calculating the fingerprint of the file /mnt/storage/test
+[Errno 2] No such file or directory: '/mnt/storage/test'
+AV controller says that the analysis is finished without error
+Antivirus start thread for file /csh
+An error occured while calculating the fingerprint of the file /mnt/storage/csh
+[Errno 2] No such file or directory: '/mnt/storage/csh'
+AV controller says that the analysis is finished without error
+Antivirus start thread for file /wait4path
+An error occured while calculating the fingerprint of the file /mnt/storage/wait4path
+[Errno 2] No such file or directory: '/mnt/storage/wait4path'
+AV controller says that the analysis is finished without error
+AV controller says that the analysis is finished without error
+```
+- The Saphir AV components do not respond to the message `system/discover/components/request` so they don't appear in the Emulator.

@@ -154,7 +154,7 @@ Each transition has a **trigger** (event) and a **guard** (condition).
 |------|-----|---------|-------|
 | `SystemInactive` | `SystemStarting` | App start | Always |
 | `SystemStarting` | `SafecorReady` | MQTT ready + subscriptions complete | Always |
-| `SafecorReady` | `SystemReady` | Disk controller ready (core components operational) | Always (AV engines **not** required) |
+| `SafecorReady` | `SystemReady` | Disk controller ready + repository path received (core components operational) | Always (AV engines **not** required) |
 | `SystemReady` | `SystemGettingFilesList` | First storage connected | `not system_used` (disk-controller ready + disk present) |
 | `SystemReady` | `SystemMustBeReset` | A **different** storage connected after use | `system_used && disk_name != source_name` |
 | `SystemGettingFilesList` | `SystemWaitingForUserAction` | All folders queried | `folders_to_query == 0 && analyse_selection` |

@@ -29,8 +29,8 @@ class TestApiLifecycle(unittest.TestCase):
 
         self.lifecycle.setup_subscriptions()
 
-        self.assertEqual(mock_api.return_value.subscribe.call_count, 10)
-        self.assertEqual(len(self.lifecycle._subscriptions), 10)
+        self.assertEqual(mock_api.return_value.subscribe.call_count, 11)
+        self.assertEqual(len(self.lifecycle._subscriptions), 11)
         mock_api.return_value.add_subscription_callback.assert_called_once()
 
     @patch("Saphir.api_lifecycle.Api")

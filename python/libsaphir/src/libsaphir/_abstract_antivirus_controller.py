@@ -43,6 +43,8 @@ class AbstractAntivirusController(ABC):
     ):
         self.__component_name = component_name
         self.__component_description = component_description
+        self.__state = ComponentState.UNKNOWN
+        self.__repository_path_received = False
 
         if max_workers == -1:
             self.__max_workers = 1 if os.cpu_count() is None else os.cpu_count()
@@ -138,16 +140,25 @@ class AbstractAntivirusController(ABC):
         self.debug(
             f"Current CPU count is {os.cpu_count()}. Using {self.__max_workers} workers."
         )
+        self.__state = ComponentState.STARTING
         Api().subscribe(f"{Topics.DISCOVER_COMPONENTS}/request")
         Api().subscribe(f"{Topics.RESTART_DOMAIN}/request")
         Api().subscribe(f"{TOPIC_ANALYSIS}/request")
         Api().subscribe(f"{TOPIC_ANALYSIS}/stop")
         Api().subscribe(f"{TOPIC_ANALYSIS}/resume")
         Api().subscribe(f"{TOPIC_ANALYSIS}/reset")
+        Api().subscribe(f"{Topics.REPOSITORY_PATH}/response")
+        Api().publish(f"{Topics.REPOSITORY_PATH}/request", {})
         self._on_api_ready()
 
     def __on_message_received(self, topic: str, payload: dict):
-        if topic == f"{Topics.DISCOVER_COMPONENTS}/request":
+        if topic == f"{Topics.REPOSITORY_PATH}/response":
+            self.__repository_path_received = True
+            Constants.DOMU_REPOSITORY_PATH = payload.get("path", "")
+            self.debug(f"Repository path: {Constants.DOMU_REPOSITORY_PATH}")
+            self.__check_component_ready()
+
+        elif topic == f"{Topics.DISCOVER_COMPONENTS}/request":
             self.component_state_changed()
 
         elif topic == f"{TOPIC_ANALYSIS}/request":
@@ -255,13 +266,30 @@ class AbstractAntivirusController(ABC):
     def error(self, message: str):
         Api().error(message, self.__component_name)
 
+    def _get_component_state(self) -> ComponentState:
+        return self.__state
+
+    def _engine_is_ready(self) -> bool:
+        """Return True when the engine-specific initialisation is complete."""
+        return True
+
+    def _notify_engine_ready(self) -> None:
+        """Called by the subclass when its engine is ready."""
+        self.__check_component_ready()
+
+    def _on_component_ready(self) -> None:
+        """Hook called when the component transitions to READY."""
+
+    def __check_component_ready(self) -> None:
+        if self.__repository_path_received and self._engine_is_ready():
+            self.__state = ComponentState.READY
+            self.debug("All context received. Component is ready.")
+            self.component_state_changed()
+            self._on_component_ready()
+
     @abstractmethod
     def _on_api_ready(self) -> None:
         pass
-
-    @abstractmethod
-    def _get_component_state(self) -> ComponentState:
-        return ComponentState.UNKNOWN
 
     @abstractmethod
     def _analyse_file(self, filepath: str) -> None:

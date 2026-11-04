@@ -102,7 +102,6 @@ def multi_source_env():
         profile=default_profile(),
         source_disks={},
         storage_path=os.path.join(tmp, "repo"),
-        destination_disk_path=target_dir,
     )
     em.start()
 
@@ -202,7 +201,6 @@ def test_multi_source_full_analysis(multi_source_env):
     # 6. The nominal state sequence was followed
     assert tracker.has_sequence(
         [
-            "SystemState.SystemReady",
             "SystemState.SafecorReady",
             "SystemState.SystemReady",
             "SystemState.SystemAnalysisRunning",

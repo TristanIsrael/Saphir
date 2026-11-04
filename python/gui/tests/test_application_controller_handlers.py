@@ -608,6 +608,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
                 "version": "2.0",
             },
         ]
+        self.controller._ApplicationController__repository_path_received = True
         self.controller._ApplicationController__handle_discover_components(
             {"components": components}
         )
@@ -646,6 +647,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
             },
         ]
         self.controller._ApplicationController__components_helper.update(components)
+        self.controller._ApplicationController__repository_path_received = True
         self.controller._ApplicationController__check_components_availability()
         self.assertTrue(self.controller.analysisReady)
         self.assertEqual(self.controller.systemState, SystemState.SystemReady.value)
@@ -703,6 +705,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
             },
         ]
         self.controller._ApplicationController__components_helper.update(components)
+        self.controller._ApplicationController__repository_path_received = True
         self.controller._ApplicationController__check_components_availability()
         self.assertTrue(self.controller.analysisReady)
 
@@ -732,6 +735,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
             },
         ]
         self.controller._ApplicationController__components_helper.update(components)
+        self.controller._ApplicationController__repository_path_received = True
         self.controller._ApplicationController__check_components_availability()
         self.assertEqual(self.controller.systemState, SystemState.SystemReady.value)
 
@@ -774,6 +778,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
             },
         ]
         self.controller._ApplicationController__components_helper.update(components)
+        self.controller._ApplicationController__repository_path_received = True
         self.controller._ApplicationController__check_components_availability()
         self.assertTrue(self.controller.analysisReady)
 
@@ -833,6 +838,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
             },
         ]
         self.controller._ApplicationController__components_helper.update(components)
+        self.controller._ApplicationController__repository_path_received = True
         self.controller._ApplicationController__check_components_availability()
         self.assertTrue(self.controller.analysisReady)
 

@@ -165,6 +165,7 @@ class ApplicationController(QObject):
         self.__api_lifecycle.set_all_ready_callback(self.__on_all_subscriptions_ready)
         self.__app_ready_done = False
         self.__ready_callback = None
+        self.__repository_path_received = False
 
         self.__workflow_controller = WorkflowController(self)
         self.__workflow_controller.systemStateChanged.connect(self.systemStateChanged)
@@ -232,9 +233,6 @@ class ApplicationController(QObject):
 
         if DEVMODE:
             self.__mqtt_client = DevModeHelper.create_mqtt_client("GUI")
-            repo_path = os.environ.get("SAPHIR_REPOSITORY_PATH")
-            if repo_path:
-                Constants.DOMU_REPOSITORY_PATH = repo_path
         else:
             self.__mqtt_client = MqttFactory.create_mqtt_client_domu("GUI")
 
@@ -539,6 +537,7 @@ class ApplicationController(QObject):
         Api().discover_components()
         self.__set_system_loading_progress(0.15)
         Api().request_system_info()
+        Api().request_repository_path()
 
         # Energy management
         self.__energy_monitor.start_polling()
@@ -597,6 +596,8 @@ class ApplicationController(QObject):
             self.__handle_create_file(payload)
         elif topic == f"{Topics.DEFAULT_LANGUAGE}/response":
             self.__translation_manager.on_default_language_response(payload)
+        elif topic == f"{Topics.REPOSITORY_PATH}/response":
+            self.__handle_repository_path(payload)
 
     def __is_file_in_folder(self, filepath: str, folder: str) -> bool:
         return filepath.startswith(folder)  # type: ignore
@@ -683,6 +684,9 @@ class ApplicationController(QObject):
 
         # Now we check again the antiviruses
         ready &= len(self.__analysis_components) >= ANTIVIRUS_NEEDED
+
+        # The repository path is a core condition for SystemReady
+        ready &= self.__repository_path_received
 
         # The system is ready when all necessary components are ready
         # and the number of antiviruses needed is reached
@@ -1111,6 +1115,12 @@ class ApplicationController(QObject):
             return
 
         self.__system_information_model.information_updated(payload)
+
+    def __handle_repository_path(self, payload: dict):
+        path = payload.get("path", "")
+        if path:
+            self.__repository_path_received = True
+            self.__check_components_availability()
 
     def __handle_create_file(self, payload: dict):
         disk = payload.get("disk", "")

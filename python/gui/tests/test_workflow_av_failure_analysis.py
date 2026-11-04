@@ -46,7 +46,6 @@ def av_failure_env():
         profile=default_profile(),
         source_disks={},
         storage_path=os.path.join(tmp, "repo"),
-        destination_disk_path=target_dir,
     )
     em.start()
 

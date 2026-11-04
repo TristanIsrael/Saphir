@@ -25,10 +25,9 @@ Config file format (JSON)::
 If no config is provided, all files are reported clean with a 0.05 s delay.
 
 Files listed in ``corrupt`` are altered in the repository right after the
-analysis request, so the NFR-1 integrity check rejects them. The
-``SAPHIR_REPOSITORY_PATH`` environment variable must point at the directory
-that emulates the repository (the emulator's storage path) for the
-integrity check to find the files.
+analysis request, so the NFR-1 integrity check rejects them. The repository
+path is obtained from the platform via the ``system/disks/repository_path``
+protocol function at startup.
 """
 
 from __future__ import annotations
@@ -60,13 +59,6 @@ class MockAntivirusController(AbstractAntivirusController):
         self._corrupt: set[str] = set(self._config.get("corrupt", []))
         self._default: str = self._config.get("default", "clean")
         self._scan_delay: float = self._config.get("scan_delay", 0.05)
-
-        # In DEVMODE the repository is a local directory, not the appliance
-        # DOMU mount point: point the integrity check at the real test
-        # repository so the fingerprint verification (NFR-1) actually runs.
-        repository_path = os.environ.get("SAPHIR_REPOSITORY_PATH")
-        if repository_path:
-            Constants.DOMU_REPOSITORY_PATH = repository_path
 
         # Failure injection (NFR-3): when the flag file appears the engine
         # reports itself OFF (like the platform would for a dead domain)
@@ -102,10 +94,7 @@ class MockAntivirusController(AbstractAntivirusController):
                 f.write(f"{time.time():.3f} {self._name} {filepath}\n")
 
     def _on_api_ready(self) -> None:
-        self.component_state_changed(ComponentState.READY)
-
-    def _get_component_state(self) -> ComponentState:
-        return ComponentState.READY
+        pass
 
     def _analyse_file(self, filepath: str) -> None:
         self.update_status(filepath, FileStatus.FileAnalysing, 0)

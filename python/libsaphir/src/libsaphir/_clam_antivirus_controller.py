@@ -9,22 +9,21 @@ from libsaphir._abstract_antivirus_controller import AbstractAntivirusController
 
 
 class ClamAntivirusController(AbstractAntivirusController):
-    __state = ComponentState.UNKNOWN
-
     def __init__(self):
         super().__init__("ClamAV", "Clam Antivirus controller")
+        self.__engine_ready = False
 
     def _on_api_ready(self) -> None:
         self.info("Clam antivirus controller is starting.")
-        self.__state = ComponentState.STARTING
-
-        # Verify the daemon is ready
         threading.Timer(0.5, self.__ping_clamd).start()
+
+    def _engine_is_ready(self) -> bool:
+        return self.__engine_ready
 
     def _analyse_file(self, filepath: str) -> None:
         print("CLAMAV analyse file", filepath)
 
-        if self.__state != ComponentState.READY:
+        if self._get_component_state() != ComponentState.READY:
             self.error("The component is not ready.")
             return
 
@@ -61,9 +60,6 @@ class ClamAntivirusController(AbstractAntivirusController):
 
         self.publish_result(filepath, success, details)
         self.analysis_finished(True)
-
-    def _get_component_state(self):
-        return self.__state
 
     def _stop_immediately(self):
         subprocess.run(["killall", "-9", "clamdscan"], check=False)
@@ -112,8 +108,5 @@ class ClamAntivirusController(AbstractAntivirusController):
         if proc.returncode > 0:
             threading.Timer(0.5, self.__ping_clamd).start()
         else:
-            self.__state = ComponentState.READY
-            self.debug(
-                f"Antivirus is ready. The storage path is {Constants.DOMU_REPOSITORY_PATH}"
-            )
-            self.component_state_changed()
+            self.__engine_ready = True
+            self._notify_engine_ready()

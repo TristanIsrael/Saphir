@@ -87,8 +87,6 @@ class MockAVManager:
         env = os.environ.copy()
         env["DEVMODE"] = "1"
         env["PYTHONPATH"] = self._build_pythonpath()
-        if self._repository_path:
-            env["SAPHIR_REPOSITORY_PATH"] = self._repository_path
         env["MOCK_AV_FAILURE_FLAG"] = self._failure_flag
         if self._request_log:
             env["MOCK_AV_REQUEST_LOG"] = self._request_log

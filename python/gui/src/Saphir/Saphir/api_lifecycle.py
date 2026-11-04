@@ -69,6 +69,10 @@ class ApiLifecycle(QObject):
         if result:
             self._subscriptions.append(mid)
 
+        result, mid = Api().subscribe(f"{Topics.REPOSITORY_PATH}/response")
+        if result:
+            self._subscriptions.append(mid)
+
     def _on_subscribed(self, mid):
         if mid in self._subscriptions:
             self._subscribed_count += 1

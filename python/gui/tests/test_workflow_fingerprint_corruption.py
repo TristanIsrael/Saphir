@@ -54,7 +54,6 @@ def corruption_env():
         profile=default_profile(),
         source_disks={},
         storage_path=repo_path,
-        destination_disk_path=target_dir,
     )
     em.start()
 

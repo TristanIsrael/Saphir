@@ -91,7 +91,6 @@ def nominal_env():
         profile=default_profile(),
         source_disks={},
         storage_path=os.path.join(tmp, "repo"),
-        destination_disk_path=target_dir,
     )
     em.start()
 
@@ -182,11 +181,9 @@ def test_nominal_cycle(nominal_env):
 
     # 8. Verify the state sequence (characterization — captures actual behaviour)
     expected_sequence = [
-        "SystemState.SystemReady",
         "SystemState.SafecorReady",
         "SystemState.SystemReady",
         "SystemState.SystemAnalysisRunning",
-        "SystemState.SystemWaitingForUserAction",
         "SystemState.AnalysisCompleted",
         "SystemState.CopyCleanFiles",
         "SystemState.GeneratingReport",
