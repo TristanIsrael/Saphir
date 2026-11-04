@@ -95,6 +95,15 @@ QtObject {
         }
     }
 
+    property color colorTextHighContrast: {
+        switch(root.theme) {
+            case Constants.wireframe : return ThemeWireframe.colorTextHighContrast;
+            case Constants.dark: return ThemeDark.colorTextHighContrast;
+            case Constants.light: return ThemeLight.colorTextHighContrast;
+            case Constants.lowVisibility: return ThemeLowVisibility.colorTextHighContrast;
+        }
+    }
+
     property color colorBorder: {
         switch(root.theme) {
             case Constants.wireframe : return ThemeWireframe.colorBorder;

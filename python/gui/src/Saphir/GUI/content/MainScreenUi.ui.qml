@@ -389,13 +389,14 @@ Item {
         visible: bindings.analyzing && bindings.sourceDisconnected
         z: 1.0
 
-        Label {
+        StyledText {
             anchors.centerIn: parent
-            text: qsTr("The source storage was disconnected: the analysis is on hold. Please reconnect the source storage to continue.")
-            font.pointSize: 12
+            text: qsTr("The source storage was disconnected: the analysis is on hold until you reconnect it.")
+            section: Constants.Section.Paragraph
             horizontalAlignment: Text.AlignHCenter
             width: parent.width - 20
             elide: Text.ElideRight
+            color: Environment.colorTextHighContrast
         }
     }
 
