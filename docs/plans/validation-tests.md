@@ -138,3 +138,23 @@ AV controller says that the analysis is finished without error
 AV controller says that the analysis is finished without error
 ```
 - The Saphir AV components do not respond to the message `system/discover/components/request` so they don't appear in the Emulator.
+
+### Corrections applied (`2a78175` + Safecor `feature-232`)
+
+- **Root cause**: AV controllers used a hardcoded path (`/mnt/storage`) or the `SAPHIR_REPOSITORY_PATH` env var to locate the repository. On the validator's machine the actual path differs (e.g. macOS `/var/folders/...`), causing fingerprint failures. The GUI also had no way to learn the actual path from the emulator.
+- **Fix — `repository_path` protocol** (Safecor issue #232):
+  - New MQTT topics: `system/disks/repository_path/request` + `system/disks/repository_path/response`.
+  - `MockDom0` responds with its actual storage path.
+  - `Api.request_repository_path()` added to the Safecor Python library.
+  - GUI: on `__app_ready()`, calls `request_repository_path()`; `SystemReady` now requires the path to be received.
+  - AV controllers (abstract base): subscribe to `repository_path/response` at startup; state machine requires BOTH the path AND engine readiness before transitioning to `READY`.
+  - `SAPHIR_REPOSITORY_PATH` env var and `--storage` parameter removed from all code and scripts.
+- **AV state machine rework** (`AbstractAntivirusController`):
+  - State management moved to the base class (was duplicated in each subclass).
+  - `_engine_is_ready()` virtual method: `ClamAV`/`ESET` check daemon/container ping; `MockAV` defaults to `True`.
+  - `_notify_engine_ready()` called when the engine-specific check passes.
+- **Emulator fix** (`mock_sys_usb.py`): `attach_disk` now tracks `__known_disk_ids` to prevent re-attachment of a source disk from overwriting the copy destination path.
+- **Validation status**: pending next run to confirm the fingerprint errors are resolved and AV components appear in the Emulator.
+
+## Run 7
+

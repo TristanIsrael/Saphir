@@ -73,7 +73,7 @@ cleanup() {
     done
     echo "Done."
 }
-trap cleanup SIGINT SIGTERM
+trap cleanup EXIT
 
 start_mock_av() {
     local name="$1"
