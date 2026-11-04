@@ -94,7 +94,7 @@ Item {
     }
 
     function startCopyPhase() {
-        ApplicationController.enterCopyPhase()
+        ApplicationController.enter_copy_phase()
     }
     
     function reset() {
