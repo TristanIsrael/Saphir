@@ -33,9 +33,8 @@ class FileQueue:
     def dequeue_folder(self, filepath: str) -> None:
         """Remove every file located under the given folder."""
         with self._lock:
-            self._files = {
-                k: v for k, v in self._files.items() if not k.startswith(filepath)
-            }
+            for key in [k for k in self._files if k.startswith(filepath)]:
+                del self._files[key]
 
     def clear(self) -> None:
         """Remove all files and reset the tracked total size."""

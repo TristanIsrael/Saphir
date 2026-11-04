@@ -163,3 +163,20 @@ AV controller says that the analysis is finished without error
 - When disconnecting the source disk, the message is shown but is it not on the correct layer, it is behind the language selection button. 
   - Additionally it is to large and should reduced to around 70% of the width of the window.
   - There should be a background with a reduced opacity in order to improve the contrast.
+
+### Corrections applied (`165a94e`)
+
+- **Enqueuing performance**: Removed per-file `fileUpdated.emit` during bulk enqueuing. The O(n²) caused by per-file `dataChanged` signals (linear scan in both list models) is eliminated. A single `reset()` on both models is triggered when enqueuing completes via the existing `queueUpdated` signal.
+- **"Getting the files list" overlay**: New `Rectangle` overlay in `MainScreenUi.ui.qml` (70% width, semi-transparent background, `z: 1.0`) visible while `longProcessRunning` is true and the system is not yet analysis-ready. The `longProcessRunning` property (already toggled correctly in Python) is now exposed in `Bindings.qml`.
+- **Source disconnection overlay**: Replaced the in-flow `StyledText` (top of `AnalysisPanel`, no background, full width, behind corner buttons) with a proper overlay in `MainScreenUi.ui.qml`: 70% window width, `Environment.colorWarning` background at 0.9 opacity, `z: 1.0`, centered horizontally.
+
+## Run 8 (incremental)
+
+- Step: Source disconnection during analysis (8.8)
+- When the analysis is paused because the source disk has been detached, if we close Saphir it does not quit, the AVs seem to remain started.
+- When unchecking a folder in the file navigator nothing happens: the files are not removed and the box remains checked. The same for a single file. It seems to be a regression from the change of the behaviour of the Model-View in the last run.
+
+### Corrections applied
+
+- **App hang on close during held analysis**: The copy loop (`__do_copy_files_into_repository`) uses `threading.Timer` which is non-daemon by default. While the source is held, the timer re-arms every 0.5 s indefinitely, blocking Python's `threading._shutdown()` at interpreter exit. Fix: set `daemon = True` on all three `threading.Timer` instances in the copy loop.
+- **Folder uncheck not reflected in UI**: `FileQueue.dequeue_folder` was reassigning `self._files` to a new dict (`self._files = {k: v for ...}`), which invalidated the by-reference handle held by `SafecorInputFilesListModel.__queuedFilesList` (and `QueueListModel`, `AnalysisController`). The `inqueue` role kept reading from the stale dict. Fix: mutate the dict in-place (`del self._files[key]` per matching key) so all reference holders see the change.

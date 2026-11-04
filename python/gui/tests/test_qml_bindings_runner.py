@@ -495,11 +495,11 @@ class Runner:
             raise RuntimeError("Loading panel title not found")
         refs["loadingTitle"] = title
 
-        # The source-disconnection alert overlay (Label in MainScreenUi)
+        # The source-disconnection alert overlay (StyledText in MainScreenUi)
         alert = next(
             (
                 t
-                for t in self._find_class("Label")
+                for t in self._find_class("StyledText")
                 if "disconnected" in str(t.property("text"))
             ),
             None,

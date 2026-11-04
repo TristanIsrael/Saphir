@@ -567,6 +567,7 @@ class AnalysisController(QObject):
             self.__copy_timer = threading.Timer(
                 0.5, self.__do_copy_files_into_repository
             )
+            self.__copy_timer.daemon = True
             self.__copy_timer.start()
             return
 
@@ -578,6 +579,7 @@ class AnalysisController(QObject):
             self.__copy_timer = threading.Timer(
                 0.5, self.__do_copy_files_into_repository
             )
+            self.__copy_timer.daemon = True
             self.__copy_timer.start()
             return
 
@@ -634,6 +636,7 @@ class AnalysisController(QObject):
             self.__copy_timer = threading.Timer(
                 0.5, self.__do_copy_files_into_repository
             )
+            self.__copy_timer.daemon = True
             self.__copy_timer.start()
         else:
             print("No more file to analyse... Exiting loop")
