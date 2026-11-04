@@ -92,6 +92,10 @@ Item {
     function startStopAnalysis() {        
         ApplicationController.start_stop_analysis()        
     }
+
+    function startCopyPhase() {
+        ApplicationController.enterCopyPhase()
+    }
     
     function reset() {
         ApplicationController.reset()

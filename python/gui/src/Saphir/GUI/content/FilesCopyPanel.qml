@@ -83,7 +83,7 @@ Item {
                 text: {
                     if(bindings.copyPaused) {
                         return qsTr("Copy paused: a storage was disconnected. Please reconnect it to continue.")
-                    } else if(bindings.targetName === "" && bindings.systemState === Enums.AnalysisCompleted) {
+                    } else if(bindings.targetName === "") {
                         return qsTr("Please connect a target storage...")
                     } else {
                         // Transfer in progress

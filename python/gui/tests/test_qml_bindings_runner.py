@@ -623,9 +623,9 @@ class Runner:
 
         copy_volume = _copy_text("Volume of files to copy")
         copy_destination = _copy_text("Destination:")
-        # In the initial (SystemReady) state the status switch falls through
-        # to its "unknown state" fallback
-        copy_status = _copy_text("Unknown state")
+        # In the initial (SystemReady) state with no target connected,
+        # the status shows the "connect a target" prompt
+        copy_status = _copy_text("Please connect a target storage")
         if not (copy_volume and copy_destination and copy_status):
             raise RuntimeError("FilesCopyPanel texts not found")
         refs["copyVolume"] = copy_volume

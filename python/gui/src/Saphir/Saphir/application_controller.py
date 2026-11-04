@@ -399,6 +399,17 @@ class ApplicationController(QObject):
         )
 
     @Slot()
+    def enter_copy_phase(self):
+        """Enter the copy phase: show the FilesCopyPanel.
+
+        If a target is already connected, start the transfer immediately.
+        Otherwise the panel prompts the user to connect a target storage.
+        """
+        self.__set_system_state(SystemState.CopyCleanFiles)
+        if self.__storage_manager.target_name != "":
+            self.start_transfer()
+
+    @Slot()
     def select_all_clean_files_for_copy(self):
         """Select every clean file for the copy to the target disk."""
         for filepath_, file_ in self.__file_queue.files.items():
@@ -852,6 +863,10 @@ class ApplicationController(QObject):
         self.__analysis_controller.set_source_disks(
             self.__storage_manager.get_source_disks()
         )
+
+        if self.__storage_manager.source_ready and not self.__scan_started:
+            self.sourceReadyChanged.emit(True)
+            return
 
         if (
             self.__storage_manager.target_ready

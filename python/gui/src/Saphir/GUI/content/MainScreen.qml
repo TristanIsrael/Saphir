@@ -148,6 +148,14 @@ Window {
         }
 
         Connections {
+            target: window.btnCopyFiles
+
+            function onClicked() {
+                bindings.startCopyPhase()
+            }
+        }
+
+        Connections {
             target: window.dlgSystemState
 
             function onButtonClicked() {
