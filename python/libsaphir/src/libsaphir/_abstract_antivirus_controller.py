@@ -119,6 +119,24 @@ class AbstractAntivirusController(ABC):
 
         Api().publish_components(components)
 
+    def _perform_restart(self, delay: float = 10.0) -> None:
+        """Simulate a domain restart: disconnect from broker, wait, reconnect.
+
+        The component transitions to STARTING, goes offline for the given
+        delay, then reconnects. On reconnect the API ready callback
+        re-subscribes and re-requests the repository path, which drives the
+        transition back to READY.
+        """
+        self.__state = ComponentState.STARTING
+        self.__repository_path_received = False
+        self.component_state_changed(ComponentState.STARTING)
+        threading.Thread(target=self.____do_restart, args=(delay,), daemon=True).start()
+
+    def ____do_restart(self, delay: float) -> None:
+        Api().stop()
+        time.sleep(delay)
+        Api().start(mqtt_client=Api().get_mqtt_client())
+
     def analysis_finished(self, success: bool):
         with self.__workers_lock:
             print(

@@ -180,3 +180,15 @@ AV controller says that the analysis is finished without error
 
 - **App hang on close during held analysis**: The copy loop (`__do_copy_files_into_repository`) uses `threading.Timer` which is non-daemon by default. While the source is held, the timer re-arms every 0.5 s indefinitely, blocking Python's `threading._shutdown()` at interpreter exit. Fix: set `daemon = True` on all three `threading.Timer` instances in the copy loop.
 - **Folder uncheck not reflected in UI**: `FileQueue.dequeue_folder` was reassigning `self._files` to a new dict (`self._files = {k: v for ...}`), which invalidated the by-reference handle held by `SafecorInputFilesListModel.__queuedFilesList` (and `QueueListModel`, `AnalysisController`). The `inqueue` role kept reading from the stale dict. Fix: mutate the dict in-place (`del self._files[key]` per matching key) so all reference holders see the change.
+
+## Run 9 (incremental)
+
+- Step: AV engine failure (NFR-3, 8.9)
+- In the emulator there is no Saphir component so I cannot restart an AV for the test.
+
+### Corrections applied (Safecor `main`)
+
+- **`discover_components` multi-response**: The emulator's `discover_components()` used `_request_response` which returns on the **first** response only. The in-process mock peers (Dom0, sys-usb) respond before the external mock AV processes, so their components were never collected. Fix: `discover_components` now uses a dedicated MQTT client that collects **all** responses over a 2 s window, then aggregates the component list.
+- **`mock_sys_usb` wildcard subscription**: The mock SysUsb subscribed to `system/+/+/request` (catch-all), intercepting topics meant for Dom0 (e.g. `system/energy/state/request`) and logging them under "SysUsb". Fix: replaced with specific disk-topic subscriptions (`list_disks`, `list_files`, `read_file`, `copy_file`, `create_file`, `mount_file`, `unmount`, `discover/components`).
+- **Note on restart/ping dropdowns**: These use `startedDomains` (topology business domains + core peers), not the MQTT discovery. The Saphir topology must be loaded in the emulator (SetupPanel) for `saphir-av-clamav` / `saphir-av-eset` to appear in those dropdowns.
+

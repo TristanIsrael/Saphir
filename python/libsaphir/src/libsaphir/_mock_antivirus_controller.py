@@ -119,7 +119,8 @@ class MockAntivirusController(AbstractAntivirusController):
         return f"Mock antivirus controller ({self._name})"
 
     def _restart(self, domain_name: str):
-        pass
+        print(f"Mock AV {self._name}: restart requested, going offline for 10s")
+        self._perform_restart(10.0)
 
 
 def main():
