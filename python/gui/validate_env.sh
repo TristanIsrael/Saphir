@@ -6,17 +6,24 @@
 # and the operator console must already be running as prerequisites.
 #
 # Usage:
-#   bash validate_env.sh [--config /path/to/av_config.json]
+#   bash validate_env.sh [--config /path/to/av_config.json] [--storage /path/to/storage]
+#
+# --storage must match the repository path configured in the emulator GUI.
 #
 # Stop with Ctrl+C (SIGINT) — the mock AVs are cleaned up automatically.
 
 set -euo pipefail
 
 CONFIG=""
+STORAGE=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --config)
             CONFIG="$2"
+            shift 2
+            ;;
+        --storage)
+            STORAGE="$2"
             shift 2
             ;;
         *)
@@ -52,7 +59,9 @@ PYTHONPATH="${SCRIPT_DIR}/src/Saphir:${SCRIPT_DIR}/../libsaphir/src:${PYTHONPATH
 export PYTHONPATH
 export DEVMODE=1
 export DEVMODE_AUTO_START=0
-export SAPHIR_REPOSITORY_PATH="${SAPHIR_REPOSITORY_PATH:-/tmp/safecor/storage}"
+if [[ -n "$STORAGE" ]]; then
+    export SAPHIR_REPOSITORY_PATH="$STORAGE"
+fi
 
 # Check that the broker is reachable (emulator prerequisite)
 if ! python -c "import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost',1883)); s.close()" 2>/dev/null; then
