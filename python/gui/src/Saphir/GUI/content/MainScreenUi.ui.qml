@@ -356,6 +356,49 @@ Item {
         z: 1.0
     }
 
+    /* Getting files list overlay */
+    Rectangle {
+        id: pnlGettingFilesList
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: parent.height * 0.15
+        width: parent.width * 0.7
+        height: 50
+        radius: 10
+        color: Environment.colorOverlay
+        visible: bindings.longProcessRunning && !bindings.analysisReady
+        z: 1.0
+
+        Label {
+            anchors.centerIn: parent
+            text: qsTr("Getting the files list...")
+            font.pointSize: 14
+            color: "white"
+        }
+    }
+
+    /* Source disconnection overlay */
+    Rectangle {
+        id: pnlSourceDisconnected
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: parent.height * 0.15
+        width: parent.width * 0.7
+        height: 50
+        radius: 10
+        color: Environment.colorWarning
+        opacity: 0.9
+        visible: bindings.analyzing && bindings.sourceDisconnected
+        z: 1.0
+
+        Label {
+            anchors.centerIn: parent
+            text: qsTr("The source storage was disconnected: the analysis is on hold. Please reconnect the source storage to continue.")
+            font.pointSize: 12
+            horizontalAlignment: Text.AlignHCenter
+            width: parent.width - 20
+            elide: Text.ElideRight
+        }
+    }
+
     /* Dialogs */
     MessageDialog {
         id: dlgConnectStorage

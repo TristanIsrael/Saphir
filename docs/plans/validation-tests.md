@@ -15,7 +15,7 @@ This document contains the observations made during the validation tests of the 
 - **Linux-only deps** (`evdev`, `inotify_simple`, `pyudev`): now optional in `setup_dev_env.sh` — installed when available, skipped with a warning otherwise (same pattern as `libvirt-python`).
 - `validate_env.sh` also honors `SAPHIR_VENV_DIR`.
 
-## Run 2
+## Run 2 (incremental)
 
 - Step: Setup (one-time)
 - In the last step (`[4/4] Verifying imports...`), it fails to import safecor
@@ -28,7 +28,7 @@ This document contains the observations made during the validation tests of the 
 - **Usage**: `SAFECOR_ROOT=/path/to/Safecor bash setup_dev_env.sh`
 - Validation guide updated with the `SAFECOR_ROOT` prerequisite.
 
-## Run 3
+## Run 3 (incremental)
 
 - Step: Nominal cycle (C.1)
 - In the emulator GUI there is no button to select the path of the disk. We need one.
@@ -61,7 +61,7 @@ This document contains the observations made during the validation tests of the 
 - **#243**: `ControlPanel.qml` — "Browse..." button (folder picker) next to the disk path field.
 - **#244**: `ConsoleController` emits `diskAttached` signal after successful attach; `ControlPanel.qml` clears `diskIdField` + `diskPathField` on that signal.
 
-## Run 4
+## Run 4 (incremental)
 
 - Step: Infected file (F3 consensus)
 - When Saphir has started it keeps showing `System state: SystemState.SystemReady` in the log
@@ -77,7 +77,7 @@ This document contains the observations made during the validation tests of the 
   - All disk/file dialogs use `selectFolder` for directory selection.
 - **Saphir `8bf1376`**: `validate_env.sh` accepts `--config <file.json>` to control mock AV behaviour (infected/clean files). Usage: `bash validate_env.sh --config /path/to/av_config.json`.
 
-## Run 5
+## Run 5 (incremental)
 
 - Step: Infected file (F3 consensus)
 - Emulator started with no disk attached
@@ -92,7 +92,7 @@ This document contains the observations made during the validation tests of the 
 - **Fix**: New env var `DEVMODE_AUTO_START` (default `1` for tests). `validate_env.sh` sets `DEVMODE_AUTO_START=0` so the operator must manually confirm via the dialog.
 - **Validation guide updated**: scenarios now explicitly say "accept the analysis" instead of "let analysis start".
 
-## Run 6
+## Run 6 (incremental)
 
 - Step: Infected file (F3 consensus)
 - Emulator started with no disk attached
@@ -156,5 +156,10 @@ AV controller says that the analysis is finished without error
 - **Emulator fix** (`mock_sys_usb.py`): `attach_disk` now tracks `__known_disk_ids` to prevent re-attachment of a source disk from overwriting the copy destination path.
 - **Validation status**: pending next run to confirm the fingerprint errors are resolved and AV components appear in the Emulator.
 
-## Run 7
+## Run 7 (incremental)
 
+- Step: Source disconnection during analysis (8.8)
+- When we analyze a big disk (choice `whole disk`) with 800 000+ files the enqueuing is very long and the GUI is unresponsive during the operation. The user should be notified that a long operation is running ("Please wait while getting the files list" for example)
+- When disconnecting the source disk, the message is shown but is it not on the correct layer, it is behind the language selection button. 
+  - Additionally it is to large and should reduced to around 70% of the width of the window.
+  - There should be a background with a reduced opacity in order to improve the contrast.

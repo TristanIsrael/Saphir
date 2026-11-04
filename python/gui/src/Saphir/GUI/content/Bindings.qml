@@ -35,6 +35,7 @@ Item {
     property real systemLoadingProgress: ApplicationController.systemLoadingProgress
     property bool sourceDisconnected: ApplicationController.sourceDisconnected
     property bool copyPaused: ApplicationController.copyPaused
+    property bool longProcessRunning: ApplicationController.longProcessRunning
 
     /** Models */
     property var sourceFilesListModel: ApplicationController.inputFilesListProxyModel

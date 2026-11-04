@@ -189,6 +189,7 @@ _FAKE_SPECS = [
     ("systemLoadingProgress", float, 1.0),
     ("sourceDisconnected", bool, False),
     ("copyPaused", bool, False),
+    ("longProcessRunning", bool, False),
     ("handheld", bool, True),
     ("language", str, ""),
     ("analysisMode", int, 0),
@@ -494,13 +495,12 @@ class Runner:
             raise RuntimeError("Loading panel title not found")
         refs["loadingTitle"] = title
 
-        # The source-disconnection alert of the analysis panel
+        # The source-disconnection alert overlay (Label in MainScreenUi)
         alert = next(
             (
                 t
-                for t in titles
-                if self._is_child_of(t, refs["pnlAnalysis"])
-                and "disconnected" in str(t.property("text"))
+                for t in self._find_class("Label")
+                if "disconnected" in str(t.property("text"))
             ),
             None,
         )

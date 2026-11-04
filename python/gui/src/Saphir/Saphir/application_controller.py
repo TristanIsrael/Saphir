@@ -967,7 +967,6 @@ class ApplicationController(QObject):
                     file["inqueue"] = True
                     self.__file_queue.add_size(file["size"])
                     self.__file_queue.enqueue(filepath, file)
-                    self.fileUpdated.emit(filepath, ["inqueue"])
                 elif file["type"] == "folder":
                     # It is a folder, so we fetch the files it contains
                     # on the disk that provided the listing
