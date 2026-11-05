@@ -305,7 +305,7 @@ jobs:
         uses: ./.github/actions/publish
         with:
           privkey: ${{ secrets.DEPLOY_KEY }}
-          filepath: /home/builder/packages/saphir/x86_64/
+          filepath: /home/builder/packages/saphir/x86_64/saphir-av-eset*.apk
           
   build-saphir-lib:
     needs: [ prepare ]
@@ -335,7 +335,7 @@ jobs:
         uses: ./.github/actions/publish
         with:
           privkey: ${{ secrets.DEPLOY_KEY }}
-          filepath: /home/builder/packages/saphir/x86_64/
+          filepath: /home/builder/packages/saphir/x86_64/saphir-lib*.apk
 
   build-saphir-gui:
     needs: [ prepare ]
