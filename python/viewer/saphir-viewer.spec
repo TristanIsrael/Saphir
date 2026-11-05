@@ -1,6 +1,4 @@
 # -*- mode: python ; coding: utf-8 -*-
-import os
-base_dir = os.path.abspath(os.getcwd())
 
 datas = [
     ("src/viewer/GUI", "GUI"),
@@ -10,9 +8,7 @@ datas = [
 
 a = Analysis(
     ['src/viewer/main.py'],
-    pathex=[
-        os.path.join(base_dir, "../../../Safecor/python/lib/src")
-    ],
+    pathex=[],
     binaries=[],
     datas=datas,
     hiddenimports=[
@@ -25,7 +21,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['safecor', 'libsaphir'],
     noarchive=False,
     optimize=0,
 )
