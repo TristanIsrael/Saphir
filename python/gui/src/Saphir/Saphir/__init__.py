@@ -3,7 +3,7 @@
 # ruff: noqa: I001
 # Import order is dependency-driven (circular import avoidance), not alphabetical.
 __author__ = "Tristan Israël (tristan.israel@alefbet.net)"
-__version__ = "3.0.0"
+__version__ = "3.2.0"
 
 from .enums import AnalysisMode, AnalysisState, Enums, Roles, SystemState
 from .analysis_helper import AnalysisHelper
