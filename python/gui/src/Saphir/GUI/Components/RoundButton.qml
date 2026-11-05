@@ -5,7 +5,7 @@ Item {
     id: root
 
     property bool outlined: true
-    property alias icon: txt.text
+    property string icon: ""
     property color taint: enabled ? Environment.colorButtonEnabled : Environment.colorButtonDisabled
     property int borderWidth: enabled ? 7 : 1
     property bool highlight: true
@@ -92,7 +92,7 @@ Item {
             id: txt
             anchors.fill: parent
             font.family: symbol ? (outlined ? "Material Icons Outlined" : "Material Icons") : "Inter"
-            text: symbol ? Constants.iconHelp : "EN"
+            text: symbol ? (icon !== "" ? icon : Constants.iconHelp) : (icon !== "" ? icon : "EN")
             font.pixelSize: symbol ? parent.height : parent.height * 0.7
             color: root.enabled ? Environment.colorButtonTextEnabled : Environment.colorButtonTextDisabled
             horizontalAlignment: Qt.AlignHCenter
