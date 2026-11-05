@@ -374,6 +374,12 @@ class ApplicationController(QObject):
             and self.__analysis_ready
         ):
             Api().debug("User asked to start the analysis")
+            # Reset the journal so the report log is not cumulative
+            try:
+                with open(self.__api_lifecycle.get_logfile(), "w"):
+                    pass
+            except OSError:
+                pass
             # The scan has started: no new source disk will be accepted
             self.__scan_started = True
             self.__analysis_start_time = datetime.now()
@@ -1125,7 +1131,7 @@ class ApplicationController(QObject):
                     flush=True,
                 )
                 Api().create_file(
-                    "journal.log", target, log_data
+                    "journal.log", target, log_data, True
                 )
         except OSError as e:
             print(f"[DEBUG-ERROR] Journal create_file failed: {e}", flush=True)
