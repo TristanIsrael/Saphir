@@ -214,7 +214,7 @@ jobs:
         uses: ./.github/actions/publish
         with:
           privkey: ${{ secrets.DEPLOY_KEY }}
-          filepath: /home/builder/packages/saphir/x86_64/
+          filepath: /home/builder/packages/saphir/x86_64/saphir*.apk
 
   build-saphir-av-clamav:
     needs: [ prepare ]
@@ -244,7 +244,7 @@ jobs:
         uses: ./.github/actions/publish
         with:
           privkey: ${{ secrets.DEPLOY_KEY }}
-          filepath: /home/builder/packages/saphir/x86_64/
+          filepath: /home/builder/packages/saphir/x86_64/saphir-av-clamav*.apk
 
   build-saphir-container-eset:
     needs: [ prepare ]
@@ -275,7 +275,7 @@ jobs:
         uses: ./.github/actions/publish
         with:
           privkey: ${{ secrets.DEPLOY_KEY }}
-          filepath: /home/builder/packages/saphir/x86_64/
+          filepath: /home/builder/packages/saphir/x86_64/saphir-container-eset*.apk
 
   build-saphir-av-eset:
     needs: [ prepare ]
@@ -305,7 +305,7 @@ jobs:
         uses: ./.github/actions/publish
         with:
           privkey: ${{ secrets.DEPLOY_KEY }}
-          filepath: /home/builder/packages/saphir/x86_64/
+          filepath: /home/builder/packages/saphir/x86_64/saphir-av-eset*.apk
           
   build-saphir-lib:
     needs: [ prepare ]
@@ -365,7 +365,7 @@ jobs:
         uses: ./.github/actions/publish
         with:
           privkey: ${{ secrets.DEPLOY_KEY }}
-          filepath: /home/builder/packages/saphir/x86_64/
+          filepath: /home/builder/packages/saphir/x86_64/saphir-gui*.apk
 
   build-saphir-splash:
     needs: [ prepare ]
@@ -388,7 +388,7 @@ jobs:
       - name: Build APK
         uses: ./.github/actions/build-apk
         with:
-          working-dir: setup/packages/saphir/saphir-splash
+          working-dir: setup/packages/saphir/saphir-splash/saphir-splash*.apk
           artifact-name: saphir-splash
 
       - name: Publish package
