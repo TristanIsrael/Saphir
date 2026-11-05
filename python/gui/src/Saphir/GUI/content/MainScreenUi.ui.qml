@@ -305,7 +305,8 @@ Item {
         x: parent.width - (width * 1.25)
         y: parent.height - (height * 1.25)
 
-        enabled: bindings.analysisReady && bindings.queueSize > 0 && bindings.systemState < Enums.AnalysisCompleted
+        enabled: bindings.analysisReady && bindings.queueSize > 0
+                 && bindings.systemState < Enums.AnalysisCompleted
         icon: bindings.analyzing ? Constants.iconPause : Constants.iconStart
     }
 
@@ -344,8 +345,10 @@ Item {
 
         anchors.horizontalCenter: parent.horizontalCenter
 
-        y: [ Enums.SystemInactive, Enums.SystemStarting, Enums.SystemResetting ].includes(bindings.systemState) ? (parent.height - height) / 2 : 10
-        height: [ Enums.SystemInactive, Enums.SystemStarting, Enums.SystemResetting ].includes(bindings.systemState) ? implicitHeight : 60
+        y: [Enums.SystemInactive, Enums.SystemStarting, Enums.SystemResetting].includes(
+            bindings.systemState) ? (parent.height - height) / 2 : 10
+        height: [Enums.SystemInactive, Enums.SystemStarting, Enums.SystemResetting].includes(
+            bindings.systemState) ? implicitHeight : 60
         taint: "#cccccc"
 
         opacity: !bindings.analysisReady ? 1.0 : 0.0
@@ -356,20 +359,19 @@ Item {
     /* Getting files list overlay */
     Rectangle {
         id: pnlGettingFilesList
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: parent.height * 0.15
-        width: parent.width * 0.7
-        height: 50
+        anchors.centerIn: parent
+        width: parent.width * 0.5
+        height: 100
         radius: 10
         opacity: 0.9
-        color: Environment.colorOverlay
+        color: Environment.colorRunning
         visible: bindings.systemState === Enums.SystemGettingFilesList
         z: 1.0
 
         StyledText {
             anchors.centerIn: parent
-            text: qsTr("Getting the files list...")
-            section: Constants.Section.Paragraph
+            text: qsTr("Please wait while getting the files list...")
+            section: Constants.Section.Title2
             horizontalAlignment: Text.AlignHCenter
             width: parent.width - 20
             color: Environment.colorTextHighContrast
@@ -380,7 +382,7 @@ Item {
     Rectangle {
         id: pnlSourceDisconnected
         anchors.horizontalCenter: parent.horizontalCenter
-        y: parent.height * 0.15
+        y: parent.height * 0.1
         width: parent.width * 0.7
         height: 50
         radius: 10
@@ -455,7 +457,7 @@ Item {
         z: 0.5
 
         label: qsTr("The system must be cleaned\nor shut down.")
-        buttonsLabels: [ Constants.iconRestart, Constants.iconShutdown ]
+        buttonsLabels: [Constants.iconRestart, Constants.iconShutdown]
         symbols: true
         handheld: bindings.handheld
     }
@@ -494,8 +496,8 @@ Item {
             id: pnlFileSelection
             anchors.fill: parent
             visible: bindings.sourceName !== ""
-                     && [ Enums.SystemReady, Enums.SystemWaitingForUserAction,
-                          Enums.SystemGettingFilesList ].includes(bindings.systemState)
+                     && [Enums.SystemReady, Enums.SystemWaitingForUserAction, Enums.SystemGettingFilesList].includes(
+                         bindings.systemState)
         }
 
         /* Analysis */
@@ -518,8 +520,8 @@ Item {
                 fill: parent
             }
 
-            visible: [ Enums.CopyCleanFiles, Enums.GeneratingReport,
-                       Enums.ReportFailed ].includes(bindings.systemState)
+            visible: [Enums.CopyCleanFiles, Enums.GeneratingReport, Enums.ReportFailed].includes(
+                bindings.systemState)
         }
     }
 
