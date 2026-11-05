@@ -12,7 +12,7 @@ class TranslationManager(QObject):
     languageChanged = Signal()
     translationInstalled = Signal()
 
-    __language = ""
+    __language = "en"
     __translator = None
 
     def __init__(self, parent=None):

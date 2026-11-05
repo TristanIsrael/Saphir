@@ -224,8 +224,8 @@ Window {
             target: window.btnLanguageEN
 
             function onClicked() {
-                if(ApplicationController.language !== "")
-                    ApplicationController.language = ""
+                if(ApplicationController.language !== "en")
+                    ApplicationController.language = "en"
                 window.menuLanguagesOpened = !window.menuLanguagesOpened
             }
         }

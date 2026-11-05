@@ -125,7 +125,7 @@ Item {
                     icon: "EN"
                     symbol: false
                     flat: true
-                    visible: mainWindow.menuLanguagesOpened || language === ""
+                    visible: mainWindow.menuLanguagesOpened || language === "en"
                 }
 
                 RoundButton {
