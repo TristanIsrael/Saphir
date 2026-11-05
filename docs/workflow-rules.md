@@ -33,28 +33,32 @@ Saphir follows a deterministic state machine workflow from boot to shutdown. Thi
 | 0 | `SystemInactive` | System not yet started | Pre-boot |
 | 1 | `SystemStarting` | Application and core platform initializing | Boot |
 | 2 | `SafecorReady` | Core platform (Safecor components) ready | Boot |
-| 3 | `SystemReady` | Core ready, waiting for media (AV engines **not** required) | Idle |
-| 4 | `SystemGettingFilesList` | Retrieving file list from source | Pre-analysis |
+| — | ~~`SystemWaitingForDevice`~~ | *(removed, Phase 1.2 — gap preserved at value 3)* | — |
+| 4 | `SystemReady` | Core ready, waiting for media (AV engines **not** required) | Idle |
 | 5 | `SystemWaitingForUserAction` | Files loaded, user selects files to analyze | Pre-analysis |
-| 6 | `SystemAnalysisRunning` | Antivirus analysis in progress | Analysis |
-| 7 | `AnalysisCompleted` | All files analyzed, consensus reached | Post-analysis |
-| 8 | `SystemWaitingForTarget` | Analysis done; **stable terminal-ish state** — wait for a target disk, or the user resets / shuts down (no cancel) | Post-analysis |
-| 9 | `CopyCleanFiles` | Copying clean files to target disk | Transfer |
-| 10 | `GeneratingReport` | PDF report + journal being written | Report |
-| 11 | `ReportFailed` | Report generation failed — **permanent error state**, reset required (no auto-retry, #4) | Error |
-| 12 | `SystemMustBeReset` | Workflow complete, reset required before reuse | Post-transfer |
-| 13 | `SystemResetting` | VMs being destroyed/recreated | Reset |
-| 14 | `SystemShuttingDown` | System powering off | Shutdown |
+| 6 | `SystemGettingFilesList` | Retrieving file list from source | Pre-analysis |
+| 7 | `SystemAnalysisRunning` | Antivirus analysis in progress | Analysis |
+| — | ~~`SystemNotClean`~~ | *(removed, Phase 1.2 — gap preserved at value 8)* | — |
+| 9 | `AnalysisCompleted` | All files analyzed, consensus reached. **Stable state** — the system waits here until a target disk is connected (then transitions to `CopyCleanFiles`) or the user resets / shuts down | Post-analysis |
+| 10 | `CopyCleanFiles` | Copying clean files to target disk | Transfer |
+| 11 | `GeneratingReport` | PDF report + journal being written | Report |
+| — | ~~`TransferFinished`~~ | *(removed, Phase 1.2 — gap preserved at value 12)* | — |
+| 13 | `SystemMustBeReset` | Workflow complete, reset required before reuse | Post-transfer |
+| 14 | `SystemResetting` | VMs being destroyed/recreated | Reset |
+| 15 | `SystemShuttingDown` | System powering off | Shutdown |
+| 16 | `ReportFailed` | Report generation failed — **permanent error state**, reset required (no auto-retry, #4) | Error |
 
 ### 2.2 Deprecated / Removed States
 
-These states are defined in `enums.py` but are **unreachable** and should be removed:
+These states were removed in Phase 1.2 (`8f49c1a`). Their numeric values are preserved as gaps in the enum for QML compatibility:
 
-| State | Reason |
-|-------|--------|
-| `SystemWaitingForDevice` | Never set by any code path |
-| `SystemNotClean` | Logic folded into `AnalysisCompleted` + UI color |
-| `TransferFinished` | State transitioned directly to `SystemMustBeReset` |
+| Value | State | Reason |
+|-------|-------|--------|
+| 3 | `SystemWaitingForDevice` | Never set by any code path |
+| 8 | `SystemNotClean` | Logic folded into `AnalysisCompleted` + UI color |
+| 12 | `TransferFinished` | State transitioned directly to `SystemMustBeReset` |
+
+> **Note on `SystemWaitingForTarget`**: This was a logical concept in earlier versions of this document (v2/v2.2) describing the "waiting for a target disk" phase. It is **not** a separate enum value in the code — the system simply **stays in `AnalysisCompleted`** until a target disk is connected (then transitions to `CopyCleanFiles`). All references to `SystemWaitingForTarget` below should be read as "the `AnalysisCompleted` state while no target is connected".
 
 ---
 
@@ -266,7 +270,7 @@ Once the system is dirty (a file has been read), connecting a **different** stor
 if system_used and disk_name != source_name:
     lock_into(SystemMustBeReset)
 ```
-> **Note**: the current code uses a fragile numeric gate (`system_state >= CopyCleanFiles`, `__handle_disk_state` line 640). It must be replaced by an explicit "post-analysis phase + disk-name" check that also covers `SystemWaitingForTarget`.
+> **Note**: the numeric gate was replaced in Phase 1.3 (`2742d26`) by an explicit `locked_states` set (`application_controller.py:745-750`).
 
 ### I7: Consensus Rule
 A file is infected if **any** antivirus engine flags it. A file is clean only when **all** engines agree. A file whose analysis returned an **error** is "not clean" (not copyable), but its error does not abort the analysis.
@@ -323,7 +327,7 @@ The following table defines which panels/dialogs are visible per state. This sho
 
 **One screen at a time** — at most **one** of the screen columns (File Selection, Analysis Panel, File Copy, Shutdown Dialog) is visible per state. The `SystemLoadingPanel` is an **overlay** (see §7.1), not a screen, so it may be shown on top of a screen. The **Report** is not an on-screen element (it is a generated PDF file), and the **Reset** confirmation is a transient dialog (not a per-state view), so neither is a column.
 
-> **`AnalysisCompleted` is transient**: it immediately auto-transitions to `CopyCleanFiles` (target available) or `SystemWaitingForTarget` (no target). The screen shown is the **copy screen** (`FilesCopyPanel`), which prompts to **insert a target** to start the copy — so `AnalysisCompleted` and `SystemWaitingForTarget` show the **same** screen. The analysis progress panel is **not** shown once the analysis is finished.
+> **`AnalysisCompleted` is a stable state**: the system stays here until a target disk is connected (then auto-transitions to `CopyCleanFiles`) or the user resets / shuts down. The screen shown is the **copy screen** (`FilesCopyPanel`), which prompts to **insert a target** to start the copy. The analysis progress panel is **not** shown once the analysis is finished.
 >
 > **`ReportFailed`** is a **permanent error state** (#4): the report generation failed and the system requires a **Reset** (no automatic retry). All screen columns are hidden; the user sees an error indication (transient dialog) prompting a Reset, as with `SystemMustBeReset`.
 

@@ -232,3 +232,7 @@ AV controller says that the analysis is finished without error
 
 - Step: Language change (F19)
 - The language button appears but it is empty and nothing happens when I click on it.
+
+### Corrections (2026-11-05)
+
+1. **Default language was `""` instead of `"en"`**: The `TranslationManager` initialized the language to an empty string, and the QML visibility/click logic used `language === ""` to detect EN. This caused a conflict with the `RoundButton` icon alias. Fixed: the default language is now `"en"` (explicit), the EN button visibility checks `language === "en"`, and clicking EN sets `language = "en"`.

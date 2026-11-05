@@ -1,8 +1,8 @@
 # Refactoring Plan - Saphir v3.x
 
-> **Status**: In progress — Phases 0-12 complete, Phases 13-14 pending
+> **Status**: Complete — All phases (0-14) done
 >
-> **Last updated**: 2026-10-29
+> **Last updated**: 2026-11-05
 >
 > **Branch**: `refactoring` (based on `main` post-merge #128)
 
@@ -354,7 +354,7 @@ These rules must hold throughout refactoring:
 | 0.1 EnergyMonitor | ✅ Done | `0ed848a` | #129 | Battery/plugged polling |
 | 0.2 TranslationManager | ✅ Done | `0ed848a` | #129 | QTranslator lifecycle |
 | 0.3 ApiLifecycle | ✅ Done | `0ed848a` | #129 | Direct callback (not Qt signal) |
-| 0.4 QtNetwork strip | ✅ Done | `0ed848a` | #129 | Packaging only |
+| 0.4 QtNetwork strip | ✅ Done (reverted) | `0ed848a`, `4b0b1b2` | #129, #141 | Removed in Phase 0, re-added in Phase 8.2 — bundle fails to boot without it |
 | 1.1 WorkflowController | ✅ Done | `13cf8d7` | #130 | `force_state()` used; `transition_to()` with validation available but not activated |
 | 1.2 Dead states | ✅ Done | `8f49c1a` | #131 | Gaps at 3, 8, 12 preserved for QML |
 | 1.3 Disk-state gate | ✅ Done | `2742d26` | #132 | Numeric → explicit locked-state set |
@@ -380,10 +380,10 @@ These rules must hold throughout refactoring:
 | 12.1/12.2/12.4/12.6 QML binding tests | ✅ Done | `f7ec7ad` | #155 | 40 tests: panel visibility (13 states), Bindings.qml, AnalysisPanel, loading panel (offscreen subprocess runner) |
 | 12.3/12.5/12.7 QML signal integration | ✅ Done | `24e8ae3` | #156 | 19 tests: Python→QML signals (static + dynamic), TopBar (clock, battery, plugged, classification), filter toggles on the real QueueListModel |
 | 12.8 QML panel functional tests | ✅ Done | `2ff186f` | #157 | 27 tests: FilesCopyPanel (status switch, colors, header, gauge), main menu & dialogs (open triggers, accepted/rejected actions), FilesSelectionPanel (queue counter, folder navigation, enqueue/dequeue, source rows) |
-| 13 Viewer modernization | ⏳ Pending | — | — | Lint, format, unit tests (0 → 85%) |
-| 14 Semi-automated validation env | ⏳ Pending (Not ready) | — | — | Human-driven test on Safecor emulator (operator console + state observer); blocked on emulator features |
+| 13 Viewer modernization | ✅ Done | `88dd0db` | #158 | Lint, format, unit tests (0 → 85%) |
+| 14 Semi-automated validation env | ✅ Done | `8bf1376`, `d0e1cdf` | #159 | Operator console + state observer + scenario catalog (Safecor emulator) |
 
-**Test baseline**: 530 passed, 3 skipped, 1 xfailed (2026-11-01, after Phase 12 panel tests; the single xfail documents the open D8 gap. Known broker-contention flake in the full suite under load — the failing workflow test passes in isolation)
+**Test baseline**: 542 collected, 3 skipped, 1 xfailed (2026-11-05, after Run 10-13 validation fixes; the single xfail documents the open D8 gap. Known broker-contention flake in the full suite under load — the failing workflow test passes in isolation)
 
 ---
 
