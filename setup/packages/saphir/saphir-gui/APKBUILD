@@ -2,7 +2,7 @@
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 pkgname=saphir-gui
 pkgver=3.2
-pkgrel=5
+pkgrel=6
 pkgdesc="Saphir - Graphical User Interface"
 url="https://alefbet.net/"
 arch="x86_64"
@@ -33,11 +33,13 @@ prepare() {
     fi
 }
 
-build() {    
-    cd "$srcdir/gui"    
+build() {
+    cd "$srcdir/gui"
+
+    pyside6-lrelease src/Saphir/i18n/fr.ts -qm src/Saphir/i18n/fr.qm
 
     if [ "$bundle" = "yes" ]; then
-        python3 -m PyInstaller saphir-gui.spec --noconfirm 
+        python3 -m PyInstaller saphir-gui.spec --noconfirm
     fi
 }
 

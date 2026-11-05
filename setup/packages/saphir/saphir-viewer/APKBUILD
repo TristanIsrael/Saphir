@@ -2,7 +2,7 @@
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 pkgname=saphir-viewer
 pkgver=1.1
-pkgrel=3
+pkgrel=4
 pkgdesc="Saphir - Viewer module"
 url="https://alefbet.net/"
 arch="x86_64"
@@ -27,9 +27,12 @@ prepare() {
     pip install pyinstaller --break-system-package
 }
 
-build() {    
-    cd "$srcdir/viewer"    
-    python3 -m PyInstaller saphir-viewer.spec --noconfirm 
+build() {
+    cd "$srcdir/viewer"
+
+    pyside6-lrelease src/viewer/i18n/fr.ts -qm src/viewer/i18n/fr.qm
+
+    python3 -m PyInstaller saphir-viewer.spec --noconfirm
 }
 
 package() {
