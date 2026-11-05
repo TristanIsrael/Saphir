@@ -1098,22 +1098,35 @@ class ApplicationController(QObject):
             return
 
         # Then copy it on the disk
+        target = self.__storage_manager.target_name
+        Api().info(f"[DEBUG] __on_transfer_complete: target={target!r}")
         report_filepath = self.__report_controller.get_report_filepath()
         with open(report_filepath, "rb") as f:
             report_data = f.read()
+            Api().info(
+                f"[DEBUG] Sending report create_file: disk={target!r}, "
+                f"size={len(report_data)}"
+            )
             Api().create_file(
                 self.__report_controller.get_report_filename(),
-                self.__storage_manager.target_name,
+                target,
                 report_data,
                 True,
             )
 
         # So the log file
-        with open(self.__api_lifecycle.get_logfile(), "rb") as f:
-            log_data = f.read()
-            Api().create_file(
-                "journal.log", self.__storage_manager.target_name, log_data
-            )
+        try:
+            with open(self.__api_lifecycle.get_logfile(), "rb") as f:
+                log_data = f.read()
+                Api().info(
+                    f"[DEBUG] Sending journal create_file: disk={target!r}, "
+                    f"size={len(log_data)}"
+                )
+                Api().create_file(
+                    "journal.log", target, log_data
+                )
+        except OSError as e:
+            Api().error(f"[DEBUG] Journal create_file failed: {e}")
 
     def __handle_energy_state(self, payload: dict):
         self.__energy_monitor.on_energy_state_response(payload)
@@ -1140,8 +1153,14 @@ class ApplicationController(QObject):
         disk = payload.get("disk", "")
         filepath = str(payload.get("filepath", ""))
         success = payload.get("success", False)
+        target = self.__storage_manager.target_name
+        Api().info(
+            f"[DEBUG] __handle_create_file: disk={disk!r}, "
+            f"filepath={filepath!r}, success={success}, target={target!r}"
+        )
 
-        if disk != self.__storage_manager.target_name:
+        if disk != target:
+            Api().info("[DEBUG] __handle_create_file: disk mismatch, ignoring")
             return
 
         if not success:
