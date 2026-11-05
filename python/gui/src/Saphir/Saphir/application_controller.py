@@ -237,6 +237,12 @@ class ApplicationController(QObject):
             self.__mqtt_client = MqttFactory.create_mqtt_client_domu("GUI")
 
         self.__logfile = self.__api_lifecycle.get_logfile()
+        # Reset the journal at application startup so it is not cumulative
+        try:
+            with open(self.__logfile, "w"):
+                pass
+        except OSError:
+            pass
         Api().add_ready_callback(self.__on_api_ready)
         Api().start(
             mqtt_client=self.__mqtt_client,
@@ -374,12 +380,6 @@ class ApplicationController(QObject):
             and self.__analysis_ready
         ):
             Api().debug("User asked to start the analysis")
-            # Reset the journal so the report log is not cumulative
-            try:
-                with open(self.__api_lifecycle.get_logfile(), "w"):
-                    pass
-            except OSError:
-                pass
             # The scan has started: no new source disk will be accepted
             self.__scan_started = True
             self.__analysis_start_time = datetime.now()
