@@ -210,3 +210,10 @@ AV controller says that the analysis is finished without error
 - Step: Target disconnection during copy (F4, 8.6)
 - When I detach the destination disk nothing happens. Saphir seems not to detect the disconnection. It should interrupt the report generation and files copy but everything keeps going on and no error is triggered.
 - The language button is empty, there no language, not even the `EN`.
+
+### Corrections (2026-11-05)
+
+1. **Emulator accepted writes to disconnected disk** (Safecor #248): `MockSysUsbController` did not check if the referenced disk was still connected before accepting `COPY_FILE` / `CREATE_FILE`. Fixed: both handlers now validate the disk is in the connected list and return an error response if not.
+2. **State machine allowed report generation on a paused copy** (Saphir #160): `TransferController.__check_transfer_complete` did not guard against `_copy_paused`. Fixed: it now returns early when paused. `__resume_copy` calls `__check_transfer_complete` after the re-copy loop so the transfer completes on resume.
+3. **`__handle_create_file` ignored the `success` field**: a failed `CREATE_FILE` was not handled as an error. Fixed: it now checks `success` and goes to `SystemMustBeReset` with an error message when `False`.
+4. **Language button empty**: the `language` property in `MainScreenUi.ui.qml` had the placeholder value `"This is a string"`. Fixed: set to `""`.
