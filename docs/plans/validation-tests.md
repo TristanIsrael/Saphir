@@ -227,3 +227,8 @@ AV controller says that the analysis is finished without error
 
 1. **Journal sent uncompressed over MQTT**: The `journal.log` was sent with `binary=False` (no compression). As the log grew (cumulative across runs), the base64-encoded MQTT payload exceeded the broker message size limit and was silently dropped. Fixed: send with `binary=True` (zlib compression).
 2. **Cumulative journal**: The `saphir.log` file was never reset, growing with each application session. Fixed: the log file is now truncated at application startup (`ApplicationController.start()`).
+
+## Run 13 (incremental)
+
+- Step: Language change (F19)
+- The language button appears but it is empty and nothing happens when I click on it.
