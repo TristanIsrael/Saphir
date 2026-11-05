@@ -928,3 +928,85 @@ class TestTransferControllerCopyPause(unittest.TestCase):
         self.assertFalse(self.transfer.is_copy_paused)
         self.assertFalse(self.transfer.is_copying)
         self.assertEqual(self.transfer._paused_disk, "")
+
+    def test_transfer_not_complete_while_paused(self):
+        """The transfer must not complete while the copy is paused (Run 11)."""
+        f1 = {
+            "name": "a.txt",
+            "type": "file",
+            "size": 100,
+            "status": FileStatus.FileClean,
+            "disk": "source",
+        }
+        self.file_queue.enqueue("/a.txt", f1)
+        self._start_transfer()
+
+        # Pause the copy (target disconnected)
+        self._on_disk_state("target", "disconnected")
+        self.assertTrue(self.transfer.is_copy_paused)
+
+        completes = []
+        self.transfer.transferComplete.connect(lambda: completes.append(True))
+
+        # The in-flight copy response arrives while paused
+        self.transfer.on_copy_file(
+            {"filepath": "/a.txt", "status": "ok", "fingerprint": "abc"}
+        )
+
+        # The transfer must NOT complete while paused
+        self.assertEqual(completes, [])
+        self.assertTrue(self.transfer.is_copying)
+
+    def test_transfer_completes_on_resume_when_all_copied(self):
+        """On resume, if all files are already copied, the transfer completes."""
+        f1 = {
+            "name": "a.txt",
+            "type": "file",
+            "size": 100,
+            "status": FileStatus.FileClean,
+            "disk": "source",
+        }
+        f2 = {
+            "name": "b.txt",
+            "type": "file",
+            "size": 200,
+            "status": FileStatus.FileClean,
+            "disk": "source",
+        }
+        self.file_queue.enqueue("/a.txt", f1)
+        self.file_queue.enqueue("/b.txt", f2)
+        self._start_transfer()
+
+        # Copy the first file successfully (1/2, not complete yet)
+        self.transfer.on_copy_file(
+            {"filepath": "/a.txt", "status": "ok", "fingerprint": "abc"}
+        )
+        self.assertEqual(self.transfer.copied_files_count, 1)
+
+        # Pause the copy (target disconnected)
+        self._on_disk_state("target", "disconnected")
+        self.assertTrue(self.transfer.is_copy_paused)
+
+        completes = []
+        self.transfer.transferComplete.connect(lambda: completes.append(True))
+
+        # The in-flight response for the second file arrives while paused
+        self.transfer.on_copy_file(
+            {"filepath": "/b.txt", "status": "ok", "fingerprint": "def"}
+        )
+        self.assertEqual(self.transfer.copied_files_count, 2)
+
+        # The transfer must NOT complete while paused
+        self.assertEqual(completes, [])
+
+        # Resume: same disk reconnected, coherence check passes
+        with patch("Saphir.transfer_controller.Api") as mock_api:
+            self._on_disk_state("target", "connected")
+            self._on_list(
+                "target",
+                [{"path": "/", "name": "a.txt"}, {"path": "/", "name": "b.txt"}],
+            )
+
+        self.assertFalse(self.transfer.is_copy_paused)
+        # The transfer should complete on resume since all files are copied
+        self.assertEqual(completes, [True])

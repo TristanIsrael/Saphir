@@ -968,6 +968,7 @@ class TestApplicationControllerHandlers(unittest.TestCase):
             {
                 "disk": "target0",
                 "filepath": "/report/journal.log",
+                "success": True,
             }
         )
         self.assertEqual(
@@ -979,10 +980,24 @@ class TestApplicationControllerHandlers(unittest.TestCase):
         self.controller._ApplicationController__handle_create_file(
             {
                 "disk": "target0",
-                "filepath": "/report/other.txt",
+                "filepath": "/report/Scan report.pdf",
+                "success": True,
             }
         )
         self.assertNotEqual(
+            self.controller.systemState, SystemState.SystemMustBeReset.value
+        )
+
+    def test_handle_create_file_failure(self):
+        self.controller._ApplicationController__storage_manager.set_target("target0")
+        self.controller._ApplicationController__handle_create_file(
+            {
+                "disk": "target0",
+                "filepath": "/report/Scan report.pdf",
+                "success": False,
+            }
+        )
+        self.assertEqual(
             self.controller.systemState, SystemState.SystemMustBeReset.value
         )
 

@@ -220,6 +220,9 @@ class TransferController(QObject):
         strictly equal to the number of clean files: otherwise the
         discrepancy is reported with transferError.
         """
+        if self._copy_paused:
+            return
+
         if (
             self._clean_files_total > 0
             and self._copied_files_count + self._failed_files_count
@@ -269,11 +272,6 @@ class TransferController(QObject):
             )
 
     def __on_disk_state(self, disk: str, state: str) -> None:
-        print(
-            f"[TransferController] disk_state: disk={disk!r} state={state!r} "
-            f"copying={self._copying} target={self._target_name!r} "
-            f"sources={self._source_disks}"
-        )
         # Scenario 8.6: only acts while the clean files are being copied
         if not self._copying:
             return
@@ -311,6 +309,7 @@ class TransferController(QObject):
         for filepath, file in self._file_queue.get_clean_files():
             # Each file is re-copied from the disk that contains it
             Api().copy_file(file["disk"], filepath, self._target_name)
+        self.__check_transfer_complete()
 
     def __on_coherence_check_list(self, disk: str, files: list) -> None:
         # Coherence check after a reconnection (8.6 step 4): the content of

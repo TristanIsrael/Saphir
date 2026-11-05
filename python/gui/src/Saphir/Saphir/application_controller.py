@@ -735,10 +735,6 @@ class ApplicationController(QObject):
             self.__messages_model.addMessage(self.tr("The antiviruses are ready"))
 
     def __handle_disk_state(self, payload: dict):
-        print(
-            f"[AppController] disk_state: {payload} "
-            f"workflow_state={self.__workflow_controller.state}"
-        )
         # Ignore disk state changes when the system is locked (reset required or in progress)
         locked_states = {
             SystemState.SystemMustBeReset,
@@ -1143,18 +1139,31 @@ class ApplicationController(QObject):
     def __handle_create_file(self, payload: dict):
         disk = payload.get("disk", "")
         filepath = str(payload.get("filepath", ""))
+        success = payload.get("success", False)
 
-        print(
-            f"filepath:{filepath}, endswith:{filepath.endswith('journal.log')}, disk:{disk}, targetName:{self.__storage_manager.target_name}"
-        )
-        if disk == self.__storage_manager.target_name and filepath.endswith(
-            "journal.log"
-        ):
+        if disk != self.__storage_manager.target_name:
+            return
+
+        if not success:
+            self.__set_system_state(SystemState.SystemMustBeReset)
+            self.systemMustBeReset.emit()
+            self.__messages_model.clear()
+            self.__messages_model.addMessage(
+                self.tr(
+                    "The report and log could not be copied to the destination storage."
+                )
+            )
+            self.__messages_model.addMessage(
+                self.tr("Please reset the system.")
+            )
+            return
+
+        if filepath.endswith("journal.log"):
             self.__set_system_state(SystemState.SystemMustBeReset)
             self.__messages_model.clear()
             self.__messages_model.addMessage(
                 self.tr(
-                    "The report ang log have been copied to the destination storage."
+                    "The report and log have been copied to the destination storage."
                 )
             )
             self.__messages_model.addMessage(self.tr("You can now remove it."))
