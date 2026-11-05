@@ -1099,13 +1099,14 @@ class ApplicationController(QObject):
 
         # Then copy it on the disk
         target = self.__storage_manager.target_name
-        Api().info(f"[DEBUG] __on_transfer_complete: target={target!r}")
+        print(f"[DEBUG] __on_transfer_complete: target={target!r}", flush=True)
         report_filepath = self.__report_controller.get_report_filepath()
         with open(report_filepath, "rb") as f:
             report_data = f.read()
-            Api().info(
+            print(
                 f"[DEBUG] Sending report create_file: disk={target!r}, "
-                f"size={len(report_data)}"
+                f"size={len(report_data)}",
+                flush=True,
             )
             Api().create_file(
                 self.__report_controller.get_report_filename(),
@@ -1118,15 +1119,16 @@ class ApplicationController(QObject):
         try:
             with open(self.__api_lifecycle.get_logfile(), "rb") as f:
                 log_data = f.read()
-                Api().info(
+                print(
                     f"[DEBUG] Sending journal create_file: disk={target!r}, "
-                    f"size={len(log_data)}"
+                    f"size={len(log_data)}",
+                    flush=True,
                 )
                 Api().create_file(
                     "journal.log", target, log_data
                 )
         except OSError as e:
-            Api().error(f"[DEBUG] Journal create_file failed: {e}")
+            print(f"[DEBUG-ERROR] Journal create_file failed: {e}", flush=True)
 
     def __handle_energy_state(self, payload: dict):
         self.__energy_monitor.on_energy_state_response(payload)
@@ -1154,13 +1156,14 @@ class ApplicationController(QObject):
         filepath = str(payload.get("filepath", ""))
         success = payload.get("success", False)
         target = self.__storage_manager.target_name
-        Api().info(
+        print(
             f"[DEBUG] __handle_create_file: disk={disk!r}, "
-            f"filepath={filepath!r}, success={success}, target={target!r}"
+            f"filepath={filepath!r}, success={success}, target={target!r}",
+            flush=True,
         )
 
         if disk != target:
-            Api().info("[DEBUG] __handle_create_file: disk mismatch, ignoring")
+            print("[DEBUG] __handle_create_file: disk mismatch, ignoring", flush=True)
             return
 
         if not success:
