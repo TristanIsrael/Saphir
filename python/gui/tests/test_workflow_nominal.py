@@ -8,6 +8,7 @@ The test observes state transitions via the app's stdout.
 """
 
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -32,11 +33,16 @@ class StateTracker:
         self._process = process
         self._thread = threading.Thread(target=self._read, daemon=True)
 
+    _STATE_RE = re.compile(r"System state:\s*(SystemState\.\w+)")
+
     def _read(self):
         for line in iter(self._process.stdout.readline, b""):
-            line = line.decode().strip()
-            if line.startswith("System state:"):
-                self.states.append(line.split("System state:")[1].strip())
+            # A state line can be glued to a print from another thread
+            # (non-atomic prints on the shared stdout), so search the
+            # state marker anywhere in the line instead of startswith.
+            m = self._STATE_RE.search(line.decode())
+            if m:
+                self.states.append(m.group(1))
 
     def start(self):
         self._thread.start()
@@ -85,13 +91,15 @@ def nominal_env():
         profile=default_profile(),
         source_disks={},
         storage_path=os.path.join(tmp, "repo"),
-        destination_disk_path=target_dir,
     )
     em.start()
 
     # Mock AVs
-    av1 = MockAVManager("mock-clam", scan_delay=0.05)
-    av2 = MockAVManager("mock-eset", scan_delay=0.05)
+    # Point the mock AVs at the emulator repository so the NFR-1
+    # fingerprint integrity check runs against the real test files.
+    repo_path = os.path.join(tmp, "repo")
+    av1 = MockAVManager("mock-clam", scan_delay=0.05, repository_path=repo_path)
+    av2 = MockAVManager("mock-eset", scan_delay=0.05, repository_path=repo_path)
     av1.start()
     av2.start()
 
@@ -173,11 +181,9 @@ def test_nominal_cycle(nominal_env):
 
     # 8. Verify the state sequence (characterization — captures actual behaviour)
     expected_sequence = [
-        "SystemState.SystemReady",
         "SystemState.SafecorReady",
         "SystemState.SystemReady",
         "SystemState.SystemAnalysisRunning",
-        "SystemState.SystemWaitingForUserAction",
         "SystemState.AnalysisCompleted",
         "SystemState.CopyCleanFiles",
         "SystemState.GeneratingReport",

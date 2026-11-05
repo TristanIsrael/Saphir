@@ -23,3 +23,17 @@ packages = ["src/viewer"]
 [project.urls]
 Homepage = "https://github.com/pypa/sampleproject"
 Issues = "https://github.com/pypa/sampleproject/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src/viewer"]
+
+[tool.ruff]
+target-version = "py39"
+
+[tool.ruff.lint]
+ignore = [
+    "RUF012",  # Extension lists are mutable class constants by design
+    "B008",    # QModelIndex() in QAbstractItemModel defaults is a Qt idiom
+    "N999",    # Module names like 'Viewer' or 'mock_dom0_controller' are intentional
+]

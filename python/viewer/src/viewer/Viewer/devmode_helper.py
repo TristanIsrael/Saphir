@@ -1,14 +1,15 @@
 import os
-from safecor import MqttClient, ConnectionType
-from pathlib import Path
 
-class DevModeHelper():
-    DEVMODE = os.getenv("DEVMODE", "") != ""    
+from safecor import ConnectionType, MqttClient
+
+
+class DevModeHelper:
+    DEVMODE = os.getenv("DEVMODE", "") != ""
 
     @staticmethod
-    def create_mqtt_client(identifier:str) -> MqttClient:        
+    def create_mqtt_client(identifier: str) -> MqttClient:
         return MqttClient(identifier, ConnectionType.TCP_DEBUG, "localhost")
-    
+
     @staticmethod
     def set_qt_plugins_path():
         python_version = "3.14"
@@ -19,7 +20,7 @@ class DevModeHelper():
     @staticmethod
     def get_libreoffice_path():
         return "/Applications/Bureautique/LibreOffice.app/Contents/MacOS/soffice"
-    
+
     @staticmethod
     def get_repository_path():
         return "/tmp/saphir/repository"

@@ -49,6 +49,11 @@ body {
     padding-left: 0.5cm;
 }
 
+.tableau p.copy-failures {
+    color: red;
+    font-weight: bold;
+}
+
 .tableau_resultat {
     border: solid 1px gray;
     width: 100%;

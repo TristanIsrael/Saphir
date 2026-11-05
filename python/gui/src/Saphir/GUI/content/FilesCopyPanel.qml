@@ -81,7 +81,9 @@ Item {
             StyledText {
                 Layout.fillWidth: true
                 text: {
-                    if(bindings.targetName === "" && bindings.systemState === Enums.AnalysisCompleted) {
+                    if(bindings.copyPaused) {
+                        return qsTr("Copy paused: a storage was disconnected. Please reconnect it to continue.")
+                    } else if(bindings.targetName === "") {
                         return qsTr("Please connect a target storage...")
                     } else {
                         // Transfer in progress
@@ -89,8 +91,8 @@ Item {
                             return qsTr("Copy in progress...")
                         } else if (bindings.systemState === Enums.GeneratingReport) {
                             return qsTr("Generating the report...")
-                        } else if (bindings.systemState === Enums.TransferFinished) {
-                            return qsTr("The transfer is finished!")
+                        } else if (bindings.systemState === Enums.ReportFailed) {
+                            return qsTr("Report generation failed. Please reset the system.")
                         } else if (bindings.systemState === Enums.AnalysisCompleted) {
                             return qsTr("Please connect a target storage...")
                         }
@@ -102,18 +104,20 @@ Item {
                 horizontalAlignment: Qt.AlignHCenter
 
                 color: {
-                    if(bindings.targetName === "") {
+                    if(bindings.copyPaused) {
+                        return Environment.colorWarning
+                    } else if(bindings.targetName === "") {
                         return Environment.colorWarning
                     } else {
                         // Transfer in progress...
-                        if(bindings.systemState === Enums.AnalysisCompleted) {
+                        if(bindings.systemState === Enums.ReportFailed) {
+                            return Environment.colorWarning
+                        } else if(bindings.systemState === Enums.AnalysisCompleted) {
                             return Environment.colorText
                         } else if([Enums.CopyCleanFiles, Enums.GeneratingReport].includes(bindings.systemState)) {
                             return Environment.colorText
                         } else if (bindings.systemState === Enums.GeneratingReport) {
                             return Environment.colorText
-                        } else if (bindings.systemState === Enums.TransferFinished) {
-                            return Environment.colorClean
                         }
                     }
 

@@ -34,8 +34,8 @@ Location: `Saphir/python/lib/src/safecor/`
 
 | File | Provides |
 |---|---|
-| `_api.py` | `Api` (singleton) — high-level API entry point. |
-| `_topics.py` | `Topics` — MQTT topic names (system topics). |
+| `_api.py` | `Api` (singleton) — high-level API entry point. Includes `request_repository_path()`. |
+| `_topics.py` | `Topics` — MQTT topic names (system topics). Includes `REPOSITORY_PATH`. |
 | `_mqtt_factory.py` | `MqttFactory` — MQTT client factory. |
 | `_components_helper.py` | `ComponentsHelper` — component discovery / state. |
 | `_disk_monitor.py` | Disk monitoring. |

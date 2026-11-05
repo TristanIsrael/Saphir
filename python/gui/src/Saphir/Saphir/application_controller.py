@@ -1,70 +1,101 @@
-from PySide6.QtCore import QObject, Signal, Slot, Property, QCoreApplication, QTranslator
-from safecor import Api, MqttFactory, Topics, MqttHelper, ComponentsHelper, Constants, ComponentState, DiskState
+"""Central mediator between the Safecor platform and the QML UI. Owns the system state machine."""
+
+import os
+import sys
+
 from libsaphir import FileStatus
-from . import SystemState, AnalysisState, AnalysisMode
-from . import LogListModel, QueueListModel, QueueListProxyModel
-from . import AnalysisController
-from . import DevModeHelper
-from . import ComponentsModel, MessagesListModel, SystemInformationModel
-from . import SafecorInputFilesListModel, SafecorInputFilesListProxyModel
-from . import EMAETAEstimator
+from PySide6.QtCore import Property, QCoreApplication, QObject, Signal, Slot
+from safecor import (
+    Api,
+    ComponentsHelper,
+    ComponentState,
+    Constants,
+    DiskState,
+    MqttFactory,
+    MqttHelper,
+    Topics,
+)
+
+from . import (
+    AnalysisController,
+    AnalysisMode,
+    AnalysisState,
+    ApiLifecycle,
+    ComponentsModel,
+    DevModeHelper,
+    EMAETAEstimator,
+    EnergyMonitor,
+    FileBrowser,
+    FileQueue,
+    LogListModel,
+    MessagesListModel,
+    QueueListModel,
+    SafecorInputFilesListModel,
+    SafecorInputFilesListProxyModel,
+    StorageManager,
+    SystemInformationModel,
+    SystemState,
+    TransferController,
+    TranslationManager,
+    WorkflowController,
+)
+
 try:
     from . import ReportController
-except Exception:
+except Exception:  # noqa: BLE001, S110 - optional dependency, report feature disabled if missing
     pass
-from libsaphir import ANTIVIRUS_NEEDED, DEVMODE
-from pathlib import Path
 import threading
-import os
-import tempfile
-from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from pathlib import Path
+
+from libsaphir import ANTIVIRUS_NEEDED, DEVMODE
+
+# In DEVMODE the full analysis is started automatically. The grace period
+# (re-armed at every source disk connection) lets the partitions of a
+# multi-partition media group together before the scan starts.
+# Set DEVMODE_AUTO_START=0 to require manual confirmation (validation).
+DEVMODE_SCAN_START_GRACE = 1.0
+DEVMODE_AUTO_START = os.environ.get("DEVMODE_AUTO_START", "1") != "0"
+
 
 class ApplicationController(QObject):
     "Cette classe gère l'interface entre le socle et la GUI"
-    
+
     ###
     # Member variables
 
     __ready = False
-    __monitorEnergy = True
-    __source_name = ""
-    __source_ready = False
-    __storages = []
-    __target_name = ""
-    __target_ready = False
-    __system_state:SystemState = SystemState.SystemStarting
-    __input_files_list = {}    # Contains the list of files in the source disk currently viewed
-    __queued_files_list = {}   # Contains the list of files in the queue
-    __input_files_listmodel:SafecorInputFilesListModel
-    __input_files_listproxymodel:SafecorInputFilesListProxyModel
-    __queue_listmodel:QueueListModel
-    __queue_listproxymodel:QueueListProxyModel
+    __source_disconnected = False
+    __copy_paused = False
+    __file_queue: FileQueue
+    __file_browser: FileBrowser
+    __storage_manager: StorageManager
+    __input_files_listmodel: SafecorInputFilesListModel
+    __input_files_listproxymodel: SafecorInputFilesListProxyModel
+    __queue_listmodel: QueueListModel
     __components_helper = ComponentsHelper()
     __analysis_ready = False
     __analysis_components = []
-    __analysis_controller:AnalysisController
+    __analysis_controller: AnalysisController
     __files_to_enqueue = []
-    __current_folder = "/"
-    __is_enqueuing = False
-    __log_listmodel:LogListModel
+    __log_listmodel: LogListModel
     __analysis_mode = AnalysisMode.AnalyseSelection
     __analysis_start_time = datetime.now()
-    __queue_files_list_lock = threading.Lock()
-    __folders_to_query = 1
-    __queue_files_size = 0
+    # True once the analysis has completed at least once: the disks
+    # connected after that are targets, not sources (F1).
+    __analysis_done = False
+    # True once the scan of the sources has started (file listing in
+    # progress or analysis running): no new source disk is accepted.
+    __scan_started = False
     __disk_controller_ready = False
     __long_process_running = False
     __system_used = False
-    #__system_information = dict()
-    __copied_files_count = 0
+    # __system_information = dict()
     __messages_model = MessagesListModel()
     __handheld = True
     __eta_estimator = EMAETAEstimator()
     __system_loading_progress = 0.0
-    
-    #__interfaceInputs = None
-    #__is_navigating = True
 
     # Signaux
     readyChanged = Signal(bool)
@@ -74,24 +105,24 @@ class ApplicationController(QObject):
     sourceReadyChanged = Signal(bool)
     targetNameChanged = Signal(str)
     targetReadyChanged = Signal(bool)
-    #sourceFilesListReceived = Signal(list)
+    # sourceFilesListReceived = Signal(list)
     systemStateChanged = Signal(int)
     queueSizeChanged = Signal(int)
     analysisReadyChanged = Signal(bool)
-    #fileAdded = Signal(str)
-    #fileQueued = Signal(str)
-    #fileUnqueued = Signal(str)
+    # fileAdded = Signal(str)
+    # fileQueued = Signal(str)
+    # fileUnqueued = Signal(str)
     fileUpdated = Signal(str, list)
     allFilesUpdated = Signal()
     queueUpdated = Signal()
-    #fileCopied = Signal(str, bool)
+    # fileCopied = Signal(str, bool)
     totalFilesCountChanged = Signal(int)
     infectedFilesCountChanged = Signal(int)
     cleanFilesCountChanged = Signal(int)
     globalProgressChanged = Signal(int)
     analysingCountChanged = Signal(int)
-    taskRunningChanged = Signal(bool)    
-    showMessage = Signal(str, str, bool, bool) #Title, Message, alert, modal
+    taskRunningChanged = Signal(bool)
+    showMessage = Signal(str, str, bool, bool)  # Title, Message, alert, modal
     currentFolderChanged = Signal()
     idCurrentFolderChanged = Signal()
     transferProgressChanged = Signal()
@@ -102,8 +133,10 @@ class ApplicationController(QObject):
     longProcessRunningChanged = Signal()
     systemUsedChanged = Signal()
     systemMustBeReset = Signal()
+    sourceDisconnectedChanged = Signal()
+    copyPausedChanged = Signal()
     doResetSystem = Signal()
-    #systemInformationChanged = Signal()
+    # systemInformationChanged = Signal()
     transferStartedChanged = Signal()
     storagesChanged = Signal()
     storagesCountChanged = Signal()
@@ -114,175 +147,227 @@ class ApplicationController(QObject):
     translationInstalled = Signal()
     systemLoadingProgressChanged = Signal()
 
-    # Energy
-    __battery_level = 0
-    __plugged = False
-
-    __subscriptions = []
-    __subscribed_count = 0
-    
-    __language = ""
-    __translator = None
-
     # Fonctions publiques
     def __init__(self, parent=None):
         QObject.__init__(self, parent)
 
+        self.__energy_monitor = EnergyMonitor(self)
+        self.__energy_monitor.batteryLevelChanged.connect(self.batteryLevelChanged)
+        self.__energy_monitor.pluggedChanged.connect(self.pluggedChanged)
+
+        self.__translation_manager = TranslationManager(self)
+        self.__translation_manager.languageChanged.connect(self.languageChanged)
+        self.__translation_manager.translationInstalled.connect(
+            self.translationInstalled
+        )
+
+        self.__api_lifecycle = ApiLifecycle(self)
+        self.__api_lifecycle.set_all_ready_callback(self.__on_all_subscriptions_ready)
+        self.__app_ready_done = False
+        self.__ready_callback = None
+        self.__repository_path_received = False
+
+        self.__workflow_controller = WorkflowController(self)
+        self.__workflow_controller.systemStateChanged.connect(self.systemStateChanged)
+
+        self.__file_queue = FileQueue()
+        self.__file_browser = FileBrowser(self)
+        self.__file_browser.currentFolderChanged.connect(self.currentFolderChanged)
+        self.__storage_manager = StorageManager(self)
+        self.__storage_manager.sourceNameChanged.connect(self.sourceNameChanged)
+        self.__storage_manager.sourceReadyChanged.connect(self.sourceReadyChanged)
+        self.__storage_manager.targetNameChanged.connect(self.targetNameChanged)
+        self.__storage_manager.targetReadyChanged.connect(self.targetReadyChanged)
+        self.__storage_manager.storagesChanged.connect(self.storagesChanged)
+        self.__storage_manager.storagesCountChanged.connect(self.storagesCountChanged)
+
+        self.__transfer_controller = TransferController(self.__file_queue, self)
+        self.__transfer_controller.transferProgressChanged.connect(
+            self.transferProgressChanged
+        )
+        self.__transfer_controller.copiedFilesCountChanged.connect(
+            self.copiedFilesCountChanged
+        )
+        self.__transfer_controller.transferComplete.connect(self.__on_transfer_complete)
+        self.__transfer_controller.transferError.connect(self.__on_transfer_error)
+        self.__transfer_controller.copyPausedChanged.connect(
+            self.__on_copy_paused_changed
+        )
+        self.__transfer_controller.coherenceCheckFailed.connect(
+            self.__on_coherence_check_failed
+        )
+
         self.__components_model = ComponentsModel(self.__components_helper, self)
 
-        self.__input_files_listmodel = SafecorInputFilesListModel(self.__input_files_list, self.__queued_files_list, self)
-        self.__input_files_listmodel.updateFilesList.connect(self.update_source_files_list)
+        self.__input_files_listmodel = SafecorInputFilesListModel(
+            self.__file_browser.input_files_list, self.__file_queue.files, self
+        )
+        self.__input_files_listmodel.updateFilesList.connect(
+            self.update_source_files_list
+        )
         self.fileUpdated.connect(self.__input_files_listmodel.on_file_updated)
         self.sourceNameChanged.connect(self.__input_files_listmodel.onSourceChanged)
 
-        self.__input_files_listproxymodel = SafecorInputFilesListProxyModel(self.__input_files_listmodel, self)
-        self.__queue_listmodel = QueueListModel(self.__queued_files_list, self)
-        self.__queue_listproxymodel = QueueListProxyModel(self.__queue_listmodel, self)
+        self.__input_files_listproxymodel = SafecorInputFilesListProxyModel(
+            self.__input_files_listmodel, self
+        )
+        self.__queue_listmodel = QueueListModel(self.__file_queue.files, self)
         self.fileUpdated.connect(self.__queue_listmodel.on_file_updated)
         self.queueUpdated.connect(self.__queue_listmodel.reset)
         self.queueUpdated.connect(self.__input_files_listmodel.reset)
         self.allFilesUpdated.connect(self.__input_files_listmodel.reset)
-        self.fileUpdated.connect(self.__queue_listproxymodel.on_data_changed)
 
         self.__log_listmodel = LogListModel(self)
         self.__thread_pool = ThreadPoolExecutor(max_workers=1)
 
         self.__report_controller = ReportController(self)
         self.__report_controller.reportGenerated.connect(self.__on_report_generated)
-        self.__system_information_model = SystemInformationModel(self.__handheld)        
+        self.__report_controller.reportFailed.connect(self.__on_report_failed)
+        self.__system_information_model = SystemInformationModel(self.__handheld)
+
+        self.__devmode_auto_start_timer = None
 
     def start(self, ready_callback):
+        """Start the Safecor API connection with the platform or the debug broker."""
+        self.__ready_callback = ready_callback
+
         if DEVMODE:
             self.__mqtt_client = DevModeHelper.create_mqtt_client("GUI")
         else:
             self.__mqtt_client = MqttFactory.create_mqtt_client_domu("GUI")
 
-        self.__logfile = os.path.join(tempfile.gettempdir(), "saphir.log")
-        self.__ready_callback = ready_callback
-
+        self.__logfile = self.__api_lifecycle.get_logfile()
+        # Reset the journal at application startup so it is not cumulative
+        try:
+            with open(self.__logfile, "w"):
+                pass
+        except OSError:
+            pass
         Api().add_ready_callback(self.__on_api_ready)
-        Api().start(mqtt_client=self.__mqtt_client, domain_identifier="GUI", recording=True, logfile=self.__logfile)        
-
+        Api().start(
+            mqtt_client=self.__mqtt_client,
+            domain_identifier="GUI",
+            recording=True,
+            logfile=self.__logfile,
+        )
 
     @Slot()
     def update_source_files_list(self):
+        """Refresh the file list of the selected folder on the source disk."""
         # First we verify that there is a source
-        if self.__source_name == "":
+        if self.__storage_manager.source_name == "":
             return
 
         # Ask for the list of files
         if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-            self.__folders_to_query = 1
+            self.__file_browser.folders_to_query = 1
             self.set_long_process_running(True)
-            Api().get_files_list(self.__source_name, False)
-
+            Api().get_files_list(self.__storage_manager.source_name, False)
 
     @Slot(str)
-    def go_to_folder(self, folder:str):
-        #print("is_enqueuing=", self.__is_enquing)
-        self.__input_files_list.clear()
+    def go_to_folder(self, folder: str):
+        """Navigate the file browser to the given folder."""
+        self.__file_browser.input_files_list.clear()
         self.__input_files_listmodel.reset()
         self.__input_files_listproxymodel.set_current_folder(folder)
-        self.__current_folder = folder
+        self.__file_browser.current_folder = folder
         self.currentFolderChanged.emit()
         self.idCurrentFolderChanged.emit()
-        self.__folders_to_query = 1
+        self.__file_browser.folders_to_query = 1
         self.set_long_process_running(True)
-        Api().get_files_list(self.__source_name, False, folder)
-
+        Api().get_files_list(self.__storage_manager.source_name, False, folder)
 
     @Slot()
     def go_to_parent_folder(self):
-        path = Path(self.__current_folder)
+        """Navigate the file browser to the parent of the current folder."""
+        path = Path(self.__file_browser.current_folder)
         self.go_to_folder(path.parent.absolute().as_posix())
-
 
     @Slot()
     def start_full_analysis(self):
-        Api().info("Starting full device analysis")
+        """Start the analysis of every source disk, file list included."""
+        source_disks = self.__storage_manager.get_source_disks()
+        if not source_disks:
+            Api().error("No source disk to analyze")
+            return
+
+        # The scan has started: no new source disk will be accepted
+        self.__scan_started = True
+        Api().info(f"Starting full analysis of {len(source_disks)} disk(s)")
         self.__analysis_mode = AnalysisMode.AnalyseWholeSource
         self.__analysis_start_time = datetime.now()
-        self.__folders_to_query = 1
+        self.__file_browser.folders_to_query = len(source_disks)
 
-        # On doit récupérer la liste des fichiers de façon intérative
-        # sur l'ensemble du disque source. Pour cela on va mettre en queue
-        # tous les fichiers du répertoire racine, puis demander la liste des
-        # fichiers du premier répertoire, et à chaque réponse on recommencera
-        # avec le répertoire suivant
-        self.__is_enqueuing = True
+        # We must retrieve the file list iteratively across each source
+        # disk. For this, we enqueue all files from the root directory of
+        # each disk, then request the file list of the first subdirectory,
+        # and on each response we proceed with the next directory.
+        self.__file_browser.is_enqueuing = True
+        self.__set_system_state(SystemState.SystemGettingFilesList)
         self.set_long_process_running(True)
 
-        #QCoreApplication.processEvents()
-        Api().get_files_list(self.__source_name, False, "/",)
+        for disk in source_disks:
+            Api().get_files_list(disk, False, "/")
 
     @Slot(str, str)
-    def enqueue_file(self, filetype:str, filepath:str):
-        #print(f"User added {filetype} {filepath} to the queue")
-
+    def enqueue_file(self, filetype: str, filepath: str):
+        """Add a file or a folder selected by the user to the analysis queue."""
         if filetype == "file":
-            file = self.__input_files_list[filepath]
+            file = self.__file_browser.input_files_list[filepath]
             file["inqueue"] = True
-            with self.__queue_files_list_lock:
-                self.__queued_files_list[filepath] = file
-            #    self.__queuedFilesList[filepath] = copy.deepcopy(file)
-
-            #self.fileQueued.emit(filepath)
-            #self.queueListModel_.reset()
+            self.__file_queue.enqueue(filepath, file)
             self.fileUpdated.emit(filepath, ["inqueue"])
             self.queueSizeChanged.emit(self.__get_queue_size())
             self.set_long_process_running(False)
         else:
-            self.__is_enqueuing = True
-            self.__is_navigating = False
+            self.__file_browser.is_enqueuing = True
 
             self.set_long_process_running(True)
 
             # Enqueue the folder at first to make it disappear
-            self.__folders_to_query = 1
-            file = self.__input_files_list[filepath]
+            self.__file_browser.folders_to_query = 1
+            file = self.__file_browser.input_files_list[filepath]
             file["inqueue"] = True
 
             self.fileUpdated.emit(filepath, ["inqueue"])
 
             # Get the file tree from the disk and enqueue it
             self.__set_system_state(SystemState.SystemGettingFilesList)
-            Api().get_files_list(self.__source_name, False, filepath)
-
+            Api().get_files_list(self.__storage_manager.source_name, False, filepath)
 
     @Slot(str)
-    def dequeue_file(self, filepath:str):
-        #Api().debug("User removed {} from to the queue".format(filepath))
-        
-        # La plupart du temps l'utilisateur déselectionnera un répertoire
-        # il faut donc retrouver tous les fichiers de ce répertoire
-        file = self.__input_files_list.get(filepath)
+    def dequeue_file(self, filepath: str):
+        """Remove a file or a folder selected by the user from the analysis queue."""
+        # Most of the time the user will deselect a folder,
+        # so we need to find all files in that folder
+        file = self.__file_browser.input_files_list.get(filepath)
         if file is None:
             return
-        
+
         if file["type"] == "file":
-            # Si c'est un fichier on le retire de la queue
-            with self.__queue_files_list_lock:
-                self.__queued_files_list.pop(filepath)
+            # It is a single file, so we only remove it from the queue
+            self.__file_queue.dequeue(filepath)
 
             file["inqueue"] = False
             self.fileUpdated.emit(filepath, ["inqueue"])
 
-            self.queueSizeChanged.emit(len(self.__queued_files_list))
+            self.queueSizeChanged.emit(len(self.__file_queue.files))
             self.queueUpdated.emit()
             self.set_long_process_running(False)
-        else:            
+        else:
             self.set_long_process_running(True)
 
-            # C'est un dossier
-            # ... il faut parcourir toutes les entrées de la liste et retirer chaque fichier
+            # It's a folder
+            # ... we need to walk through all list entries and remove each file
             threading.Thread(target=self.__dequeue_folder, args=(filepath,)).start()
 
     @Slot()
     def start_stop_analysis(self):
+        """Toggle the analysis: start it if stopped, stop it if running."""
         if self.__analysis_controller.state == AnalysisState.AnalysisStopped:
             Api().debug("User asked to start the analysis")
             self.__analysis_start_time = datetime.now()
-            self.__eta_estimator.setup(self.__queue_files_size)
+            self.__eta_estimator.setup(self.__file_queue.size())
             self.__analysis_controller.start_analysis()
         elif self.__analysis_controller.state == AnalysisState.AnalysisRunning:
             Api().debug("User asked to stop the analysis")
@@ -290,55 +375,68 @@ class ApplicationController(QObject):
 
     @Slot()
     def start_analysis(self):
-        if self.__analysis_controller.state == AnalysisState.AnalysisStopped and self.__analysis_ready:
+        """Start the analysis if it is stopped and ready to run."""
+        if (
+            self.__analysis_controller.state == AnalysisState.AnalysisStopped
+            and self.__analysis_ready
+        ):
             Api().debug("User asked to start the analysis")
+            # The scan has started: no new source disk will be accepted
+            self.__scan_started = True
             self.__analysis_start_time = datetime.now()
-            self.__eta_estimator.setup(self.__queue_files_size)
+            self.__eta_estimator.setup(self.__file_queue.size())
             self.__analysis_controller.start_analysis()
-        
+
     @Slot()
     def stop_analysis(self):
+        """Stop the analysis if it is currently running."""
         if self.__analysis_controller.state == AnalysisState.AnalysisRunning:
             Api().debug("User asked to stop the analysis")
             self.__analysis_controller.stop_analysis()
 
     @Slot()
     def start_transfer(self):
+        """Start copying the clean files to the target disk."""
         Api().info("Start transfer of clean files to target disk")
 
-        self.__copied_files_count = 0
-        #self.__analysis_controller.stop_analysis()
-
         self.__set_system_state(SystemState.CopyCleanFiles)
-
-        # Start in the run-loop
-        threading.Timer(0.1, self.__do_start_transfer).start()
+        self.__transfer_controller.start(
+            self.__storage_manager.get_source_disks(),
+            self.__storage_manager.target_name,
+        )
 
     @Slot()
-    def __do_start_transfer(self):
-        # Copy all the clean files
-        for filepath_, file_ in self.__queued_files_list.items():
-            if file_.get("status") == FileStatus.FileClean:
-                Api().copy_file(self.__source_name, filepath_, self.__target_name)
+    def enter_copy_phase(self):
+        """Enter the copy phase: show the FilesCopyPanel.
+
+        If a target is already connected, start the transfer immediately.
+        Otherwise the panel prompts the user to connect a target storage.
+        """
+        self.__set_system_state(SystemState.CopyCleanFiles)
+        if self.__storage_manager.target_name != "":
+            self.start_transfer()
 
     @Slot()
     def select_all_clean_files_for_copy(self):
-        for filepath_, file_ in self.__queued_files_list.items():
+        """Select every clean file for the copy to the target disk."""
+        for filepath_, file_ in self.__file_queue.files.items():
             if file_["status"] == FileStatus.FileClean:
                 file_["select_for_copy"] = True
                 self.fileUpdated.emit(filepath_, ["select_for_copy"])
 
     @Slot()
     def deselect_all_clean_files_for_copy(self):
-        for filepath_, file_ in self.__queued_files_list.items():
+        """Deselect every clean file from the copy to the target disk."""
+        for filepath_, file_ in self.__file_queue.files.items():
             if file_["status"] == FileStatus.FileClean:
                 file_["select_for_copy"] = False
                 self.fileUpdated.emit(filepath_, ["select_for_copy"])
-   
+
     @Slot()
     def reset(self):
+        """Reset the whole system: restart the dirty domains and clear the models."""
         self.stop_analysis()
-        self.__set_system_state(SystemState.SystemResetting)    
+        self.__set_system_state(SystemState.SystemResetting)
 
         # Reset the environment means destroying and re-creating dirty VMs:
         # - sys-usb
@@ -353,7 +451,9 @@ class ApplicationController(QObject):
                 Api().restart_domain(domain_name)
 
         self.__reset_states()
-        self.__messages_model.addMessage(self.tr("The system is resetting, please wait..."))
+        self.__messages_model.addMessage(
+            self.tr("The system is resetting, please wait...")
+        )
 
         self.__analysis_ready = False
         self.analysisReadyChanged.emit(self.__analysis_ready)
@@ -364,21 +464,19 @@ class ApplicationController(QObject):
     def __reset_states(self):
         # Reset all models
         self.__system_used = False
-        self.__current_folder = "/"
-        self.__input_files_list.clear()
+        self.__analysis_done = False
+        self.__scan_started = False
+        self.__file_browser.current_folder = "/"
+        self.__file_browser.input_files_list.clear()
         self.__input_files_listmodel.reset()
-        self.__queued_files_list.clear()
+        self.__file_queue.clear()
         self.__queue_listmodel.reset()
-        self.__queue_files_size = 0
-        self.__folders_to_query = 0
-        self.__current_folder = "/"
+        self.__file_browser.folders_to_query = 0
         self.currentFolderChanged.emit()
         self.__analysis_controller.reset()
-        self.__source_name = ""
-        self.sourceNameChanged.emit("")
-        self.__analysis_controller.set_source_disk("")
-        self.__target_name = ""
-        self.targetNameChanged.emit()
+        self.__storage_manager.clear_source()
+        self.__analysis_controller.set_source_disks([])
+        self.__storage_manager.clear_target()
         self.totalFilesCountChanged.emit(0)
         self.cleanFilesCountChanged.emit(0)
         self.infectedFilesCountChanged.emit(0)
@@ -388,88 +486,68 @@ class ApplicationController(QObject):
         self.remainingTimeChanged.emit()
         self.__long_process_running = False
         self.longProcessRunningChanged.emit()
-        self.__copied_files_count = 0
+        self.__source_disconnected = False
+        self.sourceDisconnectedChanged.emit()
+        self.__copy_paused = False
+        self.copyPausedChanged.emit()
+        self.__transfer_controller.reset()
         self.copiedFilesCountChanged.emit()
 
         # The storages come from a single disk so we clean all of them
         self.__reset_storages()
 
     @Slot()
-    def set_long_process_running(self, running:bool):
+    def set_long_process_running(self, running: bool):
+        """Set the long-process state shown by the GUI progress indicator."""
         self.__long_process_running = running
         self.longProcessRunningChanged.emit()
 
     @Slot(str)
-    def debug(self, message:str):
+    def debug(self, message: str):
+        """Log a debug message from QML through the Safecor API."""
         Api().debug(message, "Saphir")
-    
+
     @Slot(str)
-    def info(self, message:str):
+    def info(self, message: str):
+        """Log an info message from QML through the Safecor API."""
         Api().info(message, "Saphir")
 
     @Slot(str)
-    def warn(self, message:str):
+    def warn(self, message: str):
+        """Log a warning message from QML through the Safecor API."""
         Api().warn(message, "Saphir")
 
     @Slot(str)
-    def error(self, message:str):
+    def error(self, message: str):
+        """Log an error message from QML through the Safecor API."""
         Api().error(message, "Saphir")
-    
 
-    def __on_api_ready(self):                
+    def __on_api_ready(self):
         Api().add_message_callback(self.__on_message_received)
-        Api().add_subscription_callback(self.__on_subscribed)
         Api().add_shutdown_callback(self.__on_shutdown)
-        
-        # Handle the subscriptions
-        result, mid = Api().subscribe(f"{Topics.COPY_FILE}/response")
-        if result:
-            self.__subscriptions.append(mid)
+        self.__api_lifecycle.setup_subscriptions()
 
-        result, mid = Api().subscribe(Topics.DISK_STATE)
-        if result:
-            self.__subscriptions.append(mid)
+        # The boot-time discover_components request is one-shot; on a
+        # (re)connection that happens before the components are up it may
+        # go unanswered. Ask again until the system has left the boot phase.
+        if self.__workflow_controller.state in (
+            SystemState.SystemStarting,
+            SystemState.SafecorReady,
+        ):
+            Api().discover_components()
 
-        result, mid = Api().subscribe(f"{Topics.LIST_DISKS}/response")
-        if result:
-            self.__subscriptions.append(mid)
-            
-        result, mid = Api().subscribe(f"{Topics.LIST_FILES}/response")
-        if result:
-            self.__subscriptions.append(mid)
-            
-        result, mid = Api().subscribe(f"{Topics.DISCOVER_COMPONENTS}/response")
-        if result:
-            self.__subscriptions.append(mid)
-            
-        result, mid = Api().subscribe(f"{Topics.ENERGY_STATE}/response")
-        if result:
-            self.__subscriptions.append(mid)
-            
-        result, mid = Api().subscribe(f"{Topics.SYSTEM_INFO}/response")
-        if result:
-            self.__subscriptions.append(mid)
-
-        result, mid = Api().subscribe(f"{Topics.CREATE_FILE}/response")
-        if result:
-            self.__subscriptions.append(mid)
-
-        result, mid = Api().subscribe(f"{Topics.DEFAULT_LANGUAGE}/response")
-        if result:
-            self.__subscriptions.append(mid)
-        
-    def __on_subscribed(self, mid):
-        if mid in self.__subscriptions:
-            self.__subscribed_count += 1
-
-            if self.__subscribed_count == len(self.__subscriptions):
-                self.__app_ready()
+    def __on_all_subscriptions_ready(self):
+        self.__app_ready()
 
     def __app_ready(self):
+        if self.__app_ready_done:
+            return
+        self.__app_ready_done = True
+
         Api().info("Saphir is ready")
 
         Api().notify_gui_ready()
-        Api().get_default_language()
+        self.__translation_manager.request_default_language()
 
         if self.__ready_callback is not None:
             self.__ready_callback()
@@ -477,31 +555,45 @@ class ApplicationController(QObject):
         Api().discover_components()
         self.__set_system_loading_progress(0.15)
         Api().request_system_info()
+        Api().request_repository_path()
 
         # Energy management
-        self.__request_energy_state()
-        
-        self.__analysis_controller = AnalysisController(files=self.__queued_files_list, analysis_components= self.__analysis_components, source_disk= self.__source_name, analysis_mode_=self.__analysis_mode, parent= self)
+        self.__energy_monitor.start_polling()
+
+        self.__analysis_controller = AnalysisController(
+            files=self.__file_queue.files,
+            analysis_components=self.__analysis_components,
+            source_disks=self.__storage_manager.get_source_disks(),
+            analysis_mode_=self.__analysis_mode,
+            parent=self,
+        )
         self.__analysis_controller.resultsChanged.connect(self.__on_results_changed)
-        self.__analysis_controller.fileUpdated.connect(self.__queue_listmodel.on_file_updated)
-        self.__analysis_controller.stateChanged.connect(self.__on_analysis_state_changed)
+        self.__analysis_controller.fileUpdated.connect(
+            self.__queue_listmodel.on_file_updated
+        )
+        self.__analysis_controller.stateChanged.connect(
+            self.__on_analysis_state_changed
+        )
         self.__analysis_controller.systemUsed.connect(self.__on_system_used)
         self.__analysis_controller.iterationDone.connect(self.__on_iteration_done)
+        self.__analysis_controller.sourceHoldChanged.connect(
+            self.__on_source_hold_changed
+        )
+        self.__transfer_controller.init()
 
         self.__log_listmodel.listen_to_logs()
 
         self.__ready = True
         self.readyChanged.emit(self.__ready)
 
-        self.__messages_model.addMessage(self.tr("Saphir has started... Waiting for the components to be ready."))        
+        self.__messages_model.addMessage(
+            self.tr("Saphir has started... Waiting for the components to be ready.")
+        )
 
-    def __on_message_received(self, topic:str, payload:dict):
-        # ATTENTION : cette fonction est appelée depuis un autre thread
-        # il faut envoyer des signaux pour communiquer avec les autres
-        # objets du système  
-        #print("[ApplicationController] topic: {}".format(topic))
-        #print("payload: {}".format(payload))
-        
+    def __on_message_received(self, topic: str, payload: dict):
+        # WARNING: this function is called from another thread.
+        # Use signals to communicate with other system objects.
+
         if topic == Topics.DISK_STATE:
             self.__handle_disk_state(payload)
         elif topic == f"{Topics.LIST_DISKS}/response":
@@ -512,6 +604,8 @@ class ApplicationController(QObject):
             self.__handle_discover_components(payload)
         elif topic == f"{Topics.COPY_FILE}/response":
             self.__handle_copy_file(payload)
+        elif topic == Topics.ERROR:
+            self.__handle_copy_error(payload)
         elif topic == f"{Topics.ENERGY_STATE}/response":
             self.__handle_energy_state(payload)
         elif topic == f"{Topics.SYSTEM_INFO}/response":
@@ -519,68 +613,43 @@ class ApplicationController(QObject):
         elif topic == f"{Topics.CREATE_FILE}/response":
             self.__handle_create_file(payload)
         elif topic == f"{Topics.DEFAULT_LANGUAGE}/response":
-            if MqttHelper.check_payload(payload, ["language"]):
-                language = payload.get("language", "en")
-                self.__install_translations(language)
+            self.__translation_manager.on_default_language_response(payload)
+        elif topic == f"{Topics.REPOSITORY_PATH}/response":
+            self.__handle_repository_path(payload)
 
-    def __is_file_in_folder(self, filepath:str, folder:str) -> bool:
-        return filepath.startswith(folder) # type: ignore
+    def __is_file_in_folder(self, filepath: str, folder: str) -> bool:
+        return filepath.startswith(folder)  # type: ignore
 
-    def __on_iteration_done(self, duration:float, filesize:int):
-        """ Called when a file has been treated
+    def __on_iteration_done(self, duration: float, filesize: int):
+        """Called when a file has been treated
 
         @param duration The duration of the step in minutes
 
-        During this step the ETA is updated. 
-        """        
+        During this step the ETA is updated.
+        """
         self.__eta_estimator.update(duration, filesize)
 
         with open("/tmp/data.txt", "a") as f:
-            f.write(f"{duration}, {filesize}, {self.__eta_estimator.remaining_time()}\n")
+            f.write(
+                f"{duration}, {filesize}, {self.__eta_estimator.remaining_time()}\n"
+            )
 
         self.remainingTimeChanged.emit()
 
-
-    @Slot()
-    def __install_translations(self, language = ""):
-        if(self.__language == language):
-            return
-    
-        self.__language = language
-        self.languageChanged.emit()
-
-        if self.__language == "":
-            Api().info("Using the default language (EN)")
-            if self.__translator is not None:
-                QCoreApplication.instance().removeTranslator(self.__translator)
-                self.__translator.deleteLater()
-                self.__translator = None
-                self.translationInstalled.emit()
-            return
-        
-        # Create a new translator
-        if self.__translator is None:
-            self.__translator = QTranslator(self)
-            QCoreApplication.instance().installTranslator(self.__translator)
-
-        # Install the translations
-        app_root_path = Path(__file__).resolve().parent.parent
-        if self.__translator.load(f"{app_root_path}/i18n/{self.__language}.qm"):
-            Api().info(f"Install the translation for {self.__language}")
-        else:
-            Api().warn(f"No translation found for the language {self.__language}")
-
-        self.translationInstalled.emit()
-        self.languageChanged.emit()
+    @Slot(str)
+    def __set_language(self, lang: str):
+        self.__translation_manager.set_language(lang)
 
     @Slot()
     def shutdown(self):
+        """Ask the Safecor platform to shut the system down."""
         self.__set_system_state(SystemState.SystemShuttingDown)
         self.__messages_model.addMessage(self.tr("The system is shutting down..."))
         Api().shutdown()
 
     @Slot()
     def switch_to_viewer(self):
+        """Switch the screen from the Saphir GUI to the read-only viewer."""
         Api().switch_gui("saphir-viewer")
 
     def __check_components_availability(self):
@@ -590,7 +659,10 @@ class ApplicationController(QObject):
 
         # Verify Safecor availability
         if states.get(Constants.SAFECOR_DISK_CONTROLLER):
-            ready &= states.get(Constants.SAFECOR_DISK_CONTROLLER, ComponentState.UNKNOWN) == ComponentState.READY
+            ready &= (
+                states.get(Constants.SAFECOR_DISK_CONTROLLER, ComponentState.UNKNOWN)
+                == ComponentState.READY
+            )
             if ready and not self.__disk_controller_ready:
                 self.__disk_controller_ready = True
                 self.__on_disk_controller_state_changed(ready)
@@ -600,14 +672,39 @@ class ApplicationController(QObject):
         ids = self.__components_helper.get_ids_by_type("antivirus")
         for comp_id in ids:
             av = self.__components_helper.get_by_id(comp_id)
-            ready &= av.get("state", ComponentState.UNKNOWN) == ComponentState.READY
-            if av.get("state", ComponentState.UNKNOWN) == ComponentState.READY and av not in self.__analysis_components:
-                self.__analysis_components.append(av)
-            elif av.get("state", ComponentState.UNKNOWN) == ComponentState.OFF and av in self.__analysis_components:
+            av_state = av.get("state", ComponentState.UNKNOWN)
+            ready &= av_state == ComponentState.READY
+            if av_state == ComponentState.READY:
+                if av not in self.__analysis_components:
+                    self.__analysis_components.append(av)
+            elif av in self.__analysis_components:
+                # The engine was ready, it is not anymore (NFR-3). If the
+                # analysis is running the AnalysisController declares the
+                # incomplete files in error and aborts when the number of
+                # available engines drops below ANTIVIRUS_NEEDED.
                 self.__analysis_components.remove(av)
+                if (
+                    self.__workflow_controller.state
+                    == SystemState.SystemAnalysisRunning
+                ):
+                    aborted = self.__analysis_controller.handle_av_failure(comp_id)
+                    label = av.get("label", comp_id)
+                    message = f"{label}: " + self.tr(
+                        "The antivirus engine failed during the analysis: "
+                        "the files that could not be analyzed by all the engines "
+                        "are declared in error."
+                    )
+                    if aborted:
+                        message += " " + self.tr(
+                            "The analysis was stopped: please reset the system."
+                        )
+                    self.__messages_model.addMessage(message)
 
         # Now we check again the antiviruses
         ready &= len(self.__analysis_components) >= ANTIVIRUS_NEEDED
+
+        # The repository path is a core condition for SystemReady
+        ready &= self.__repository_path_received
 
         # The system is ready when all necessary components are ready
         # and the number of antiviruses needed is reached
@@ -616,15 +713,27 @@ class ApplicationController(QObject):
 
         # Update the loading progress
         progress = 0.0
-        
+
         if ready:
-            self.__set_system_state(SystemState.SystemReady)
+            # Never force the state backwards: a late component response
+            # must not pull the workflow back to SystemReady once analysis
+            # (or any later phase) has started.
+            if self.__workflow_controller.state in (
+                SystemState.SystemStarting,
+                SystemState.SafecorReady,
+                SystemState.SystemReady,
+            ):
+                self.__set_system_state(SystemState.SystemReady)
             progress = 1.0
         elif len(self.__analysis_components) == 2:
             progress = 0.66
         elif len(self.__analysis_components) == 1:
             progress = 0.5
-        elif self.__components_helper.is_ready(Constants.SAFECOR_DISK_CONTROLLER) and self.__components_helper.is_ready(Constants.SAFECOR_INPUT_CONTROLLER) and self.__components_helper.is_ready(Constants.SAFECOR_SYSTEM_CONTROLLER):
+        elif (
+            self.__components_helper.is_ready(Constants.SAFECOR_DISK_CONTROLLER)
+            and self.__components_helper.is_ready(Constants.SAFECOR_INPUT_CONTROLLER)
+            and self.__components_helper.is_ready(Constants.SAFECOR_SYSTEM_CONTROLLER)
+        ):
             progress = 0.33
 
         self.__set_system_loading_progress(progress)
@@ -632,20 +741,27 @@ class ApplicationController(QObject):
         if ready:
             self.__messages_model.addMessage(self.tr("The antiviruses are ready"))
 
-    def __handle_disk_state(self, payload:dict):
-        # If the system has been used and the files have been copied we ignore new
-        # notifications for disks state
-        if self.__system_state.value >= SystemState.CopyCleanFiles.value:
+    def __handle_disk_state(self, payload: dict):
+        # Ignore disk state changes when the system is locked (reset required or in progress)
+        locked_states = {
+            SystemState.SystemMustBeReset,
+            SystemState.ReportFailed,
+            SystemState.SystemResetting,
+            SystemState.SystemShuttingDown,
+        }
+        if self.__workflow_controller.state in locked_states:
             return
 
-        # in version 3.0 we handle multiple partitions on disks
-        # Each partition is a storage and we let the user choose the storage
-        # By default we consider the first storage notified as the source
+        # A media is made of one or more partitions: Safecor emits one disk
+        # entry per partition. Every disk connected before the analysis
+        # completes is a source disk (a partition of the source media or an
+        # additional media to scan at the same time). The first disk
+        # connected after the analysis completes is the target.
         disk = payload.get("disk")
         if disk is None:
             Api().error("The disk value is missing")
             return
-        
+
         state = payload.get("state")
         if state is None:
             Api().error("The state value is missing")
@@ -657,175 +773,272 @@ class ApplicationController(QObject):
         else:
             self.__on_storage_removed(disk)
 
-        if self.__source_name == "" and state == DiskState.CONNECTED.value:
-            if self.__system_used:
-                # If the system has already been used and the user is trying
-                # to start over we prevent it
-                self.__set_system_state(SystemState.SystemMustBeReset)
-                self.systemMustBeReset.emit()
-            else:
-                # otherwise we set the first storage as the source
-                self.__source_ready = True
-                self.sourceReadyChanged.emit(self.__source_ready)
-                self.__source_name = disk
-                self.__analysis_controller.set_source_disk(disk)
-                self.sourceNameChanged.emit(self.__source_name)
+        if state == DiskState.CONNECTED.value:
+            self.__on_disk_connected(disk)
+        else:
+            self.__on_disk_disconnected(disk)
 
-                if DEVMODE:
-                    self.start_full_analysis()
-        elif self.__source_name != "" and self.__source_name == disk and state == DiskState.DISCONNECTED.value:
-            # The source has been disconnected
-            # If the system has been used the user must reset it
-            # Otherwise we let go
-            if self.__system_used:
-                self.__set_system_state(SystemState.SystemMustBeReset)
-                self.systemMustBeReset.emit()
-                return
-            
-            self.__reset_states()
-        elif self.__source_name != "" and self.__source_name != disk and state == DiskState.CONNECTED.value:
-            # The target has been connected
-            self.__target_ready = True
-            self.targetReadyChanged.emit(self.__target_ready)
-            self.__target_name = disk
-            self.targetNameChanged.emit(disk)
+    def __on_disk_connected(self, disk: str) -> None:
+        """Assign a newly connected disk to the sources or to the target.
 
-            # TODO: Verify whether the disk has enough space
-            if True:
+        Before the analysis completes every connected disk is a source
+        disk (a partition of the source media or an additional media).
+        After the analysis completes, the first connected disk is the
+        target.
+        """
+        if self.__storage_manager.target_name == "":
+            if self.__analysis_done:
+                # The analysis is over: this disk is the target
+                if self.__transfer_controller.is_copy_paused:
+                    # Scenario 8.6: a reconnection while the copy is paused
+                    # is handled by the TransferController (coherence check,
+                    # auto-resume or SystemMustBeReset).
+                    return
+
+                self.__storage_manager.set_target(disk)
+
+                # TODO: Verify whether the disk has enough space
                 self.start_transfer()
-        elif self.__target_name != "" and self.__target_name == disk and state == DiskState.DISCONNECTED.value:
+            elif self.__scan_started:
+                # The scan of the sources has already started: no new
+                # source disk is accepted
+                Api().warn(
+                    f"The disk {disk} was connected while the scan is in "
+                    "progress: it is ignored (remove it and re-insert it "
+                    "after the scan, or reset the system)"
+                )
+            else:
+                # The analysis has not started yet: this disk is a source
+                # (a partition of the source media or an additional media)
+                first_source = self.__storage_manager.source_name == ""
+                self.__storage_manager.add_source(disk)
+                self.__analysis_controller.set_source_disks(
+                    self.__storage_manager.get_source_disks()
+                )
+
+                if DEVMODE and DEVMODE_AUTO_START:
+                    if self.__devmode_auto_start_timer is not None:
+                        self.__devmode_auto_start_timer.cancel()
+                    self.__devmode_auto_start_timer = threading.Timer(
+                        DEVMODE_SCAN_START_GRACE,
+                        self.__on_devmode_auto_start_timeout,
+                    )
+                    self.__devmode_auto_start_timer.start()
+        else:
+            Api().warn(f"The disk {disk} was connected after the target: ignored")
+
+    def __on_disk_disconnected(self, disk: str) -> None:
+        """Handle the disconnection of a source or of the target disk."""
+        if self.__storage_manager.target_name == disk:
             # The target has been disconnected
-            self.__target_ready = False
-            self.targetReadyChanged.emit(self.__target_ready)
-            self.__target_name = ""
-            self.targetNameChanged.emit(disk)
-        if self.__target_ready and not self.__source_ready:
+            if self.__transfer_controller.is_copying:
+                # Scenario 8.6: the copy is held by the TransferController
+                # (which monitors the disk states), do not reset. The target
+                # name is kept for the coherence check on reconnection.
+                return
+
+            self.__storage_manager.clear_target()
+            if self.__workflow_controller.state in (
+                SystemState.CopyCleanFiles,
+                SystemState.GeneratingReport,
+            ):
+                self.__set_system_state(SystemState.SystemMustBeReset)
+                self.systemMustBeReset.emit()
+            return
+
+        if disk not in self.__storage_manager.get_source_disks():
+            return
+
+        # A source disk has been disconnected
+        if self.__transfer_controller.is_copying:
+            # Scenario 8.6: the copy is held by the TransferController
+            # (which monitors the disk states), do not reset. The source
+            # registration is kept for the coherence check on reconnection.
+            return
+
+        if (
+            self.__analysis_controller.get_analysis_state()
+            == AnalysisState.AnalysisRunning
+        ):
+            # Scenario 8.8: the analysis continues on the repository
+            # files, the copy loop is held (AnalysisController) until
+            # the source is re-inserted. Do not reset, keep the
+            # registration.
+            return
+
+        self.__storage_manager.remove_source(disk)
+        self.__analysis_controller.set_source_disks(
+            self.__storage_manager.get_source_disks()
+        )
+
+        if self.__storage_manager.source_ready and not self.__scan_started:
+            self.sourceReadyChanged.emit(True)
+            return
+
+        if (
+            self.__storage_manager.target_ready
+            and not self.__storage_manager.source_ready
+        ):
             # If there is only one disk connected it becomes the source
-            self.__source_name = self.__target_name
-            self.__analysis_controller.set_source_disk(self.__target_name)
-            self.__target_name = ""
-            self.__source_ready = True
-            self.__target_ready = False
-            self.sourceNameChanged.emit(self.__source_name)
-            self.sourceReadyChanged.emit(self.__source_ready)
-            self.targetNameChanged.emit(self.__target_name)
-            self.targetReadyChanged.emit(self.__target_ready)
-            self.__input_files_list.clear()
+            self.__storage_manager.set_sources([self.__storage_manager.target_name])
+            self.__analysis_controller.set_source_disks(
+                self.__storage_manager.get_source_disks()
+            )
+            self.__storage_manager.clear_target()
+            self.__file_browser.input_files_list.clear()
             self.__input_files_listmodel.reset()
+            return
 
+        # If the system has been used the user must reset it
+        # Otherwise we let go
+        if self.__system_used:
+            self.__set_system_state(SystemState.SystemMustBeReset)
+            self.systemMustBeReset.emit()
+            return
 
-    def __handle_list_disks(self, payload:dict):
+        self.__reset_states()
+
+    def __on_devmode_auto_start_timeout(self):
+        """DEVMODE: start the full analysis automatically after the grace period."""
+        if (
+            self.__storage_manager.source_name == ""
+            or self.__storage_manager.target_name != ""
+            or self.__analysis_controller.get_analysis_state()
+            != AnalysisState.AnalysisStopped
+        ):
+            return
+
+        self.start_full_analysis()
+
+    def __handle_list_disks(self, payload: dict):
         # If an analysis is running, we let the AnalysisController handle this message
-        if self.__analysis_controller.get_analysis_state() == AnalysisState.AnalysisRunning:
+        if (
+            self.__analysis_controller.get_analysis_state()
+            == AnalysisState.AnalysisRunning
+        ):
             return
 
         if not MqttHelper.check_payload(payload, ["disks"]):
             Api().error("Message is malformed")
             return
-        
-        disks = payload.get("disks", list())
+
+        disks = payload.get("disks", [])
 
         if len(disks) == 0:
             Api().info("The list of disks is empty.")
             return
-                    
+
         for disk in disks:
             self.__on_storage_added(disk)
 
         Api().debug(f"Disks list received : {disks}")
         if len(disks) > 0:
-            # We set the first disk as the source disk
-            disk = disks[0]
-            self.__source_ready = True
-            self.sourceReadyChanged.emit(self.__source_ready)
-            self.__source_name = disk
-            self.__analysis_controller.set_source_disk(disk)
-            self.sourceNameChanged.emit(self.__source_name)
-            Api().info(f"The source disk name is {self.__source_name}")
-            #self.__set_system_state(SystemState.SystemGettingFilesList)
+            # Every disk listed before the scan starts is a source disk
+            # (a partition of a media or an additional media)
+            if (
+                self.__storage_manager.target_name == ""
+                and not self.__scan_started
+            ):
+                sources = self.__storage_manager.get_source_disks()
+                for disk in disks:
+                    if disk not in sources:
+                        sources.append(disk)
+                self.__storage_manager.set_sources(sources)
+                self.__analysis_controller.set_source_disks(
+                    self.__storage_manager.get_source_disks()
+                )
+            Api().info(
+                f"The source disks are {self.__storage_manager.get_source_disks()}"
+            )
 
-    def __handle_list_files(self, payload:dict) -> None:
+    def __handle_list_files(self, payload: dict) -> None:
         # If the analysis is running we don't care about this message
-        # because the AnalysisController will do
-        if self.__system_state == SystemState.SystemAnalysisRunning:
+        # because the AnalysisController will do. If the copy is in
+        # progress the only file listings are the TransferController
+        # coherence checks (8.6).
+        if self.__workflow_controller.state in (
+            SystemState.SystemAnalysisRunning,
+            SystemState.CopyCleanFiles,
+        ):
             return
-        
-        with self.__queue_files_list_lock:
-            disk = payload.get("disk")
-            files = payload.get("files", list())
 
-            if disk is None:
-                Api().error("The disk argument is missing")
-                return
-            
-            if files is None:
-                Api().error("The files argument is missing")
-                return
+        disk = payload.get("disk")
+        files = payload.get("files", [])
 
-            #Api().debug("Files list received, count={}".format(len(files)))
-            self.__folders_to_query -= 1
+        if disk is None:
+            Api().error("The disk argument is missing")
+            return
 
-            for file in files:
-                file["disk"] = disk
-                filepath = f"{file.get("path")}{"/" if file.get("path") != "/" else ""}{file.get("name")}"
-                file["filepath"] = filepath
-                file["status"] = FileStatus.FileStatusUndefined
-                file["selected"] = False
-                #print(filepath)
+        if files is None:
+            Api().error("The files argument is missing")
+            return
 
-                if self.__is_enqueuing:
-                    # On est en train de sélectionner des fichiers
-                    #if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                    # On est en mode de sélection unitaire
-                    if file["type"] == "file":
-                        file["inqueue"] = True
-                        self.__queue_files_size += file["size"]
-                        self.__queued_files_list[filepath] = file
-                        self.fileUpdated.emit(filepath, ["inqueue"])
-                    elif file["type"] == "folder":
-                        # Si c'est un dossier on va chercher les fichiers qu'il contient
-                        self.__folders_to_query += 1
-                        self.__thread_pool.submit(Api().get_files_list, self.__source_name, False, filepath)
-                else:
-                    # Sinon on est en train de peupler le navigateur
-                    if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                        # Si on est en mode de sélection de fichiers
-                        file["inqueue"] = False
-                        if not self.__is_enqueuing:
-                            self.__input_files_list[filepath] = file
-            
-            # On met à jour le compteur car cette opération est peu couteuse
-            # et permet à l'utilisateur de voir qu'il se passe quelque chose
-            if self.__is_enqueuing:
-                self.queueSizeChanged.emit(len(self.__queued_files_list))
+        self.__file_browser.folders_to_query -= 1
 
-            #print(self.__folders_to_query)
-            if self.__folders_to_query == 0:
-                self.set_long_process_running(False)
+        for file in files:
+            file["disk"] = disk
+            filepath = f"{file.get('path')}{'/' if file.get('path') != '/' else ''}{file.get('name')}"
+            file["filepath"] = filepath
+            file["status"] = FileStatus.FileStatusUndefined
+            file["selected"] = False
 
-                # Après avoir récupéré la liste de tous les fichiers on met à jour les modèles
+            if self.__file_browser.is_enqueuing:
+                # We are in the process of selecting files
+                # We are in single-selection mode
+                if file["type"] == "file":
+                    file["inqueue"] = True
+                    self.__file_queue.add_size(file["size"])
+                    self.__file_queue.enqueue(filepath, file)
+                elif file["type"] == "folder":
+                    # It is a folder, so we fetch the files it contains
+                    # on the disk that provided the listing
+                    self.__file_browser.folders_to_query += 1
+                    self.__thread_pool.submit(
+                        Api().get_files_list,
+                        disk,
+                        False,
+                        filepath,
+                    )
+            else:
+                # Otherwise we are populating the browser
                 if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                    if not self.__is_enqueuing:
-                        self.__input_files_listmodel.reset()
-                
-                # If we were enqueing (one or more folders)
-                if self.__is_enqueuing:
-                    self.queueSizeChanged.emit(len(self.__queued_files_list))
-                    self.queueUpdated.emit()
+                    # If we are in file selection mode
+                    file["inqueue"] = False
+                    if not self.__file_browser.is_enqueuing:
+                        self.__file_browser.add_file(filepath, file)
 
-                    if self.__analysis_mode == AnalysisMode.AnalyseWholeSource:
-                        # If we are analyzing the whole storage and we have no
-                        # more folder to query we start the analysis                    
-                        self.start_analysis()
+        # Update the counter since this operation is lightweight
+        # and lets the user see that something is happening
+        if self.__file_browser.is_enqueuing:
+            self.queueSizeChanged.emit(self.__file_queue.count())
 
-                if self.__analysis_mode == AnalysisMode.AnalyseSelection:
-                    self.__set_system_state(SystemState.SystemWaitingForUserAction)
+        if self.__file_browser.folders_to_query == 0:
+            self.set_long_process_running(False)
 
-                # A la fin on sort du mode de mise en queue
-                self.__is_enqueuing = False
+            # After retrieving the full file list, update the models
+            if (
+                self.__analysis_mode == AnalysisMode.AnalyseSelection
+                and not self.__file_browser.is_enqueuing
+            ):
+                self.__input_files_listmodel.reset()
 
+            # If we were enqueing (one or more folders)
+            if self.__file_browser.is_enqueuing:
+                self.queueSizeChanged.emit(self.__file_queue.count())
+                self.queueUpdated.emit()
 
-    def __handle_discover_components(self, payload:dict):
+                if self.__analysis_mode == AnalysisMode.AnalyseWholeSource:
+                    # If we are analyzing the whole storage and we have no
+                    # more folder to query we start the analysis
+                    self.start_analysis()
+
+            if self.__analysis_mode == AnalysisMode.AnalyseSelection:
+                self.__set_system_state(SystemState.SystemWaitingForUserAction)
+
+            # Finally we leave the enqueuing mode
+            self.__file_browser.is_enqueuing = False
+
+    def __handle_discover_components(self, payload: dict):
         if not MqttHelper.check_payload(payload, ["components"]):
             Api().error("The response is malformed")
             return
@@ -837,177 +1050,287 @@ class ApplicationController(QObject):
             self.__check_components_availability()
             self.__components_model.components_updated()
 
-    def __handle_copy_file(self, payload:dict):
-        if not MqttHelper.check_payload(payload, ["filepath", "status", "fingerprint"]):
-            Api().error("Missing arguments in copy file")
-            return
-        
+    def __handle_copy_file(self, payload: dict):
+        self.__transfer_controller.on_copy_file(payload)
         filepath = payload.get("filepath")
-        status = payload.get("status")
-        fingerprint = payload.get("fingerprint")
+        if filepath:
+            self.fileUpdated.emit(filepath, ["status"])
 
-        file = self.__queued_files_list.get(filepath)
-        if file is None:
-            Api().error(f"The file {filepath} has not been found in the analysis queue")
+    def __handle_copy_error(self, payload: dict):
+        # The events/error topic also carries the Safecor log broadcast
+        # (component/module/datetime/description payloads): ignore them,
+        # logging here would be re-published on the same topic and loop.
+        if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
             return
-        
-        success = status == "ok"
-        if success:
-            self.__copied_files_count += 1
-            self.copiedFilesCountChanged.emit()
 
-        file["status"] = FileStatus.FileCopySuccess if success else FileStatus.FileCopyError
-        Api().info(f"The file {filepath} has been copied to {self.__get_target_name()}. The fingerprint is {fingerprint}")
-        self.fileUpdated.emit(filepath, ["status"])
-        self.transferProgressChanged.emit()
+        # Platform error notification (F4): a copy (or a read) failed with
+        # an I/O error. The TransferController only acts during the copy
+        # phase; an error outside of it (e.g. a read failure during the
+        # analysis) is only logged.
+        during_copy = self.__transfer_controller.is_copying
+        self.__transfer_controller.on_copy_error(payload)
+        if not during_copy:
+            Api().error(
+                f"Copy error notification: {payload.get('error', 'unknown')} "
+                f"for {payload.get('filepath', 'unknown file')}"
+            )
+        filepath = payload.get("filepath")
+        if filepath:
+            self.fileUpdated.emit(filepath, ["status"])
 
-        if self.__get_transferred_ratio() >= 1:
-            self.__finish_transfer()
+    def __on_transfer_error(self, failures: int):
+        # F4 final check: the copy finished but some clean files could not
+        # be copied. The discrepancy is reported to the user and in the
+        # scan report; the cycle continues (the report lists the failures).
+        Api().error(
+            f"Copy final check failed: {failures} clean file(s) could not be copied"
+        )
+        self.__messages_model.addMessage(
+            self.tr(
+                "The copy finished with failures: the files that could not "
+                "be copied are listed in the scan report."
+            )
+        )
 
-    def __finish_transfer(self):
+    def __on_transfer_complete(self):
         self.__set_system_state(SystemState.GeneratingReport)
 
         # Generate the report
         self.__make_analysis_report()
 
+        # If the report generation failed, __on_report_failed has moved the
+        # system to ReportFailed (permanent error state, reset required):
+        # there is no report nor journal to copy.
+        if self.__workflow_controller.state != SystemState.GeneratingReport:
+            return
+
         # Then copy it on the disk
         report_filepath = self.__report_controller.get_report_filepath()
-        with open(report_filepath, 'rb') as f:
+        with open(report_filepath, "rb") as f:
             report_data = f.read()
-            Api().create_file(self.__report_controller.get_report_filename(), self.__target_name, report_data, True)
+            Api().create_file(
+                self.__report_controller.get_report_filename(),
+                self.__storage_manager.target_name,
+                report_data,
+                True,
+            )
 
         # So the log file
-        with open(self.__logfile, 'rb') as f:
+        with open(self.__api_lifecycle.get_logfile(), "rb") as f:
             log_data = f.read()
-            Api().create_file("journal.log", self.__target_name, log_data)
+            Api().create_file(
+                "journal.log", self.__storage_manager.target_name, log_data, True
+            )
 
-    def __handle_energy_state(self, payload:dict):
-        if not MqttHelper.check_payload(payload, ["battery_level", "plugged"]):
-            return
-        
-        self.__battery_level = payload.get("battery_level", 0)
-        self.batteryLevelChanged.emit()
-        self.__system_information_model.set_battery_level(self.__battery_level)
-        self.__plugged = bool(payload.get("plugged", False))
-        self.pluggedChanged.emit()
-        self.__system_information_model.set_power_plugged(self.__plugged)
+    def __handle_energy_state(self, payload: dict):
+        self.__energy_monitor.on_energy_state_response(payload)
+        self.__system_information_model.set_battery_level(
+            self.__energy_monitor.get_battery_level()
+        )
+        self.__system_information_model.set_power_plugged(
+            self.__energy_monitor.is_plugged()
+        )
 
-    def __handle_system_info(self, payload:dict):
+    def __handle_system_info(self, payload: dict):
         if not MqttHelper.check_payload(payload, ["core", "system"]):
             return
-        
-        #self.__system_information = payload
-        self.__system_information_model.information_updated(payload)
-        #self.systemInformationChanged.emit()
 
-    def __handle_create_file(self, payload:dict):
+        self.__system_information_model.information_updated(payload)
+
+    def __handle_repository_path(self, payload: dict):
+        path = payload.get("path", "")
+        if path:
+            self.__repository_path_received = True
+            self.__check_components_availability()
+
+    def __handle_create_file(self, payload: dict):
         disk = payload.get("disk", "")
         filepath = str(payload.get("filepath", ""))
+        success = payload.get("success", False)
 
-        print(f"filepath:{filepath}, endswith:{filepath.endswith("journal.log")}, disk:{disk}, targetName:{self.__target_name}")
-        if disk == self.__target_name and filepath.endswith("journal.log"):
+        if disk != self.__storage_manager.target_name:
+            return
+
+        if not success:
+            self.__set_system_state(SystemState.SystemMustBeReset)
+            self.systemMustBeReset.emit()
+            self.__messages_model.clear()
+            self.__messages_model.addMessage(
+                self.tr(
+                    "The report and log could not be copied to the destination storage."
+                )
+            )
+            self.__messages_model.addMessage(
+                self.tr("Please reset the system.")
+            )
+            return
+
+        if filepath.endswith("journal.log"):
             self.__set_system_state(SystemState.SystemMustBeReset)
             self.__messages_model.clear()
-            self.__messages_model.addMessage(self.tr("The report ang log have been copied to the destination storage."))
+            self.__messages_model.addMessage(
+                self.tr(
+                    "The report and log have been copied to the destination storage."
+                )
+            )
             self.__messages_model.addMessage(self.tr("You can now remove it."))
-            self.__messages_model.addMessage(self.tr("If you want to analyze another storage you will have to reset the system from the menu."))
+            self.__messages_model.addMessage(
+                self.tr(
+                    "If you want to analyze another storage you will have to reset the system from the menu."
+                )
+            )
 
     def __on_results_changed(self):
         self.cleanFilesCountChanged.emit(self.__get_clean_files_count())
         self.cleanFilesSizeChanged.emit()
         self.infectedFilesCountChanged.emit(self.__get_infected_files_count())
-        self.globalProgressChanged.emit(self.__get_global_progress())        
-        
-        if self.__get_infected_files_count() + self.__get_clean_files_count() == self.__get_queue_size():
-            print("results changed. queue_size=", self.__get_queue_size(), ", infected=", self.__get_infected_files_count(), ", clean=", self.__get_clean_files_count())
+        self.globalProgressChanged.emit(self.__get_global_progress())
+
+        if (
+            self.__get_infected_files_count() + self.__get_clean_files_count()
+            == self.__get_queue_size()
+        ):
+            print(
+                "results changed. queue_size=",
+                self.__get_queue_size(),
+                ", infected=",
+                self.__get_infected_files_count(),
+                ", clean=",
+                self.__get_clean_files_count(),
+            )
             self.__analysis_controller.stop_analysis()
             self.__analysis_end_time = datetime.now()
+            self.__analysis_done = True
             self.__set_system_state(SystemState.AnalysisCompleted)
-            #self.__make_analysis_report()
 
-    def __on_disk_controller_state_changed(self, ready:bool):
-        Api().debug(f"Safecor disk controller is {"ready" if ready else "not ready"}")
+    def __on_disk_controller_state_changed(self, ready: bool):
+        Api().debug(f"Safecor disk controller is {'ready' if ready else 'not ready'}")
         if ready:
             Api().get_disks_list()
 
-
-    def __request_energy_state(self):
-        if not self.__monitorEnergy:
-            return
-        
-        Api().request_energy_state()
-        threading.Timer(5.0, self.__request_energy_state).start()
-
-
-    def __dequeue_folder(self, filepath:str):
-        with self.__queue_files_list_lock:
-            nouveau = {k: v for k, v in self.__queued_files_list.items() if not k.startswith(filepath)}
-            self.__queued_files_list.clear()
-            self.__queued_files_list.update(nouveau)
-            self.queueSizeChanged.emit(len(self.__queued_files_list))
-            #self.queueListModel_.reset()
-            self.queueUpdated.emit()
-            self.set_long_process_running(False)
-
+    def __dequeue_folder(self, filepath: str):
+        self.__file_queue.dequeue_folder(filepath)
+        self.queueSizeChanged.emit(self.__file_queue.count())
+        self.queueUpdated.emit()
+        self.set_long_process_running(False)
 
     @Slot(AnalysisState)
-    def __on_analysis_state_changed(self, state:AnalysisState):
+    def __on_analysis_state_changed(self, state: AnalysisState):
         if state == AnalysisState.AnalysisRunning:
             Api().info("Analysis is running")
             self.__set_system_state(SystemState.SystemAnalysisRunning)
         elif state == AnalysisState.AnalysisStopped:
             Api().info("Analysis is stopped")
+            # The stop at the end of the analysis is handled by the
+            # results handler (AnalysisCompleted): the state change
+            # signal is processed on the main thread after the results
+            # handler ran, do not overwrite the AnalysisCompleted state.
+            if self.__workflow_controller.state == SystemState.AnalysisCompleted:
+                return
             self.__set_system_state(SystemState.SystemWaitingForUserAction)
         else:
             Api().info("Analysis state is unknown")
             # TODO
 
     def __on_storage_added(self, disk):
-        if disk not in self.__storages:
-            self.__storages.append(disk)
-            self.storagesChanged.emit()
-            self.storagesCountChanged.emit()
+        self.__storage_manager.on_storage_added(disk)
 
     def __on_storage_removed(self, disk):
-        if disk in self.__storages:
-            self.__storages.remove(disk)
-            self.storagesCountChanged.emit()
-            
+        self.__storage_manager.on_storage_removed(disk)
+
     def __reset_storages(self):
-        self.__storages.clear()
-        self.storagesChanged.emit()
-        self.storagesCountChanged.emit()
+        self.__storage_manager.reset()
 
     def __get_storages(self):
-        return self.__storages
-    
+        return self.__storage_manager.get_storages()
+
     def __get_storages_count(self):
-        return len(self.__storages)
+        return self.__storage_manager.get_storages_count()
 
     def __get_remaining_time(self):
-        """ Returns the time remaining for the complete scan, in minutes """
+        """Returns the time remaining for the complete scan, in minutes"""
 
         if self.__eta_estimator is not None:
             return self.__eta_estimator.remaining_time()
-        
+
         return 0
 
-    def __on_shutdown(self, accepted:bool, reason:str=""):
+    def __on_shutdown(self, accepted: bool, reason: str = ""):
         if accepted:
             self.showMessage.emit("Shutdown", "The system is shutting down", True, True)
         else:
-            self.showMessage.emit("Shutdown", "The system refuses to shut down", True, False)
+            self.showMessage.emit(
+                "Shutdown", "The system refuses to shut down", True, False
+            )
 
     def __on_system_used(self):
         self.__system_used = True
-        self.__input_files_list.clear()
+        self.__file_browser.input_files_list.clear()
         self.__input_files_listmodel.reset()
         self.systemUsedChanged.emit()
+
+    @Slot(bool)
+    def __on_source_hold_changed(self, held: bool):
+        # The source was disconnected (or re-inserted) during the analysis:
+        # the AVs keep scanning the repository, the copy loop is held.
+        self.__source_disconnected = held
+        self.sourceDisconnectedChanged.emit()
+        if held:
+            self.__messages_model.addMessage(
+                self.tr(
+                    "The source storage was disconnected. The analysis of the "
+                    "copied files continues: please reconnect the source "
+                    "storage to analyze the remaining files."
+                )
+            )
+        else:
+            self.__messages_model.addMessage(
+                self.tr("The source storage is back: the analysis is resumed.")
+            )
+
+    def __is_source_disconnected(self) -> bool:
+        return self.__source_disconnected
+
+    @Slot(bool)
+    def __on_copy_paused_changed(self, paused: bool):
+        # The source or the target was disconnected (or re-inserted)
+        # during the copy: the copy is held, the already-copied files
+        # are kept (scenario 8.6).
+        self.__copy_paused = paused
+        self.copyPausedChanged.emit()
+        if paused:
+            self.__messages_model.addMessage(
+                self.tr(
+                    "A storage was disconnected: the copy is paused. "
+                    "Please reconnect the storage to continue."
+                )
+            )
+        else:
+            self.__messages_model.addMessage(
+                self.tr("The storage is back: the copy is resumed.")
+            )
+
+    @Slot(str)
+    def __on_coherence_check_failed(self, reason: str):
+        # A different disk was re-inserted or the coherence check failed
+        # after a disconnection: reset required (NFR-4, I6).
+        Api().error(f"Copy coherence check failed: {reason}")
+        self.__set_system_state(SystemState.SystemMustBeReset)
+        self.systemMustBeReset.emit()
+        self.__messages_model.addMessage(
+            self.tr(
+                "The copy could not be resumed: the reconnected storage does not "
+                "match. Please reset the system."
+            )
+        )
+
+    def __is_copy_paused(self) -> bool:
+        return self.__copy_paused
 
     def __make_analysis_report(self):
         Api().info("Generate the analysis report")
 
-        # On prépare la structure pour les détails des antivirus
+        # Prepare the structure for antivirus details
         antiviruses = {}
 
         for component in self.__components_helper.get_components():
@@ -1019,150 +1342,169 @@ class ApplicationController(QObject):
                 av["description"] = description.replace("\n", "<br/>")
                 antiviruses[av_id] = av
 
-        # On exécute la génération du rapport dans un thread
+        # Execute report generation in a separate thread
         self.__report_controller.make_report(
-            files= self.__queued_files_list,
-            clean_files_count= self.__get_clean_files_count(),
-            infected_files_count= self.__get_infected_files_count(),
-            analyzed_files_count= len(self.__queued_files_list),
-            copied_files_count= self.__copied_files_count,
-            start_datetime= self.__analysis_start_time,
-            end_datetime= self.__analysis_end_time,
-            equipement_id= self.__system_information_model.get_uuid(),
-            storage_name= self.__source_name,
-            safecor_version= self.__system_information_model.get_safecor_version(),
-            saphir_version= QCoreApplication.applicationVersion(),
-            antiviruses=antiviruses
+            files=self.__file_queue.files,
+            clean_files_count=self.__get_clean_files_count(),
+            infected_files_count=self.__get_infected_files_count(),
+            analyzed_files_count=len(self.__file_queue.files),
+            copied_files_count=self.__transfer_controller.copied_files_count,
+            copy_failures_count=self.__transfer_controller.failed_files_count,
+            start_datetime=self.__analysis_start_time,
+            end_datetime=self.__analysis_end_time,
+            equipement_id=self.__system_information_model.get_uuid(),
+            storage_name=self.__storage_manager.source_name,
+            safecor_version=self.__system_information_model.get_safecor_version(),
+            saphir_version=QCoreApplication.applicationVersion(),
+            antiviruses=antiviruses,
         )
 
     def __on_report_generated(self):
+        # Placeholder: the report file copy is done in __on_transfer_complete.
         pass
-        #self.__set_system_state(SystemState.AnalysisCompleted)
 
     @Slot(str)
-    def on_storage_selected(self, disk:str):
-        print("Storage changed to:", disk)
+    def __on_report_failed(self, reason: str):
+        # Permanent error state: a reset is required, no automatic retry.
+        Api().error(f"Report generation failed: {reason}")
+        self.__set_system_state(SystemState.ReportFailed)
+        self.__messages_model.addMessage(
+            self.tr("The report generation failed. Please reset the system.")
+        )
 
-        self.__source_name = disk
-        self.__analysis_controller.set_source_disk(disk)
-        self.sourceNameChanged.emit(self.__source_name)
-        self.__input_files_list.clear()
+    @Slot(str)
+    def on_storage_selected(self, disk: str):
+        """Set the selected disk as the analysis source and reset the file browser."""
+        Api().info(f"Storage changed to: {disk}")
+
+        self.__storage_manager.set_sources([disk])
+        self.__analysis_controller.set_source_disks([disk])
+        self.__file_browser.input_files_list.clear()
         self.__input_files_listmodel.reset()
 
     ###
     # Getters and setters
-    #    
+    #
     def __is_ready(self):
-        '''
+        """
         @brief Indicates whether the app is ready
 
         The app is ready when the messaging connection is opened and its internal
-        modules are started, and the antiviruses are started        
-        '''
+        modules are started, and the antiviruses are started
+        """
         return self.__ready
-    
+
     def __get_current_folder(self):
-        return self.__current_folder
-    
-    def __set_ready(self, pret:bool):
+        return self.__file_browser.current_folder
+
+    def __set_ready(self, pret: bool):
         if self.__ready == pret:
             return
-        
+
         self.__ready = pret
         self.readyChanged.emit(self.__ready)
 
     def __get_source_name(self):
-        return self.__source_name
-    
+        return self.__storage_manager.source_name
+
     def __is_source_ready(self):
-        return self.__source_ready
-    
+        return self.__storage_manager.source_ready
+
     def __get_target_name(self):
-        return self.__target_name
-    
+        return self.__storage_manager.target_name
+
     def __id_target_ready(self):
-        return self.__target_ready
+        return self.__storage_manager.target_ready
 
     def __get_input_files_listmodel(self):
         return self.__input_files_listmodel
-    
+
     def __get_input_files_listproxymodel(self):
         return self.__input_files_listproxymodel
 
     def __get_queue_listmodel(self):
         return self.__queue_listmodel
-    
-    def __get_queue_list_proxy_model(self):
-        return self.__queue_listproxymodel
 
     def __get_log_listmodel(self):
         return self.__log_listmodel
-    
+
     def __get_system_state(self):
-        return self.__system_state.value
-    
-    def __set_system_state(self, state:SystemState):
-        self.__system_state = state
-        print(f"System state: {SystemState(self.__system_state)}")
-        self.systemStateChanged.emit(self.__system_state.value)
+        return self.__workflow_controller.state.value
+
+    def __set_system_state(self, state: SystemState):
+        # A single write (line + newline) so the state line cannot be
+        # interleaved with prints from other threads (e.g. the test harness
+        # reads these lines from stdout).
+        sys.stdout.write(f"System state: {SystemState(state)}\n")
+        sys.stdout.flush()
+        self.__workflow_controller.force_state(state)
 
     def __get_queue_size(self):
-        with self.__queue_files_list_lock:
-            return len(self.__queued_files_list)
+        return self.__file_queue.count()
 
     def __is_analysis_ready(self):
         return self.__analysis_ready
-    
+
     def __get_analysis_controller(self):
         return self.__analysis_controller
 
     def __get_clean_files_count(self):
-        return self.__analysis_controller.get_clean_files_count() if self.__analysis_controller is not None else 0
+        return (
+            self.__analysis_controller.get_clean_files_count()
+            if self.__analysis_controller is not None
+            else 0
+        )
 
     def __get_clean_files_size(self):
-        return self.__analysis_controller.get_clean_files_size() if self.__analysis_controller is not None else 0
+        return (
+            self.__analysis_controller.get_clean_files_size()
+            if self.__analysis_controller is not None
+            else 0
+        )
 
     def __get_infected_files_count(self):
-        return self.__analysis_controller.get_infected_files_count() if self.__analysis_controller is not None else 0
-    
-    def __get_infected_files_size(self):
-        return self.__analysis_controller.get_infected_files_size() if self.__analysis_controller is not None else 0
+        return (
+            self.__analysis_controller.get_infected_files_count()
+            if self.__analysis_controller is not None
+            else 0
+        )
 
-    
+    def __get_infected_files_size(self):
+        return (
+            self.__analysis_controller.get_infected_files_size()
+            if self.__analysis_controller is not None
+            else 0
+        )
+
     def __get_global_progress(self):
         if self.__get_queue_size() == 0:
             return 0
-        
-        return (self.__get_clean_files_count() + self.__get_infected_files_count())*100 / self.__get_queue_size()
-    
+
+        return (
+            (self.__get_clean_files_count() + self.__get_infected_files_count())
+            * 100
+            / self.__get_queue_size()
+        )
+
     def __get_total_files_size(self):
-        return self.__queue_files_size
+        return self.__file_queue.size()
 
     def __get_transferred_ratio(self):
-        with self.__queue_files_list_lock:
-            clean_files = sum(1 for item in self.__queued_files_list.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileClean)
-            copy_success = sum(1 for item in self.__queued_files_list.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileCopySuccess) 
-            copy_failed = sum(1 for item in self.__queued_files_list.values() if item.get("status", FileStatus.FileStatusUndefined) == FileStatus.FileCopyError)
-            copy_total = copy_failed + copy_success
-
-            if clean_files > 0:
-                return copy_total / clean_files
-            else:
-                return 0
+        return self.__transfer_controller.progress
 
     def __is_task_running(self):
         return True
-    
+
     def __get_battery_level(self):
-        return self.__battery_level
-    
+        return self.__energy_monitor.get_battery_level()
+
     def __is_plugged(self):
-        return self.__plugged
-    
+        return self.__energy_monitor.is_plugged()
+
     def __get_analysis_mode(self):
         return self.__analysis_mode.value
-    
-    def __set_analysis_mode(self, analysis_mode:int):
+
+    def __set_analysis_mode(self, analysis_mode: int):
         try:
             self.__analysis_mode = AnalysisMode(analysis_mode)
             self.analysisModeChanged.emit()
@@ -1182,7 +1524,7 @@ class ApplicationController(QObject):
         return self.__handheld
 
     def __is_transfer_started(self):
-        return self.__system_state == SystemState.CopyCleanFiles
+        return self.__workflow_controller.state == SystemState.CopyCleanFiles
 
     def __get_messages_model(self):
         return self.__messages_model
@@ -1192,78 +1534,107 @@ class ApplicationController(QObject):
 
     def __get_target_available_size(self):
         return 0
-    
+
     def __get_copied_files_count(self):
-        return self.__copied_files_count
+        return self.__transfer_controller.copied_files_count
 
     @Slot(str)
-    def is_file_in_queue(self, filepath:str) -> bool:
-        return filepath in self.__queued_files_list
+    def is_file_in_queue(self, filepath: str) -> bool:
+        """Return whether the file is in the analysis queue (QML query)."""
+        return filepath in self.__file_queue.files
 
     @Slot(str, result=bool)
-    def is_folder_in_queue(self, filepath:str) -> bool:
-        return any(filepath in key for key in self.__queued_files_list)
+    def is_folder_in_queue(self, filepath: str) -> bool:
+        """Return whether any file of the folder is in the analysis queue (QML query)."""
+        return any(filepath in key for key in self.__file_queue.files)
 
     def __get_language(self):
-        return self.__language
-    
-    @Slot(str)
-    def __set_language(self, lang:str):
-        self.__install_translations(lang)
+        return self.__translation_manager.get_language()
 
-    def __set_system_loading_progress(self, val:float):
+    def __set_system_loading_progress(self, val: float):
         if self.__system_loading_progress == val:
             return
-        
+
         self.__system_loading_progress = val
         self.systemLoadingProgressChanged.emit()
 
     def __get_system_loading_progress(self):
         return self.__system_loading_progress
 
-    ready = Property(bool, __is_ready, __set_ready, notify=readyChanged) 
+    ready = Property(bool, __is_ready, __set_ready, notify=readyChanged)
     currentFolder = Property(str, __get_current_folder, notify=currentFolderChanged)
     idCurrentFolder = Property(str, __get_current_folder, notify=idCurrentFolderChanged)
-    sourceName = Property(str, __get_source_name, notify= sourceNameChanged)
-    sourceReady = Property(bool, __is_source_ready, notify= sourceReadyChanged)
-    targetName = Property(str, __get_target_name, notify= targetNameChanged)
-    targetReady = Property(bool, __id_target_ready, notify= targetReadyChanged)
-    #status = Property(int, __status, notify= statusChanged)
-    inputFilesListModel = Property(QObject, __get_input_files_listmodel, constant= True)
-    inputFilesListProxyModel = Property(QObject, __get_input_files_listproxymodel, constant= True)
-    #outputFilesListProxyModel = Property(QObject, __outputFilesListProxyModel, constant= True)
-    queueListModel = Property(QObject, __get_queue_listmodel, constant= True)
-    queueListProxyModel = Property(QObject, __get_queue_list_proxy_model, constant= True)
-    logListModel = Property(QObject, __get_log_listmodel, constant=True)
-    systemState = Property(int, __get_system_state, notify= systemStateChanged)
-    queueSize = Property(int, __get_queue_size, notify= queueSizeChanged)
-    analysisReady = Property(bool, __is_analysis_ready, notify= analysisReadyChanged)
-    analysisController = Property(AnalysisController, __get_analysis_controller, constant=True)
-    taskRunning = Property(bool, __is_task_running, notify=taskRunningChanged)
-    targetAvailableSize = Property(bool, __get_target_available_size, notify=targetAvailableSizeChanged)
+    sourceName = Property(str, __get_source_name, notify=sourceNameChanged)
+    sourceReady = Property(bool, __is_source_ready, notify=sourceReadyChanged)
+    targetName = Property(str, __get_target_name, notify=targetNameChanged)
+    targetReady = Property(bool, __id_target_ready, notify=targetReadyChanged)
+    # status = Property(int, __status, notify= statusChanged)
+    inputFilesListModel = Property(QObject, __get_input_files_listmodel, constant=True)
+    inputFilesListProxyModel = Property(
+        QObject, __get_input_files_listproxymodel, constant=True
+    )
+    # outputFilesListProxyModel = Property(QObject, __outputFilesListProxyModel, constant= True)
+    queueListModel = Property(QObject, __get_queue_listmodel, constant=True)
 
-    #totalFilesCount = Property(int, __total_files_count, notify= totalFilesCountChanged)
-    infectedFilesCount = Property(int, __get_infected_files_count, notify= infectedFilesCountChanged)
-    cleanFilesCount = Property(int, __get_clean_files_count, notify= cleanFilesCountChanged)
-    cleanFilesSize = Property(int, __get_clean_files_size, notify= cleanFilesSizeChanged)
-    globalProgress = Property(int, __get_global_progress, notify= globalProgressChanged)
-    remainingTime = Property(int, __get_remaining_time, notify= remainingTimeChanged)
-    transferProgress = Property(int, __get_transferred_ratio, notify= transferProgressChanged)
-    transferStarted = Property(bool, __is_transfer_started, notify= transferStartedChanged)
-    copiedFilesCount = Property(int, __get_copied_files_count, notify=copiedFilesCountChanged)
+    logListModel = Property(QObject, __get_log_listmodel, constant=True)
+    systemState = Property(int, __get_system_state, notify=systemStateChanged)
+    queueSize = Property(int, __get_queue_size, notify=queueSizeChanged)
+    analysisReady = Property(bool, __is_analysis_ready, notify=analysisReadyChanged)
+    analysisController = Property(
+        AnalysisController, __get_analysis_controller, constant=True
+    )
+    taskRunning = Property(bool, __is_task_running, notify=taskRunningChanged)
+    targetAvailableSize = Property(
+        bool, __get_target_available_size, notify=targetAvailableSizeChanged
+    )
+
+    # totalFilesCount = Property(int, __total_files_count, notify= totalFilesCountChanged)
+    infectedFilesCount = Property(
+        int, __get_infected_files_count, notify=infectedFilesCountChanged
+    )
+    cleanFilesCount = Property(
+        int, __get_clean_files_count, notify=cleanFilesCountChanged
+    )
+    cleanFilesSize = Property(int, __get_clean_files_size, notify=cleanFilesSizeChanged)
+    globalProgress = Property(int, __get_global_progress, notify=globalProgressChanged)
+    remainingTime = Property(int, __get_remaining_time, notify=remainingTimeChanged)
+    transferProgress = Property(
+        int, __get_transferred_ratio, notify=transferProgressChanged
+    )
+    transferStarted = Property(
+        bool, __is_transfer_started, notify=transferStartedChanged
+    )
+    copiedFilesCount = Property(
+        int, __get_copied_files_count, notify=copiedFilesCountChanged
+    )
 
     batteryLevel = Property(int, __get_battery_level, notify=batteryLevelChanged)
     plugged = Property(bool, __is_plugged, notify=pluggedChanged)
-    analysisMode = Property(int, fget= __get_analysis_mode, fset= __set_analysis_mode, notify= analysisModeChanged)
-    longProcessRunning = Property(bool, __is_long_process_running, notify=longProcessRunningChanged)
+    analysisMode = Property(
+        int,
+        fget=__get_analysis_mode,
+        fset=__set_analysis_mode,
+        notify=analysisModeChanged,
+    )
+    longProcessRunning = Property(
+        bool, __is_long_process_running, notify=longProcessRunningChanged
+    )
     systemUsed = Property(bool, __is_system_used, notify=systemUsedChanged)
+    sourceDisconnected = Property(
+        bool, __is_source_disconnected, notify=sourceDisconnectedChanged
+    )
+    copyPaused = Property(bool, __is_copy_paused, notify=copyPausedChanged)
     componentsModel = Property(QObject, __get_components_model, constant=True)
-    #systemInformation = Property(dict, __get_system_information, notify=systemInformationChanged)
+    # systemInformation = Property(dict, __get_system_information, notify=systemInformationChanged)
     messagesListModel = Property(QObject, __get_messages_model, constant=True)
-    systemInformationModel = Property(QObject, __get_system_information_model, constant=True)
+    systemInformationModel = Property(
+        QObject, __get_system_information_model, constant=True
+    )
     handheld = Property(bool, __get_handheld, constant=True)
     storages = Property(list, __get_storages, notify=storagesChanged)
     storagesCount = Property(int, __get_storages_count, notify=storagesCountChanged)
-    systemLoadingProgress = Property(float, __get_system_loading_progress, notify=systemLoadingProgressChanged)
+    systemLoadingProgress = Property(
+        float, __get_system_loading_progress, notify=systemLoadingProgressChanged
+    )
 
-    language = Property(str, __get_language, __set_language, notify= languageChanged)
+    language = Property(str, __get_language, __set_language, notify=languageChanged)

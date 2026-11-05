@@ -4,6 +4,11 @@
 <context>
     <name>AnalysisPanel</name>
     <message>
+        <location filename="../GUI/content/AnalysisPanel.qml" line="27"/>
+        <source>The source storage was disconnected: the analysis is on hold. Please reconnect the source storage to continue.</source>
+        <translation>Le support source a été déconnecté : l'analyse est en pause. Veuillez reconnecter le support source pour continuer.</translation>
+    </message>
+    <message>
         <location filename="../GUI/content/AnalysisPanel.qml" line="83"/>
         <location filename="../GUI/content/AnalysisPanel.qml" line="127"/>
         <source>Clean</source>
@@ -105,6 +110,46 @@
         <source>If you want to analyze another storage you will have to reset the system from the menu.</source>
         <translation>Si vous voulez analyser un autre support de stockage, vous devrez nettoyer le système depuis le menu principal.</translation>
     </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="1059"/>
+        <source>The source storage was disconnected. The analysis of the copied files continues: please reconnect the source storage to analyze the remaining files.</source>
+        <translation>Le support source a été déconnecté. L'analyse des fichiers copiés se poursuit : veuillez reconnecter le support source pour analyser les fichiers restants.</translation>
+    </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="1067"/>
+        <source>The source storage is back: the analysis is resumed.</source>
+        <translation>Le support source est de retour : l'analyse reprend.</translation>
+    </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="1095"/>
+        <source>A storage was disconnected: the copy is paused. Please reconnect the storage to continue.</source>
+        <translation>Un stockage a été déconnecté : la copie est en pause. Veuillez reconnecter le stockage pour continuer.</translation>
+    </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="1101"/>
+        <source>The storage is back: the copy is resumed.</source>
+        <translation>Le stockage est de retour : la copie reprend.</translation>
+    </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="1112"/>
+        <source>The copy could not be resumed: the reconnected storage does not match. Please reset the system.</source>
+        <translation>La copie n'a pas pu reprendre : le stockage reconnecté ne correspond pas. Veuillez réinitialiser le système.</translation>
+    </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="646"/>
+        <source>The antivirus engine failed during the analysis: the files that could not be analyzed by all the engines are declared in error.</source>
+        <translation>Le moteur antivirus a échoué pendant l'analyse : les fichiers qui n'ont pas pu être analysés par tous les moteurs sont déclarés en erreur.</translation>
+    </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="652"/>
+        <source>The analysis was stopped: please reset the system.</source>
+        <translation>L'analyse a été arrêtée : veuillez réinitialiser le système.</translation>
+    </message>
+    <message>
+        <location filename="../Saphir/application_controller.py" line="976"/>
+        <source>The copy finished with failures: the files that could not be copied are listed in the scan report.</source>
+        <translation>La copie s'est terminée avec des échecs : les fichiers qui n'ont pas pu être copiés sont listés dans le rapport d'analyse.</translation>
+    </message>
 </context>
 <context>
     <name>ComponentsModel</name>
@@ -175,6 +220,11 @@
     </message>
     <message>
         <location filename="../GUI/content/FilesCopyPanel.qml" line="93"/>
+        <source>Report generation failed. Please reset the system.</source>
+        <translation>La génération du rapport a échoué. Veuillez réinitialiser le système.</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="93"/>
         <source>The transfer is finished!</source>
         <translation>Le transfert est terminé !</translation>
     </message>
@@ -197,6 +247,11 @@
         <location filename="../GUI/content/FilesCopyPanel.qml" line="95"/>
         <source>Please connect a target storage...</source>
         <translation>Veuillez connecter un stockage pour la copie...</translation>
+    </message>
+    <message>
+        <location filename="../GUI/content/FilesCopyPanel.qml" line="84"/>
+        <source>Copy paused: a storage was disconnected. Please reconnect it to continue.</source>
+        <translation>Copie en pause : un stockage a été déconnecté. Veuillez le reconnecter pour continuer.</translation>
     </message>
     <message>
         <location filename="../GUI/content/FilesCopyPanel.qml" line="99"/>

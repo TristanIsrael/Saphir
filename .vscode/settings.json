@@ -22,6 +22,10 @@
             "packageManager": "ms-python.python:pip"
         }
     ],
+    "markdown.styles": [
+        ".vscode/markdown-preview.css"
+    ],
+    "cmake.sourceDirectory": "/Users/tristanisrael/Documents/Sources/Saphir/misc/GUI/TestCarousel3D"
     //"python.testing.cwd": "${workspaceFolder}"
     //"python.testing.cwd": "python", 
 }

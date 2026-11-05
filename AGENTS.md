@@ -61,9 +61,15 @@ docs/            # Developer + user documentation
 - The python dependencies that are used only in development and tests must lie in the file requirements-dev.txt.
 - The python dependencies that are used in production, in developpement and tests must lie in the file requirements.txt.
 
+## Automation rules
+
+- Never make a change on the GUI without confirmation.
+
 ## Coding standards
 
 - Follow the existing naming conventions. The codebase is the reference; when in doubt, match the surrounding code.
+- Use `ruff` format to format Python code consistently.
+- Do not introduce unrelated formatting changes.
 
 Naming conventions:
 
@@ -79,6 +85,13 @@ Naming conventions:
 | MQTT topics | `saphir/analysis/{request,response,status,error,stop,resume,reset}`; `system/...` | — |
 
 - Comments, documentation and commits are in **English** (see *Documentation standards*).
+
+## Linting and static analysis
+
+- Use `ruff` check to detect linting issues, potential bugs, and violations of coding conventions.
+- Run static analysis on all modified Python files, included newly added files.
+- Do not suppress linting rules unless there is a clear justification.
+- Use type checking and resolve any new type errors introduced by the changes.
 
 ## Issue tracking
 
@@ -96,14 +109,24 @@ Naming conventions:
   | **Not ready** | The issue has an unresolved dependency (another issue, external block). |
   | **In progress** | Work is actively being done on this issue. |
   | **In review** | Implementation and tests are complete; awaiting validation. |
-- **Never commit** before running:
+
+## Quality gates
+- **Never commit** before verifying the respect of the coding standards on the added code.
+- Run formatting checks before committing changes.
+- Resolve all linting errors before committing changes.
+- **Never push** before running:
   1. The tests specific to the issue being worked on.
   2. The project's non-regression test suite (full `pytest` run).
+- **Never push** without adding unit tests on the added code.
+- **Never push** when the code coverage is under 85%.
+- After push, the Github issue must be updated (task and status).
+- **Never commit** before updating the documentation and the plans if needed.
 
 ## Chat rules
 
 - Respond in the same language as the prompt's
 - Never commit or push unless explicitly asked to do so
+- When the user asks an open question, don't start modifying the source code unless the discussion is finished and the user validates the changes to be done.
 
 ## Documentation standards
 
@@ -113,3 +136,4 @@ Naming conventions:
 - Keep `README.fr.md` (French language) and `README.md` (English language) in sync together.
 - Use the documentation from **Safecor** to adapt the behaviour of Saphir.
 - All the interactions of Saphir and Safecor must use Safecor's API.
+- The integration layer between Saphir and the machine is Safecor **exclusively**.

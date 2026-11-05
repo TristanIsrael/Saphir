@@ -13,6 +13,8 @@ Usage::
         ...
 """
 
+from __future__ import annotations
+
 import json
 import os
 import subprocess
@@ -22,7 +24,6 @@ import time
 from pathlib import Path
 
 _SCRIPT_DIR = Path(__file__).resolve().parent
-_MOCK_AV_SCRIPT = _SCRIPT_DIR / "mock_av.py"
 
 
 class MockAVManager:
@@ -32,19 +33,30 @@ class MockAVManager:
     :param infected: set of filepaths to report as infected.
     :param default: default verdict for unlisted files (``"clean"`` or ``"infected"``).
     :param scan_delay: seconds to simulate scan time per file.
+    :param repository_path: local directory emulating the repository; when set,
+        the NFR-1 integrity check in the mock AV runs against it.
+    :param corrupt: set of filepaths to corrupt in the repository on analysis
+        request, so the NFR-1 integrity check rejects them.
     """
 
     def __init__(self,
                  name: str,
                  infected: set[str] | None = None,
                  default: str = "clean",
-                 scan_delay: float = 0.05):
+                 scan_delay: float = 0.05,
+                 repository_path: str | None = None,
+                 corrupt: set[str] | None = None,
+                 request_log: str | None = None):
         self.name = name
         self._infected = infected or set()
         self._default = default
         self._scan_delay = scan_delay
+        self._repository_path = repository_path
+        self._corrupt = corrupt or set()
+        self._request_log = request_log
         self._process: subprocess.Popen | None = None
         self._config_file: str | None = None
+        self._failure_flag: str | None = None
 
     @property
     def is_running(self) -> bool:
@@ -58,21 +70,26 @@ class MockAVManager:
         config = {
             "default": self._default,
             "infected": list(self._infected),
+            "corrupt": list(self._corrupt),
             "scan_delay": self._scan_delay,
         }
         fd, self._config_file = tempfile.mkstemp(suffix=".json", prefix=f"mock_av_{self.name}_")
         with os.fdopen(fd, "w") as f:
             json.dump(config, f)
 
+        self._failure_flag = self._config_file + ".fail"
         python = sys.executable
         cmd = [
-            python, "-u", str(_MOCK_AV_SCRIPT),
+            python, "-u", "-m", "libsaphir._mock_antivirus_controller",
             "--name", self.name,
             "--config", self._config_file,
         ]
         env = os.environ.copy()
         env["DEVMODE"] = "1"
         env["PYTHONPATH"] = self._build_pythonpath()
+        env["MOCK_AV_FAILURE_FLAG"] = self._failure_flag
+        if self._request_log:
+            env["MOCK_AV_REQUEST_LOG"] = self._request_log
 
         self._process = subprocess.Popen(
             cmd,
@@ -85,6 +102,16 @@ class MockAVManager:
         if not self.is_running:
             output = self._process.stdout.read().decode() if self._process.stdout else ""
             raise RuntimeError(f"Mock AV '{self.name}' died at startup:\n{output}")
+
+    def fail(self):
+        """Make the mock AV engine fail (NFR-3).
+
+        The engine reports itself OFF to the GUI and stops, like a dead
+        antivirus domain would be reported by the platform.
+        """
+        if self._failure_flag:
+            with open(self._failure_flag, "w") as f:
+                f.write("fail")
 
     def stop(self):
         """Terminate the mock AV subprocess."""
@@ -99,6 +126,9 @@ class MockAVManager:
         if self._config_file and os.path.exists(self._config_file):
             os.unlink(self._config_file)
             self._config_file = None
+        if self._failure_flag and os.path.exists(self._failure_flag):
+            os.unlink(self._failure_flag)
+            self._failure_flag = None
 
     def _build_pythonpath(self) -> str:
         """Build the PYTHONPATH so the subprocess can import libsaphir + safecor."""

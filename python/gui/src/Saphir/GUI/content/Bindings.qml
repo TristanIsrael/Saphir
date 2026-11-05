@@ -33,6 +33,9 @@ Item {
     property int cleanFilesSize: ApplicationController.cleanFilesSize
     property int targetAvailableSize: ApplicationController.targetAvailableSize
     property real systemLoadingProgress: ApplicationController.systemLoadingProgress
+    property bool sourceDisconnected: ApplicationController.sourceDisconnected
+    property bool copyPaused: ApplicationController.copyPaused
+    property bool longProcessRunning: ApplicationController.longProcessRunning
 
     /** Models */
     property var sourceFilesListModel: ApplicationController.inputFilesListProxyModel
@@ -88,6 +91,10 @@ Item {
 
     function startStopAnalysis() {        
         ApplicationController.start_stop_analysis()        
+    }
+
+    function startCopyPhase() {
+        ApplicationController.enter_copy_phase()
     }
     
     function reset() {

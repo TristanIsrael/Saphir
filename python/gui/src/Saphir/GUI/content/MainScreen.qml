@@ -118,9 +118,7 @@ Window {
             target: ApplicationController
 
             function onSourceReadyChanged() {
-                if(ApplicationController.sourceReady) {
-                    window.dlgAnalyseWholeStorage.visible = true
-                }                
+                window.dlgAnalyseWholeStorage.visible = ApplicationController.sourceReady
             }
         }
 
@@ -129,14 +127,12 @@ Window {
 
             function onRejected() {
                 bindings.setAnalysisMode(Enums.AnalyseSelection)
-                window.pnlFileSelection.visible = bindings.sourceName !== ""
                 window.dlgAnalyseWholeStorage.visible = false
             }
 
             function onAccepted() {
                 bindings.setAnalysisMode(Enums.AnalyseWholeSource)
                 window.dlgAnalyseWholeStorage.visible = false
-                window.pnlFileSelection.visible = false
                 bindings.startFullAnalysis()
             }
         }
@@ -145,13 +141,15 @@ Window {
             target: window.btnStartStop
 
             function onClicked() {
-                if(!bindings.analyzing) {
-                    window.pnlFileSelection.visible = false
-                } else {
-                    window.pnlFileSelection.visible = true
-                }
-
                 bindings.startStopAnalysis()
+            }
+        }
+
+        Connections {
+            target: window.btnCopyFiles
+
+            function onClicked() {
+                bindings.startCopyPhase()
             }
         }
 
@@ -221,19 +219,11 @@ Window {
         }
 
         Connections {
-            target: window.btnCopyFiles
-
-            function onClicked() {
-                window.pnlFilesCopy.visible = true
-            }
-        }
-
-        Connections {
             target: window.btnLanguageEN
 
             function onClicked() {
-                if(ApplicationController.language !== "")
-                    ApplicationController.language = ""
+                if(ApplicationController.language !== "en")
+                    ApplicationController.language = "en"
                 window.menuLanguagesOpened = !window.menuLanguagesOpened
             }
         }
@@ -278,23 +268,12 @@ Window {
         id: bindings
 
         onSystemStateChanged: {
-            if(bindings.systemState === Enums.TransferFinished) {
-                window.pnlFilesCopy.visible = false
-            } else if (bindings.systemState === Enums.SystemResetting) {
-                window.pnlFilesCopy.visible = false
-                window.pnlFileSelection.visible = false
+            if (bindings.systemState === Enums.SystemResetting) {
                 window.dlgSystemMustBeReset.visible = false
                 window.dlgRestart.visible = false
             } else if(bindings.systemState === Enums.SystemMustBeReset) {
-                window.pnlFilesCopy.visible = false
-                window.pnlFileSelection.visible = false
                 window.dlgSystemMustBeReset.visible = true
             }
-        }
-
-        onStoragesCountChanged: {
-            window.pnlFileSelection.visible = bindings.storagesCount === 1
-            window.pnlFilesCopy.visible = bindings.storagesCount === 2
         }
     }
 

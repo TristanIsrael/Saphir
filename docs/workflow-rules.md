@@ -1,12 +1,20 @@
 # Workflow Rules - Saphir
 
 > **Status**: Stable
-> **Last updated**: 2026-10-28
+>
+> **Last updated**: 2026-10-31
+>
 > **v2 changes**: added `SystemWaitingForTarget` (waiting for the 2nd target after analysis), Stop / Reset / Copy-cancellation transitions, and the AV failure distinction (per-file error vs engine panic, NFR-3).
+>
 > **v2.1 changes**: decoupled file *selection* from AV readiness — a disk can be browsed/selected as soon as the disk-controller is ready and a disk is connected, even if the AV engines are not ready; the analysis trigger now requires the **ready-to-analyze** condition (AV engines ready + core ready + non-empty queue). Added the boot/start dialog sizing rule (large → small → hidden).
+>
 > **v2.2 changes**: removed the copy-decline / copy-cancel transitions — there is **no cancel button**; `SystemWaitingForTarget` is a **stable terminal-ish state** whose only exits are: insert a target disk, Reset, or Shutdown.
+>
 > **v2.3 changes**: renamed the analysis **Stop** button to **Pause** — there is **no hard stop**. Pausing suspends the analysis (files already analyzed keep their status) and the user can **resume** it later from the same state.
+>
 > **v3 changes**: added the `ReportFailed` permanent error state (report failure, #4); reviewed and fixed the invariants (I2 completion guard, I5 report failure, I7 consensus, added I9 reset idempotence); completed the error-handling matrix (source/target disconnection during copy **and** analysis, MQTT transport, power loss); added scenarios 8.6–8.8; resolved all open questions (§9). **Contract fully reviewed and validated.**
+>
+> **v3.1 changes**: scenarios 8.9 (AV engine failure during analysis) and 8.10 (individual copy failure + final check); invariant I1 rewritten as the **multi-source disk rule** (10.8): every disk connected before the scan starts is a source, no new source is accepted once the scan has started, and the first disk connected after the analysis completes is the target.
 
 ---
 
@@ -25,28 +33,32 @@ Saphir follows a deterministic state machine workflow from boot to shutdown. Thi
 | 0 | `SystemInactive` | System not yet started | Pre-boot |
 | 1 | `SystemStarting` | Application and core platform initializing | Boot |
 | 2 | `SafecorReady` | Core platform (Safecor components) ready | Boot |
-| 3 | `SystemReady` | Core ready, waiting for media (AV engines **not** required) | Idle |
-| 4 | `SystemGettingFilesList` | Retrieving file list from source | Pre-analysis |
+| — | ~~`SystemWaitingForDevice`~~ | *(removed, Phase 1.2 — gap preserved at value 3)* | — |
+| 4 | `SystemReady` | Core ready, waiting for media (AV engines **not** required) | Idle |
 | 5 | `SystemWaitingForUserAction` | Files loaded, user selects files to analyze | Pre-analysis |
-| 6 | `SystemAnalysisRunning` | Antivirus analysis in progress | Analysis |
-| 7 | `AnalysisCompleted` | All files analyzed, consensus reached | Post-analysis |
-| 8 | `SystemWaitingForTarget` | Analysis done; **stable terminal-ish state** — wait for a target disk, or the user resets / shuts down (no cancel) | Post-analysis |
-| 9 | `CopyCleanFiles` | Copying clean files to target disk | Transfer |
-| 10 | `GeneratingReport` | PDF report + journal being written | Report |
-| 11 | `ReportFailed` | Report generation failed — **permanent error state**, reset required (no auto-retry, #4) | Error |
-| 12 | `SystemMustBeReset` | Workflow complete, reset required before reuse | Post-transfer |
-| 13 | `SystemResetting` | VMs being destroyed/recreated | Reset |
-| 14 | `SystemShuttingDown` | System powering off | Shutdown |
+| 6 | `SystemGettingFilesList` | Retrieving file list from source | Pre-analysis |
+| 7 | `SystemAnalysisRunning` | Antivirus analysis in progress | Analysis |
+| — | ~~`SystemNotClean`~~ | *(removed, Phase 1.2 — gap preserved at value 8)* | — |
+| 9 | `AnalysisCompleted` | All files analyzed, consensus reached. **Stable state** — the system waits here until a target disk is connected (then transitions to `CopyCleanFiles`) or the user resets / shuts down | Post-analysis |
+| 10 | `CopyCleanFiles` | Copying clean files to target disk | Transfer |
+| 11 | `GeneratingReport` | PDF report + journal being written | Report |
+| — | ~~`TransferFinished`~~ | *(removed, Phase 1.2 — gap preserved at value 12)* | — |
+| 13 | `SystemMustBeReset` | Workflow complete, reset required before reuse | Post-transfer |
+| 14 | `SystemResetting` | VMs being destroyed/recreated | Reset |
+| 15 | `SystemShuttingDown` | System powering off | Shutdown |
+| 16 | `ReportFailed` | Report generation failed — **permanent error state**, reset required (no auto-retry, #4) | Error |
 
 ### 2.2 Deprecated / Removed States
 
-These states are defined in `enums.py` but are **unreachable** and should be removed:
+These states were removed in Phase 1.2 (`8f49c1a`). Their numeric values are preserved as gaps in the enum for QML compatibility:
 
-| State | Reason |
-|-------|--------|
-| `SystemWaitingForDevice` | Never set by any code path |
-| `SystemNotClean` | Logic folded into `AnalysisCompleted` + UI color |
-| `TransferFinished` | State transitioned directly to `SystemMustBeReset` |
+| Value | State | Reason |
+|-------|-------|--------|
+| 3 | `SystemWaitingForDevice` | Never set by any code path |
+| 8 | `SystemNotClean` | Logic folded into `AnalysisCompleted` + UI color |
+| 12 | `TransferFinished` | State transitioned directly to `SystemMustBeReset` |
+
+> **Note on `SystemWaitingForTarget`**: This was a logical concept in earlier versions of this document (v2/v2.2) describing the "waiting for a target disk" phase. It is **not** a separate enum value in the code — the system simply **stays in `AnalysisCompleted`** until a target disk is connected (then transitions to `CopyCleanFiles`). All references to `SystemWaitingForTarget` below should be read as "the `AnalysisCompleted` state while no target is connected".
 
 ---
 
@@ -146,7 +158,7 @@ Each transition has a **trigger** (event) and a **guard** (condition).
 |------|-----|---------|-------|
 | `SystemInactive` | `SystemStarting` | App start | Always |
 | `SystemStarting` | `SafecorReady` | MQTT ready + subscriptions complete | Always |
-| `SafecorReady` | `SystemReady` | Disk controller ready (core components operational) | Always (AV engines **not** required) |
+| `SafecorReady` | `SystemReady` | Disk controller ready + repository path received (core components operational) | Always (AV engines **not** required) |
 | `SystemReady` | `SystemGettingFilesList` | First storage connected | `not system_used` (disk-controller ready + disk present) |
 | `SystemReady` | `SystemMustBeReset` | A **different** storage connected after use | `system_used && disk_name != source_name` |
 | `SystemGettingFilesList` | `SystemWaitingForUserAction` | All folders queried | `folders_to_query == 0 && analyse_selection` |
@@ -211,12 +223,20 @@ The workflow is divided into 6 phases. Each phase has an associated **loading pr
 
 These rules are **always true** and must be enforced:
 
-### I1: Source Disk Immutability
-Once a source disk is set, it cannot be changed without a full reset.
+### I1: Source disk assignment rule
+Every disk connected **before the scan starts** is a source disk (the
+partitions of the source media and additional media to scan at the same time);
+no new source is accepted once the scan has started. The **first disk
+connected after the analysis completes** is the target.
 ```python
-# Guard: prevent source change after workflow begins
-if system_used:
-    raise WorkflowError("Source disk locked, reset required")
+# __on_disk_connected(): source before the scan, ignored during the
+# scan, target once the analysis is done
+if analysis_done:
+    storage_manager.set_target(disk)
+elif not scan_started:
+    storage_manager.add_source(disk)
+else:
+    log.warning("disk connected during the scan: ignored")
 ```
 
 ### I2: Queue Completeness
@@ -250,7 +270,7 @@ Once the system is dirty (a file has been read), connecting a **different** stor
 if system_used and disk_name != source_name:
     lock_into(SystemMustBeReset)
 ```
-> **Note**: the current code uses a fragile numeric gate (`system_state >= CopyCleanFiles`, `__handle_disk_state` line 640). It must be replaced by an explicit "post-analysis phase + disk-name" check that also covers `SystemWaitingForTarget`.
+> **Note**: the numeric gate was replaced in Phase 1.3 (`2742d26`) by an explicit `locked_states` set (`application_controller.py:745-750`).
 
 ### I7: Consensus Rule
 A file is infected if **any** antivirus engine flags it. A file is clean only when **all** engines agree. A file whose analysis returned an **error** is "not clean" (not copyable), but its error does not abort the analysis.
@@ -275,7 +295,7 @@ A **Reset** always returns the system to its **initial state**: state `SystemRea
 | Error | Current Behavior | Target Behavior |
 |-------|-----------------|-----------------|
 | Per-file analysis error (one engine errors) | Not handled (`__handle_error` is a no-op) | File → `Error` status (not clean); analysis **continues** (NFR-3) |
-| AV **engine panic** (component `ERROR`/`OFF`) | Not handled | **Abort** analysis immediately → `SystemWaitingForUserAction` (NFR-3) |
+| AV **engine panic** (component `ERROR`/`OFF`) | Handled (scenario 8.9) | Incomplete files → `Error` (analyzed files keep their status); **abort** → `SystemWaitingForUserAction` when fewer than `ANTIVIRUS_NEEDED` engines remain, otherwise continue with the survivors (NFR-3) |
 | Copy fails for a clean file | Counted in `copiedFilesCount` failure, continues | Log error, mark file, continue, report failure in PDF; final check `copied == clean_count` (F4) |
 | Source disk disconnected during copy | Not handled (uncertain state) | Stay in `CopyCleanFiles` with an **error flag** (no dedicated state); pause the copy and prompt to re-insert; on re-insertion, run a **coherence check** (source state + integrity/fingerprint) and clear the flag → **auto-resume**. No reset, no re-analysis (F4) |
 | **Target** disk disconnected during copy | Not handled | Same as the source: **error flag** on `CopyCleanFiles`, pause, prompt to re-insert, **coherence check** on re-insertion, **auto-resume** (F4) |
@@ -289,7 +309,7 @@ A **Reset** always returns the system to its **initial state**: state `SystemRea
 
 ```
 Per-file analysis error  → stays in SystemAnalysisRunning (file → Error), completes to AnalysisCompleted
-AV engine panic          → SystemWaitingForUserAction (abort, user retries)
+AV engine panic          → incomplete files Error; abort → SystemWaitingForUserAction (if < ANTIVIRUS_NEEDED engines), else continue (scenario 8.9)
 Source disconnected (analysis) → stays in SystemAnalysisRunning (AV continues on the repository); error flag + dialog; held until the source is re-connected, then resumes
 Copy error (single file) → continue, log in report (CopyCleanFiles → GeneratingReport)
 Source disconnected (copy) → stays in CopyCleanFiles with an error flag; on re-insertion, coherence check (state + integrity) then auto-resume
@@ -307,7 +327,7 @@ The following table defines which panels/dialogs are visible per state. This sho
 
 **One screen at a time** — at most **one** of the screen columns (File Selection, Analysis Panel, File Copy, Shutdown Dialog) is visible per state. The `SystemLoadingPanel` is an **overlay** (see §7.1), not a screen, so it may be shown on top of a screen. The **Report** is not an on-screen element (it is a generated PDF file), and the **Reset** confirmation is a transient dialog (not a per-state view), so neither is a column.
 
-> **`AnalysisCompleted` is transient**: it immediately auto-transitions to `CopyCleanFiles` (target available) or `SystemWaitingForTarget` (no target). The screen shown is the **copy screen** (`FilesCopyPanel`), which prompts to **insert a target** to start the copy — so `AnalysisCompleted` and `SystemWaitingForTarget` show the **same** screen. The analysis progress panel is **not** shown once the analysis is finished.
+> **`AnalysisCompleted` is a stable state**: the system stays here until a target disk is connected (then auto-transitions to `CopyCleanFiles`) or the user resets / shuts down. The screen shown is the **copy screen** (`FilesCopyPanel`), which prompts to **insert a target** to start the copy. The analysis progress panel is **not** shown once the analysis is finished.
 >
 > **`ReportFailed`** is a **permanent error state** (#4): the report generation failed and the system requires a **Reset** (no automatic retry). All screen columns are hidden; the user sees an error indication (transient dialog) prompting a Reset, as with `SystemMustBeReset`.
 
@@ -455,6 +475,38 @@ where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infecte
 4. The analysis loop is HELD (waiting) so it does not exit prematurely while files remain to be copied
 5. User re-inserts the source → the flag is cleared, the remaining files are copied, and the analysis resumes
 6. All files analyzed → AnalysisCompleted (→ copy / report as usual)
+```
+
+### 8.9 Antivirus Engine Failure During Analysis (NFR-3)
+
+```
+1. SystemAnalysisRunning (an antivirus engine reports itself OFF/ERROR, e.g. a dead domain)
+2. The GUI detects the state change on the DISCOVER_COMPONENTS response
+3. Files already analyzed keep their status (Clean / Infected)
+4. Files that were already sent to the engines but are incomplete are declared Error
+   (no valid consensus is possible without the failed engine)
+5. If the number of available engines drops below ANTIVIRUS_NEEDED (2):
+   the analysis is ABORTED → SystemWaitingForUserAction (message to the user);
+   files not yet sent are also declared Error
+6. If at least ANTIVIRUS_NEEDED engines remain (3+ engines configured):
+   the analysis CONTINUES with the remaining engines; the files not yet sent
+   are analyzed by the survivors (the failed engine is removed from the consensus)
+7. The user can reset (or, once an engine is back, start the analysis again)
+```
+
+### 8.10 Individual Copy Failure + Final Check (F4)
+
+```
+1. CopyCleanFiles in progress (clean files copied one by one)
+2. One copy fails (I/O error, fingerprint mismatch, insufficient space):
+   - the platform reports it (copy response error or events/error notification)
+   - the file is marked CopyError, the copy CONTINUES on the other files
+   - a GUI message and a log entry report the failure
+3. At the end, the FINAL CHECK requires: copied == clean files count
+4. If the check fails: the discrepancy is reported to the user (message)
+   and included in the scan report ("Copy failures: N", in red)
+5. The cycle still completes: GeneratingReport → SystemMustBeReset
+   (the report lists the files that could not be copied)
 ```
 
 ---

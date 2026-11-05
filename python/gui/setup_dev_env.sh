@@ -2,7 +2,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_DIR="${SCRIPT_DIR}/.venv"
+# Default venv dir: venv.nosync on macOS (Time Machine friendly), .venv elsewhere
+if [[ "${SAPHIR_VENV_DIR:-}" ]]; then
+    VENV_DIR="${SAPHIR_VENV_DIR}"
+elif [[ "$(uname)" == "Darwin" ]]; then
+    VENV_DIR="${SCRIPT_DIR}/venv.nosync"
+else
+    VENV_DIR="${SCRIPT_DIR}/.venv"
+fi
 SAFECOR_ROOT="${SAFECOR_ROOT:-/home/onyxia/work/Safecor}"
 
 echo "=== Saphir GUI dev environment setup ==="
@@ -19,21 +26,50 @@ fi
 echo "[2/4] Installing production + dev dependencies..."
 "${VENV_DIR}/bin/pip" install --quiet --upgrade pip
 
-# libvirt-python requires the system libvirt-dev package; skip it if unavailable
-# (the Safecor library handles its absence gracefully)
-REQUIREMENTS_NO_LIBVIRT=$(mktemp)
-grep -v '^libvirt-python' "${SCRIPT_DIR}/requirements.txt" > "${REQUIREMENTS_NO_LIBVIRT}"
-"${VENV_DIR}/bin/pip" install --quiet -r "${REQUIREMENTS_NO_LIBVIRT}"
-rm "${REQUIREMENTS_NO_LIBVIRT}"
+# Linux-only and optional dependencies: try to install, warn if unavailable
+# On macOS, skip Linux-only deps entirely (no wheel, build from source would fail)
+LINUX_ONLY_DEPS=(evdev inotify_simple pyudev)
+OPTIONAL_DEPS=(libvirt-python)
+if [[ "$(uname)" != "Darwin" ]]; then
+    OPTIONAL_DEPS=("${OPTIONAL_DEPS[@]}" "${LINUX_ONLY_DEPS[@]}")
+fi
 
-if ! "${VENV_DIR}/bin/pip" install --quiet libvirt-python 2>/dev/null; then
-    echo "  WARNING: libvirt-python not installed (requires system libvirt-dev)."
-    echo "  This is optional for emulator-based development."
+# Install the main requirements minus all optional deps (single grep pass)
+ALL_SKIP_DEPS=("${OPTIONAL_DEPS[@]}" "${LINUX_ONLY_DEPS[@]}")
+SKIP_PATTERN=""
+for dep in "${ALL_SKIP_DEPS[@]}"; do
+    if [[ -n "${SKIP_PATTERN}" ]]; then
+        SKIP_PATTERN="${SKIP_PATTERN}|^${dep}$"
+    else
+        SKIP_PATTERN="^${dep}$"
+    fi
+done
+REQUIREMENTS_FILTERED=$(mktemp)
+grep -Ev "${SKIP_PATTERN}" "${SCRIPT_DIR}/requirements.txt" > "${REQUIREMENTS_FILTERED}" || true
+"${VENV_DIR}/bin/pip" install --quiet -r "${REQUIREMENTS_FILTERED}"
+rm "${REQUIREMENTS_FILTERED}"
+
+# Try optional deps one by one
+for dep in "${OPTIONAL_DEPS[@]}"; do
+    if ! "${VENV_DIR}/bin/pip" install --quiet "${dep}" 2>/dev/null; then
+        echo "  WARNING: ${dep} not installed (platform-specific or system dependency missing)."
+    fi
+done
+if [[ "$(uname)" == "Darwin" ]]; then
+    echo "  INFO: Linux-only deps (evdev, inotify_simple, pyudev) skipped on macOS."
 fi
 
 "${VENV_DIR}/bin/pip" install --quiet -r "${SCRIPT_DIR}/requirements-dev.txt"
 
 # 3. Create .pth files for local Safecor packages
+if [[ ! -d "${SAFECOR_ROOT}/python/lib/src" ]]; then
+    echo ""
+    echo "ERROR: Safecor not found at ${SAFECOR_ROOT}"
+    echo "Set SAFECOR_ROOT to the path of your Safecor repository checkout."
+    echo "  Example: SAFECOR_ROOT=/path/to/Safecor bash setup_dev_env.sh"
+    exit 1
+fi
+
 SITE_PACKAGES="${VENV_DIR}/lib/python$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')/site-packages"
 
 echo "[3/4] Creating .pth files for local Safecor packages..."

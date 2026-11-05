@@ -32,6 +32,14 @@ This document is an entry point to the documentation of Saphir, the robust sheep
 | [`plans/refactoring-plan.md`](plans/refactoring-plan.md) | Refactoring phases & effort |
 | [`plans/context.md`](plans/context.md) | Session context / resume point |
 | [`test-strategy.md`](test-strategy.md) | Validation / test strategy (unit → system, DevMode, simulator) |
+| [`validation-guide.md`](validation-guide.md) | Manual validation environment (launcher, operator runbook, scenarios) |
+
+## Development & packaging
+
+| Resource | Concern |
+|----------|---------|
+| [`../setup/chroot/chroot-build.sh`](../setup/chroot/chroot-build.sh) | Build & validate the Saphir Alpine packages in a local chroot (`init`, `sync`, `build [all]`, `install [PKG...]`, `test-gui`, `validate`) |
+| [`../setup/docker/local-dev/`](../setup/docker/local-dev/) | Local dev environment (Alpine + Saphir APK repository, `create-dev-image.sh` / `docker-cmd.sh`) |
 
 ## Analyses & decisions
 

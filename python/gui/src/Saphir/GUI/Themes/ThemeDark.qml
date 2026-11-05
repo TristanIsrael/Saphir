@@ -9,6 +9,7 @@ QtObject {
     readonly property color colorBg: "#333333"
     readonly property color colorControl: "#333333"
     readonly property color colorText: "#aafafafa"
+    readonly property color colorTextHighContrast: "#fcfcfc"
     readonly property color colorBorder: "#aafafafa"
     readonly property color colorButtonEnabled: "#d8d8d8"
     readonly property color colorButtonDisabled: "#444480"
@@ -17,7 +18,7 @@ QtObject {
     readonly property color colorShadowEnabled: "#aaeaeaea"
     readonly property color colorShadowDisabled: "#aaeaeaea"
     readonly property color colorButtonTextEnabled: "#aafafafa"
-    readonly property color colorButtonTextDisabled: "#030303"
+    readonly property color colorButtonTextDisabled: "#030303"    
 
     readonly property color colorFilterNotReady: "#b0c4de"
     readonly property color colorFilterReady: "#656dfd"

@@ -9,6 +9,7 @@ QtObject {
     readonly property color colorBg: "#111111"
     readonly property color colorControl: "#111111"
     readonly property color colorText: "#333333"
+    readonly property color colorTextHighContrast: "#666666"
     readonly property color colorBorder: "#222222"
     readonly property color colorButtonEnabled: "#555555"
     readonly property color colorButtonDisabled: "#333333"

@@ -21,6 +21,7 @@ a = Analysis(
         "PySide6.QtGui",
         "PySide6.QtQuick",
         "PySide6.QtQml",
+        "PySide6.QtNetwork",
         "jinja2",
         "weasyprint"
     ],

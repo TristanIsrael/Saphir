@@ -46,7 +46,7 @@ Item {
     property bool menuThemesOpened: false
     property bool mainMenuOpened: false
     property bool menuLanguagesOpened: false
-    property string language: "This is a string"
+    property string language: ""
 
     /* Private properties */
     implicitWidth: 1344
@@ -125,7 +125,7 @@ Item {
                     icon: "EN"
                     symbol: false
                     flat: true
-                    visible: mainWindow.menuLanguagesOpened || language === ""
+                    visible: mainWindow.menuLanguagesOpened || language === "en"
                 }
 
                 RoundButton {
@@ -305,7 +305,8 @@ Item {
         x: parent.width - (width * 1.25)
         y: parent.height - (height * 1.25)
 
-        enabled: bindings.analysisReady && bindings.queueSize > 0 && bindings.systemState < Enums.AnalysisCompleted
+        enabled: bindings.analysisReady && bindings.queueSize > 0
+                 && bindings.systemState < Enums.AnalysisCompleted
         icon: bindings.analyzing ? Constants.iconPause : Constants.iconStart
     }
 
@@ -333,9 +334,6 @@ Item {
             bottomMargin: parent.height * 0.05
         }
 
-
-        /*visible: !pnlAnalysis.visible && !pnlFileSelection.visible
-                 && !pnlFilesCopy.visible*/
         visible: false
         height: visible ? implicitHeight : 0
 
@@ -347,13 +345,61 @@ Item {
 
         anchors.horizontalCenter: parent.horizontalCenter
 
-        y: [ Enums.SystemInactive, Enums.SystemStarting, Enums.SystemResetting ].includes(bindings.systemState) ? (parent.height - height) / 2 : 10
-        height: [ Enums.SystemInactive, Enums.SystemStarting, Enums.SystemResetting ].includes(bindings.systemState) ? implicitHeight : 60
+        y: [Enums.SystemInactive, Enums.SystemStarting, Enums.SystemResetting].includes(
+            bindings.systemState) ? (parent.height - height) / 2 : 10
+        height: [Enums.SystemInactive, Enums.SystemStarting, Enums.SystemResetting].includes(
+            bindings.systemState) ? implicitHeight : 60
         taint: "#cccccc"
 
         opacity: !bindings.analysisReady ? 1.0 : 0.0
 
         z: 1.0
+    }
+
+    /* Getting files list overlay */
+    Rectangle {
+        id: pnlGettingFilesList
+        anchors.centerIn: parent
+        width: parent.width * 0.5
+        height: 100
+        radius: 10
+        opacity: 0.9
+        color: Environment.colorRunning
+        visible: bindings.systemState === Enums.SystemGettingFilesList
+        z: 1.0
+
+        StyledText {
+            anchors.centerIn: parent
+            text: qsTr("Please wait while getting the files list...")
+            section: Constants.Section.Title2
+            horizontalAlignment: Text.AlignHCenter
+            width: parent.width - 20
+            color: Environment.colorTextHighContrast
+        }
+    }
+
+    /* Source disconnection overlay */
+    Rectangle {
+        id: pnlSourceDisconnected
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: parent.height * 0.1
+        width: parent.width * 0.7
+        height: 50
+        radius: 10
+        color: Environment.colorWarning
+        opacity: 0.9
+        visible: bindings.analyzing && bindings.sourceDisconnected
+        z: 1.0
+
+        StyledText {
+            anchors.centerIn: parent
+            text: qsTr("The source storage was disconnected: the analysis is on hold until you reconnect it.")
+            section: Constants.Section.Paragraph
+            horizontalAlignment: Text.AlignHCenter
+            width: parent.width - 20
+            elide: Text.ElideRight
+            color: Environment.colorTextHighContrast
+        }
     }
 
     /* Dialogs */
@@ -411,7 +457,7 @@ Item {
         z: 0.5
 
         label: qsTr("The system must be cleaned\nor shut down.")
-        buttonsLabels: [ Constants.iconRestart, Constants.iconShutdown ]
+        buttonsLabels: [Constants.iconRestart, Constants.iconShutdown]
         symbols: true
         handheld: bindings.handheld
     }
@@ -449,7 +495,9 @@ Item {
         FilesSelectionPanel {
             id: pnlFileSelection
             anchors.fill: parent
-            visible: false
+            visible: bindings.sourceName !== ""
+                     && [Enums.SystemReady, Enums.SystemWaitingForUserAction, Enums.SystemGettingFilesList].includes(
+                         bindings.systemState)
         }
 
         /* Analysis */
@@ -472,7 +520,8 @@ Item {
                 fill: parent
             }
 
-            visible: false
+            visible: [Enums.CopyCleanFiles, Enums.GeneratingReport, Enums.ReportFailed].includes(
+                bindings.systemState)
         }
     }
 
