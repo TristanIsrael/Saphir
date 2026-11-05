@@ -50,6 +50,18 @@ docs/            # Developer + user documentation
 - Remaining-time estimate: `python/gui/src/Saphir/Saphir/EMA_ETA_estimator.py` (exponential moving average).
 - Viewer backend: `python/viewer/src/viewer/Viewer/application_controller.py`.
 
+## Installation packages
+
+- Saphir components are packaged into Alpine Linux packages (APK).
+- The Alpine Linux packages definitions are in `setup/packages/saphir`.
+  - `setup/packages/saphir/saphir` is the main package for the product and contains the `topology.json` file.
+  - `setup/packages/saphir/saphir-av-clamav` is the package for the Domain `saphir-av-clamav` in which the ClamAV antivirus controller is deployed.
+  - `setup/packages/saphir/saphir-av-eset` is the package for the Domain `saphir-av-eset` in which the ESET antivirus controller is deployed.
+  - `setup/packages/saphir/saphir-gui` is the package for the Domain `saphir-gui` in which the main controller GUI is deployed. 
+  - `setup/packages/saphir/saphir-lib` is a dependency package for other Saphir packages, it contains the python library `libsaphir`. 
+  - `setup/packages/saphir/saphir-splash` is the package for the splash screen for Safecor boot process. 
+  - `setup/packages/saphir/saphir-viewer` is the package for the Domain `saphir-viewer` in which the viewer GUI is deployed. 
+
 # Project rules
 
 ## Build
@@ -58,6 +70,7 @@ docs/            # Developer + user documentation
   - A bug fix bumps the last digit (patch) only.
   - A new feature bumps the second digit (minor) and resets the last digit to 0.
   - The first digit (major) is bumped only by the product maintainer.
+- When the components versions are modified, the Alpine Linux packages must be updated to reflect the components versions.
 - The python dependencies that are used only in development and tests must lie in the file requirements-dev.txt.
 - The python dependencies that are used in production, in developpement and tests must lie in the file requirements.txt.
 
