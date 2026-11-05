@@ -217,3 +217,13 @@ AV controller says that the analysis is finished without error
 2. **State machine allowed report generation on a paused copy** (Saphir #160): `TransferController.__check_transfer_complete` did not guard against `_copy_paused`. Fixed: it now returns early when paused. `__resume_copy` calls `__check_transfer_complete` after the re-copy loop so the transfer completes on resume.
 3. **`__handle_create_file` ignored the `success` field**: a failed `CREATE_FILE` was not handled as an error. Fixed: it now checks `success` and goes to `SystemMustBeReset` with an error message when `False`.
 4. **Language button empty**: the `language` property in `MainScreenUi.ui.qml` had the placeholder value `"This is a string"`. Fixed: set to `""`.
+
+## Run 12 (incremental)
+
+- Step: Multi-source (F1, 10.8)
+- When I select 1 file in one disk and 1 file in another disk, I start the analysis and then I plug my target device, the files are copied and the report too. But The log file is not copied, and Saphir remains stucked in the state SystemState.GeneratingReport.
+
+### Corrections (2026-11-05)
+
+1. **Journal sent uncompressed over MQTT**: The `journal.log` was sent with `binary=False` (no compression). As the log grew (cumulative across runs), the base64-encoded MQTT payload exceeded the broker message size limit and was silently dropped. Fixed: send with `binary=True` (zlib compression).
+2. **Cumulative journal**: The `saphir.log` file was never reset, growing with each application session. Fixed: the log file is now truncated at application startup (`ApplicationController.start()`).
