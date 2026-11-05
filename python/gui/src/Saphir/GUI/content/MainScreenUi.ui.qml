@@ -46,7 +46,7 @@ Item {
     property bool menuThemesOpened: false
     property bool mainMenuOpened: false
     property bool menuLanguagesOpened: false
-    property string language: "This is a string"
+    property string language: ""
 
     /* Private properties */
     implicitWidth: 1344

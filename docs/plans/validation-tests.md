@@ -192,3 +192,21 @@ AV controller says that the analysis is finished without error
 - **`mock_sys_usb` wildcard subscription**: The mock SysUsb subscribed to `system/+/+/request` (catch-all), intercepting topics meant for Dom0 (e.g. `system/energy/state/request`) and logging them under "SysUsb". Fix: replaced with specific disk-topic subscriptions (`list_disks`, `list_files`, `read_file`, `copy_file`, `create_file`, `mount_file`, `unmount`, `discover/components`).
 - **Note on restart/ping dropdowns**: These use `startedDomains` (topology business domains + core peers), not the MQTT discovery. The Saphir topology must be loaded in the emulator (SetupPanel) for `saphir-av-clamav` / `saphir-av-eset` to appear in those dropdowns.
 
+## Run 10 (incremental)
+
+- Step: Target disconnection during copy (F4, 8.6)
+- Nothing happens when I click on the button for copy (btnCopyFiles) at the end of the analysis. It should move to the panel FileCopyPanel ; but when I attach a second disk the panel shows.
+- If I start Saphir with 2 disks attached it shows the dialog "Do you want to analyse the whole disk?", but when I detach one of them, it comes back to the "Please connect a storage" dialog.
+- The copy is to fast and I don't have enough time to detach the disk. There should be a delay between to copies so the copy lasts longer.
+
+### Corrections applied
+
+- **`btnCopyFiles` regression** (commit `d0e1cdf` removed the handler without replacement): Added `enter_copy_phase()` slot to `ApplicationController` that transitions to `CopyCleanFiles` state and starts the transfer if a target is already connected. Wired the button via `Bindings.qml` (`startCopyPhase()`) and `MainScreen.qml` (`Connections` block). Fixed `FilesCopyPanel.qml` text condition that was dead code (checked `AnalysisCompleted` but the panel is only visible in `CopyCleanFiles`/`GeneratingReport`/`ReportFailed`).
+- **Source disk detach reset**: `__on_disk_disconnected` called `__reset_states()` when a source was removed, clearing the storage list and losing the still-connected disk. Fix: after `remove_source`, if other sources remain and analysis hasn't started, re-emit `sourceReadyChanged` to re-trigger the disk selection dialog instead of resetting.
+- **Copy speed** (deferred): The copy loop in `transfer_controller.py` issues all `copy_file` calls back-to-back. A delay would be needed for testing the disconnection scenario, but this would slow down production. Deferred for now.
+
+## Run 11 (incremental)
+
+- Step: Target disconnection during copy (F4, 8.6)
+- When I detach the destination disk nothing happens. Saphir seems not to detect the disconnection. It should interrupt the report generation and files copy but everything keeps going on and no error is triggered.
+- The language button is empty, there no language, not even the `EN`.

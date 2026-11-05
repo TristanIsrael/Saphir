@@ -269,6 +269,11 @@ class TransferController(QObject):
             )
 
     def __on_disk_state(self, disk: str, state: str) -> None:
+        print(
+            f"[TransferController] disk_state: disk={disk!r} state={state!r} "
+            f"copying={self._copying} target={self._target_name!r} "
+            f"sources={self._source_disks}"
+        )
         # Scenario 8.6: only acts while the clean files are being copied
         if not self._copying:
             return

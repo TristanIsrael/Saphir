@@ -735,6 +735,10 @@ class ApplicationController(QObject):
             self.__messages_model.addMessage(self.tr("The antiviruses are ready"))
 
     def __handle_disk_state(self, payload: dict):
+        print(
+            f"[AppController] disk_state: {payload} "
+            f"workflow_state={self.__workflow_controller.state}"
+        )
         # Ignore disk state changes when the system is locked (reset required or in progress)
         locked_states = {
             SystemState.SystemMustBeReset,
