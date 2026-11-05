@@ -148,15 +148,11 @@
 - The GUI displays an **error** prompting the user to re-insert the media to resume the copy.
 - The copy **resumes automatically** as soon as the user re-inserts the source media, after a **matching verification** (notably by the disk name).
 
-**Cancellation**:
-
-- The user can **cancel** the copy in progress.
-- A cancelled copy **cannot be resumed** (a reset will be required).
+**No cancellation (by design)**: there is no cancel button for the copy. The only exits from the copy phase are: insert a target (→ copy starts), **Reset**, or **Shutdown**.
 
 **Backlog**:
 
 - `[feature]` Check the available space on the target before starting the copy.
-- `[bug]` If the user unplugs one of the media during the workflow, the system enters an uncertain state. Disconnection handling must be reviewed.
 
 ---
 
@@ -221,7 +217,7 @@
 
 **Error handling**:
 
-- If the PDF generation fails, the user is **warned** and the cycle ends **normally** (`SystemMustBeReset` state).
+- If the PDF generation fails, the system enters the **`ReportFailed`** state (permanent error, reset required — no automatic retry). The user is warned and must reset the system.
 
 ---
 

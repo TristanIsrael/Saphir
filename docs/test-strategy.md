@@ -68,10 +68,10 @@ em = Emulator(
     profile=default_profile(),
     source_disks={"disk0": "/path/to/files"},
     storage_path="/tmp/repo",
-    destination_disk_path="/tmp/target",
 )
 em.start()
 # ... drive scenario ...
+# The last attached disk is the copy target (no separate parameter needed)
 em.attach_disk("disk1", "/path/to/target")
 em.detach_disk("disk1")
 em.stop()
