@@ -227,3 +227,12 @@ AV controller says that the analysis is finished without error
 
 1. **Journal sent uncompressed over MQTT**: The `journal.log` was sent with `binary=False` (no compression). As the log grew (cumulative across runs), the base64-encoded MQTT payload exceeded the broker message size limit and was silently dropped. Fixed: send with `binary=True` (zlib compression).
 2. **Cumulative journal**: The `saphir.log` file was never reset, growing with each application session. Fixed: the log file is now truncated at application startup (`ApplicationController.start()`).
+
+## Run 13 (incremental)
+
+- Step: Language change (F19)
+- The language button appears but it is empty and nothing happens when I click on it.
+
+### Corrections (2026-11-05)
+
+1. **RoundButton icon alias overridden by explicit binding**: The `icon` property was a `property alias icon: txt.text`, but the `Text` element had an explicit binding `text: symbol ? Constants.iconHelp : "EN"`. In Qt 6, the explicit binding takes precedence over the external alias assignment, so `icon: "FR"` had no effect. Fixed: replaced the alias with a regular `property string icon: ""` and used it in the text binding.
