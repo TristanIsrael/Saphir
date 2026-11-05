@@ -333,9 +333,6 @@ Item {
             bottomMargin: parent.height * 0.05
         }
 
-
-        /*visible: !pnlAnalysis.visible && !pnlFileSelection.visible
-                 && !pnlFilesCopy.visible*/
         visible: false
         height: visible ? implicitHeight : 0
 
@@ -364,15 +361,18 @@ Item {
         width: parent.width * 0.7
         height: 50
         radius: 10
+        opacity: 0.9
         color: Environment.colorOverlay
         visible: bindings.longProcessRunning && !bindings.analysisReady
         z: 1.0
 
-        Label {
+        StyledText {
             anchors.centerIn: parent
             text: qsTr("Getting the files list...")
-            font.pointSize: 14
-            color: "white"
+            section: Constants.Section.Paragraph
+            horizontalAlignment: Text.AlignHCenter
+            width: parent.width - 20
+            color: Environment.colorTextHighContrast
         }
     }
 
