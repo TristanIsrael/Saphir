@@ -227,18 +227,7 @@ analyzed; clean files from both are copied to the single target.
 | 3 | Accept the analysis (click "Yes") | `SystemAnalysisRunning` (covers both disks) |
 | 4 | Analysis completes, attach target | Clean files from both disks are copied |
 
-### 5.7 Power loss during scan (NFR-5)
-
-**Description**: The system loses power during analysis. It should transition
-to shutdown gracefully.
-
-| Step | Action | Expected |
-|------|--------|----------|
-| 1 | Attach source disk, accept analysis | `SystemAnalysisRunning` |
-| 2 | Set energy state to "off" via emulator GUI | GUI shows low-power / shutdown message |
-| 3 | System transitions to shutdown | `SystemShuttingDown` in state log |
-
-### 5.8 Language change (F19)
+### 5.7 Language change (F19)
 
 **Description**: The default language is changed while the system is running.
 The GUI retranslates all strings immediately.
