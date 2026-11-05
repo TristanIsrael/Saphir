@@ -303,6 +303,7 @@ class ApplicationController(QObject):
         # each disk, then request the file list of the first subdirectory,
         # and on each response we proceed with the next directory.
         self.__file_browser.is_enqueuing = True
+        self.__set_system_state(SystemState.SystemGettingFilesList)
         self.set_long_process_running(True)
 
         for disk in source_disks:

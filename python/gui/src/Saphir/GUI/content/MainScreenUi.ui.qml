@@ -363,7 +363,7 @@ Item {
         radius: 10
         opacity: 0.9
         color: Environment.colorOverlay
-        visible: bindings.longProcessRunning && !bindings.analysisReady
+        visible: bindings.systemState === Enums.SystemGettingFilesList
         z: 1.0
 
         StyledText {

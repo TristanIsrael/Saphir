@@ -236,3 +236,12 @@ AV controller says that the analysis is finished without error
 ### Corrections (2026-11-05)
 
 1. **Default language was `""` instead of `"en"`**: The `TranslationManager` initialized the language to an empty string, and the QML visibility/click logic used `language === ""` to detect EN. This caused a conflict with the `RoundButton` icon alias. Fixed: the default language is now `"en"` (explicit), the EN button visibility checks `language === "en"`, and clicking EN sets `language = "en"`.
+
+## Run 14 (incremental)
+
+- When I start Saphir with 2 disks attached, and I remove both, the dialog "Do you want to analyze the whole storage?" remains visible but it should not. The dialog "Please connect a storage" is also shown behind and becomes visible when we close the othe dialog.
+- When I attach a very big disk (800 000 files) and I accept to analyze the whole storage the message "Getting the files list..." is never shown.
+
+**Corrections**:
+1. **Dialog remained visible on disk disconnection**: The `onSourceReadyChanged` handler in `MainScreen.qml` only showed the dialog when `sourceReady` became `true`, never hiding it when it became `false`. Fixed: the handler now sets `visible = ApplicationController.sourceReady` directly, so the dialog hides when all source disks are removed.
+2. **"Getting the files list..." overlay never shown**: The overlay visibility condition was `bindings.longProcessRunning && !bindings.analysisReady`, but `analysisReady` stays `true` once the system is initialized (antiviruses connected). Fixed: (a) `start_full_analysis()` now transitions to `SystemGettingFilesList` state, (b) the overlay condition is now `bindings.systemState === Enums.SystemGettingFilesList`, which is the correct state-machine-driven condition.

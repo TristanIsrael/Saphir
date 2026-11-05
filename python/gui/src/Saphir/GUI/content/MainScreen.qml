@@ -118,9 +118,7 @@ Window {
             target: ApplicationController
 
             function onSourceReadyChanged() {
-                if(ApplicationController.sourceReady) {
-                    window.dlgAnalyseWholeStorage.visible = true
-                }                
+                window.dlgAnalyseWholeStorage.visible = ApplicationController.sourceReady
             }
         }
 
