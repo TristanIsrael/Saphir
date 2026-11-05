@@ -23,7 +23,7 @@ a = Analysis(
     ],
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=['runtime-hooks/system-site-packages.py'],
     excludes=['safecor', 'libsaphir'],
     noarchive=False,
     optimize=0,
