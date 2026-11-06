@@ -245,3 +245,9 @@ AV controller says that the analysis is finished without error
 **Corrections**:
 1. **Dialog remained visible on disk disconnection**: The `onSourceReadyChanged` handler in `MainScreen.qml` only showed the dialog when `sourceReady` became `true`, never hiding it when it became `false`. Fixed: the handler now sets `visible = ApplicationController.sourceReady` directly, so the dialog hides when all source disks are removed.
 2. **"Getting the files list..." overlay never shown**: The overlay visibility condition was `bindings.longProcessRunning && !bindings.analysisReady`, but `analysisReady` stays `true` once the system is initialized (antiviruses connected). Fixed: (a) `start_full_analysis()` now transitions to `SystemGettingFilesList` state, (b) the overlay condition is now `bindings.systemState === Enums.SystemGettingFilesList`, which is the correct state-machine-driven condition.
+
+## Run 15 (in production)
+
+- When I start Saphir, the antiviruses are not detected, so Saphir never becomes ready. When I investigate on the Domains, I can see that both the antivirus and the controller are started. When I restart the controller I don't see any MQTT message on the `system/discover/components/` topic. The antiviruses should notify on this topic when they are ready.
+- `system/disks/repository_path/request` does not receive an answer.
+- When I switch to the french language, there is an error in the log: `No translation found for the language fr`

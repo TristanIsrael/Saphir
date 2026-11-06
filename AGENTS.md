@@ -70,7 +70,7 @@ docs/            # Developer + user documentation
   - A bug fix bumps the last digit (patch) only.
   - A new feature bumps the second digit (minor) and resets the last digit to 0.
   - The first digit (major) is bumped only by the product maintainer.
-- When the components versions are modified, the Alpine Linux packages must be updated to reflect the components versions.
+- When the components versions are modified, the Alpine Linux packages (see the chapter `Installation packages`) must be updated to reflect the components versions. All the versions should be coherent.
 - The python dependencies that are used only in development and tests must lie in the file requirements-dev.txt.
 - The python dependencies that are used in production, in developpement and tests must lie in the file requirements.txt.
 
@@ -134,6 +134,7 @@ Naming conventions:
 - **Never push** when the code coverage is under 85%.
 - After push, the Github issue must be updated (task and status).
 - **Never commit** before updating the documentation and the plans if needed.
+- **Never push** before verifying that the components and packages versions are coherent and their versions have been increased if needed.
 
 ## Chat rules
 
