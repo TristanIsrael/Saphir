@@ -36,7 +36,7 @@ prepare() {
 build() {
     cd "$srcdir/gui"
 
-    pyside6-lrelease src/Saphir/i18n/fr.ts -qm src/Saphir/i18n/fr.qm
+    lrelease src/Saphir/i18n/fr.ts -qm src/Saphir/i18n/fr.qm
 
     if [ "$bundle" = "yes" ]; then
         python3 -m PyInstaller saphir-gui.spec --noconfirm
