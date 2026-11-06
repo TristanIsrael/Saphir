@@ -30,7 +30,7 @@ prepare() {
 build() {
     cd "$srcdir/viewer"
 
-    lrelease src/viewer/i18n/fr.ts -qm src/viewer/i18n/fr.qm
+    /usr/lib/qt6/bin/lrelease src/viewer/i18n/fr.ts -qm src/viewer/i18n/fr.qm
 
     python3 -m PyInstaller saphir-viewer.spec --noconfirm
 }
