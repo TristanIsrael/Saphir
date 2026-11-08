@@ -109,9 +109,7 @@ class AbstractAntivirusController(ABC):
                 "domain_name": platform.node(),
                 "label": self.__component_description,
                 "type": "antivirus",
-                "state": self._get_component_state().value
-                if force_state == ComponentState.UNKNOWN
-                else force_state.value,
+                "state": self._get_component_state().value if force_state == ComponentState.UNKNOWN else force_state.value,
                 "version": self._get_component_version(),
                 "description": self._get_component_description(),
             }
