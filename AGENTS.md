@@ -73,6 +73,7 @@ docs/            # Developer + user documentation
 - When the components versions are modified, the Alpine Linux packages (see the chapter `Installation packages`) must be updated to reflect the components versions. All the versions should be coherent.
 - The python dependencies that are used only in development and tests must lie in the file requirements-dev.txt.
 - The python dependencies that are used in production, in developpement and tests must lie in the file requirements.txt.
+- The versions of the python package (pyproject.toml) and the version of the Alpine package (APKBUILD) must **always** match.
 
 ## Automation rules
 
