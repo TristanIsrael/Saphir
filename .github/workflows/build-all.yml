@@ -193,7 +193,7 @@ jobs:
     runs-on: ubuntu-latest
  
     container:
-      image: alpine:3.21
+      image: alpine:3.24
  
     steps:      
       - name: Checkout sources
@@ -203,6 +203,7 @@ jobs:
         uses: ./.github/actions/prepare-build-env
         with:
           abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
+          repository-url: ${{ github.ref_name == 'main' && 'https://www.alefbet.net/github/saphir' || 'https://www.alefbet.net/github/saphir/edge' }}
  
       - name: Build APK
         uses: ./.github/actions/build-apk
@@ -214,6 +215,7 @@ jobs:
         uses: ./.github/actions/publish
         with:
           privkey: ${{ secrets.DEPLOY_KEY }}
+          branch: ${{ github.ref_name == 'main' && 'main' || 'edge' }}
           filepath: /home/builder/packages/saphir/x86_64/saphir*.apk
 
   build-saphir-av-clamav:
@@ -223,7 +225,7 @@ jobs:
     runs-on: ubuntu-latest
  
     container:
-      image: alpine:3.21
+      image: alpine:3.24
  
     steps:      
       - name: Checkout sources
@@ -233,6 +235,7 @@ jobs:
         uses: ./.github/actions/prepare-build-env
         with:
           abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
+          repository-url: ${{ github.ref_name == 'main' && 'https://www.alefbet.net/github/saphir' || 'https://www.alefbet.net/github/saphir/edge' }}
  
       - name: Build APK
         uses: ./.github/actions/build-apk
@@ -244,6 +247,7 @@ jobs:
         uses: ./.github/actions/publish
         with:
           privkey: ${{ secrets.DEPLOY_KEY }}
+          branch: ${{ github.ref_name == 'main' && 'main' || 'edge' }}
           filepath: /home/builder/packages/saphir/x86_64/saphir-av-clamav*.apk
 
   build-saphir-container-eset:
@@ -254,7 +258,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: alpine:3.21
+      image: alpine:3.24
 
     steps:      
       - name: Checkout sources
@@ -264,6 +268,7 @@ jobs:
         uses: ./.github/actions/prepare-build-env
         with:
           abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
+          repository-url: ${{ github.ref_name == 'main' && 'https://www.alefbet.net/github/saphir' || 'https://www.alefbet.net/github/saphir/edge' }}
  
       - name: Build APK
         uses: ./.github/actions/build-apk
@@ -275,6 +280,7 @@ jobs:
         uses: ./.github/actions/publish
         with:
           privkey: ${{ secrets.DEPLOY_KEY }}
+          branch: ${{ github.ref_name == 'main' && 'main' || 'edge' }}
           filepath: /home/builder/packages/saphir/x86_64/saphir-container-eset*.apk
 
   build-saphir-av-eset:
@@ -284,7 +290,7 @@ jobs:
     runs-on: ubuntu-latest
  
     container:
-      image: alpine:3.21
+      image: alpine:3.24
  
     steps:
       - name: Checkout sources
@@ -294,6 +300,7 @@ jobs:
         uses: ./.github/actions/prepare-build-env
         with:
           abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
+          repository-url: ${{ github.ref_name == 'main' && 'https://www.alefbet.net/github/saphir' || 'https://www.alefbet.net/github/saphir/edge' }}
  
       - name: Build APK
         uses: ./.github/actions/build-apk
@@ -305,6 +312,7 @@ jobs:
         uses: ./.github/actions/publish
         with:
           privkey: ${{ secrets.DEPLOY_KEY }}
+          branch: ${{ github.ref_name == 'main' && 'main' || 'edge' }}
           filepath: /home/builder/packages/saphir/x86_64/saphir-av-eset*.apk
           
   build-saphir-lib:
@@ -314,7 +322,7 @@ jobs:
     runs-on: ubuntu-latest
  
     container:
-      image: alpine:3.21
+      image: alpine:3.24
  
     steps:      
       - name: Checkout sources
@@ -324,6 +332,7 @@ jobs:
         uses: ./.github/actions/prepare-build-env
         with:
           abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
+          repository-url: ${{ github.ref_name == 'main' && 'https://www.alefbet.net/github/saphir' || 'https://www.alefbet.net/github/saphir/edge' }}
  
       - name: Build APK
         uses: ./.github/actions/build-apk
@@ -335,6 +344,7 @@ jobs:
         uses: ./.github/actions/publish
         with:
           privkey: ${{ secrets.DEPLOY_KEY }}
+          branch: ${{ github.ref_name == 'main' && 'main' || 'edge' }}
           filepath: /home/builder/packages/saphir/x86_64/saphir-lib*.apk
 
   build-saphir-gui:
@@ -344,7 +354,7 @@ jobs:
     runs-on: ubuntu-latest
  
     container:
-      image: alpine:3.21
+      image: alpine:3.24
  
     steps:      
       - name: Checkout sources
@@ -354,6 +364,7 @@ jobs:
         uses: ./.github/actions/prepare-build-env
         with:
           abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
+          repository-url: ${{ github.ref_name == 'main' && 'https://www.alefbet.net/github/saphir' || 'https://www.alefbet.net/github/saphir/edge' }}
  
       - name: Build APK
         uses: ./.github/actions/build-apk
@@ -365,6 +376,7 @@ jobs:
         uses: ./.github/actions/publish
         with:
           privkey: ${{ secrets.DEPLOY_KEY }}
+          branch: ${{ github.ref_name == 'main' && 'main' || 'edge' }}
           filepath: /home/builder/packages/saphir/x86_64/saphir-gui*.apk
 
   build-saphir-splash:
@@ -374,7 +386,7 @@ jobs:
     runs-on: ubuntu-latest
  
     container:
-      image: alpine:3.21
+      image: alpine:3.24
  
     steps:      
       - name: Checkout sources
@@ -384,6 +396,7 @@ jobs:
         uses: ./.github/actions/prepare-build-env
         with:
           abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
+          repository-url: ${{ github.ref_name == 'main' && 'https://www.alefbet.net/github/saphir' || 'https://www.alefbet.net/github/saphir/edge' }}
  
       - name: Build APK
         uses: ./.github/actions/build-apk
@@ -395,4 +408,5 @@ jobs:
         uses: ./.github/actions/publish
         with:
           privkey: ${{ secrets.DEPLOY_KEY }}
+          branch: ${{ github.ref_name == 'main' && 'main' || 'edge' }}
           filepath: /home/builder/packages/saphir/x86_64/saphir-splash*.apk
