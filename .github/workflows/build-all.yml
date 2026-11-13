@@ -51,7 +51,10 @@ on:
       - "setup/packages/saphir/**"
       - "python/**"
 
-jobs:  
+env:
+  SAFECOR_REPO_URL: 'https://www.alefbet.net/github/safecor/edge'
+
+jobs:
   detect-changes:
     name: Detect changed packages
     runs-on: ubuntu-latest
@@ -204,6 +207,7 @@ jobs:
         with:
           abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
           repository-url: ${{ github.ref_name == 'main' && 'https://www.alefbet.net/github/saphir' || 'https://www.alefbet.net/github/saphir/edge' }}
+          safecor-repository-url: ${{ env.SAFECOR_REPO_URL }}
  
       - name: Build APK
         uses: ./.github/actions/build-apk
@@ -236,6 +240,7 @@ jobs:
         with:
           abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
           repository-url: ${{ github.ref_name == 'main' && 'https://www.alefbet.net/github/saphir' || 'https://www.alefbet.net/github/saphir/edge' }}
+          safecor-repository-url: ${{ env.SAFECOR_REPO_URL }}
  
       - name: Build APK
         uses: ./.github/actions/build-apk
@@ -269,6 +274,7 @@ jobs:
         with:
           abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
           repository-url: ${{ github.ref_name == 'main' && 'https://www.alefbet.net/github/saphir' || 'https://www.alefbet.net/github/saphir/edge' }}
+          safecor-repository-url: ${{ env.SAFECOR_REPO_URL }}
  
       - name: Build APK
         uses: ./.github/actions/build-apk
@@ -301,6 +307,7 @@ jobs:
         with:
           abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
           repository-url: ${{ github.ref_name == 'main' && 'https://www.alefbet.net/github/saphir' || 'https://www.alefbet.net/github/saphir/edge' }}
+          safecor-repository-url: ${{ env.SAFECOR_REPO_URL }}
  
       - name: Build APK
         uses: ./.github/actions/build-apk
@@ -333,6 +340,7 @@ jobs:
         with:
           abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
           repository-url: ${{ github.ref_name == 'main' && 'https://www.alefbet.net/github/saphir' || 'https://www.alefbet.net/github/saphir/edge' }}
+          safecor-repository-url: ${{ env.SAFECOR_REPO_URL }}
  
       - name: Build APK
         uses: ./.github/actions/build-apk
@@ -365,6 +373,7 @@ jobs:
         with:
           abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
           repository-url: ${{ github.ref_name == 'main' && 'https://www.alefbet.net/github/saphir' || 'https://www.alefbet.net/github/saphir/edge' }}
+          safecor-repository-url: ${{ env.SAFECOR_REPO_URL }}
  
       - name: Build APK
         uses: ./.github/actions/build-apk
@@ -397,6 +406,7 @@ jobs:
         with:
           abuild-key: ${{ secrets.ABUILD_PRIVATE_KEY }}
           repository-url: ${{ github.ref_name == 'main' && 'https://www.alefbet.net/github/saphir' || 'https://www.alefbet.net/github/saphir/edge' }}
+          safecor-repository-url: ${{ env.SAFECOR_REPO_URL }}
  
       - name: Build APK
         uses: ./.github/actions/build-apk
