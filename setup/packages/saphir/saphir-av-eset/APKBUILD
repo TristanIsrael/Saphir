@@ -1,8 +1,8 @@
 # Contributor:
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 pkgname=saphir-av-eset
-pkgver=1.0
-pkgrel=1
+pkgver=2.0
+pkgrel=0
 pkgdesc="Saphir - ESET Antivirus"
 url="https://alefbet.net/"
 arch="noarch"

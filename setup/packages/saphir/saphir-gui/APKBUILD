@@ -1,8 +1,8 @@
 # Contributor:
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 pkgname=saphir-gui
-pkgver=3.2
-pkgrel=6
+pkgver=3.3
+pkgrel=0
 pkgdesc="Saphir - Graphical User Interface"
 url="https://alefbet.net/"
 arch="x86_64"
