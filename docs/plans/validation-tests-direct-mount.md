@@ -22,7 +22,7 @@ We want to completely get rid of the `9p` sharing.
   - Instead we should create a squashfs containing all the packages. The command is `$ mksquashfs packages packages.squashfs -comp zstd -Xcompression-level 1 -b 128K -noappend -no-xattrs`
   - The squashfs should be created by the github CI and published on the server. 
   - The squashfs will be packed in the ISO image of Saphir.
-  - The squashfs should ne be loaded in memory when the system boots in diskless mode (USB key) and mounted from the USB disk.
+  - The squashfs should not be loaded in memory when the system boots in diskless mode (USB key) and mounted directly from the USB disk.
 
 ## Future improvements
 
