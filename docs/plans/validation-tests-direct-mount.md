@@ -1,17 +1,18 @@
 # Validation tests
 
-Scope: Direct mount Safecor features added into Saphir.
+Scope: Direct mount Safecor features added into Saphir. The problems belong to both Saphir and Safecor.
 
 ## Run 1
 
-- [DONE] The storage setting of the XL files should be removed from saphir-gui, saphir-viewer, saphir-av-clamav, saphir-av-eset and sys-usb.
-- [DONE] The domain `sys-usb` should be declared `driver_domain` (`driver_domain = 1` in `sys-usb.conf`).
-- [DONE] PCI passhtrough is not available in PVH Domains. The domain sys-usb should be in `pv` mode instead of `pvh`.
+- [FIXED] The storage setting of the XL files should be removed from saphir-gui, saphir-viewer, saphir-av-clamav, saphir-av-eset and sys-usb.
+- [FIXED] The domain `sys-usb` should be declared `driver_domain` (`driver_domain = 1` in `sys-usb.conf`).
+- [FIXED] PCI passhtrough is not available in PVH Domains. The domain sys-usb should be in `pv` mode instead of `pvh`.
 - When the Dom0 starts it keeps spamming the message bus with the following messages and it does not answer to the message `system/topology/my_config` for example:
   - `{"component": "saphir", "module": "System controller", "datetime": "2026-11-14 22:24:35.007", "description": "Safecor Dom0 controller is ready"}`
   - `{"component": "saphir", "module": "System controller", "datetime": "2026-11-14 22:24:36.051", "description": "Default language defined on the kernel's command line is en"}`
   - `{"component": "saphir", "module": "System controller", "datetime": "2026-11-14 22:24:35.007", "description": "Safecor Dom0 controller is ready"}`
   - `{"component": "saphir", "module": "System controller", "datetime": "2026-11-14 22:24:36.051", "description": "Default language defined on the kernel's command line is en"}`
+- The command `my_config` should send the Domain's configuration only and it seems to be sending the whole topology.json.
 
 ## Packages repository redesign
 
