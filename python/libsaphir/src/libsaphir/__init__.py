@@ -1,7 +1,7 @@
 # ruff: noqa: I001
 # Import order is dependency-driven (circular import avoidance), not alphabetical.
 __author__ = "Tristan Israël (tristan.israel@alefbet.net)"
-__version__ = "1.0"
+__version__ = "2.0"
 
 import logging
 from logging import NullHandler

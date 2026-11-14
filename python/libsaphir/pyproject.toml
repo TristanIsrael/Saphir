@@ -1,10 +1,10 @@
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+dynamic = ["version"]
 
 [project]
 name = "libsaphir"
-version = "2.0.0"
 authors = [ 
     { name="Tristan Israël", email="tristan.israel@alefbet.net" }, 
 ]
@@ -19,6 +19,9 @@ classifiers = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/libsaphir"]
+
+[tool.hatch.version]
+path = "src/libsaphir/__init__.py"
 
 [project.urls]
 Homepage = "https://github.com/pypa/sampleproject"
