@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "saphir-gui"
-version = "4.0.0"
+dynamic = ["version"]
 authors = [ 
     { name="Tristan Israël", email="tristan.israel@alefbet.net" }, 
 ]
@@ -19,6 +19,9 @@ classifiers = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/gui"]
+
+[tool.hatch.version]
+path = "src/Saphir/__init__.py"
 
 [project.urls]
 Homepage = "https://github.com/pypa/sampleproject"

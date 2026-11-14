@@ -22,12 +22,10 @@ from PySide6.QtQml import (
 )
 from PySide6.QtQuick import QQuickWindow
 from PySide6.QtQuickControls2 import QQuickStyle
-from safecor import Api, System
+from safecor import Api, System, __version__
 
 api_ready = threading.Event()
 FORCE_FULLSCREEN = False
-VERSION = "3.2.0"
-
 
 def on_ready():
     print("Safecor API is ready")
@@ -91,7 +89,7 @@ def install_font(filename: str):
 if __name__ == "__main__":
     app.setQuitOnLastWindowClosed(True)
     app.setApplicationName("Saphir")
-    app.setApplicationVersion(VERSION)
+    app.setApplicationVersion(__version__)
 
     app_root_path = Path(__file__).resolve().parent
 
