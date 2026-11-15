@@ -32,7 +32,8 @@
                 "memory": 3000,
                 "vcpu_group": "antivirus",
                 "temp_disk_size": 4096,
-                "swap_size": 1024
+                "swap_size": 1024,
+                "direct_mount": 1
             },
             {
                 "name": "saphir-av-eset",
@@ -40,7 +41,8 @@
                 "memory": 2100,
                 "vcpu_group": "antivirus",
                 "temp_disk_size": 4096,
-                "swap_size": 1024
+                "swap_size": 1024,
+                "direct_mount": 1
             }
         ]
     },
