@@ -7,12 +7,13 @@ Scope: Direct mount Safecor features added into Saphir. The problems belong to b
 - [FIXED] The storage setting of the XL files should be removed from saphir-gui, saphir-viewer, saphir-av-clamav, saphir-av-eset and sys-usb.
 - [FIXED] The domain `sys-usb` should be declared `driver_domain` (`driver_domain = 1` in `sys-usb.conf`).
 - [FIXED] PCI passhtrough is not available in PVH Domains. The domain sys-usb should be in `pv` mode instead of `pvh`.
-- When the Dom0 starts it keeps spamming the message bus with the following messages and it does not answer to the message `system/topology/my_config` for example:
+- [FIXED] When the Dom0 starts it keeps spamming the message bus with the following messages:
   - `{"component": "saphir", "module": "System controller", "datetime": "2026-11-14 22:24:35.007", "description": "Safecor Dom0 controller is ready"}`
   - `{"component": "saphir", "module": "System controller", "datetime": "2026-11-14 22:24:36.051", "description": "Default language defined on the kernel's command line is en"}`
   - `{"component": "saphir", "module": "System controller", "datetime": "2026-11-14 22:24:35.007", "description": "Safecor Dom0 controller is ready"}`
   - `{"component": "saphir", "module": "System controller", "datetime": "2026-11-14 22:24:36.051", "description": "Default language defined on the kernel's command line is en"}`
-- The command `my_config` should send the Domain's configuration only and it seems to be sending the whole topology.json.
+- [FIXED] The command `my_config` answers an empty topology: `{"product_name": "No Name", "use_usb": false, "repository_disabled": false, "domains": [], "screen": {"width": 0, "height": 0, "rotation": 0, "enabled": false, "default_focus": ""}, "languages": [], "default_language": "en", "pci_blacklist": []}`
+- [FIXED] The command `my_config` should send the Domain's configuration only and it seems to be sending the whole topology.json.
 
 ## Packages repository redesign
 
