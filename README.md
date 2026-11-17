@@ -67,7 +67,7 @@ The [Project's documentation](docs/Readme.md) is dedicated to developers who wan
 
 Saphir - Free Usage License
 
-Copyright (c) 2026 [Your Name or Organization]
+Copyright (c) 2026 Tristan Israël
 
 1. You are free to use this software at no cost, for personal or internal purposes.
 2. You may modify the software for your internal use.
