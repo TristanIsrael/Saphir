@@ -1,25 +1,66 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
-datas = [
-    ("src/Saphir/GUI", "GUI"),
+# Add libs for weasyprint
+LIBS = [
+    "libpango-1.0.so.0",
+    "libpangocairo-1.0.so.0",
+    "libpangoft2-1.0.so.0",
+    "libpangoxft-1.0.so.0",
+    "libharfbuzz.so.0",
+    "libharfbuzz-subset.so.0",
+    "libharfbuzz-raster.so.0",
+    "libharfbuzz-vector.so.0",
+    "libgobject-2.0.so.0",
+    "libglib-2.0.so.0",
+    "libfribidi.so.0",    
+    "libfontconfig.so.1",
+]
+
+binaries = []
+for lib in LIBS:
+    for d in ("/usr/lib", "/lib"):
+        path = os.path.join(d, lib)
+        if os.path.exists(path):
+            binaries.append((path, "."))
+            break
+    else:
+        print(f"WARNING : {lib} not found")
+
+hiddenimports = (
+    "PySide6.QtCore",
+    "PySide6.QtGui",
+    "PySide6.QtQuick",
+    "PySide6.QtQml",
+    "PySide6.QtNetwork",
+    "jinja2",
+    "weasyprint",
+    "cairocffi",
+    "cffi",
+    "gi",
+    ["_cffi_backend"]
+    + collect_submodules("tinyhtml5")
+    + collect_submodules("fontTools")
+)
+
+datas = (
+    [("src/Saphir/GUI", "GUI"),
     ("src/Saphir/i18n", "i18n"),
     ("src/Saphir/fonts", "fonts"),
-    ("src/Saphir/Saphir", "Saphir")
-]
+    ("src/Saphir/Saphir", "Saphir")] 
+    + collect_data_files("weasyprint") 
+    + collect_data_files("pyphen")    
+)
+#+ [("/usr/share/fonts/dejavu", "fonts")]   # embedded fonts
 
 a = Analysis(
     ['src/Saphir/main.py'],
     pathex=[],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=[
-        "PySide6.QtCore",
-        "PySide6.QtGui",
-        "PySide6.QtQuick",
-        "PySide6.QtQml",
-        "PySide6.QtNetwork",
-        "jinja2",
-        "weasyprint"
+        
     ],
     hookspath=[],
     hooksconfig={},
