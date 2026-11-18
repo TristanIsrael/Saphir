@@ -44,12 +44,13 @@ La station blanche gère les cas d’utilisation suivants :
 
 ## 🖥️ Compatibilité
 
-| Alpine | Statut |
-|--|--|
-| v3.20 | ![Fonctionnel](https://img.shields.io/badge/Fonctionnel-109900) |
-| v3.21 | ![Fonctionnel](https://img.shields.io/badge/Fonctionnel-109900) |
-| v3.22 | ![Non testé](https://img.shields.io/badge/Non%20testé-ffa500) |
-| v3.23 | ![Non testé](https://img.shields.io/badge/Non%20testé-ffa500) |
+| Alpine | Saphir<br/>v3 | Saphir<br/>v4 (edge) |
+|--|--|--|
+| v3.20 | ![Fonctionnel](https://img.shields.io/badge/Fonctionnel-109900) | | 
+| v3.21 | ![Fonctionnel](https://img.shields.io/badge/Fonctionnel-109900) | |
+| v3.22 | ![Non testé](https://img.shields.io/badge/Non_testé-ffa500) | |
+| v3.23 | ![Non testé](https://img.shields.io/badge/Non_testé-ffa500) | |
+| v3.24 | ![Non testé](https://img.shields.io/badge/Non_testé-ffa500) | ![En cours](https://img.shields.io/badge/En_cours-303099) |
 
 ## Licence du produit
 

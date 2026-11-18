@@ -50,12 +50,13 @@ The sheep-dip handles the following use cases:
 
 ## 🖥️ Compatibility
 
-| Alpine | Status |
-|--|--|
-| v3.20 | ![Working](https://img.shields.io/badge/Working-109900) |
-| v3.21 | ![Working](https://img.shields.io/badge/Working-109900) |
-| v3.22 | ![Not tested](https://img.shields.io/badge/Not%20tested-ffa500) |
-| v3.23 | ![Not tested](https://img.shields.io/badge/Not%20tested-ffa500) |
+| Alpine | Saphir<br/>v3 | Saphir<br/>v4 (edge) |
+|--|--|--|
+| v3.20 | ![Working](https://img.shields.io/badge/Working-109900) | | 
+| v3.21 | ![Working](https://img.shields.io/badge/Working-109900) | |
+| v3.22 | ![Not tested](https://img.shields.io/badge/Not%20tested-ffa500) | |
+| v3.23 | ![Not tested](https://img.shields.io/badge/Not%20tested-ffa500) | |
+| v3.24 | ![Not tested](https://img.shields.io/badge/Not%20tested-ffa500) | ![In progress](https://img.shields.io/badge/In_progress-303099)  |
 
 ## 📚 Documentation
 
