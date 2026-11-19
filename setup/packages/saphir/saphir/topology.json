@@ -33,7 +33,7 @@
                 "vcpu_group": "antivirus",
                 "temp_disk_size": 4096,
                 "swap_size": 1024,
-                "direct_mount": 1
+                "direct_mount": { "mode": "ro" }
             },
             {
                 "name": "saphir-av-eset",
@@ -42,7 +42,7 @@
                 "vcpu_group": "antivirus",
                 "temp_disk_size": 4096,
                 "swap_size": 1024,
-                "direct_mount": 1
+                "direct_mount": { "mode": "ro" }
             }
         ]
     },
