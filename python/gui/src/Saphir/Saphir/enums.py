@@ -11,7 +11,7 @@ QML_IMPORT_MAJOR_VERSION = 1
 
 
 class SystemState(Enum):
-    """Workflow states of the Saphir state machine (see docs/workflow-rules.md)."""
+    """Workflow states of the Saphir state machine (see docs/specifications/workflow.md)."""
 
     SystemInactive = 0
     SystemStarting = 1

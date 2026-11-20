@@ -20,7 +20,7 @@ Saphir is a **sheep-dip**: a secure workstation that scans external media (USB d
 | Communication | MQTT via the Safecor API (`from safecor import Api, Topics`); custom protocol `saphir/analysis/{request,response,status,error,stop,resume,reset}` |
 | Architecture | Multi-VM isolated domains (GUI, ClamAV, ESET); event-driven; MVVM (QObject signals ↔ QML); Template Method for AV controllers; bounded queue + worker pool |
 | Packaging | Alpine `APKBUILD` packages (abuild), PyInstaller binaries, signed APK repo, bootable ISO (mkimg/apkovl) |
-| CI/CD | GitHub Actions: change detection → `abuild` in an `alpine:3.21` container → rsync publish to the official repo |
+| CI/CD | GitHub Actions: change detection → `abuild` in an `alpine:3.24` container → rsync publish to the official repo |
 | Dev | Local Docker (Alpine + APK repo), `DEVMODE` with mocks (no appliance needed), pytest, Doxygen |
 
 ## Repository structure
@@ -36,7 +36,7 @@ setup/
 ├── infrastructure/ # Alpine/Safecor/Saphir repo sync scripts
 └── docker/         # Local dev environment (Alpine + APK repo)
 .github/         # CI/CD (build-all.yml)
-docs/            # Developer + user documentation
+docs/            # Technical documentation for AI coding agents (offline reference; see docs/Readme.md)
 ```
 
 ## Key code locations
@@ -147,7 +147,7 @@ Naming conventions:
 
 - Write documentation, comments and commits in english language even if the prompt is in another language.
 - Update the documentation in /docs and the Doxygen comments of the source code up to date when applying changes.
-- Keep `Readme.md` ("Current features") and `docs/manual.md` in sync with user-visible changes.
+- Keep `Readme.md` / `README.fr.md` ("Current features") and the user manual (Saphir wiki, `User-manual.md`) in sync with user-visible changes.
 - Keep `README.fr.md` (French language) and `README.md` (English language) in sync together.
 - Use the documentation from **Safecor** to adapt the behaviour of Saphir.
 - All the interactions of Saphir and Safecor must use Safecor's API.

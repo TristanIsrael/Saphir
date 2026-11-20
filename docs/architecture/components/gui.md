@@ -4,61 +4,32 @@
 > principles, QML structure, screens, the system visual status, theming, and localization.
 >
 > **Related documents**:
-> - [`workflow-rules.md`](workflow-rules.md) — the workflow → screen **contract** (§7 UI State Mapping,
+> - [`../../specifications/workflow.md`](../../specifications/workflow.md) — the workflow → screen **contract** (§7 UI State Mapping,
 >   §7.1 `SystemLoadingPanel`, §7.2 system visual status).
-> - [`architecture.md`](architecture.md) — the QML layer and the data models (§3.4–3.5).
-> - [`gui-backlog.md`](gui-backlog.md) — GUI rule-debt and feature backlog.
+> - [`../design-rules.md`](../design-rules.md) — the GUI **design rules** (this document's §1).
+> - [`qml-layer.md`](qml-layer.md) — the QML layer and the data models (the former `architecture.md` §3.4–3.5).
+> - [`../../project-status.md`](../../project-status.md) — GUI rule-debt and feature backlog.
 >
-> Where a rule is *defined* in `architecture.md` and a mapping is a *workflow contract*, this
+> Where a rule is *defined* in [`qml-layer.md`](qml-layer.md) and a mapping is a *workflow contract*, this
 > document references them instead of duplicating; it centralises the UI-specific detail.
 
 ---
 
-## 1. Principles
+## 1. Design rules
 
-### 1.1 View-state rule (MVVM)
+The five GUI design rules are **defined** in [`../design-rules.md`](../design-rules.md) §1
+(Saphir GUI design rules). One-line summary:
 
-The QML views are **stateless projections of the workflow**. What is shown — the active panel,
-enabled/disabled buttons, open dialogs, editable fields — is **derived directly from
-`SystemState`** and the published bindings. A view must not *decide* visibility or enablement
-with its own business conditionals: bind it to a property that already encodes the state
-(e.g. `enabled: viewModel.canStartAnalysis`) and push any non-trivial derivation into the
-controller/ViewModel, exposed as a single property. Only **trivially presentational** logic
-with no workflow meaning (hover highlight, slider clamping) may live in a view. This keeps the
-UI deterministic and testable by driving `SystemState` alone. *(Defined in
-[`architecture.md`](architecture.md) §3.4.)*
+| # | Rule | One-line summary |
+|---|------|------------------|
+| 1.1 | **View-state rule (MVVM)** | Views are stateless projections of `SystemState`; no business conditionals in QML. |
+| 1.2 | **One screen at a time** | At most one screen column per state; `SystemLoadingPanel` is an overlay. |
+| 1.3 | **Form & responsiveness** | Responsive, input-agnostic; 8-inch touch tablet primary, desktop PC supported; no hard-coded tablet assumption. |
+| 1.4 | **Input model** | Safecor virtual inputs; touch-first — cursor hidden by default, re-appears on first mouse movement. |
+| 1.5 | **Form-factor selector** | `handheld` (medium screen + touch) drives the UI variant; currently forced `True`. |
 
-### 1.2 One screen at a time
-
-At most **one** of the screen columns (File Selection, Analysis Panel, File Copy, Shutdown
-Dialog) is visible per state. The `SystemLoadingPanel` is an **overlay** (not a screen), so it
-may be shown on top of a screen. *(Contract in [`workflow-rules.md`](workflow-rules.md) §7.)*
-
-### 1.3 Form & responsiveness rule
-
-The views must be **responsive** and **input-agnostic**. The **primary deployment target** is an
-**8-inch touch tablet** (touch-first), but the application must also be usable on a **desktop PC
-with keyboard and mouse**. For now a **single interface** serves both, with different input
-handling; it must not hard-code the tablet assumption. The layout must tolerate a range of screen
-sizes so the UI can later **specialise** per target (large screen / desktop, and smartphone if it
-becomes viable) **without a redesign**. Any view that hard-codes a fixed size, assumes
-touch-only, or breaks on a non-tablet form factor is **rule-debt** (see
-[`gui-backlog.md`](gui-backlog.md)). *(Defined in [`architecture.md`](architecture.md) §3.4.)*
-
-### 1.4 Input model (Safecor virtual inputs)
-
-Safecor abstracts physical input devices (a USB vector of attack) and exposes **virtual inputs**
-to the product, injecting the signals transparently. On top of that the app is **touch-first**:
-the cursor is hidden by default and **re-appears on first mouse movement**
-(`InputEventFilter` switches `Qt.BlankCursor` → `Qt.ArrowCursor`) — i.e. **automatic environment
-discovery**, not a configured flag. *(From [`architecture.md`](architecture.md) §3.2.)*
-
-### 1.5 Form-factor selector (`handheld`)
-
-`handheld` (`Environment.qml`) means **medium screen + touch** (a mouse may still be attached);
-it is meant to drive the UI variant (small "PC" buttons vs. large "touch" buttons, per-screen-size
-layout). It is currently **forced** (always `True`) and not yet wired to environment discovery —
-form-factor adaptation is open rule-debt (see [`gui-backlog.md`](gui-backlog.md)).
+Any deviation from a rule is **rule-debt**, tracked in
+[`../../project-status.md`](../../project-status.md) (GUI backlog & rule-debt).
 
 ---
 
@@ -74,7 +45,7 @@ form-factor adaptation is open rule-debt (see [`gui-backlog.md`](gui-backlog.md)
 
 **Data models** — all QML-facing list/table data is held in `QAbstractItemModel` subclasses
 owned by `ApplicationController` and exposed as constant `QObject` properties (see
-[`architecture.md`](architecture.md) §3.5):
+[`qml-layer.md`](qml-layer.md)):
 
 | Model | Base | Role |
 |-------|------|------|
@@ -90,7 +61,7 @@ owned by `ApplicationController` and exposed as constant `QObject` properties (s
 ## 3. Screens & state mapping
 
 The per-state screen visibility is a **workflow contract** defined in
-[`workflow-rules.md` §7](workflow-rules.md). The four screens:
+[`../../specifications/workflow.md` §7](../../specifications/workflow.md). The four screens:
 
 - **File Selection** (`FilesSelectionPanel`) — browse the source disk, build the queue.
 - **Analysis Panel** (`AnalysisPanel`) — progress, ETA, **pause**.
@@ -98,7 +69,7 @@ The per-state screen visibility is a **workflow contract** defined in
 - **Shutdown Dialog** — shutdown confirmation.
 
 Plus the **`SystemLoadingPanel`** overlay (size/visibility driven by the workflow — see
-[`workflow-rules.md` §7.1](workflow-rules.md)).
+[`../../specifications/workflow.md` §7.1](../../specifications/workflow.md)).
 
 ---
 
@@ -110,7 +81,7 @@ tells the user whether the system is clean, has been used, or has found a threat
 **orthogonal to the workflow states** (a derived visual, not a `SystemState`).
 
 The contract (conditions, precedence, workflow relation) is in
-[`workflow-rules.md` §7.2](workflow-rules.md). Summary:
+[`../../specifications/workflow.md` §7.2](../../specifications/workflow.md). Summary:
 
 | Visual status | Meaning | Condition (derived) | Image (light theme) | Color filter |
 |---------------|---------|---------------------|---------------------|--------------|
@@ -173,5 +144,6 @@ template even though a FR template exists (**divergence D3**).
 
 ## 7. Rule-debt & backlog
 
-- **Rule-debt** (deviations from the rules in §1) and the **GUI feature backlog** are tracked in
-  [`gui-backlog.md`](gui-backlog.md).
+- **Rule-debt** (deviations from the rules in §1, defined in
+  [`../design-rules.md`](../design-rules.md)) and the **GUI feature backlog** are tracked in
+  [`../../project-status.md`](../../project-status.md) (GUI backlog & rule-debt).

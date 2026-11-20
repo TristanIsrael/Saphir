@@ -1,5 +1,9 @@
 # Tech-Stack & Memory Analysis — Saphir
 
+> **Note (2026-11-20)**: the decision log (§8) has been extracted to the ADR registry
+> [`architecture/decisions/`](architecture/decisions/) — ADRs 0010–0014. The registry is the
+> authoritative reference; this document is kept as the historical analysis.
+
 > **Status**: Draft — to be discussed (decisions pending, §7)
 > **Last updated**: 2026-10-28
 > **Audience**: developers / maintainers deciding the tech stack before the refactor
@@ -31,7 +35,7 @@
 
 (+ dom0 / hypervisor / kernel on top.)
 
-### 2.2 GUI footprint (`docs/old/optimization.md`)
+### 2.2 GUI footprint (`docs/archive/legacy/optimization.md`)
 
 - PySide6/QML GUI: **~389 MB RAM** (with MESA); ~99 MB base.
 - **Two packaging modes** (`saphir-gui/APKBUILD`, `bundle` flag):
@@ -83,7 +87,7 @@ Is **PySide6/Python** the right choice for the GUI, or should we move to a **com
 | **Report (PDF)** — WeasyPrint + fonttools + tinycss2 + pyphen | ~30–60 MB | C++ equivalent to develop, **or** WeasyPrint as a subprocess (→ same ~30–60 MB) |
 | **Subtotal** | **~160–310 MB** | **~10–50 MB** (report reworked) / **~40–110 MB** (WeasyPrint subprocess) |
 
-**C. Residual "unused" Qt still bundled**: **QtNetwork** (~15–25 MB) — kept (hiddenimport, not in the strip filter) although the GUI talks over **MQTT/paho-mqtt**, not QtNetwork → **to remove** (test first). See `gui-backlog.md`.
+**C. Residual "unused" Qt still bundled**: **QtNetwork** (~15–25 MB) — kept (hiddenimport, not in the strip filter) although the GUI talks over **MQTT/paho-mqtt**, not QtNetwork → **to remove** (test first). See [`project-status.md`](project-status.md) (GUI backlog & rule-debt).
 
 **D. Balance (GUI VM disk, current bundle mode)**:
 
@@ -142,13 +146,13 @@ Each point lists the decision, the options, the implications (memory / effort / 
 ### D-T2 — Strip the GUI VM — ✅ **DECIDED** (QtNetwork part superseded)
 - **Options**: (a) keep the bundle as-is; (b) finish the stripping.
 - **Implications**: the PyInstaller spec **already strips** the unused Qt modules (Qt3D, QtCharts, QtMultimedia, QtWeb/WebEngine, QtSensors, …), so the main bloat is **gone** in the current bundle. What remains: **QtNetwork** (~15–25 MB, to remove — GUI uses MQTT, not QtNetwork; test first) and **MESA/LLVM** (~236 MB, **keep** — OpenGL hardware acceleration, needed on the tablet). **Without changing the stack.**
-- **Decision (2026-10-28)**: **drop QtNetwork** (remove from `hiddenimports` + strip filter, test first); **keep MESA/LLVM** (OpenGL). Tracked in `gui-backlog.md`; action in the refactor (packaging phase). See §8.
+- **Decision (2026-10-28)**: **drop QtNetwork** (remove from `hiddenimports` + strip filter, test first); **keep MESA/LLVM** (OpenGL). Tracked in [`project-status.md`](project-status.md) (GUI backlog & rule-debt); action in the refactor (packaging phase). See §8.
 - **Superseded (2026-11-01, Phase 8.2, `4b0b1b2`)**: the bundle **fails to boot** without QtNetwork (PySide6's `__init__` probes it transitively). QtNetwork is **required** and remains in the bundle. The premise "GUI talks over MQTT, not QtNetwork" is insufficient — the module is loaded by PySide6 internals at startup.
 
 ### D-T3 — 2nd antivirus engine (ESET/LXC vs Alpine-compatible) — ✅ **DECIDED**
 - **Options**: (a) keep ESET in the Debian LXC; (b) replace it with an **Alpine/MUSL-compatible** engine to reach the consensus without the LXC; (c) keep ESET but reduce the LXC cost.
 - **Implications**: (b) removes **~2 100 MB + the LXC**, but **no quality AV engine exists in MUSL/Alpine** (all commercial engines are glibc; YARA is a pattern matcher, not a real AV engine) → would erode the consensus. (a) keeps ESET quality, pays the LXC cost. (c) is a follow-up optimization (measure ESET's real RAM, shrink the allocation).
-- **Decision (2026-10-28)**: **Keep ESET/LXC** — detection quality > saving ~2 100 MB. **Plan (c)** as a follow-up: measure ESET's real RAM (an OOM is documented in `docs/old/analysis.md`) and reduce the VM allocation if safe; watch for a future MUSL-compatible quality engine. See §8.
+- **Decision (2026-10-28)**: **Keep ESET/LXC** — detection quality > saving ~2 100 MB. **Plan (c)** as a follow-up: measure ESET's real RAM (an OOM is documented in `docs/archive/legacy/analysis.md`) and reduce the VM allocation if safe; watch for a future MUSL-compatible quality engine. See §8.
 
 ### D-T4 — ClamAV optimization — ✅ **DECIDED**
 - **Options**: (a) keep `clamd` resident (3 000 MB, full signatures, `Bytecode true`); (b) on-demand (start/stop `clamd` around the scan); (c) reduce signatures (*FRESH*, `Bytecode false`).
@@ -168,6 +172,6 @@ Each point lists the decision, the options, the implications (memory / effort / 
 |----|----------|------|-----------|
 | **D-T1** | **Keep PySide6/Python** for the GUI (no C++ rewrite) | 2026-10-28 | C++ saves only **~1–2 % of the total** RAM (≈50–150 MB; ~450–500 MB of the GUI disk is common to both stacks) while costing a **full rewrite** of the GUI **and** the PDF report (WeasyPrint has no trivial C++ equivalent), the viewer, and the MQTT lib. The gain (imperceptible perf, negligible memory) is not worth the effort/risk; the real levers are elsewhere (D-T2, D-T3, D-T4, D-T5). |
 | **D-T2** | **Finish the GUI stripping**: drop **QtNetwork**; **keep MESA/LLVM** (OpenGL) | 2026-10-28 | The PyInstaller spec already strips the unused Qt modules. QtNetwork (~15–25 MB) is the last residual — the GUI talks over MQTT/paho-mqtt, not QtNetwork → remove it from `hiddenimports` + the strip filter (test first). MESA/LLVM back OpenGL hardware acceleration (needed on the tablet) → keep. Modest gain (~15–25 MB) but free and shrinks the attack surface. Action scheduled in the refactor (packaging phase). |
-| **D-T3** | **Keep ESET in the Debian LXC** (no MUSL replacement); **plan a follow-up** to measure ESET's real RAM and shrink the VM allocation if possible | 2026-10-28 | Detection quality is the priority over saving ~2 100 MB. There is **no quality AV engine available in MUSL/Alpine** (all commercial engines are glibc; YARA is a pattern matcher, not a real AV engine) — replacing ESET would erode the consensus, the core of the product. ESET requires glibc → the trimmed Debian LXC (squashfs) is the only workable host. Follow-up (option c): measure ESET's real RAM (`docs/old/analysis.md` documents an ESET OOM on some files, so 2 100 MB is not necessarily slack) and reduce the allocation if safe. Track a MUSL-compatible quality engine as a future option to watch. |
+| **D-T3** | **Keep ESET in the Debian LXC** (no MUSL replacement); **plan a follow-up** to measure ESET's real RAM and shrink the VM allocation if possible | 2026-10-28 | Detection quality is the priority over saving ~2 100 MB. There is **no quality AV engine available in MUSL/Alpine** (all commercial engines are glibc; YARA is a pattern matcher, not a real AV engine) — replacing ESET would erode the consensus, the core of the product. ESET requires glibc → the trimmed Debian LXC (squashfs) is the only workable host. Follow-up (option c): measure ESET's real RAM (`docs/archive/legacy/analysis.md` documents an ESET OOM on some files, so 2 100 MB is not necessarily slack) and reduce the allocation if safe. Track a MUSL-compatible quality engine as a future option to watch. |
 | **D-T4** | **Keep ClamAV as-is** (3 000 MB resident, full signatures, `Bytecode true`); follow-up = **measure** the real RAM to confirm the minimum | 2026-10-28 | With **no ballooning**, the VM allocation is up front: ClamAV **reaches 3 000 MB during a scan** and **crashes below it**, so on-demand (start/stop `clamd`) **frees nothing** (the VM is allocated 3 000 MB from the start either way) and reducing signatures is off the table (crash risk + detection loss, as D-T3). The 3 000 MB is **structural**, not waste. |
 | **D-T5** | **Deferred** — stateless redesign on **Safecor** (volatile encrypted disks, ephemeral keys, install the system **on disk** instead of RAM) to minimize the RAM impact; **re-evaluate after that work** | 2026-10-28 | Saphir is already stateless (VMs in RAM, `tmpfs` root, created/destroyed per cycle). The planned Safecor redesign uses **volatile encrypted disks** (ephemeral keys) to install the system on disk (not RAM) while guaranteeing integrity, cutting the RAM cost of statelessness. **Not done yet** — the memory analysis (§4/§5) may change once it lands, so D-T5 is **re-evaluated then**. |

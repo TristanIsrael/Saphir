@@ -323,7 +323,7 @@ Power loss / crash       → reboot → initial state (Ready); stateless, no rec
 
 ## 7. UI State Mapping
 
-The following table defines which panels/dialogs are visible per state. This should be the **sole** source of truth for UI visibility. Columns are ordered by **chronological appearance** (boot → shutdown). The broader UI reference (principles, theming, system visual status, localization) is centralised in [`gui.md`](gui.md).
+The following table defines which panels/dialogs are visible per state. This should be the **sole** source of truth for UI visibility. Columns are ordered by **chronological appearance** (boot → shutdown). The broader UI reference (principles, theming, system visual status, localization) is centralised in [`gui.md`](../architecture/components/gui.md).
 
 **One screen at a time** — at most **one** of the screen columns (File Selection, Analysis Panel, File Copy, Shutdown Dialog) is visible per state. The `SystemLoadingPanel` is an **overlay** (see §7.1), not a screen, so it may be shown on top of a screen. The **Report** is not an on-screen element (it is a generated PDF file), and the **Reset** confirmation is a transient dialog (not a per-state view), so neither is a column.
 
@@ -357,7 +357,7 @@ The **`SystemLoadingPanel`** is an overlay (not a panel) shown while the system 
 
 Both are pure functions of the workflow state + the `analysisReady` binding, so they stay within the view-state rule (the view binds to a derived property, it does not compute it).
 
-> **Intention vs. as-is**: the intended sizing is “large until a disk is detected, small once a disk is connected”. The as-is implementation keys the size on the **state** (large during `SystemStarting`, small from `SafecorReady`), which is functionally equivalent because a disk is only reachable once the core is ready. Requiring exact “disk-detected” sizing can be a follow-up (see `gui-backlog.md`).
+> **Intention vs. as-is**: the intended sizing is “large until a disk is detected, small once a disk is connected”. The as-is implementation keys the size on the **state** (large during `SystemStarting`, small from `SafecorReady`), which is functionally equivalent because a disk is only reachable once the core is ready. Requiring exact “disk-detected” sizing can be a follow-up (see [`../project-status.md`](../project-status.md) — GUI backlog & rule-debt).
 
 ### 7.2 System visual status (not a workflow state)
 
@@ -380,7 +380,7 @@ where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infecte
 >
 > **Bug (D8)**: `Bindings.qml` computes `infected: nbInfected > 1` (line 13) — it should be `> 0`, so a single infected file does not currently flip the status to *Dirty*.
 >
-> **Theming**: the concrete images and color filters per theme are documented in [`gui.md` §4–5](gui.md).
+> **Theming**: the concrete images and color filters per theme are documented in [`gui.md` §4–5](../architecture/components/gui.md).
 
 ---
 
@@ -528,6 +528,6 @@ This document should be updated whenever:
 - A transition rule changes
 - A new error handling path is added
 
-> **Scope**: this document is the contract of the **state machine** only. MQTT topic ownership is maintained separately in [`architecture.md` §4.2](architecture.md).
+> **Scope**: this document is the contract of the **state machine** only. MQTT topic ownership is maintained separately in [`development/protocol.md`](../development/protocol.md).
 
 **Review cadence**: Before each major release, review this document against the actual code behavior.
