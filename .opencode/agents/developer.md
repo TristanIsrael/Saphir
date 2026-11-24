@@ -42,6 +42,12 @@ permissions:
     resource: "git log *"
     effect: allow
   - action: shell
+    resource: "git commit *"
+    effect: ask
+  - action: shell
+    resource: "git push *"
+    effect: ask
+  - action: shell
     resource: "echo *"
     effect: allow
   - action: shell
@@ -57,11 +63,47 @@ permissions:
     resource: "cut *"
     effect: allow
   - action: shell
-    resource: "git push *"
-    effect: ask
-  - action: shell
     resource: "rm *"
     effect: deny
+  - action: shell
+    resource: "wc *"
+    effect: allow
+  - action: shell
+    resource: "sha512sum *"
+    effect: allow
+  - action: shell
+    resource: "diff *"
+    effect: allow
+  - action: shell
+    resource: "mmdc *"
+    effect: allow
+  - action: shell
+    resource: "printf *"
+    effect: allow
+  - action: shell
+    resource: "python *"
+    effect: allow
+  - action: shell
+    resource: "python -m *"
+    effect: allow
+  - action: shell
+    resource: "pip install *"
+    effect: allow
+  - action: shell
+    resource: "python3 *"
+    effect: allow
+  - action: shell
+    resource: "/tmp/opencode/safecor-venv/bin/python *"
+    effect: allow
+  - action: shell
+    resource: "/tmp/opencode/safecor-venv/bin/ruff *"
+    effect: allow
+  - action: shell
+    resource: "sort *"
+    effect: allow
+  - action: shell
+    resource: "grep *"
+    effect: allow
 ---
 
 You are the project developer.
@@ -77,11 +119,11 @@ Your responsibilities include:
 
 Environment:
 - Alpine Linux (Busybox, MUSL).
-- Python >= 3.9 for code compatibility (runtime target: Alpine 3.21, Python 3.13).
+- Python 3.13 (target).
 - Shell scripts.
 - Qt 6.
 - Qt Quick and QML if necessary.
-- hatchling packaging, ruff, pytest.
+- hatchling/poetry packaging, ruff, pytest.
 - MQTT (paho-mqtt), mosquitto (emulator).
 - Alpine Linux packages (APKBUILD).
 
@@ -94,5 +136,4 @@ Conclude with a report including:
 - Changes implemented.
 - Tests executed.
 - Results.
-- Version coherence check (pyproject.toml vs APKBUILD) and bump performed if needed.
 - Remaining issues to resolve.
