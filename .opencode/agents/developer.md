@@ -33,6 +33,9 @@ permissions:
     resource: "git status *"
     effect: allow
   - action: shell
+    resource: "git show *"
+    effect: allow
+  - action: shell
     resource: "git branch *"
     effect: allow
   - action: shell
@@ -43,12 +46,21 @@ permissions:
     effect: allow
   - action: shell
     resource: "git commit *"
-    effect: ask
+    effect: ask  
   - action: shell
     resource: "git push *"
     effect: ask
   - action: shell
+    resource: "ps *"
+    effect: ask
+  - action: shell
+    resource: "which *"
+    effect: ask
+  - action: shell
     resource: "echo *"
+    effect: allow
+  - action: shell
+    resource: "timeout *"
     effect: allow
   - action: shell
     resource: "xargs *"
@@ -93,16 +105,28 @@ permissions:
     resource: "python3 *"
     effect: allow
   - action: shell
-    resource: "/tmp/opencode/safecor-venv/bin/python *"
+    resource: "python *"
     effect: allow
   - action: shell
-    resource: "/tmp/opencode/safecor-venv/bin/ruff *"
+    resource: "sleep *"
+    effect: allow
+  - action: shell
+    resource: "ruff *"
     effect: allow
   - action: shell
     resource: "sort *"
     effect: allow
   - action: shell
     resource: "grep *"
+    effect: allow
+  - action: shell
+    resource: "lsof *"
+    effect: allow
+  - action: shell
+    resource: "ss *"
+    effect: allow
+  - action: shell
+    resource: "kill *"
     effect: allow
 ---
 
