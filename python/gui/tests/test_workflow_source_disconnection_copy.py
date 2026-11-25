@@ -1,6 +1,6 @@
 """8.6 — Source/target disconnection during the copy: the copy is held and auto-resumes.
 
-Scenario:
+Scenario (Safecor v2):
   attach source -> analysis -> attach target -> CopyCleanFiles ->
   detach the source mid-copy -> the copy is HELD (the system STAYS in
   CopyCleanFiles, no reset, no re-analysis) ->
@@ -9,6 +9,8 @@ Scenario:
 
 A second scenario re-attaches a DIFFERENT disk: the coherence check
 fails and the system asks for a reset (NFR-4, I6).
+
+In Safecor v2 there is no repository staging; the AV controllers use
 """
 
 import os
@@ -84,9 +86,14 @@ def copy_disc_env():
     )
     em.start()
 
-    repo_path = os.path.join(tmp, "repo")
-    av1 = MockAVManager("mock-clam", scan_delay=0.01, repository_path=repo_path)
-    av2 = MockAVManager("mock-eset", scan_delay=0.01, repository_path=repo_path)
+    av1 = MockAVManager(
+        "mock-clam",
+        scan_delay=0.01,
+    )
+    av2 = MockAVManager(
+        "mock-eset",
+        scan_delay=0.01,
+    )
     av1.start()
     av2.start()
 

@@ -19,15 +19,17 @@ Config file format (JSON)::
         "default": "clean",
         "infected": ["/path/to/file1", "/path/to/file2"],
         "corrupt": ["/path/to/file3"],
-        "scan_delay": 0.1
+        "scan_delay": 0.1,
+        "usb_mount": "/tmp/fake-media/usb"
     }
 
 If no config is provided, all files are reported clean with a 0.05 s delay.
 
-Files listed in ``corrupt`` are altered in the repository right after the
-analysis request, so the NFR-1 integrity check rejects them. The repository
-path is obtained from the platform via the ``system/disks/repository_path``
-protocol function at startup.
+``usb_mount`` (optional) points the NFR-1 integrity check at a local directory
+that emulates the ``/media/usb`` tree: the mock resolves files at
+``{usb_mount}/{disk}{filepath}``.  Files listed in ``corrupt`` are altered at
+``{usb_mount}/{disk}{filepath}`` right after the analysis request, so the
+integrity check rejects them (used by the workflow corruption test).
 """
 
 from __future__ import annotations
@@ -38,7 +40,7 @@ import os
 import threading
 import time
 
-from safecor import ComponentState, Constants
+from safecor import ComponentState
 
 from ._abstract_antivirus_controller import AbstractAntivirusController
 from ._enums import FileStatus
@@ -48,17 +50,21 @@ class MockAntivirusController(AbstractAntivirusController):
     """Antivirus controller that returns static, pre-configured results."""
 
     def __init__(self, name: str, config: dict | None = None):
+        config = config or {}
         super().__init__(
             component_name=name,
             component_description=f"Mock antivirus ({name})",
             max_workers=2,
+            usb_mount=config.get("usb_mount"),
         )
         self._name = name
-        self._config = config or {}
+        self._config = config
         self._infected: set[str] = set(self._config.get("infected", []))
         self._corrupt: set[str] = set(self._config.get("corrupt", []))
         self._default: str = self._config.get("default", "clean")
         self._scan_delay: float = self._config.get("scan_delay", 0.05)
+        # Fake media tree used by the corruption test fixture
+        self._usb_mount: str = self._config.get("usb_mount", "")
 
         # Failure injection (NFR-3): when the flag file appears the engine
         # reports itself OFF (like the platform would for a dead domain)
@@ -80,32 +86,34 @@ class MockAntivirusController(AbstractAntivirusController):
         time.sleep(0.5)
         os._exit(0)
 
-    def _on_analysis_requested(self, filepath: str, fingerprint: str) -> None:
-        # Test fixture: corrupt the repository file before the integrity
-        # check runs, to exercise the NFR-1 mismatch path end-to-end.
-        if filepath in self._corrupt:
-            path = f"{Constants.DOMU_REPOSITORY_PATH}{filepath}"
-            if os.path.exists(path):
-                with open(path, "ab") as f:
-                    f.write(b"CORRUPTED")
-
+    def _on_analysis_requested(
+        self, filepath: str, fingerprint: str, disk: str
+    ) -> None:
         if self._request_log:
             with open(self._request_log, "a") as f:
                 f.write(f"{time.time():.3f} {self._name} {filepath}\n")
 
+        # Test fixture (NFR-1 corruption): alter the file in the fake media
+        # tree before the integrity check runs, so the check rejects it.
+        if filepath in self._corrupt and self._usb_mount:
+            target = f"{self._usb_mount}/{disk}{filepath}"
+            if os.path.exists(target):
+                with open(target, "a") as f:
+                    f.write("\n# corrupted by the mock AV test fixture\n")
+
     def _on_api_ready(self) -> None:
         pass
 
-    def _analyse_file(self, filepath: str) -> None:
-        self.update_status(filepath, FileStatus.FileAnalysing, 0)
+    def _analyse_file(self, filepath: str, disk: str) -> None:
+        self.update_status(filepath, FileStatus.FileAnalysing, 0, disk=disk)
         time.sleep(self._scan_delay)
 
         if filepath in self._infected or self._default == "infected":
-            self.update_status(filepath, FileStatus.FileInfected, 100)
-            self.publish_result(filepath, False, "Mock infection detected")
+            self.update_status(filepath, FileStatus.FileInfected, 100, disk=disk)
+            self.publish_result(filepath, False, "Mock infection detected", disk=disk)
         else:
-            self.update_status(filepath, FileStatus.FileClean, 100)
-            self.publish_result(filepath, True, "Clean")
+            self.update_status(filepath, FileStatus.FileClean, 100, disk=disk)
+            self.publish_result(filepath, True, "Clean", disk=disk)
 
         self.analysis_finished(True)
 

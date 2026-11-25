@@ -4,7 +4,7 @@ import re
 import subprocess
 import threading
 
-from safecor import ComponentState, Constants
+from safecor import ComponentState
 
 from libsaphir import FileStatus
 from libsaphir._abstract_antivirus_controller import AbstractAntivirusController
@@ -35,14 +35,16 @@ class EeaAntivirusController(AbstractAntivirusController):
     def _engine_is_ready(self) -> bool:
         return self.__engine_ready
 
-    def _analyse_file(self, filepath: str) -> None:
+    def _analyse_file(self, filepath: str, disk: str) -> None:
         if self._get_component_state() != ComponentState.READY:
             self.error("The component is not ready.")
 
             self.analysis_finished(False)
             return
 
-        storage_filepath = f"{Constants.DOMU_REPOSITORY_PATH}{filepath}"
+        # Safecor v2: the file is read directly from the USB mount, which the
+        # LXC container sees at the same path via the /media/usb bind mount.
+        storage_filepath = f"{self._usb_mount_point}/{disk}{filepath}"
 
         if not os.path.exists(storage_filepath):
             self.error(
@@ -52,7 +54,7 @@ class EeaAntivirusController(AbstractAntivirusController):
             self.analysis_finished(False)
             return
 
-        self.update_status(filepath, FileStatus.FileAnalysing, 0)
+        self.update_status(filepath, FileStatus.FileAnalysing, 0, disk=disk)
 
         # The command will be executed in the container
         # Errors management:
@@ -68,33 +70,33 @@ class EeaAntivirusController(AbstractAntivirusController):
             capture_output=True,
         )
 
-        details = self.__get_log_details_from_stdout(filepath, proc.stdout)
+        details = self.__get_log_details_from_stdout(filepath, proc.stdout, disk)
 
         # The file is clean if return code is 0
         # The file is infected if return code is 50
         # The file has not been fully analyzed if return code is 10
         if proc.returncode == 0:
             # File is clean
-            self.update_status(filepath, FileStatus.FileClean, 100)
-            self.publish_result(filepath, True, details)
+            self.update_status(filepath, FileStatus.FileClean, 100, disk=disk)
+            self.publish_result(filepath, True, details, disk=disk)
             self.analysis_finished(True)
         elif proc.returncode == 10:
             # Incomplete scan
-            self.update_status(filepath, FileStatus.FileClean, 100)
-            self.publish_result(filepath, True, details)
+            self.update_status(filepath, FileStatus.FileClean, 100, disk=disk)
+            self.publish_result(filepath, True, details, disk=disk)
             self.analysis_finished(True)
         elif proc.returncode == 50:
             # Threats detected
-            self.update_status(filepath, FileStatus.FileInfected, 100)
-            self.publish_result(filepath, False, details)
+            self.update_status(filepath, FileStatus.FileInfected, 100, disk=disk)
+            self.publish_result(filepath, False, details, disk=disk)
             self.analysis_finished(False)
         else:
             msg = f"An error occured: {self.__translate_odscan_return(proc.returncode)} ({proc.returncode})."
-            self.update_status(filepath, FileStatus.FileAnalysisError, 100)
-            self.publish_result(filepath, False, msg)
+            self.update_status(filepath, FileStatus.FileAnalysisError, 100, disk=disk)
+            self.publish_result(filepath, False, msg, disk=disk)
             self.analysis_finished(False)
 
-    def __get_log_details_from_stdout(self, filepath, stdout: bytes) -> str:
+    def __get_log_details_from_stdout(self, filepath, stdout: bytes, disk: str) -> str:
         if stdout != "" and stdout is not None:
             log_name = self.__extract_log_name(stdout.decode().strip())
 
@@ -103,14 +105,16 @@ class EeaAntivirusController(AbstractAntivirusController):
                 self.error(
                     f"An error occured during the analysis of the result: {stdout} (log_name is empty)"
                 )
-                self.update_status(filepath, FileStatus.FileAnalysisError, 100)
-                self.publish_result(filepath, False, msg)
+                self.update_status(
+                    filepath, FileStatus.FileAnalysisError, 100, disk=disk
+                )
+                self.publish_result(filepath, False, msg, disk=disk)
 
                 self.analysis_finished(False)
                 return "An error occured with the log"
 
             # Now we analyse the log for information only, the scan status is given by the result code
-            return self.__analyse_log(filepath, log_name)
+            return self.__analyse_log(filepath, log_name, disk)
         else:
             # We have no log?... but it is not blocking
             self.error(
@@ -132,7 +136,7 @@ class EeaAntivirusController(AbstractAntivirusController):
         log_name = data.get("log_name", "")
         return log_name
 
-    def __analyse_log(self, filepath, log_name) -> str:
+    def __analyse_log(self, filepath, log_name, disk: str) -> str:
         """Verifies the scan log
 
         When the Completed field in the returned tuple is True it means that the analysis
@@ -143,7 +147,7 @@ class EeaAntivirusController(AbstractAntivirusController):
           Time started: 04/02/25 20:24:12
           Time of completion: 04/02/25 20:24:12
           Duration: 00:00:00
-          Scanned targets: /mnt/storage/benchfile_100ko_1
+          Scanned targets: /media/usb/<disk>/file
           Detections occurred: 0 -> or more if return code is 50
           Cleaned: 0
           Not scanned: 0
@@ -154,7 +158,7 @@ class EeaAntivirusController(AbstractAntivirusController):
           Time started: 04/02/25 20:24:12
           Time of completion: 04/02/25 20:24:12
           Duration: 00:00:00
-          Scanned targets: /mnt/storage/benchfile_100ko_1
+          Scanned targets: /media/usb/<disk>/file
           Detections occurred: 0
           Cleaned: 0
           Not scanned: 10
@@ -175,16 +179,20 @@ class EeaAntivirusController(AbstractAntivirusController):
             self.debug(
                 f"An internal error occured with lslog: {proc.stdout} {proc.stderr}."
             )
-            self.update_status(filepath, FileStatus.FileAnalysisError, 100)
-            self.publish_result(filepath, False, "Une erreur interne s'est produite")
+            self.update_status(filepath, FileStatus.FileAnalysisError, 100, disk=disk)
+            self.publish_result(
+                filepath, False, "Une erreur interne s'est produite", disk=disk
+            )
             return "Internal error"
 
         if proc.stdout == "":
             self.debug(
                 f"An internal error occured: missing log: {proc.stdout} {proc.stderr}."
             )
-            self.update_status(filepath, FileStatus.FileAnalysisError, 100)
-            self.publish_result(filepath, False, "Une erreur interne s'est produite.")
+            self.update_status(filepath, FileStatus.FileAnalysisError, 100, disk=disk)
+            self.publish_result(
+                filepath, False, "Une erreur interne s'est produite.", disk=disk
+            )
             return "Missing log file"
 
         log_data = proc.stdout.decode().strip()
@@ -196,7 +204,8 @@ class EeaAntivirusController(AbstractAntivirusController):
         #    print("missing time of completion")
         #    return ""
         # else:
-        # time_of_completion = str(re_time_of_completion.group(1)).strip()
+        # time_of_completion = re.search(r"Time of completion:\s*(\d+)", log_data)
+        #    time_of_completion = re_time_of_completion.group(1).strip()
         #    if time_of_completion == "":
         #        # The analysis is not finished
         #        print("not finished")
@@ -230,8 +239,8 @@ class EeaAntivirusController(AbstractAntivirusController):
         # elif scanned == 0:
         #    print("error")
         #    self.debug(f"An internal error occured. No file analysed {proc.stdout} {proc.stderr}.")
-        #    self.update_status(filepath, FileStatus.FileAnalysisError, 100)
-        #    self.publish_result(filepath, False, "Une erreur interne s'est produite.")
+        #    self.update_status(filepath, FileStatus.FileAnalysisError, 100, disk=disk)
+        #    self.publish_result(filepath, False, "Une erreur interne s'est produite.", disk=disk)
         #    return True, False, "Internal error"
 
         # print("non handled")

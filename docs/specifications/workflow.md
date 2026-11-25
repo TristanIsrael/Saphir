@@ -158,9 +158,9 @@ Each transition has a **trigger** (event) and a **guard** (condition).
 |------|-----|---------|-------|
 | `SystemInactive` | `SystemStarting` | App start | Always |
 | `SystemStarting` | `SafecorReady` | MQTT ready + subscriptions complete | Always |
-| `SafecorReady` | `SystemReady` | Disk controller ready + repository path received (core components operational) | Always (AV engines **not** required) |
+| `SafecorReady` | `SystemReady` | Disk controller ready + USB mountpoint ready (core components operational) | Always (AV engines **not** required) |
 | `SystemReady` | `SystemGettingFilesList` | First storage connected | `not system_used` (disk-controller ready + disk present) |
-| `SystemReady` | `SystemMustBeReset` | A **different** storage connected after use | `system_used && disk_name != source_name` |
+| `SystemReady` | `SystemMustBeReset` | A **different** storage connected after use | `system_used && disk_name != source_name` (system becomes dirty on first fingerprint acquisition, D4) |
 | `SystemGettingFilesList` | `SystemWaitingForUserAction` | All folders queried | `folders_to_query == 0 && analyse_selection` |
 | `SystemGettingFilesList` | `SystemAnalysisRunning` | All folders queried + whole-disk mode | `folders_to_query == 0 && analyse_whole` |
 | `SystemWaitingForUserAction` | `SystemAnalysisRunning` | User clicks "Start Analysis" | **ready-to-analyze**: AV engines ready + core ready + `queue_size > 0` |
@@ -197,6 +197,7 @@ These are **not** workflow states. They are **derived booleans** computed from t
 | `coreReady` | The core Safecor components (incl. the disk-controller) are ready | Enables file **selection** (a disk can be browsed) |
 | `analysisReady` | `coreReady` **and** `len(analysis_components) >= ANTIVIRUS_NEEDED` (all required AV engines connected & ready) | `SystemLoadingPanel` opacity (1.0 → 0.0), "Start Analysis" `enabled` |
 | `readyToAnalyze` | `analysisReady` **and** `queue_size > 0` | Guard of `SystemWaitingForUserAction → SystemAnalysisRunning` |
+| `systemUsed` | `true` as soon as the first file's fingerprint is successfully returned by `sys-usb` (D4) | Visual status transition (§7.2), dirty-state locking (I6/NFR-4) |
 
 > **Why not a state?** Component readiness (especially the AV VMs) is **asynchronous and parallel** — it becomes true at a moment with no guaranteed order relative to the sequential cycle (the AVs may be ready *before* a disk is plugged, or *while* the user is selecting). Modelling it as a sequential state would impose a false order and add an async components→state transition without benefit. The **state** describes *where in the cycle* the system is; a **condition** *enables* a transition from that state. This is also what the v2.1 decoupling relies on: selection needs `coreReady` + a disk only; analysis additionally needs `analysisReady`.
 >
@@ -299,7 +300,7 @@ A **Reset** always returns the system to its **initial state**: state `SystemRea
 | Copy fails for a clean file | Counted in `copiedFilesCount` failure, continues | Log error, mark file, continue, report failure in PDF; final check `copied == clean_count` (F4) |
 | Source disk disconnected during copy | Not handled (uncertain state) | Stay in `CopyCleanFiles` with an **error flag** (no dedicated state); pause the copy and prompt to re-insert; on re-insertion, run a **coherence check** (source state + integrity/fingerprint) and clear the flag → **auto-resume**. No reset, no re-analysis (F4) |
 | **Target** disk disconnected during copy | Not handled | Same as the source: **error flag** on `CopyCleanFiles`, pause, prompt to re-insert, **coherence check** on re-insertion, **auto-resume** (F4) |
-| Source disk disconnected during **analysis** | Not handled | Analysis **continues** on files already in the repository (AV engines are **not** interrupted); an **error flag** is set and a dialog prompts the user to re-connect the source. The analysis loop is **held** (waiting) so it does not exit prematurely; it resumes when the source is re-connected (F1/NFR-3) |
+| Source disk disconnected during **analysis** | **Handled** (§8.8, D3) | Analysis **continues** on files already being scanned by the AV engines (engines are **not** interrupted); an **error flag** is set and a dialog prompts the user to re-connect the source. The analysis loop is **held** (waiting) so it does not exit prematurely while files remain to be scanned; it resumes when the same disk is re-connected (auto-resume). A different disk re-connected → `SystemMustBeReset` (F1/NFR-3).
 | Report generation fails | Exception crashes transfer | Log error, enter the **`ReportFailed`** state (§2); **Reset required**, no automatic retry (F6/NFR-1) |
 | Target disk full | Not checked | Detect before copy, show error dialog |
 | MQTT subscription fails | Silent | Retry (3x), show error. **No fallback** — the transport is environment-specific and exclusive (production: **serial port**; dev: **TCP**) |
@@ -310,7 +311,7 @@ A **Reset** always returns the system to its **initial state**: state `SystemRea
 ```
 Per-file analysis error  → stays in SystemAnalysisRunning (file → Error), completes to AnalysisCompleted
 AV engine panic          → incomplete files Error; abort → SystemWaitingForUserAction (if < ANTIVIRUS_NEEDED engines), else continue (scenario 8.9)
-Source disconnected (analysis) → stays in SystemAnalysisRunning (AV continues on the repository); error flag + dialog; held until the source is re-connected, then resumes
+Source disconnected (analysis) → stays in SystemAnalysisRunning (AV continues scanning in-flight files); error flag + dialog; held until same-disk reconnection, then auto-resumes; different disk → SystemMustBeReset (§8.8, D3)
 Copy error (single file) → continue, log in report (CopyCleanFiles → GeneratingReport)
 Source disconnected (copy) → stays in CopyCleanFiles with an error flag; on re-insertion, coherence check (state + integrity) then auto-resume
 Target disconnected      → stays in CopyCleanFiles with an error flag; on re-insertion, coherence check then auto-resume
@@ -394,7 +395,7 @@ where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infecte
    - Boot dialog (SystemLoadingPanel): **large** during boot (`SystemStarting`) → **small top strip** once the core is ready (`SafecorReady` onward, while the AV engines are not ready) → **hidden** once the AV engines are ready.
 3. User selects files → Queue populated (possible even if the AV engines are not ready yet)
 4. User clicks Start (enabled once **ready-to-analyze**: AV ready + core ready + queue non-empty) → SystemAnalysisRunning
-5. Files copied to repository → analyzed → status updated
+5. Fingerprint acquired per file (dirty point, D4) → analysis request published → files scanned directly from `/media/usb/<disk>` → status updated
 6. All files analyzed → AnalysisCompleted → (target available) → CopyCleanFiles
 7. Clean files copied to target → GeneratingReport
 8. Report + journal copied → SystemMustBeReset
@@ -465,16 +466,25 @@ where `used = nbFinished > 0` (`nbFinished = nbClean + nbInfected`) and `infecte
 5. User clicks Reset → SystemResetting → back to SystemReady (I9: counters/queue cleared)
 ```
 
-### 8.8 Source Disconnection During Analysis
+### 8.8 Source Disconnection During Analysis (D3 — Hold / Auto-Resume)
 
 ```
-1. SystemAnalysisRunning (files already in the repository are being scanned by the AV engines)
-2. User unplugs the source (by mistake)
-3. Analysis CONTINUES on the files already in the repository (AV engines are NOT interrupted);
+1. SystemAnalysisRunning (files already being scanned by the AV engines from /media/usb/<disk>)
+2. User unplugs the source disk (by mistake)
+3. Analysis CONTINUES on files already in-flight (AV engines are NOT interrupted);
    an error flag is set and a dialog prompts the user to re-connect the source
-4. The analysis loop is HELD (waiting) so it does not exit prematurely while files remain to be copied
-5. User re-inserts the source → the flag is cleared, the remaining files are copied, and the analysis resumes
-6. All files analyzed → AnalysisCompleted (→ copy / report as usual)
+4. The analysis loop is HELD (waiting) — no new files are sent to the AV engines;
+   files already scanned by the engines complete normally
+5a. User re-inserts the **same** disk (same disk name):
+    → the error flag is cleared
+    → held files are re-fingerprinted via the file API
+    → new analysis requests are published for the held files
+    → the analysis resumes automatically
+5b. User re-inserts a **different** disk (different disk name):
+    → SystemMustBeReset (NFR-4 dirty-state lock)
+6. AV scan failures for files that were held during the source disconnect
+   are ignored (stale-failure guard, same pattern as the paused copy in §8.6)
+7. All files analyzed → AnalysisCompleted (→ copy / report as usual)
 ```
 
 ### 8.9 Antivirus Engine Failure During Analysis (NFR-3)

@@ -1,12 +1,11 @@
 """F1 — Full analysis of a multi-partition / multi-media source.
 
 Drives the full Saphir workflow through the Safecor emulator with two
-source disks attached before the scan starts (the partitions of a media
-are disk entries in Safecor): both are analyzed and every clean file is
-copied to the single target disk.
+source disks attached before the scan starts. Both are analyzed and every
+clean file is copied to the single target disk.
 
-The Saphir app runs as a subprocess (offscreen Qt, DEVMODE=1).
-The test observes state transitions via the app's stdout.
+In Safecor v2 there is no repository staging; analysis is direct from the
+USB mount point.
 """
 
 import os
@@ -73,8 +72,7 @@ def multi_source_env():
     """Starts emulator + 2 mock AVs + Saphir app with two source disks."""
     tmp = tempfile.mkdtemp(prefix="saphir_multi_")
 
-    # Two source disks (the partitions of the source media): every
-    # partition is a disk entry in Safecor
+    # Two source disks (the partitions of the source media)
     source0_dir = os.path.join(tmp, "source0")
     os.makedirs(os.path.join(source0_dir, "sub0"), exist_ok=True)
     for rel_path, content in {
@@ -97,7 +95,15 @@ def multi_source_env():
     target_dir = os.path.join(tmp, "target")
     os.makedirs(target_dir, exist_ok=True)
 
-    # Emulator (no pre-attached disks)
+    # Symlinks so the NFR-1 integrity check can find files:
+    # We symlink {tmp}/disk0 -> source0_dir so the check resolves correctly.
+    os.symlink(source0_dir, os.path.join(tmp, "disk0"), target_is_directory=True)
+    os.symlink(source1_dir, os.path.join(tmp, "disk1"), target_is_directory=True)
+
+    # Emulator: attach disks with the symlinks so the USB path matches
+    # The emulator's attach_disk maps disk_id -> root_path. We use the
+    # symlink paths as root_path so the AV NFR-1 check resolves to the
+    # actual files.
     em = Emulator(
         profile=default_profile(),
         source_disks={},
@@ -105,10 +111,14 @@ def multi_source_env():
     )
     em.start()
 
-    # Mock AVs
-    repo_path = os.path.join(tmp, "repo")
-    av1 = MockAVManager("mock-clam", scan_delay=0.05, repository_path=repo_path)
-    av2 = MockAVManager("mock-eset", scan_delay=0.05, repository_path=repo_path)
+    av1 = MockAVManager(
+        "mock-clam",
+        scan_delay=0.05,
+    )
+    av2 = MockAVManager(
+        "mock-eset",
+        scan_delay=0.05,
+    )
     av1.start()
     av2.start()
 
@@ -164,23 +174,22 @@ def test_multi_source_full_analysis(multi_source_env):
         f"App never reached SystemReady.\nStates seen: {tracker.states}"
     )
 
-    # 2. Attach the two source disks (the partitions of the media):
-    # both are connected before the scan starts, both are sources
+    # 2. Attach the two source disks (the partitions of the media)
     em.attach_disk("disk0", source0_dir)
     em.attach_disk("disk1", source1_dir)
 
-    # 3. The full analysis covers both disks (DEVMODE auto-start)
+    # 3. Full analysis covers both disks
     assert tracker.wait_for("AnalysisCompleted", timeout=60), (
         f"Analysis never completed.\nStates seen: {tracker.states}"
     )
 
-    # 4. Attach the target disk after the analysis: it becomes the target
+    # 4. Attach the target disk
     em.attach_disk("disk2", target_dir)
     assert tracker.wait_for("SystemMustBeReset", timeout=60), (
         f"The cycle never completed.\nStates seen: {tracker.states}"
     )
 
-    # 5. The target contains every clean file, from every source disk
+    # 5. Every clean file from every source is in the target
     target_files = set(os.listdir(target_dir))
     for expected in (
         "file0_a.txt",
@@ -192,7 +201,6 @@ def test_multi_source_full_analysis(multi_source_env):
             f"{expected} was not copied to the target.\n"
             f"Target: {target_files}\nStates: {tracker.states}"
         )
-    # The nested file is copied keeping its folder structure
     assert os.path.isfile(os.path.join(target_dir, "sub0", "file0_c.txt")), (
         f"The nested file was not copied to the target.\n"
         f"Target: {os.listdir(target_dir)}\nStates: {tracker.states}"

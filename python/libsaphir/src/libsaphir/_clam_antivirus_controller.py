@@ -2,7 +2,7 @@ import os
 import subprocess
 import threading
 
-from safecor import ComponentState, Constants
+from safecor import ComponentState
 
 from libsaphir import FileStatus
 from libsaphir._abstract_antivirus_controller import AbstractAntivirusController
@@ -20,23 +20,24 @@ class ClamAntivirusController(AbstractAntivirusController):
     def _engine_is_ready(self) -> bool:
         return self.__engine_ready
 
-    def _analyse_file(self, filepath: str) -> None:
-        print("CLAMAV analyse file", filepath)
+    def _analyse_file(self, filepath: str, disk: str) -> None:
+        print("CLAMAV analyse file", disk, filepath)
 
         if self._get_component_state() != ComponentState.READY:
             self.error("The component is not ready.")
             return
 
-        storage_filepath = f"{Constants.DOMU_REPOSITORY_PATH}{filepath}"
+        # Safecor v2: the file is read directly from the USB mount
+        storage_filepath = f"{self._usb_mount_point}/{disk}{filepath}"
 
         if not os.path.exists(storage_filepath):
             errstr = f"The file {storage_filepath} does not exist or is not accessible."
             self.error(errstr)
-            self.publish_result(filepath, False, errstr)
+            self.publish_result(filepath, False, errstr, disk=disk)
             self.analysis_finished(False)
             return
 
-        self.update_status(filepath, FileStatus.FileAnalysing, 0)
+        self.update_status(filepath, FileStatus.FileAnalysing, 0, disk=disk)
 
         cmd = ["clamdscan", storage_filepath]
         proc = subprocess.run(cmd, check=False, capture_output=True)
@@ -58,7 +59,7 @@ class ClamAntivirusController(AbstractAntivirusController):
             success = False
             details = proc.stderr.decode()
 
-        self.publish_result(filepath, success, details)
+        self.publish_result(filepath, success, details, disk=disk)
         self.analysis_finished(True)
 
     def _stop_immediately(self):

@@ -83,15 +83,15 @@
 - The user manually triggers the analysis (button).
 - The queue is **locked** at that point.
 
-**Copy to the repository (precondition)**:
+**Fingerprint acquisition (precondition)**:
 
-- Before analysis, the file is copied from the source media to a **local repository**.
-- The copy is triggered **file by file**, at the moment the file is to be analyzed.
-- The antivirus needs the file available in the repository to analyze it.
+- Before analysis, the GUI obtains the file's fingerprint from `sys-usb` via the Safecor file API (`get_file_fingerprint`).
+- On success, the GUI emits `systemUsed` (dirty point, D4) and publishes `saphir/analysis/request {disk, filepath, fingerprint}` to the AV domains.
+- On failure, the file is marked `FileAnalysisError` and the analysis chain continues with the next file.
 
 **Parallelism** (objective: maximize resource utilization):
 
-- Multiple **files** are analyzed in parallel (repository capacity, tied to the number of CPU cores).
+- Multiple **files** are analyzed in parallel (parallelism cap, tied to the number of CPU cores).
 - For a given file, all **antivirus engines** analyze in parallel.
 
 **Consensus**:
@@ -100,7 +100,7 @@
 - The file **status** is ternary:
   - `Clean`: all engines declare the file clean
   - `Infected`: at least one engine declares the file infected
-  - `Error`: an engine or the copy returns an error
+  - `Error`: an engine or the fingerprint acquisition returns an error
 - The **appearance** (GUI display) is binary:
   - `Clean`: status = clean
   - `Not clean`: status = infected **or** error
@@ -109,9 +109,9 @@
 **Pause and resume**:
 
 - The user can **pause** the analysis in progress (there is no hard stop).
-- The analysis can **resume** if the user requests it (remaining files are picked up).
+- The analysis can **resume** if the user requests it (remaining files are picked up; already-analyzed files keep their status).
 - Once the analysis has started, it is impossible to go back to file selection (workflow).
-- The system is considered **dirty** as soon as a file has been analyzed → a reset is required for a new cycle (see NFR-4).
+- The system is considered **dirty** as soon as a file's fingerprint is successfully returned by `sys-usb` → a reset is required for a new cycle (see NFR-4, D4).
 
 **Progression**: Number of files analyzed / total size of the queue.
 
@@ -581,8 +581,8 @@
 
 | Step | Verification |
 |-------|-------------|
-| Source copy → local repository | Saphir obtains a first fingerprint. The match with the original is **guaranteed by Safecor**. This fingerprint is associated with the file in the queue data structure. |
-| Antivirus analysis | The Saphir AV components must **verify** that the fingerprint of the file in the repository matches the recorded one. |
+| Fingerprint acquisition from `sys-usb` | Saphir calls `get_file_fingerprint(disk, filepath)` to obtain the authoritative fingerprint of the file on the source media. This fingerprint is recorded in the queue data structure. |
+| Antivirus analysis | The Saphir AV components **verify** that the fingerprint of the file they read from `/media/usb/<disk><filepath>` matches the recorded one **before scanning** (NFR-1). On mismatch → the analysis response carries `fingerprint_error: true` and the GUI marks the file `FileAnalysisError`. |
 | Repository copy → target | Safecor computes the fingerprint of the copied file. Saphir must **verify** that this fingerprint matches that of the original file. |
 
 **Verification failure**:
@@ -637,10 +637,11 @@
 
 **Principle**: As soon as a file has been read by the system, it becomes **dirty**. At the end of the operation, the user has no other choice than to **clean** (reset) or **shut down** the system.
 
-**Contamination point**:
+**Contamination point (D4)**:
 
-- The system becomes dirty as soon as the **`disk-controller`** component of Safecor has **effectively read** the file.
-- Simple navigation in the tree does not contaminate.
+- The system becomes dirty as soon as the **fingerprint of a file is successfully returned** by `sys-usb` via the file API (`get_file_fingerprint`).
+- Simple navigation in the tree does **not** contaminate (only the fingerprint acquisition on an actual file triggers it).
+- A fingerprint-read failure keeps the system clean (the file was never actually read).
 
 **Locking by media change**:
 

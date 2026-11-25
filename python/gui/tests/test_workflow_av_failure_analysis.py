@@ -1,6 +1,6 @@
 """NFR-3 — Antivirus engine failure during the analysis.
 
-Scenario:
+Scenario (Safecor v2):
   attach source -> SystemAnalysisRunning -> an antivirus engine fails ->
   the incomplete files are declared in error and, because the number of
   available engines drops below ANTIVIRUS_NEEDED, the analysis is
@@ -49,11 +49,14 @@ def av_failure_env():
     )
     em.start()
 
-    # Point the mock AVs at the emulator repository so the NFR-1
-    # fingerprint integrity check runs against the real test files.
-    repo_path = os.path.join(tmp, "repo")
-    av1 = MockAVManager("mock-clam", scan_delay=0.05, repository_path=repo_path)
-    av2 = MockAVManager("mock-eset", scan_delay=0.05, repository_path=repo_path)
+    av1 = MockAVManager(
+        "mock-clam",
+        scan_delay=0.05,
+    )
+    av2 = MockAVManager(
+        "mock-eset",
+        scan_delay=0.05,
+    )
     av1.start()
     av2.start()
 
@@ -120,7 +123,7 @@ def test_av_failure_during_analysis_aborts(av_failure_env):
         f"Analysis never started.\nStates: {tracker.states}"
     )
 
-    # Let the analysis copy a few files into the repository
+    # Let the analysis process some files
     time.sleep(3)
 
     # 3. An antivirus engine fails

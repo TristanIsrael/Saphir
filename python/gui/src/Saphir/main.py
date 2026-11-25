@@ -27,6 +27,7 @@ from safecor import Api, System, __version__
 api_ready = threading.Event()
 FORCE_FULLSCREEN = False
 
+
 def on_ready():
     print("Safecor API is ready")
     api_ready.set()

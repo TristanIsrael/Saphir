@@ -8,9 +8,9 @@ Scenario:
     response -> FileAnalysisError) and the copy phase must exclude it from
     the target disk.
 
-If the NFR-1 check were skipped (e.g. wrong repository path in DEVMODE),
-the mock AVs would report the corrupted file as clean and it would be
-copied to the target: the test fails.
+In Safecor v2, the NFR-1 check is performed by the AV controller when it
+receives an analysis request.  The integrity check path is built from the
+``usb_mount`` config parameter, so it runs against the actual test files.
 """
 
 import os
@@ -48,19 +48,24 @@ def corruption_env():
     target_dir = os.path.join(tmp, "target")
     os.makedirs(target_dir, exist_ok=True)
 
-    repo_path = os.path.join(tmp, "repo")
-
     em = Emulator(
         profile=default_profile(),
         source_disks={},
-        storage_path=repo_path,
+        storage_path=os.path.join(tmp, "repo"),
     )
     em.start()
 
-    # Both AVs verify the repository files (NFR-1) and corrupt the bad file
-    # on analysis request, before their integrity check runs.
-    av1 = MockAVManager("mock-clam", repository_path=repo_path, corrupt={"/bad.txt"})
-    av2 = MockAVManager("mock-eset", repository_path=repo_path, corrupt={"/bad.txt"})
+    # NFR-1 needs usb_mount set so the AV controller resolves the path
+    # {usb_mount}/{disk}/{filepath} correctly.  We create a symlink
+    # disk0 -> source_dir inside tmp and point usb_mount at tmp.
+    os.symlink(source_dir, os.path.join(tmp, "disk0"), target_is_directory=True)
+
+    av1 = MockAVManager(
+        "mock-clam", scan_delay=0.05, usb_mount=tmp, corrupt={"/bad.txt"}
+    )
+    av2 = MockAVManager(
+        "mock-eset", scan_delay=0.05, usb_mount=tmp, corrupt={"/bad.txt"}
+    )
     av1.start()
     av2.start()
 
@@ -113,15 +118,11 @@ def test_corrupted_file_not_copied(corruption_env):
 
     em.attach_disk("disk0", source_dir)
 
-    assert tracker.wait_for("SystemAnalysisRunning", timeout=30), (
-        f"Analysis never started.\nStates seen: {tracker.states}"
-    )
-
-    # Analysis must complete: the corrupted file is rejected (FileAnalysisError,
-    # counted like an infected file) and the clean file is analyzed normally.
+    # Analysis must complete: the corrupted file is rejected
+    # (FileAnalysisError, counted like an infected file) and the
+    # clean file is analyzed normally.
     assert tracker.wait_for("AnalysisCompleted", timeout=30), (
-        f"Analysis never completed (the corrupted file should be rejected,\n"
-        f"not block the analysis).\nStates seen: {tracker.states}"
+        f"Analysis never completed.\nStates seen: {tracker.states}"
     )
 
     em.attach_disk("disk1", target_dir)

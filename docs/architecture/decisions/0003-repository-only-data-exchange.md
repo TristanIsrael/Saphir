@@ -1,7 +1,9 @@
 # 0003 — Repository as the only data exchange point
 
-> **Status**: Accepted
+> **Status**: **Superseded by [0019](0019-direct-usb-mount-data-path.md)** (2026-11-24)
 > **Source**: architecture.md §8 — D-arch-3
+
+> **Note**: This ADR described the v1 data path (shared 9p repository at `/mnt/storage`). It is superseded by ADR 0019, which adopts the direct USB mount as the analysis data path in Safecor v2. The repository is disabled (`repository.disabled: true` in the topology).
 
 ## Context
 

@@ -1,3 +1,11 @@
+"""Abstract antivirus controller for Safecor v2.
+
+Operates on the direct USB mount at ``/media/usb``.  File identity is a
+composite ``(disk, filepath)`` pair: every analysis request carries both
+fields, the controller validates their presence and echoes ``disk`` back in
+the status and result payloads.
+"""
+
 import os
 import platform
 import threading
@@ -12,6 +20,7 @@ from safecor import (
     FileHelper,
     MqttFactory,
     MqttHelper,
+    System,
     Topics,
 )
 
@@ -19,32 +28,44 @@ from . import DEVMODE, TOPIC_ANALYSIS, FileStatus
 
 
 class AbstractAntivirusController(ABC):
-    """This class manages the antivirus analysis.
+    """Manages antivirus analysis on each analysis domain.
 
-    It is ran on each analysis domain.
+    Listens on the messaging socket for analysis commands.  When a command
+    arrives it queues the file for analysis.  When the scan completes it
+    publishes a result back to the requester via MQTT.
 
-    The controller listens on the messaging socket and waits for commands. When a command is sent, it
-    starts and monitors the analysis of one particular file of the repository. When done it sends an
-    Answer to the requester and gives details on the analysis result.
+    Safecor v2 replaced the 9p shared repository with a direct USB mount at
+    ``Constants.USB_MOUNT_POINT`` (``/media/usb``).  A USB disk mounted at
+    ``/media/usb/<label>`` on ``sys-usb`` appears at the same path in the
+    client domain, so files are addressed as
+    ``f"{Constants.USB_MOUNT_POINT}/{disk}{filepath}"``.
     """
 
     __component_name = "NoName"
     __component_description = ""
-    __files_queue = Queue()
+    __files_queue: Queue = Queue()
     __max_workers = 1
     __workers = 0
     __can_run = True
     __mqtt_client = None
     __main_lock = threading.Event()
     __workers_lock = threading.Lock()
+    __usb_ready = False
 
     def __init__(
-        self, component_name: str, component_description: str, max_workers: int = -1
+        self,
+        component_name: str,
+        component_description: str,
+        max_workers: int = -1,
+        usb_mount: str | None = None,
     ):
         self.__component_name = component_name
         self.__component_description = component_description
         self.__state = ComponentState.UNKNOWN
-        self.__repository_path_received = False
+        self.__usb_ready = False
+        # Mount point used by the NFR-1 integrity check.  Defaults to the
+        # Safecor v2 direct USB mount; tests may inject a local directory.
+        self._usb_mount_point: str = usb_mount or Constants.USB_MOUNT_POINT
 
         if max_workers == -1:
             self.__max_workers = 1 if os.cpu_count() is None else os.cpu_count()
@@ -77,10 +98,21 @@ class AbstractAntivirusController(ABC):
         success: bool,
         details: str,
         fingerprint_error: bool = False,
+        disk: str = "",
     ):
+        """Publish the result of an analysis back to the GUI.
+
+        Args:
+            filepath: Relative path of the scanned file.
+            success: ``True`` when the file is clean.
+            details: Human-readable description of the result.
+            fingerprint_error: ``True`` when a fingerprint mismatch occurred.
+            disk: Disk label from the analysis request (echoed back).
+        """
         payload = {
             "component": self.__component_name,
             "filepath": filepath,
+            "disk": disk,
             "success": success,
             "details": details,
         }
@@ -90,10 +122,13 @@ class AbstractAntivirusController(ABC):
 
         Api().publish(f"{TOPIC_ANALYSIS}/response", payload)
 
-    def update_status(self, filepath: str, status: FileStatus, progress: int):
+    def update_status(
+        self, filepath: str, status: FileStatus, progress: int, disk: str = ""
+    ):
         payload = {
             "component": self.__component_name,
             "filepath": filepath,
+            "disk": disk,
             "status": status.value,
             "progress": progress,
         }
@@ -109,7 +144,9 @@ class AbstractAntivirusController(ABC):
                 "domain_name": platform.node(),
                 "label": self.__component_description,
                 "type": "antivirus",
-                "state": self._get_component_state().value if force_state == ComponentState.UNKNOWN else force_state.value,
+                "state": self._get_component_state().value
+                if force_state == ComponentState.UNKNOWN
+                else force_state.value,
                 "version": self._get_component_version(),
                 "description": self._get_component_description(),
             }
@@ -121,16 +158,15 @@ class AbstractAntivirusController(ABC):
         """Simulate a domain restart: disconnect from broker, wait, reconnect.
 
         The component transitions to STARTING, goes offline for the given
-        delay, then reconnects. On reconnect the API ready callback
-        re-subscribes and re-requests the repository path, which drives the
-        transition back to READY.
+        delay, then reconnects.  On reconnect the API ready callback
+        re-subscribes and re-establishes the USB readiness gate.
         """
         self.__state = ComponentState.STARTING
-        self.__repository_path_received = False
+        self.__usb_ready = False
         self.component_state_changed(ComponentState.STARTING)
-        threading.Thread(target=self.____do_restart, args=(delay,), daemon=True).start()
+        threading.Thread(target=self.__do_restart, args=(delay,), daemon=True).start()
 
-    def ____do_restart(self, delay: float) -> None:
+    def __do_restart(self, delay: float) -> None:
         Api().stop()
         time.sleep(delay)
         Api().start(mqtt_client=Api().get_mqtt_client())
@@ -144,12 +180,19 @@ class AbstractAntivirusController(ABC):
 
         self.__analyse_next_file()
 
-    def _on_analysis_requested(self, filepath: str, fingerprint: str) -> None:
+    def _on_analysis_requested(
+        self, filepath: str, fingerprint: str, disk: str
+    ) -> None:
         """Hook called when an analysis request is received.
 
-        It runs before the file is queued, so a subclass can observe or
-        prepare the file (logging, metrics, dev-mode test fixtures) before
-        the integrity check and the analysis start.
+        Runs on the MQTT thread before the file is queued, so a subclass can
+        observe or prepare the file (logging, metrics, dev-mode test
+        fixtures) before the integrity check and the analysis start.
+
+        Args:
+            filepath: Relative path of the file to scan.
+            fingerprint: Fingerprint previously computed by ``sys-usb``.
+            disk: Disk label containing the file.
         """
 
     def __on_api_ready(self):
@@ -163,29 +206,42 @@ class AbstractAntivirusController(ABC):
         Api().subscribe(f"{TOPIC_ANALYSIS}/stop")
         Api().subscribe(f"{TOPIC_ANALYSIS}/resume")
         Api().subscribe(f"{TOPIC_ANALYSIS}/reset")
-        Api().subscribe(f"{Topics.REPOSITORY_PATH}/response")
-        Api().publish(f"{Topics.REPOSITORY_PATH}/request", {})
-        self._on_api_ready()
 
-    def __on_message_received(self, topic: str, payload: dict):
-        if topic == f"{Topics.REPOSITORY_PATH}/response":
-            self.__repository_path_received = True
-            Constants.DOMU_REPOSITORY_PATH = payload.get("path", "")
-            self.debug(f"Repository path: {Constants.DOMU_REPOSITORY_PATH}")
+        if not DEVMODE:
+            # Safecor v2: gate the component state on the USB mount point.
+            # The watcher thread fires the callback whenever the mount
+            # becomes available, including if it is already mounted.
+            System().on_usb_mountpoint_ready(self.__on_usb_mountpoint_ready)
+        else:
+            # DEVMODE: no appliance, no real mount; bypass the gate and
+            # complete the readiness check (engine readiness may already
+            # be true or will arrive via _notify_engine_ready).
+            self.__usb_ready = True
+            self.debug("DEVMODE: USB mount point readiness gate bypassed.")
             self.__check_component_ready()
 
-        elif topic == f"{Topics.DISCOVER_COMPONENTS}/request":
+        self._on_api_ready()
+
+    def __on_usb_mountpoint_ready(self) -> None:
+        """Callback invoked when the USB mount point becomes available."""
+        self.__usb_ready = True
+        self.debug(f"USB mount point ready: {Constants.USB_MOUNT_POINT}")
+        self.__check_component_ready()
+
+    def __on_message_received(self, topic: str, payload: dict):
+        if topic == f"{Topics.DISCOVER_COMPONENTS}/request":
             self.component_state_changed()
 
         elif topic == f"{TOPIC_ANALYSIS}/request":
-            if not MqttHelper.check_payload(payload, ["filepath"]):
-                self.error("Missing required argument filepath")
+            if not MqttHelper.check_payload(payload, ["disk", "filepath"]):
+                self.error("Missing required arguments: disk and filepath")
                 return
 
             filepath = payload.get("filepath")
             fingerprint = payload.get("fingerprint", "")
-            self._on_analysis_requested(filepath, fingerprint)
-            self.__files_queue.put((filepath, fingerprint))
+            disk = payload.get("disk", "")
+            self._on_analysis_requested(filepath, fingerprint, disk)
+            self.__files_queue.put((filepath, fingerprint, disk))
             self.__analyse_next_file()
 
         elif topic == f"{Topics.RESTART_DOMAIN}/request":
@@ -228,47 +284,52 @@ class AbstractAntivirusController(ABC):
                 # If there is a file to scan we start the analysis in a new thread
                 item = self.__files_queue.get()
                 if isinstance(item, tuple):
-                    filepath, fingerprint = item
+                    filepath, fingerprint, disk = item
                 else:
                     # Backward compatibility with bare filepath entries
-                    filepath, fingerprint = item, ""
+                    filepath, fingerprint, disk = item, "", ""
 
                 self.__workers += 1
                 print("Antivirus start thread for file", filepath)
                 threading.Thread(
                     target=self.__analyse_with_integrity_check,
-                    args=(filepath, fingerprint),
+                    args=(filepath, fingerprint, disk),
                 ).start()
             else:
                 # If there is no file to scan we schedule a timer
                 threading.Timer(0.5, self.__analyse_next_file).start()
 
-    def __analyse_with_integrity_check(self, filepath: str, fingerprint: str) -> None:
-        """Verify the repository file integrity before the analysis (NFR-1).
+    def __analyse_with_integrity_check(
+        self, filepath: str, fingerprint: str, disk: str
+    ) -> None:
+        """Verify the source file integrity before the analysis (NFR-1).
 
-        The fingerprint recorded in the queue is compared with the fingerprint of the
-        file in the repository. On mismatch the file is declared in error and the
-        analysis is not started. When no fingerprint is recorded or the file cannot be
+        The fingerprint recorded by the GUI (computed by ``sys-usb``) is
+        compared with the fingerprint of the file on the USB media.  On
+        mismatch the file is declared in error and the analysis is not
+        started.  When no fingerprint is recorded or the file cannot be
         read the check is skipped and the analysis proceeds as before.
         """
         if fingerprint:
-            storage_filepath = f"{Constants.DOMU_REPOSITORY_PATH}{filepath}"
+            storage_filepath = f"{self._usb_mount_point}/{disk}{filepath}"
             actual = FileHelper.calculate_fingerprint(storage_filepath)
             if actual and actual != fingerprint:
                 self.error(
-                    f"Fingerprint mismatch for {filepath}: "
+                    f"Fingerprint mismatch for {disk}{filepath}: "
                     f"expected {fingerprint}, got {actual}"
                 )
                 self.publish_result(
                     filepath,
                     False,
-                    "Fingerprint mismatch (file altered in the repository)",
+                    "Fingerprint mismatch (file on the media does not "
+                    "match the recorded fingerprint)",
                     fingerprint_error=True,
+                    disk=disk,
                 )
                 self.analysis_finished(False)
                 return
 
-        self._analyse_file(filepath)
+        self._analyse_file(filepath, disk)
 
     def debug(self, message: str):
         Api().debug(message, self.__component_name)
@@ -297,7 +358,7 @@ class AbstractAntivirusController(ABC):
         """Hook called when the component transitions to READY."""
 
     def __check_component_ready(self) -> None:
-        if self.__repository_path_received and self._engine_is_ready():
+        if self.__usb_ready and self._engine_is_ready():
             self.__state = ComponentState.READY
             self.debug("All context received. Component is ready.")
             self.component_state_changed()
@@ -308,11 +369,15 @@ class AbstractAntivirusController(ABC):
         pass
 
     @abstractmethod
-    def _analyse_file(self, filepath: str) -> None:
+    def _analyse_file(self, filepath: str, disk: str) -> None:
         """This function starts the analysis.
 
         The state of the scan is returned with the function publish_result.
         The next file is scanned when the result has been sent.
+
+        Args:
+            filepath: Relative path of the file to scan.
+            disk: Disk label containing the file.
         """
 
     @abstractmethod

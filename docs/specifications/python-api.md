@@ -37,11 +37,13 @@ The library is the `safecor` Python package (Safecor repo `python/lib/src/safeco
 | `DiskState` | enum | Disk states: `unknown`, `connected`, `disconnected`, `mounted`, `unmounted` |
 | `FileHelper` | class (static) | `calculate_fingerprint(path)` (md5), `is_archive_file(name)` |
 | `Logger` | class (singleton) | Low-level MQTT logger (Saphir mostly logs through `Api().info/error/...`) |
-| `System` | class (singleton) | Platform info: `get_system_information()`, `domain_name()`, screen size/rotation |
-| `Constants` | class of constants | Platform constants: `STR_REPOSITORY`, `DOMU_REPOSITORY_PATH`, `FINGERPRINT_METHOD`, ... |
+| `System` | class (singleton) | Platform info: `get_system_information()`, `domain_name()`, screen size/rotation, `is_usb_mountpoint_ready()` (v2), `on_usb_mountpoint_ready(callback)` (v2) |
+| `Constants` | class of constants | Platform constants: `STR_REPOSITORY` (deprecated), `DOMU_REPOSITORY_PATH` (deprecated), `FINGERPRINT_METHOD`, ... |
 | `NotificationFactory` | class (static) | Craft notification payloads (used by mocks & tests) |
 | `ResponseFactory` | class (static) | Craft response payloads (used by mocks & tests) |
 | `__version__` | str | The Safecor version (set as the application version by `main.py`) |
+| `MountMode` | enum | v2: `MountMode.RO`, `MountMode.RW` (used by `DirectMountManager`) |
+| `DirectMountManager` | class (v2) | v2: manages the `/media/usb` direct mount lifecycle |
 
 > `MockSysUsbController`, `MockDom0Controller`, `Emulator`, `default_profile` are **not** part of the `safecor` package — they come from the **`safecor_emulator`** package (Safecor repo `python/emulator/`). See [`../development/testing.md`](../development/testing.md) §3.2.
 
@@ -110,11 +112,12 @@ Each call publishes `{topic}/request`; the answer arrives later on `{topic}/resp
 |------|---------------|--------------------------|
 | `get_disks_list()` | `system/disks/list_disks` | `{topic}/response` — list of disks |
 | `get_files_list(disk, recursive=False, from_dir="", name_filters=None)` | `system/disks/list_files` | `{topic}/response` — file/folder entries |
-| `read_file(disk, filepath)` | `system/disks/read_file` | **no direct response** — `system/disks/new_file` notification (staging into the repository) |
+| `read_file(disk, filepath)` | `system/disks/read_file` | **deprecated** — no longer used (direct mount, see [ADR 0019](../architecture/decisions/0019-direct-usb-mount-data-path.md)) — `system/disks/new_file` notification |
+| `get_file_fingerprint(disk, filepath)` | `system/disks/file_fingerprint` | fingerprint of a file on the source media (analysis precondition) |
 | `copy_file(source_disk, filepath, destination_disk)` | `system/disks/copy_file` | `{topic}/response` — status + destination fingerprint |
 | `create_file(filepath, disk, contents, binary=False)` | `system/disks/create_file` | `{topic}/response` (`success` gates the workflow); binary content is base64 (+zlib when `binary`) |
-| `delete_file(filepath, disk)` | `system/disks/delete_file` | **no direct response** — `system/disks/deleted_file` notification |
-| `request_repository_path()` | `system/disks/repository_path` | `{topic}/response` — `{"path": "/mnt/storage"}` |
+| `delete_file(filepath, disk)` | `system/disks/delete_file` | **deprecated** — no longer used (no repository staging) — `system/disks/deleted_file` notification |
+| `request_repository_path()` | `system/disks/repository_path` | **deprecated** — no longer used (mount readiness via `System.is_usb_mountpoint_ready()`) |
 | `discover_components()` | `system/discover/components` | `{topic}/response` — the component list |
 | `publish_components(components: list)` | — | Saphir **publishes** on `{topic}/response` to answer a discovery request (AV domains advertise `type: "antivirus"`) |
 | `request_energy_state()` | `system/energy/state` | `{topic}/response` — battery level + plugged (the only polling in the system: 5 s timer) |
@@ -127,7 +130,9 @@ Each call publishes `{topic}/request`; the answer arrives later on `{topic}/resp
 | `switch_gui(domain_name)` | `system/gui/switch` | `{topic}/response` — swap the visible GUI domain (Saphir ↔ Viewer) |
 | `mount_file(disk, filepath)` / `unmount(disk)` | `system/disks/mount_file` / `unmount` | disk-state notification — archive mounting; the Saphir code path is gated by the `MOUNT_ARCHIVES` constant (dormant, see [`../architecture/decisions/0018-archive-mounting-removed.md`](../architecture/decisions/0018-archive-mounting-removed.md)) |
 
-Also available (not used by Saphir today): `get_file_fingerprint()`, `get_languages_list()`, `get_current_language()`, `set_current_language()`, `ping()`, `archive_extensions_handled()`.
+Also available (not used by Saphir today): `get_languages_list()`, `get_current_language()`, `set_current_language()`, `ping()`, `archive_extensions_handled()`.
+
+> **Safecor v2 additions (used in Saphir v4)**: `System.is_usb_mountpoint_ready()` (bool), `System.on_usb_mountpoint_ready(callback)` (register callback for mount readiness), `MountMode` enum, `DirectMountManager`.
 
 ---
 
@@ -201,7 +206,7 @@ Saphir: the GUI uses it for the component list (F9) and the AV readiness conditi
 
 ### 5.4 `System`
 
-`get_system_information()` → the `system/info` payload (core version, os, cpu, memory, load, boot_time, uuid, storage); `domain_name()` → the hostname (the domain name); `get_screen_width()/get_screen_height()/get_screen_rotation()` (DomU, from xenstore); `get_system_uuid()` (from DMI). Saphir uses `get_system_information()` in mocks/tests, `domain_name()` indirectly through the logging, and the screen size in `main.py`.
+`get_system_information()` → the `system/info` payload (core version, os, cpu, memory, load, boot_time, uuid, storage); `domain_name()` → the hostname (the domain name); `get_screen_width()/get_screen_height()/get_screen_rotation()` (DomU, from xenstore); `get_system_uuid()` (from DMI); `is_usb_mountpoint_ready()` → `bool` (v2: whether `/media/usb` is mounted); `on_usb_mountpoint_ready(callback)` → register a callback fired when the USB mountpoint becomes ready (v2). Saphir uses `get_system_information()` in mocks/tests, `domain_name()` indirectly through the logging, and the screen size in `main.py`. In Saphir v4, `is_usb_mountpoint_ready()` / `on_usb_mountpoint_ready()` are used as the readiness gate for AV domains (replacing the old `request_repository_path()` pattern).
 
 ### 5.5 `FileHelper` (static)
 
@@ -221,8 +226,8 @@ Payload builders — used by Saphir **mocks and tests** to craft platform messag
 
 | Constant | Value | Used for |
 |----------|-------|----------|
-| `STR_REPOSITORY` | `__repository__` | The disk name of the shared repository |
-| `DOMU_REPOSITORY_PATH` | `/mnt/storage` | The repository mount point in a DomU |
+| `STR_REPOSITORY` | `__repository__` | ~~deprecated~~ — no longer used (see [ADR 0019](../architecture/decisions/0019-direct-usb-mount-data-path.md)) |
+| `DOMU_REPOSITORY_PATH` | `/mnt/storage` | ~~deprecated~~ — no longer used |
 | `FINGERPRINT_METHOD` | `md5` | `FileHelper.calculate_fingerprint` |
 | `ARCHIVE_EXTENSIONS_HANDLED` | list (`.zip`, `.7z`, ...) | `FileHelper.is_archive_file` |
 | `MQTT_VCHAN_SOCKET` | `/var/run/safecor/mqtt.sock` | The DomU broker socket |

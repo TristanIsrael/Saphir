@@ -23,7 +23,7 @@ class FakeAVController(AbstractAntivirusController):
     def _get_component_state(self):
         return ComponentState.READY
 
-    def _analyse_file(self, filepath: str) -> None:
+    def _analyse_file(self, filepath: str, disk: str = "") -> None:
         self.analysed.append(filepath)
 
     def _stop_immediately(self):
@@ -41,6 +41,7 @@ class FakeAVController(AbstractAntivirusController):
 
 def _make_file(directory: str, name: str, content: bytes) -> str:
     path = os.path.join(directory, name.lstrip("/"))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as f:
         f.write(content)
     return path
@@ -59,29 +60,40 @@ class TestAVIntegrityCheck(unittest.TestCase):
         self.__controller._AbstractAntivirusController__can_run = False
 
     def tearDown(self):
+        import shutil
+
         for name in os.listdir(self.__tmpdir):
-            os.remove(os.path.join(self.__tmpdir, name))
+            path = os.path.join(self.__tmpdir, name)
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            else:
+                os.remove(path)
         os.rmdir(self.__tmpdir)
 
-    def _run_check(self, filepath: str, fingerprint: str):
+    def _run_check(
+        self, filepath: str, fingerprint: str, disk: str = "TestDisk"
+    ) -> unittest.mock.MagicMock:
         api_patch = patch("libsaphir._abstract_antivirus_controller.Api")
         timer_patch = patch("threading.Timer")
-        const_patch = patch.object(Constants, "DOMU_REPOSITORY_PATH", self.__tmpdir)
+        # usb_mount_point + disk + filepath = tmpdir + TestDisk + /a.txt
+        disk_root = os.path.join(self.__tmpdir, disk)
+        os.makedirs(disk_root, exist_ok=True)
         mock_api = api_patch.start()
         timer_patch.start()
-        const_patch.start()
         try:
+            # _usb_mount_point is a protected (single-underscore) attribute.
+            # The production code appends ``/{disk}{filepath}`` after it.
+            self.__controller._usb_mount_point = self.__tmpdir
             self.__controller._AbstractAntivirusController__analyse_with_integrity_check(
-                filepath, fingerprint
+                filepath, fingerprint, disk
             )
         finally:
             timer_patch.stop()
-            const_patch.stop()
             api_patch.stop()
         return mock_api
 
     def test_matching_fingerprint_proceeds_to_analysis(self):
-        path = _make_file(self.__tmpdir, "/a.txt", b"hello world")
+        path = _make_file(self.__tmpdir, "/TestDisk/a.txt", b"hello world")
         fingerprint = _fingerprint(path)
 
         self._run_check("/a.txt", fingerprint)
@@ -89,7 +101,7 @@ class TestAVIntegrityCheck(unittest.TestCase):
         self.assertEqual(self.__controller.analysed, ["/a.txt"])
 
     def test_mismatching_fingerprint_stops_analysis(self):
-        _make_file(self.__tmpdir, "/a.txt", b"hello world")
+        _make_file(self.__tmpdir, "/TestDisk/a.txt", b"hello world")
 
         mock_api = self._run_check("/a.txt", "wrong-fingerprint")
 
@@ -117,6 +129,39 @@ class TestAVIntegrityCheck(unittest.TestCase):
         # the digest with the same method to stay in sync with Safecor.
         path = _make_file(self.__tmpdir, "/b.txt", b"content")
         self.assertEqual(_fingerprint(path), FileHelper.calculate_fingerprint(path))
+
+    def test_devmode_bypasses_usb_mount_readiness_gate(self):
+        """G7: In DEVMODE, the AV controller should not wait for a real USB
+        mount point.  The readiness gate is bypassed and the component
+        transitions to READY immediately after ``__on_api_ready`` is called.
+        """
+        dev_controller = FakeAVController()
+        dev_controller._AbstractAntivirusController__can_run = False
+
+        with (
+            patch("libsaphir._abstract_antivirus_controller.DEVMODE", True),
+            patch("libsaphir._abstract_antivirus_controller.Api") as mock_api,
+        ):
+            mock_api.return_value.debug.return_value = None
+            mock_api.return_value.subscribe.return_value = (True, 0)
+            mock_api.return_value.publish.return_value = None
+            mock_api.return_value.publish_components.return_value = None
+
+            # Calling __on_api_ready in DEVMODE bypasses the USB mount
+            # gate (no System().on_usb_mountpoint_ready() call).
+            dev_controller._AbstractAntivirusController__on_api_ready()
+
+            # The component should be READY because DEVMODE sets
+            # __usb_ready = True and _engine_is_ready() returns True.
+            self.assertEqual(
+                dev_controller._AbstractAntivirusController__state,
+                ComponentState.READY,
+            )
+            # usb_ready should have been set to True (gate bypassed).
+            self.assertTrue(dev_controller._AbstractAntivirusController__usb_ready)
+            # subscribe was called for the analysis topics.
+            subscribe_calls = mock_api.return_value.subscribe.call_count
+            self.assertGreaterEqual(subscribe_calls, 1)
 
 
 if __name__ == "__main__":

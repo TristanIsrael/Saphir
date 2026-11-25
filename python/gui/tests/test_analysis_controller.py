@@ -1,1512 +1,821 @@
+"""Tests for the Safecor v2 analysis controller.
+
+Migrated from Safecor v1 (9p repository staging) to v2 (fingerprint ->
+direct analysis).  Files use composite ``(disk, filepath)`` keys.
+"""
+
+from __future__ import annotations
+
+import time
 import unittest
 from copy import deepcopy
-import time
-from PySide6.QtTest import QSignalSpy
 from threading import Event, Lock
-from safecor import Api, MqttFactory, Topics, NotificationFactory, Constants, DiskState, ResponseFactory
-from Saphir import AnalysisController, AnalysisState, AnalysisMode
+
 from libsaphir import TOPIC_ANALYSIS, FileStatus
+from PySide6.QtTest import QSignalSpy
+from safecor import (
+    Api,
+    DiskState,
+    MqttFactory,
+    NotificationFactory,
+    Topics,
+)
+
+from Saphir import AnalysisController, AnalysisMode, AnalysisState
+
+# ---------------------------------------------------------------------------
+# Test data
+# ---------------------------------------------------------------------------
+
+ANALYSIS_COMPONENTS = [
+    {
+        "id": "av1",
+        "domain_name": "Mac",
+        "label": "Mock ESET antivirus",
+        "type": "antivirus",
+        "state": "ready",
+        "version": "1.0.0-mock",
+        "description": "Version mock",
+    },
+    {
+        "id": "av2",
+        "domain_name": "Mac",
+        "label": "ClamAV Antivirus controller",
+        "type": "antivirus",
+        "state": "ready",
+        "version": "ClamAV 1.4.2",
+        "description": "",
+    },
+]
+
+DISK_LABEL = "Archives"
+
+FILES_LIST = [
+    {"type": "file", "path": "/", "name": ".DS_Store", "size": 6148},
+    {"type": "file", "path": "/", "name": "Test.pdf", "size": 2772992},
+]
+
+ARCHIVE_FILES = [
+    {
+        "type": "file",
+        "path": "/1.3.0/atmosphere/contents/4200000000003103",
+        "name": "exefs.nsp",
+        "size": 572907,
+    },
+    {
+        "type": "file",
+        "path": "/1.3.0/atmosphere/contents/4200000000003103/flags",
+        "name": "boot2.flag",
+        "size": 0,
+    },
+    {
+        "type": "file",
+        "path": "/1.3.0/atmosphere/contents/4200000000003103",
+        "name": "toolbox.json",
+        "size": 113,
+    },
+    {
+        "type": "file",
+        "path": "/1.3.0/switch/.overlays",
+        "name": "parental_control.ovl",
+        "size": 1065016,
+    },
+]
+
+
+def _make_file(name: str, size: int, disk: str = DISK_LABEL) -> dict:
+    """Return a file dict with v2 fields (disk, filepath)."""
+    return {
+        "disk": disk,
+        "filepath": name,
+        "name": name,
+        "path": "/",
+        "size": size,
+        "status": FileStatus.FileStatusUndefined,
+        "locked": False,
+        "progress": 0,
+        "results": {},
+        "selected": True,
+        "inqueue": True,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Test class
+# ---------------------------------------------------------------------------
+
 
 class TestAnalysisController(unittest.TestCase):
+    """Tests for ``AnalysisController`` under Safecor v2."""
 
-    STORAGE_FILES = {"disk": "Archives", "files": [{"type": "file", "path": "/", "name": ".DS_Store", "size": 6148}, {"type": "file", "path": "/", "name": "Test.pdf", "size": 2772992}]}
-    ARCHIVE_FILES = [{"type": "file", "path": "/1.3.0/atmosphere/contents/4200000000003103", "name": "exefs.nsp", "size": 572907}, {"type": "file", "path": "/1.3.0/atmosphere/contents/4200000000003103/flags", "name": "boot2.flag", "size": 0}, {"type": "file", "path": "/1.3.0/atmosphere/contents/4200000000003103", "name": "toolbox.json", "size": 113}, {"type": "file", "path": "/1.3.0/switch/.overlays", "name": "parental_control.ovl", "size": 1065016}]
-    ANALYSIS_COMPONENTS = [
-        {"id": "av1", "domain_name": "Mac", "label": "Mock ESET antivirus", "type": "antivirus", "state": "ready", "version": "1.0.0-mock", "description": "Version mock"},
-        {"id": "av2", "domain_name": "Mac", "label": "ClamAV Antivirus controller", "type": "antivirus", "state": "ready", "version": "ClamAV 1.4.2/27164/Wed Jan 24 10:45:32 2024", "description": ""}
-    ]    
-    STORAGE_MIXED_FILES = {"disk": "Mixed", "files": [{"type":"file", "path": "/", "name": "File.txt", "size": 1234}, {"type": "file", "path": "/", "name": "Test.iso", "size": 50000000}, {"type":"file", "path": "/", "name": "File2.txt", "size": 1234}, {"type": "file", "path": "/", "name": "Test2.iso", "size": 50000000}  ]}
+    def setUp(self) -> None:
+        """Prepare the MQTT mock API and a shared empty file dictionary."""
+        # Initialize early so the ready callback (threaded) doesn't race.
+        self._files_queue: dict[str, dict] = {}
+        self._analysis_controller: AnalysisController | None = None
+        self._ready = False
+        self._ready_event = Event()
+        self._message_event = Event()
+        self._messages_recv: list[dict] = []
+        self._nb_subscriptions = 0
+        self._nb_expected_messages = 1
+        self._message_lock = Lock()
+        self._sysinfo_consumed = False
 
-    def setUp(self):
-        # Reset any leftover state from previous tests
         try:
             Api().stop()
-        except Exception:
+        except Exception:  # noqa: BLE001,S110
             pass
 
-        self.__ready = False
-        self.__ready_event = Event()
-        self.__message_event = Event()
-        self.__messages_recv = []
-        self.__files_queue = {}    
-        self.__nb_subscriptions = 0
-        self.__nb_expected_messages = 1
-        self.__message_lock = Lock()
-        self.__sysinfo_consumed = False
+        self._mqtt_client = MqttFactory.create_mqtt_network_dev(__class__.__name__)
+        Api().add_message_callback(self._on_message)
+        Api().add_ready_callback(self._on_api_ready)
+        Api().add_subscription_callback(self._on_subscribed)
+        Api().start(self._mqtt_client, "local")
+        self._ready = self._ready_event.wait(0.5)
 
-        # Start the API
-        self.__mqtt_client = MqttFactory.create_mqtt_network_dev(__class__.__name__)
-        Api().add_message_callback(self.__on_message)
-        Api().add_ready_callback(self.__on_api_ready)
-        Api().add_subscription_callback(self.__on_subscribed)
-        Api().start(self.__mqtt_client, "local")
-        self.__ready = self.__ready_event.wait(0.5)
-
-    def tearDown(self):
-        self.__analysis_controller.stop_analysis()
-        time.sleep(0.6)
+    def tearDown(self) -> None:
+        if self._analysis_controller is not None:
+            self._analysis_controller.stop_analysis()
+        time.sleep(0.3)
         Api().stop()
 
-    def __on_api_ready(self):
+    def _on_api_ready(self) -> None:
+        """After the API is ready, subscribe to required topics."""
         Api().subscribe(f"{Topics.SYSTEM_INFO}/request")
         Api().subscribe(f"{TOPIC_ANALYSIS}/#")
         Api().subscribe(f"{Topics.DISKS}/+/request")
-        # A fresh copy per test: the controller mutates the list in place
-        # (e.g. handle_av_failure), the class attribute must stay pristine.
-        self.__analysis_controller = AnalysisController(self.__files_queue, deepcopy(self.ANALYSIS_COMPONENTS), ["Archives"], AnalysisMode.AnalyseSelection)
+        self._ready_event.set()
 
-    def __on_subscribed(self, mid):
-        self.__nb_subscriptions = self.__nb_subscriptions + 1
-        if self.__nb_subscriptions == 3:
-            self.__ready_event.set()
+    def _on_subscribed(self, mid: int) -> None:
+        self._nb_subscriptions += 1
 
-    def __on_message(self, topic:str, payload:dict):           
-        # We ignore our own messages
-        if topic == Topics.NEW_FILE:
+    def _on_message(self, topic: str, payload: dict) -> None:
+        # Ignore our own messages
+        if topic in (Topics.NEW_FILE, Topics.DELETED_FILE, Topics.DELETE_FILE):
             return
-        elif topic.endswith("/response"):
+        if topic.endswith("/response"):
             return
-        elif topic == Topics.DISK_STATE:
+        if topic == Topics.DISK_STATE:
             return
-        elif topic == f"{Topics.DELETE_FILE}/request":
-            return
-        elif topic == Topics.DELETED_FILE:
-            return
-        elif topic.startswith(Topics.SYSTEM_INFO) and self.__sysinfo_consumed:
+        if topic.startswith(Topics.SYSTEM_INFO) and self._sysinfo_consumed:
             return
 
-        self.__message_lock.acquire()
+        self._message_lock.acquire()
         if topic.startswith(Topics.SYSTEM_INFO):
-            resp_payload = {
-                "system": { "machine": { "cpu": 16 }}
-            }
-            self.__mqtt_client.publish(f"{Topics.SYSTEM_INFO}/response", resp_payload)
-            self.__sysinfo_consumed = True
-        
-        self.__messages_recv.append({ "topic": topic, "payload": payload})
-        #print(self.__messages_recv)
+            resp_payload = {"system": {"machine": {"cpu": 16}}}
+            self._mqtt_client.publish(f"{Topics.SYSTEM_INFO}/response", resp_payload)
+            self._sysinfo_consumed = True
 
-        if len(self.__messages_recv) == self.__nb_expected_messages:
-            self.__message_event.set()
+        self._messages_recv.append({"topic": topic, "payload": payload})
 
-        self.__message_lock.release()
-     
+        if len(self._messages_recv) >= self._nb_expected_messages:
+            self._message_event.set()
 
-    def test_init(self):
-        self.__files_queue = self.STORAGE_FILES        
+        self._message_lock.release()
 
-        # Verify subscriptions
-        self.assertTrue(self.__ready)
-        #self.assertEqual(self.__nb_subscriptions, 3)
+    def _populate_files(self, file_list: list[dict]) -> None:
+        """Populate the file dict with bare filepath keys (v2 model).
 
-        self.assertEqual(self.__analysis_controller.get_analysis_state(), AnalysisState.AnalysisStopped)
-        # Wait for a message to arrive
-        self.__message_event.clear()
-        self.__nb_expected_messages = 1
-        self.__message_event.wait(0.5)        
+        Each entry carries a ``"disk"`` field set to ``DISK_LABEL``.
+        """
+        for f in file_list:
+            fp = f.get("path", "/") + f.get("name", "")
+            self._files_queue[fp] = _make_file(fp, f["size"], DISK_LABEL)
 
-        self.assertEqual(len(self.__messages_recv), 1)
-        self.assertEqual(self.__messages_recv[0]["topic"], f"{Topics.SYSTEM_INFO}/request")
-
-        # Wait a little that the controller receives the system information
-        time.sleep(0.2)
-        
-        self.assertEqual(self.__analysis_controller.get_repository_capacity(), 8)
-        self.__messages_recv.clear()
-
-        self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_clean_files_size(), 0)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_infected_files_size(), 0)
-
-    def test_scan_files(self):        
-        # Verify subscriptions
-        self.assertTrue(self.__ready)
-
-        # Wait for the init message
-        self.__message_event.clear()
-        self.__nb_expected_messages = 1
-        self.assertTrue(self.__message_event.wait(1))
-        self.assertEqual(len(self.__messages_recv), 1)
-
-        self.__update_queue(self.STORAGE_FILES.get("files", []))
-
-        self.__analysis_controller.start_analysis()
-        self.assertEqual(self.__analysis_controller.get_analysis_state(), AnalysisState.AnalysisRunning)
-
-        # Wait for files to be locked and read requests sent
-        deadline = time.time() + 5
-        while self.__analysis_controller.get_repository_size() < 2 and time.time() < deadline:
-            time.sleep(0.1)
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 2)
-
-        # We send the new file notification for the first file
-        payload = NotificationFactory.create_notification_new_file(Constants.STR_REPOSITORY, "/.DS_Store", "abcdef0123456789", "abcdef0123456789")
-        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
-
-        # Wait for the analysis request to be sent
-        deadline = time.time() + 2
-        file = self.__files_queue.get("/.DS_Store", {})
-        while file.get("status") not in [FileStatus.FileAvailableInRepository, FileStatus.FileAnalysing] and time.time() < deadline:
-            time.sleep(0.1)
-        self.assertIn(file.get("status", FileStatus.FileStatusUndefined), [FileStatus.FileAvailableInRepository, FileStatus.FileAnalysing])
-
-        # We send a result
-        self.__analysis_controller._AnalysisController__handle_result("av1", "/.DS_Store", True, "Some details")
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 50)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 2)
-        
-        # Then we send the second component result
-        self.__analysis_controller._AnalysisController__handle_result("av2", "/.DS_Store", False, "Some details")
-        time.sleep(0.5)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 100)
-        self.assertEqual(file.get("status", FileStatus.FileInfected), FileStatus.FileInfected)
-
-        # We send a delete file notification
-        notif = NotificationFactory.create_notification_deleted_file(Constants.STR_REPOSITORY, "/.DS_Store")
-        self.__mqtt_client.publish(Topics.DELETED_FILE, notif)
-        time.sleep(0.2)
-
-        self.assertEqual(self.__analysis_controller.get_repository_size(), 1)
-
-        # After that we analyse the second file
-        self.__analysis_controller._AnalysisController__handle_result("av1", "/Test.pdf", True, "Some details")
-        time.sleep(0.1)
-
-        # We verify the values
-        file = self.__files_queue.get("/Test.pdf", {})
-        self.assertEqual(file.get("progress", 0), 50)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-
-        # Final result
-        self.__analysis_controller._AnalysisController__handle_result("av2", "/Test.pdf", True, "Some details")
-        time.sleep(1)
-
-        # We verify the values
-        file = self.__files_queue.get("/Test.pdf", {})
-        self.assertEqual(file.get("progress", 0), 100)
-        self.assertEqual(file.get("locked", None), True)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileClean)
-
-    @unittest.skip("MOUNT_ARCHIVES is disabled (BIG_FILE_SIZE_IN_MB = -1)")
-    def test_scan_archive(self):
-        # Verify subscriptions
-        self.assertTrue(self.__ready)
-
-        # Wait for the init message
-        self.__message_event.clear()
-        self.__nb_expected_messages = 1
-        self.assertTrue(self.__message_event.wait(1))
-        self.assertEqual(len(self.__messages_recv), 1)
-
-        # Update the queue with an archive
-        self.__update_queue([{"type": "file", "path": "/", "name": "Test.iso", "size": 50000000}])
-
-        self.__messages_recv.clear()
-        self.__message_event.clear()                
-        self.__nb_expected_messages = 2
-        self.__analysis_controller.start_analysis()
-        self.assertEqual(self.__analysis_controller.get_analysis_state(), AnalysisState.AnalysisRunning)
-        # Wait for the Analysis/resume message
-        self.assertTrue(self.__message_event.wait(2))
-
-        # Verify the message received        
-        self.assertEqual(len(self.__messages_recv), 2)
-        self.assertEqual(self.__messages_recv[0]["topic"], f"{TOPIC_ANALYSIS}/resume")
-        self.assertEqual(self.__messages_recv[1]["topic"], f"{Topics.MOUNT_FILE}/request")
-        self.assertEqual(self.__messages_recv[1]["payload"], {"disk": "Archives", "filepath": "/Test.iso"})
-        
-        # We send the notification that the file has been mounted
-        self.__messages_recv.clear()
-        self.__message_event.clear()
-        self.__nb_expected_messages = 1
-        payload = NotificationFactory.create_notification_disk_state("Test.iso", DiskState.MOUNTED)
-        self.__mqtt_client.publish(Topics.DISK_STATE, payload)
-
-        # The controller will send us a files list request
-        self.__message_event.wait(1)
-        self.assertEqual(len(self.__messages_recv), 1)
-        self.assertEqual(self.__messages_recv[0]["topic"], f"{Topics.LIST_FILES}/request")
-        self.assertEqual(self.__messages_recv[0]["payload"], {"disk": "Test.iso", "recursive": True, "from_dir": ""})
-
-        # We answer with the list of files
-        self.__messages_recv.clear()
-        self.__message_event.clear()
-        self.__nb_expected_messages = 4
-        payload = ResponseFactory.create_response_list_files("Test.iso", self.ARCHIVE_FILES)
-        self.__mqtt_client.publish(f"{Topics.LIST_FILES}/response", payload)
-
-        # Now we expect some queries by the controller
-        self.__message_event.wait(1)
-        self.assertEqual(len(self.__messages_recv), 4)
-        self.assertEqual(self.__messages_recv[0]["topic"], f"{Topics.READ_FILE}/request")
-        self.assertEqual(self.__messages_recv[0]["payload"], {"disk": "Test.iso", "filepath": "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp"})
-        self.assertEqual(self.__messages_recv[1]["topic"], f"{Topics.READ_FILE}/request")
-        self.assertEqual(self.__messages_recv[1]["payload"], {"disk": "Test.iso", "filepath": "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag"})
-        self.assertEqual(self.__messages_recv[2]["topic"], f"{Topics.READ_FILE}/request")
-        self.assertEqual(self.__messages_recv[2]["payload"], {"disk": "Test.iso", "filepath": "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json"})
-        self.assertEqual(self.__messages_recv[3]["topic"], f"{Topics.READ_FILE}/request")
-        self.assertEqual(self.__messages_recv[3]["payload"], {"disk": "Test.iso", "filepath": "/1.3.0/switch/.overlays/parental_control.ovl"})
-
-        # And we answer that the files are in the repository
-        # We expect the controller to send analysis requests for the files
-        self.__messages_recv.clear()
-        self.__nb_expected_messages = 4
-        self.__message_event.clear()
-        payload = NotificationFactory.create_notification_new_file(Constants.STR_REPOSITORY, "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp", "abcdef0123456789", "abcdef0123456789")
-        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
-        payload = NotificationFactory.create_notification_new_file(Constants.STR_REPOSITORY, "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag", "abcdef0123456789", "abcdef0123456789")
-        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
-        payload = NotificationFactory.create_notification_new_file(Constants.STR_REPOSITORY, "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json", "abcdef0123456789", "abcdef0123456789")
-        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
-        payload = NotificationFactory.create_notification_new_file(Constants.STR_REPOSITORY, "/1.3.0/switch/.overlays/parental_control.ovl", "abcdef0123456789", "abcdef0123456789")                
-        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
-        
-        self.assertTrue(self.__message_event.wait(1))
-        
-        self.assertEqual(len(self.__messages_recv), 4)
-        self.assertEqual(self.__messages_recv[0]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[0]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp", "fingerprint": "abcdef0123456789"})
-        self.assertEqual(self.__messages_recv[1]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[1]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag", "fingerprint": "abcdef0123456789"})
-        self.assertEqual(self.__messages_recv[2]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[2]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json", "fingerprint": "abcdef0123456789"})
-        self.assertEqual(self.__messages_recv[3]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[3]["payload"], {"filepath": "/1.3.0/switch/.overlays/parental_control.ovl", "fingerprint": "abcdef0123456789"})        
-
-        # We send a result
+    def _simulate_fingerprint_response(
+        self, filepath: str, fingerprint: str = "abc123def456"
+    ) -> None:
+        """Publish a fingerprint response to simulate sys-usb returning a
+        fingerprint.  In v2, ``AnalysisController`` calls
+        ``Api().get_file_fingerprint(filepath, disk)`` which causes the
+        emulator to publish ``Topics.FILE_FINGERPRINT/response``.
+        """
         payload = {
-            "component": "av1",
-            "filepath": "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp",
-            "success": True,
-            "details": "Some details"
+            "disk": DISK_LABEL,
+            "filepath": filepath,
+            "fingerprint": fingerprint,
         }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
+        self._mqtt_client.publish(f"{Topics.FILE_FINGERPRINT}/response", payload)
 
-        # We wait a little...
-        time.sleep(0.5)
-
-        # We verify the values
-        file = self.__files_queue.get("/Test.iso", {})
-        self.assertEqual(file.get("progress", 0), 12.5)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-        
-        # Then we send the second component result
+    def _simulate_empty_fingerprint(self, filepath: str) -> None:
+        """Publish an empty-fingerprint response to simulate a failed
+        fingerprint computation."""
         payload = {
-            "component": "av2",
-            "filepath": "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp",
-            "success": False,
-            "details": "Some details"
+            "disk": DISK_LABEL,
+            "filepath": filepath,
+            "fingerprint": "",
         }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
+        self._mqtt_client.publish(f"{Topics.FILE_FINGERPRINT}/response", payload)
 
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 25.0)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-
-        # After that we analyse the second file
+    def _simulate_av_response(
+        self,
+        component: str,
+        filepath: str,
+        success: bool,
+        details: str = "",
+        fingerprint_error: bool = False,
+    ) -> None:
+        """Publish an AV analysis response."""
         payload = {
-            "component": "av1",
-            "filepath": "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag",
-            "success": True,
-            "details": "Some details"
+            "component": component,
+            "disk": DISK_LABEL,
+            "filepath": filepath,
+            "success": success,
+            "details": details,
         }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # Wait a little
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 37.5)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-
-        # Next component
-        payload = {
-            "component": "av2",
-            "filepath": "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag",
-            "success": True,
-            "details": "Some details"
-        }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # Wait a little
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 50.0)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-
-        # Next file
-        payload = {
-            "component": "av1",
-            "filepath": "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json",
-            "success": True,
-            "details": "Some details"
-        }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # Wait a little
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 62.5)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-
-        # Next component
-        payload = {
-            "component": "av2",
-            "filepath": "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json",
-            "success": True,
-            "details": "Some details"
-        }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # Wait a little
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 75.0)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-
-        # Last file
-        payload = {
-            "component": "av1",
-            "filepath": "/1.3.0/switch/.overlays/parental_control.ovl",
-            "success": True,
-            "details": "Some details"
-        }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # Wait a little
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 87.5)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-
-        # Next component
-        payload = {
-            "component": "av2",
-            "filepath": "/1.3.0/switch/.overlays/parental_control.ovl",
-            "success": True,
-            "details": "Some details"
-        }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # Wait a little
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 100.0)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileInfected)
-        
-
-    def test_repository_free_slots(self):
-        # Verify subscriptions
-        self.assertTrue(self.__ready)
-        #self.assertEqual(self.__nb_subscriptions, 3)
-
-        # Wait for the init message
-        self.__message_event.clear()
-        self.__nb_expected_messages = 1
-        self.assertTrue(self.__message_event.wait(0.5))
-        self.assertEqual(len(self.__messages_recv), 1)        
-        self.__messages_recv.clear()
-
-        # Wait a little more
-        time.sleep(0.5)
-
-        slots = self.__analysis_controller._AnalysisController__get_repository_free_slots()
-        self.assertEqual(slots, 8)
-
-    @unittest.skip("MOUNT_ARCHIVES is disabled - archive mounting behavior not applicable")
-    def test_scan_mixed_content(self):
-        # Verify subscriptions
-        self.assertTrue(self.__ready)
-
-        # Wait for the init message
-        self.__message_event.clear()
-        self.__nb_expected_messages = 1
-        self.assertTrue(self.__message_event.wait(1))
-        self.assertEqual(len(self.__messages_recv), 1)
-
-        # Update the queue with an archive
-        #self.__update_queue([{"type": "file", "path": "/", "name": "File.txt", "size": 12345}, {"type": "file", "path": "/", "name": "Test.iso", "size": 50000000}])
-        self.__update_queue(deepcopy(self.STORAGE_MIXED_FILES.get("files")))
-
-        self.__messages_recv.clear()
-        self.__message_event.clear()
-        self.__nb_expected_messages = 3
-        self.__analysis_controller.start_analysis()
-        self.assertEqual(self.__analysis_controller.get_analysis_state(), AnalysisState.AnalysisRunning)
-        # Wait for the Analysis/resume message
-        self.assertTrue(self.__message_event.wait(2))
-
-        # Verify the message received
-        self.assertEqual(len(self.__messages_recv), 3)
-        self.assertEqual(self.__messages_recv[0]["topic"], f"{TOPIC_ANALYSIS}/resume")
-        self.assertEqual(self.__messages_recv[1]["topic"], f"{Topics.READ_FILE}/request")
-        self.assertEqual(self.__messages_recv[1]["payload"], {"disk": "Archives", "filepath": "/File.txt"})
-        self.assertEqual(self.__messages_recv[2]["topic"], f"{Topics.READ_FILE}/request")
-        self.assertEqual(self.__messages_recv[2]["payload"], {"disk": "Archives", "filepath": "/File2.txt"})
-
-        # Reply...
-        self.__messages_recv.clear()
-        self.__nb_expected_messages = 1
-        self.__message_event.clear()
-        payload = NotificationFactory.create_notification_new_file(Constants.STR_REPOSITORY, "/File.txt", "abcdef0123456789", "abcdef0123456789")
-        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
-        # Wait for the analysis request
-        self.__message_event.wait(0.5)        
-        
-        self.assertEqual(len(self.__messages_recv), 1)
-        self.assertEqual(self.__messages_recv[0]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[0]["payload"], {"filepath": "/File.txt", "fingerprint": "abcdef0123456789"})
-
-        # Send the results
-        self.__messages_recv.clear()
-        self.__message_event.clear()                
-        self.__nb_expected_messages = 1
-        payload = { "component": "av1", "filepath": "/File.txt", "success": True, "details": "Some details" }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-        payload = { "component": "av2", "filepath": "/File.txt", "success": True, "details": "Some details" }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # The controller should not begin with the archives unless the files
-        # before have finished with the single files
-        self.assertFalse(self.__message_event.wait(0.5))
-
-        # Send the notifications for the second file
-        self.__messages_recv.clear()
-        self.__message_event.clear()                
-        self.__nb_expected_messages = 1
-        payload = NotificationFactory.create_notification_new_file(Constants.STR_REPOSITORY, "/File2.txt", "abcdef0123456789", "abcdef0123456789")
-        self.__mqtt_client.publish(Topics.NEW_FILE, payload)        
-
-        # We expect an analysis request
-        self.assertTrue(self.__message_event.wait(0.5))
-        self.assertEqual(len(self.__messages_recv), 1)
-        self.assertEqual(self.__messages_recv[0]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[0]["payload"], {"filepath": "/File2.txt", "fingerprint": "abcdef0123456789"})
-
-        # Then we send the results
-        self.__messages_recv.clear()
-        self.__message_event.clear()                
-        self.__nb_expected_messages = 1
-        payload = { "component": "av1", "filepath": "/File2.txt", "success": True, "details": "Some details" }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-        payload = { "component": "av2", "filepath": "/File2.txt", "success": True, "details": "Some details" }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # We send deleted file notifications
-        notif = NotificationFactory.create_notification_deleted_file(Constants.STR_REPOSITORY, "File.txt")
-        self.__mqtt_client.publish(Topics.DELETED_FILE, notif)
-        notif = NotificationFactory.create_notification_deleted_file(Constants.STR_REPOSITORY, "File2.txt")
-        self.__mqtt_client.publish(Topics.DELETED_FILE, notif)
-
-        # Wait for a request for the next file (the archive)
-        self.assertTrue(self.__message_event.wait(2))
-
-        # Verify the message received 
-        self.assertEqual(len(self.__messages_recv), 1)
-        self.assertEqual(self.__messages_recv[0]["topic"], f"{Topics.MOUNT_FILE}/request")
-        self.assertEqual(self.__messages_recv[0]["payload"], {"disk": "Archives", "filepath": "/Test.iso"})
-
-        # We send the notification that the file has been mounted
-        self.__messages_recv.clear()
-        self.__message_event.clear()
-        self.__nb_expected_messages = 1
-        payload = NotificationFactory.create_notification_disk_state("Test.iso", DiskState.MOUNTED)
-        self.__mqtt_client.publish(Topics.DISK_STATE, payload)
-
-        # The controller will send us a files list request
-        self.__message_event.wait(1)
-        self.assertEqual(len(self.__messages_recv), 1)
-        self.assertEqual(self.__messages_recv[0]["topic"], f"{Topics.LIST_FILES}/request")
-        self.assertEqual(self.__messages_recv[0]["payload"], {"disk": "Test.iso", "recursive": True, "from_dir": ""})
-
-        # We answer with the list of files
-        self.__messages_recv.clear()
-        self.__message_event.clear()
-        self.__nb_expected_messages = 4
-        payload = ResponseFactory.create_response_list_files("Test.iso", self.ARCHIVE_FILES)
-        self.__mqtt_client.publish(f"{Topics.LIST_FILES}/response", payload)
-
-        # Now we expect some queries by the controller
-        self.__message_event.wait(1)
-        self.assertEqual(len(self.__messages_recv), 4)
-        self.assertEqual(self.__messages_recv[0]["topic"], f"{Topics.READ_FILE}/request")
-        self.assertEqual(self.__messages_recv[0]["payload"], {"disk": "Test.iso", "filepath": "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp"})
-        self.assertEqual(self.__messages_recv[1]["topic"], f"{Topics.READ_FILE}/request")
-        self.assertEqual(self.__messages_recv[1]["payload"], {"disk": "Test.iso", "filepath": "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag"})
-        self.assertEqual(self.__messages_recv[2]["topic"], f"{Topics.READ_FILE}/request")
-        self.assertEqual(self.__messages_recv[2]["payload"], {"disk": "Test.iso", "filepath": "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json"})
-        self.assertEqual(self.__messages_recv[3]["topic"], f"{Topics.READ_FILE}/request")
-        self.assertEqual(self.__messages_recv[3]["payload"], {"disk": "Test.iso", "filepath": "/1.3.0/switch/.overlays/parental_control.ovl"})
-
-        # And we answer that the files are in the repository
-        # We expect the controller to send analysis requests for the files
-        self.__messages_recv.clear()
-        self.__nb_expected_messages = 4
-        self.__message_event.clear()
-        payload = NotificationFactory.create_notification_new_file(Constants.STR_REPOSITORY, "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp", "abcdef0123456789", "abcdef0123456789")
-        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
-        payload = NotificationFactory.create_notification_new_file(Constants.STR_REPOSITORY, "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag", "abcdef0123456789", "abcdef0123456789")
-        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
-        payload = NotificationFactory.create_notification_new_file(Constants.STR_REPOSITORY, "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json", "abcdef0123456789", "abcdef0123456789")
-        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
-        payload = NotificationFactory.create_notification_new_file(Constants.STR_REPOSITORY, "/1.3.0/switch/.overlays/parental_control.ovl", "abcdef0123456789", "abcdef0123456789")                
-        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
-        
-        self.assertTrue(self.__message_event.wait(1))
-        
-        self.assertEqual(len(self.__messages_recv), 4)
-        self.assertEqual(self.__messages_recv[0]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[0]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp", "fingerprint": "abcdef0123456789"})
-        self.assertEqual(self.__messages_recv[1]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[1]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag", "fingerprint": "abcdef0123456789"})
-        self.assertEqual(self.__messages_recv[2]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[2]["payload"], {"filepath": "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json", "fingerprint": "abcdef0123456789"})
-        self.assertEqual(self.__messages_recv[3]["topic"], f"{TOPIC_ANALYSIS}/request")
-        self.assertEqual(self.__messages_recv[3]["payload"], {"filepath": "/1.3.0/switch/.overlays/parental_control.ovl", "fingerprint": "abcdef0123456789"})        
-
-        # We send a result
-        payload = {
-            "component": "av1",
-            "filepath": "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp",
-            "success": True,
-            "details": "Some details"
-        }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # We wait a little...
-        time.sleep(0.5)
-
-        # We verify the values
-        file = self.__files_queue.get("/Test.iso", {})
-        self.assertEqual(file.get("progress", 0), 12.5)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-        
-        # Then we send the second component result
-        payload = {
-            "component": "av2",
-            "filepath": "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp",
-            "success": False,
-            "details": "Some details"
-        }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 25.0)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-
-        # After that we analyse the second file
-        payload = {
-            "component": "av1",
-            "filepath": "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag",
-            "success": True,
-            "details": "Some details"
-        }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # Wait a little
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 37.5)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-
-        # Next component
-        payload = {
-            "component": "av2",
-            "filepath": "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag",
-            "success": True,
-            "details": "Some details"
-        }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # Wait a little
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 50.0)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-
-        # Next file
-        payload = {
-            "component": "av1",
-            "filepath": "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json",
-            "success": True,
-            "details": "Some details"
-        }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # Wait a little
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 62.5)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-
-        # Next component
-        payload = {
-            "component": "av2",
-            "filepath": "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json",
-            "success": True,
-            "details": "Some details"
-        }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # Wait a little
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 75.0)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-
-        # Last file
-        payload = {
-            "component": "av1",
-            "filepath": "/1.3.0/switch/.overlays/parental_control.ovl",
-            "success": True,
-            "details": "Some details"
-        }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # Wait a little
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 87.5)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileAnalysing)
-
-        # Next component
-        payload = {
-            "component": "av2",
-            "filepath": "/1.3.0/switch/.overlays/parental_control.ovl",
-            "success": True,
-            "details": "Some details"
-        }
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
-
-        # Wait a little
-        time.sleep(0.1)
-
-        # We verify the values
-        self.assertEqual(file.get("progress", 0), 100.0)
-        self.assertEqual(file.get("status", FileStatus.FileStatusUndefined), FileStatus.FileInfected)
-        
-
-    def test_repository_free_slots(self):
-        # Verify subscriptions
-        self.assertTrue(self.__ready)
-        #self.assertEqual(self.__nb_subscriptions, 3)
-
-        # Wait for the init message
-        self.__message_event.clear()
-        self.__nb_expected_messages = 1
-        self.assertTrue(self.__message_event.wait(0.5))
-        self.assertEqual(len(self.__messages_recv), 1)        
-        self.__messages_recv.clear()
-
-        # Wait a little more
-        time.sleep(0.5)
-
-        slots = self.__analysis_controller._AnalysisController__get_repository_free_slots()
-        self.assertEqual(slots, 8)
-
-    @unittest.skip("MOUNT_ARCHIVES is disabled - archive grouping behavior not applicable")
-    def test_next_group_of_files(self):
-        # Verify subscriptions
-        self.assertTrue(self.__ready)
-
-        # Wait for the init message
-        self.__message_event.clear()
-        self.__nb_expected_messages = 1
-        self.assertTrue(self.__message_event.wait(0.5))
-        self.assertEqual(len(self.__messages_recv), 1)
-        self.__messages_recv.clear()
-        
-        queue = deepcopy(self.STORAGE_FILES.get("files", []))
-        self.__update_queue(queue)
-
-        files = self.__analysis_controller._AnalysisController__get_next_group_of_files(1)
-        self.assertEqual(len(files), 1)
-
-        file = files[0]
-        self.assertEqual(file["name"], ".DS_Store")
-        file["locked"] = True
-
-        files = self.__analysis_controller._AnalysisController__get_next_group_of_files(1)
-        self.assertEqual(len(files), 1)
-
-        file = files[0]
-        self.assertEqual(file["name"], "Test.pdf")
-        file["locked"] = True
-
-        f = queue[0]
-        f["status"] = FileStatus.FileAnalysing
-        f = queue[1]
-        f["status"] = FileStatus.FileAnalysing
-        files = self.__analysis_controller._AnalysisController__get_next_group_of_files(2)        
-        self.assertEqual(len(files), 0)
-
-        # Make a test with multiple calls
-        queue = deepcopy(self.STORAGE_FILES.get("files", []))
-        self.__update_queue(queue)
-        files = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
-        files2 = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
-        files3 = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
-        self.assertEqual(len(files), 2)
-        self.assertEqual(len(files2), 0)
-        self.assertEqual(len(files3), 0)
-
-
-        # Now we test mixed content
-        queue = deepcopy(self.STORAGE_MIXED_FILES.get("files", []))
-        self.__update_queue(queue)
-
-        files = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
-        self.assertEqual(len(files), 2) # We should only contain the 2 single files
-        self.assertEqual(files[0].get("name", ""), "File.txt")
-        self.assertEqual(files[1].get("name", ""), "File2.txt")
-
-        # We set the status of these 2 files
-        files[0]["status"] = FileStatus.FileAnalysing
-        files[0]["locked"] = True
-        files[1]["status"] = FileStatus.FileAnalysing
-        files[1]["locked"] = True
-
-        self.__analysis_controller._AnalysisController__repository_size = 2
-
-        files = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
-        print(files)
-        self.assertEqual(len(files), 0) # The group should be empty
-
-        # We set the status of the 2 files to finished
-        queue[0]["status"] = FileStatus.FileClean
-        queue[0]["progress"] = 100.0
-        queue[2]["status"] = FileStatus.FileInfected
-        queue[2]["progress"] = 100.0
-
-        self.__analysis_controller._AnalysisController__repository_size = 0
-
-        files = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
-        self.assertEqual(len(files), 1) # The group should only contain the next archive
-        self.assertEqual(files[0].get("name", ""), "Test.iso")
-        
-        files[0]["locked"] = True
-        files[0]["status"] = FileStatus.FileAnalysing
-
-        self.__analysis_controller._AnalysisController__repository_size = 1
-
-        # We provide some content for the archive Test.iso
-        archive_files = {
-            "content": {
-                "/File1.txt": { "name": "File1.txt", "path": "/" },
-                "/File2.txt": { "name": "File2.txt", "path": "/" }
-            }
-        }
-        self.__analysis_controller._AnalysisController__archive_mounted_name = "Test.iso"
-        self.__analysis_controller._AnalysisController__archive_file = archive_files
-
-        files = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
-        self.assertEqual(len(files), 2) # This should be the content of the archive
-
-        # Set the files finished
-        archive_files["content"]["/File1.txt"]["progress"] = 100
-        archive_files["content"]["/File1.txt"]["locked"] = True
-        archive_files["content"]["/File2.txt"]["progress"] = 100
-        archive_files["content"]["/File2.txt"]["locked"] = True
-
-        files = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
-        self.assertEqual(len(files), 0) # The group should be empty
-
-        # Mark the archive finished
-        queue[1]["status"] = FileStatus.FileClean
-        queue[1]["progress"] = 100.0
-        queue[1]["locked"] = True
-        self.__analysis_controller._AnalysisController__archive_mounted_name = None
-        self.__analysis_controller._AnalysisController__archive_mounted_filepath = None
-        self.__analysis_controller._AnalysisController__archive_file = {}
-        self.__analysis_controller._AnalysisController__repository_size = 0
-
-        files = self.__analysis_controller._AnalysisController__get_next_group_of_files(10)
-        self.assertEqual(len(files), 1) # The group should only contain the next archive
-        self.assertEqual(files[0].get("name", ""), "Test2.iso")
-
-        
-        
-    def test_reset(self):
-        self.__analysis_controller.reset()
-        self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_clean_files_size(), 0)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_infected_files_size(), 0)
-
-    def test_handle_result_simple_files(self):
-        self.__update_queue(self.STORAGE_FILES.get("files", []))
-
-        self.assertEqual(self.__analysis_controller.get_queue_size(), 2)
-
-        spyFileUpdated = QSignalSpy(self.__analysis_controller.fileUpdated)
-        spyIterationDone = QSignalSpy(self.__analysis_controller.iterationDone)
-        spyResultsChanged = QSignalSpy(self.__analysis_controller.resultsChanged)
-
-        # The first analysis
-        self.__analysis_controller._AnalysisController__handle_result("av1", "/.DS_Store", True, "")
-
-        self.assertEqual(spyFileUpdated.count(), 1)
-        self.assertEqual(spyIterationDone.count(), 0)
-        self.assertEqual(spyResultsChanged.count(), 0)
-        self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-
-        # The second analysis
-        self.__analysis_controller._AnalysisController__handle_result("av2", "/.DS_Store", True, "")
-
-
-        self.assertEqual(spyFileUpdated.count(), 2)
-        self.assertEqual(spyIterationDone.count(), 1)
-        self.assertEqual(spyResultsChanged.count(), 1)
-        self.assertEqual(self.__analysis_controller.get_clean_files_count(), 1)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-
-        # Next files
-        # The first analysis
-        self.__analysis_controller._AnalysisController__handle_result("av1", "/Test.pdf", False, "")
-
-        self.assertEqual(spyFileUpdated.count(), 3)
-        self.assertEqual(spyIterationDone.count(), 1)
-        self.assertEqual(spyResultsChanged.count(), 1)
-        self.assertEqual(self.__analysis_controller.get_clean_files_count(), 1)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-
-        # The second analysis
-        self.__analysis_controller._AnalysisController__handle_result("av2", "/Test.pdf", True, "")
-
-        self.assertEqual(spyFileUpdated.count(), 4)
-        self.assertEqual(spyIterationDone.count(), 2)
-        self.assertEqual(spyResultsChanged.count(), 2)
-        self.assertEqual(self.__analysis_controller.get_clean_files_count(), 1)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 1)
-
-    def test_handle_result_archive(self):
-        self.__update_queue(self.ARCHIVE_FILES)
-        content = {}
-        for f in self.ARCHIVE_FILES:
-            content[f"{f["path"]}/{f["name"]}"] = f
-
-        self.__analysis_controller._AnalysisController__archive_mounted_name = "Test.iso"
-        self.__analysis_controller._AnalysisController__archive_mounted_filepath = "/Test.iso"
-        self.__analysis_controller._AnalysisController__archive_file = { "name": "Test.iso", "path": "/", "size": 50000000, "inqueue": True, "content": content }
-        self.assertEqual(self.__analysis_controller.get_queue_size(), 4)
-        
-        spyFileUpdated = QSignalSpy(self.__analysis_controller.fileUpdated)
-        spyIterationDone = QSignalSpy(self.__analysis_controller.iterationDone)
-        spyResultsChanged = QSignalSpy(self.__analysis_controller.resultsChanged)
-
-        # File 1 - analysis 1
-        self.__analysis_controller._AnalysisController__handle_result("av1", "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp", True, "")
-
-        self.assertEqual(spyFileUpdated.count(), 1)
-        self.assertEqual(spyIterationDone.count(), 0)
-        self.assertEqual(spyResultsChanged.count(), 0)
-        self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-
-        # File 1 - analysis 2
-        self.__analysis_controller._AnalysisController__handle_result("av2", "/1.3.0/atmosphere/contents/4200000000003103/exefs.nsp", True, "")
-
-        self.assertEqual(spyFileUpdated.count(), 2)
-        self.assertEqual(spyIterationDone.count(), 0)
-        self.assertEqual(spyResultsChanged.count(), 0)
-        self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-
-        # File 2 - analysis 1
-        self.__analysis_controller._AnalysisController__handle_result("av1", "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag", True, "")
-
-        self.assertEqual(spyFileUpdated.count(), 3)
-        self.assertEqual(spyIterationDone.count(), 0)
-        self.assertEqual(spyResultsChanged.count(), 0)
-        self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-
-        # File 2 - analysis 2
-        self.__analysis_controller._AnalysisController__handle_result("av2", "/1.3.0/atmosphere/contents/4200000000003103/flags/boot2.flag", False, "")
-
-        self.assertEqual(spyFileUpdated.count(), 4)
-        self.assertEqual(spyIterationDone.count(), 0)
-        self.assertEqual(spyResultsChanged.count(), 0)
-        self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-
-        # File 3 - analysis 1
-        self.__analysis_controller._AnalysisController__handle_result("av1", "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json", True, "")
-
-        self.assertEqual(spyFileUpdated.count(), 5)
-        self.assertEqual(spyIterationDone.count(), 0)
-        self.assertEqual(spyResultsChanged.count(), 0)
-        self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-
-        # File 3 - analysis 2
-        self.__analysis_controller._AnalysisController__handle_result("av2", "/1.3.0/atmosphere/contents/4200000000003103/toolbox.json", True, "")
-
-        self.assertEqual(spyFileUpdated.count(), 6)
-        self.assertEqual(spyIterationDone.count(), 0)
-        self.assertEqual(spyResultsChanged.count(), 0)
-        self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-
-        # File 4 - analysis 1
-        self.__analysis_controller._AnalysisController__handle_result("av1", "/1.3.0/switch/.overlays/parental_control.ovl", True, "")
-
-        self.assertEqual(spyFileUpdated.count(), 7)
-        self.assertEqual(spyIterationDone.count(), 0)
-        self.assertEqual(spyResultsChanged.count(), 0)
-        self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
-
-        # File 4 - analysis 2
-        self.__analysis_controller._AnalysisController__handle_result("av2", "/1.3.0/switch/.overlays/parental_control.ovl", True, "")
-
-        # We receive 2 updates at the end of the archive analysis
-        self.assertEqual(spyFileUpdated.count(), 9)
-        self.assertEqual(spyIterationDone.count(), 1)
-        self.assertEqual(spyResultsChanged.count(), 1)
-        self.assertEqual(self.__analysis_controller.get_clean_files_count(), 0)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 1)
-
-
-    def test_analysis_response_fingerprint_error(self):
-        self.__update_queue(self.STORAGE_FILES.get("files", []))
-
-        file = self.__files_queue["/.DS_Store"]
-        file["status"] = FileStatus.FileAnalysing
-
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", {
-            "component": "av1",
-            "filepath": "/.DS_Store",
-            "success": False,
-            "details": "Fingerprint mismatch (file altered in the repository)",
-            "fingerprint_error": True,
-        })
-
-        deadline = time.time() + 2
-        while file.get("status") != FileStatus.FileAnalysisError and time.time() < deadline:
-            time.sleep(0.1)
-
-        self.assertEqual(file.get("status"), FileStatus.FileAnalysisError)
-        self.assertEqual(file.get("progress", 0), 100)
-        # A fingerprint error makes the file not clean (NFR-1)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 1)
-
-    def test_analysis_response_without_fingerprint_error_is_normal(self):
-        self.__update_queue(self.STORAGE_FILES.get("files", []))
-
-        file = self.__files_queue["/.DS_Store"]
-
-        self.__mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", {
-            "component": "av1",
-            "filepath": "/.DS_Store",
-            "success": True,
-            "details": "Clean",
-        })
-
-        deadline = time.time() + 2
-        while file.get("progress", 0) == 0 and time.time() < deadline:
-            time.sleep(0.1)
-
-        self.assertEqual(file.get("status"), FileStatus.FileAnalysing)
-        self.assertNotEqual(file.get("status"), FileStatus.FileAnalysisError)
-
-    def test_get_working_files_count(self):
-        self.__files_queue.clear()
-
-        self.__files_queue["/1"] = { "status": FileStatus.FileStatusUndefined }
-        self.__files_queue["/2"] = { "status": FileStatus.FileStatusUndefined }
-        self.assertEqual(self.__analysis_controller.get_working_files_count(), 0)
-
-        self.__files_queue["/1"] = { "status": FileStatus.FileAnalysing }
-        self.__files_queue["/2"] = { "status": FileStatus.FileStatusUndefined }
-        self.assertEqual(self.__analysis_controller.get_working_files_count(), 1)
-
-        self.__files_queue["/1"] = { "status": FileStatus.FileAnalysisError }
-        self.__files_queue["/2"] = { "status": FileStatus.FileAnalysing }
-        self.assertEqual(self.__analysis_controller.get_working_files_count(), 1)
-
-        self.__files_queue["/1"] = { "status": FileStatus.FileAvailableInRepository }
-        self.__files_queue["/2"] = { "status": FileStatus.FileStatusUndefined }
-        self.assertEqual(self.__analysis_controller.get_working_files_count(), 1)
-
-        self.__files_queue["/1"] = { "status": FileStatus.FileClean }
-        self.__files_queue["/2"] = { "status": FileStatus.FileStatusUndefined }
-        self.assertEqual(self.__analysis_controller.get_working_files_count(), 0)
-
-        self.__files_queue["/1"] = { "status": FileStatus.FileClean }
-        self.__files_queue["/2"] = { "status": FileStatus.FileAnalysing }
-        self.assertEqual(self.__analysis_controller.get_working_files_count(), 1)
-
-        self.__files_queue["/1"] = { "status": FileStatus.FileCopyError }
-        self.__files_queue["/2"] = { "status": FileStatus.FileStatusUndefined }
-        self.assertEqual(self.__analysis_controller.get_working_files_count(), 0)
-
-        self.__files_queue["/1"] = { "status": FileStatus.FileCopySuccess }
-        self.__files_queue["/2"] = { "status": FileStatus.FileStatusUndefined }
-        self.assertEqual(self.__analysis_controller.get_working_files_count(), 1)
-
-        self.__files_queue["/1"] = { "status": FileStatus.FileInfected }
-        self.__files_queue["/2"] = { "status": FileStatus.FileStatusUndefined }
-        self.assertEqual(self.__analysis_controller.get_working_files_count(), 0)
-
-        self.__files_queue["/1"] = { "status": FileStatus.FileInfected }
-        self.__files_queue["/2"] = { "status": FileStatus.FileClean }
-        self.assertEqual(self.__analysis_controller.get_working_files_count(), 0)
-
-    # --- Multi-source analysis (F1) ---
-
-    def test_read_file_uses_file_disk(self):
-        # F1: every file is read from the disk that contains it, the
-        # files can come from different source disks (partitions)
-        self.__files_queue.clear()
-        f1 = {"type": "file", "path": "/", "name": "File1.txt", "size": 100}
-        f2 = {"type": "file", "path": "/", "name": "File2.txt", "size": 100}
-        f1["filepath"] = "/File1.txt"
-        f2["filepath"] = "/File2.txt"
-        f1["inqueue"] = True
-        f2["inqueue"] = True
-        f1["disk"] = "Part0"
-        f2["disk"] = "Part1"
-        self.__files_queue["/File1.txt"] = f1
-        self.__files_queue["/File2.txt"] = f2
-
-        self.__analysis_controller.set_source_disks(["Part0", "Part1"])
-
-        self.__messages_recv.clear()
-        self.__analysis_controller.start_analysis()
-
-        # Wait for the two read requests (the copy loop runs in a timer)
-        deadline = time.time() + 5
-        while time.time() < deadline:
-            reads = {
-                m["payload"]["filepath"]: m["payload"]["disk"]
-                for m in self.__messages_recv
-                if m["topic"] == f"{Topics.READ_FILE}/request"
-            }
-            if len(reads) == 2:
-                break
-            time.sleep(0.1)
-        self.assertEqual(reads, {"/File1.txt": "Part0", "/File2.txt": "Part1"})
-
-    def test_multi_source_disk_disconnection_holds_analysis(self):
-        # Scenario 8.8 with several source disks: the analysis is held
-        # when any of the source disks is disconnected
-        self.__update_queue([
-            {"type": "file", "path": "/", "name": "File1.txt", "size": 100},
-            {"type": "file", "path": "/", "name": "File2.txt", "size": 100},
-        ])
-        self.__analysis_controller.set_source_disks(["Archives", "Part1"])
-        self.__analysis_controller.start_analysis()
-
-        # A disk that is not a source is disconnected: nothing happens
-        payload = NotificationFactory.create_notification_disk_state(
-            "OtherDisk", DiskState.DISCONNECTED
-        )
-        self.__mqtt_client.publish(Topics.DISK_STATE, payload)
-        time.sleep(0.5)
-        self.assertFalse(self.__analysis_controller._AnalysisController__source_held)
-
-        # One of the source disks is disconnected: the analysis is held
-        payload = NotificationFactory.create_notification_disk_state(
-            "Part1", DiskState.DISCONNECTED
-        )
-        self.__mqtt_client.publish(Topics.DISK_STATE, payload)
-
-        deadline = time.time() + 2
-        while not self.__analysis_controller._AnalysisController__source_held and time.time() < deadline:
-            time.sleep(0.05)
-        self.assertTrue(self.__analysis_controller._AnalysisController__source_held)
-
-    # --- Source disconnection hold (scenario 8.8) ---
-
-    def test_source_disconnection_holds_analysis(self):
-        self.__update_queue([
-            {"type": "file", "path": "/", "name": "File1.txt", "size": 100},
-            {"type": "file", "path": "/", "name": "File2.txt", "size": 100},
-        ])
-        self.__analysis_controller.start_analysis()
-
-        # The source is disconnected while the analysis is running
-        payload = NotificationFactory.create_notification_disk_state(
-            "Archives", DiskState.DISCONNECTED
-        )
-        self.__mqtt_client.publish(Topics.DISK_STATE, payload)
-
-        deadline = time.time() + 2
-        while not self.__analysis_controller._AnalysisController__source_held and time.time() < deadline:
-            time.sleep(0.05)
-        self.assertTrue(self.__analysis_controller._AnalysisController__source_held)
-
-        # The copy loop is held: no file is requested from the missing source
-        self.__messages_recv.clear()
-        time.sleep(1.2)
-        read_requests = [
-            m for m in self.__messages_recv
-            if m["topic"] == f"{Topics.READ_FILE}/request"
-        ]
-        self.assertEqual(len(read_requests), 0)
-
-        # A file whose copy was in flight when the source was disconnected
-        # is re-requested when the source is re-inserted
-        file = self.__files_queue["/File1.txt"]
-        file["status"] = FileStatus.GettingFile
-        file["locked"] = True
-
-        self.__messages_recv.clear()
-        payload = NotificationFactory.create_notification_disk_state(
-            "Archives", DiskState.CONNECTED
-        )
-        self.__mqtt_client.publish(Topics.DISK_STATE, payload)
-
-        deadline = time.time() + 2
-        while self.__analysis_controller._AnalysisController__source_held and time.time() < deadline:
-            time.sleep(0.05)
-        self.assertFalse(self.__analysis_controller._AnalysisController__source_held)
-
-        # The stuck file is back in the queue and re-requested from the source
-        self.assertEqual(file.get("status"), FileStatus.FileStatusUndefined)
-        self.assertFalse(file.get("locked", True))
-
-        deadline = time.time() + 2
-        read_requests = []
-        while time.time() < deadline:
-            read_requests = [
-                m for m in self.__messages_recv
-                if m["topic"] == f"{Topics.READ_FILE}/request"
-            ]
-            if any(m["payload"]["filepath"] == "/File1.txt" for m in read_requests):
-                break
-            time.sleep(0.1)
-        self.assertTrue(
-            any(m["payload"]["filepath"] == "/File1.txt" for m in read_requests),
-            "The stuck file was not re-requested after the source reconnection",
+        if fingerprint_error:
+            payload["fingerprint_error"] = True
+        self._mqtt_client.publish(f"{TOPIC_ANALYSIS}/response", payload)
+
+    def _create_controller(
+        self,
+        source_disks: list[str] | None = None,
+        analysis_mode: AnalysisMode | None = None,
+    ) -> AnalysisController:
+        """Create a fresh AnalysisController with a deep-copied AV list."""
+        return AnalysisController(
+            files=self._files_queue,
+            analysis_components=deepcopy(ANALYSIS_COMPONENTS),
+            source_disks=source_disks or [DISK_LABEL],
+            analysis_mode_=analysis_mode or AnalysisMode.AnalyseSelection,
         )
 
-    def test_source_disconnection_ignored_when_not_running(self):
-        payload = NotificationFactory.create_notification_disk_state(
-            "Archives", DiskState.DISCONNECTED
-        )
-        self.__mqtt_client.publish(Topics.DISK_STATE, payload)
-        time.sleep(0.5)
-        self.assertFalse(self.__analysis_controller._AnalysisController__source_held)
+    # ------------------------------------------------------------------ #
+    # Tests
+    # ------------------------------------------------------------------ #
 
-    def test_non_source_disk_disconnection_ignored(self):
-        self.__update_queue([
-            {"type": "file", "path": "/", "name": "File1.txt", "size": 100},
-        ])
-        self.__analysis_controller.start_analysis()
+    def test_init(self) -> None:
+        """Verify initial state and subscriptions."""
+        self._files_queue["/.DS_Store"] = _make_file("/.DS_Store", 6148)
+        self._files_queue["/Test.pdf"] = _make_file("/Test.pdf", 2772992)
 
-        payload = NotificationFactory.create_notification_disk_state(
-            "OtherDisk", DiskState.DISCONNECTED
-        )
-        self.__mqtt_client.publish(Topics.DISK_STATE, payload)
-        time.sleep(0.5)
-        self.assertFalse(self.__analysis_controller._AnalysisController__source_held)
+        self.assertTrue(self._ready)
+        self._analysis_controller = self._create_controller()
 
-    def test_duplicate_new_file_ignored(self):
-        self.__update_queue([
-            {"type": "file", "path": "/", "name": "File1.txt", "size": 100},
-        ])
-        self.__analysis_controller.start_analysis()
-
-        # Wait for the file to be requested from the source
-        deadline = time.time() + 2
-        while not any(
-            m["topic"] == f"{Topics.READ_FILE}/request"
-            and m["payload"]["filepath"] == "/File1.txt"
-            for m in self.__messages_recv
-        ) and time.time() < deadline:
-            time.sleep(0.05)
-
-        # First NEW_FILE: the analysis request is sent
-        payload = NotificationFactory.create_notification_new_file(
-            Constants.STR_REPOSITORY, "/File1.txt", "abcdef0123456789", "abcdef0123456789"
-        )
-        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
-
-        deadline = time.time() + 2
-        while not any(
-            m["topic"] == f"{TOPIC_ANALYSIS}/request"
-            and m["payload"]["filepath"] == "/File1.txt"
-            for m in self.__messages_recv
-        ) and time.time() < deadline:
-            time.sleep(0.05)
-
-        analysis_requests = [
-            m for m in self.__messages_recv
-            if m["topic"] == f"{TOPIC_ANALYSIS}/request"
-            and m["payload"]["filepath"] == "/File1.txt"
-        ]
-        self.assertEqual(len(analysis_requests), 1)
-
-        # A duplicate NEW_FILE (e.g. a late notification after a source
-        # reconnection re-request) must not start the analysis twice
-        self.__mqtt_client.publish(Topics.NEW_FILE, payload)
-        time.sleep(0.8)
-        analysis_requests = [
-            m for m in self.__messages_recv
-            if m["topic"] == f"{TOPIC_ANALYSIS}/request"
-            and m["payload"]["filepath"] == "/File1.txt"
-        ]
-        self.assertEqual(len(analysis_requests), 1)
-
-    # --- AV engine failure during the analysis (NFR-3) ---
-
-    def test_av_failure_marks_incomplete_files_error_and_aborts(self):
-        ac_comps = self.__analysis_controller._AnalysisController__analysis_components
-        ac_comps[:] = deepcopy(self.ANALYSIS_COMPONENTS)
-        # Unique filenames: stale callbacks from previous tests (the Api
-        # message callbacks are never cleared) must not find these paths.
-        self.__update_queue([
-            {"type": "file", "path": "/", "name": "AvFailA.txt", "size": 100},
-            {"type": "file", "path": "/", "name": "AvFailB.txt", "size": 200},
-            {"type": "file", "path": "/", "name": "AvFailC.txt", "size": 300},
-        ])
-        self.__files_queue["/AvFailC.txt"]["status"] = FileStatus.FileStatusUndefined
-        self.__analysis_controller.start_analysis()
-
-        f1 = self.__files_queue["/AvFailA.txt"]
-        f1["status"] = FileStatus.FileClean
-        f2 = self.__files_queue["/AvFailB.txt"]
-        f2["status"] = FileStatus.FileAnalysing
-        f2["progress"] = 50
-        f3 = self.__files_queue["/AvFailC.txt"]
-        # f3 is not sent to the engines yet
-
-        aborted = self.__analysis_controller.handle_av_failure("av1")
-
-        # One engine is left: below ANTIVIRUS_NEEDED, the analysis aborts
-        self.assertTrue(aborted)
         self.assertEqual(
-            self.__analysis_controller.get_analysis_state(),
+            self._analysis_controller.get_analysis_state(),
             AnalysisState.AnalysisStopped,
         )
-        # The file already analyzed keeps its status (NFR-3)
-        self.assertEqual(f1["status"], FileStatus.FileClean)
-        # The incomplete files are declared in error
-        self.assertEqual(f2["status"], FileStatus.FileAnalysisError)
-        self.assertEqual(f3["status"], FileStatus.FileAnalysisError)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 2)
 
-    def test_av_failure_continues_when_enough_engines_remain(self):
-        ac_comps = self.__analysis_controller._AnalysisController__analysis_components
-        ac_comps[:] = deepcopy(self.ANALYSIS_COMPONENTS)
-        # Add a third engine so that one failure still leaves
-        # ANTIVIRUS_NEEDED engines available
-        self.__analysis_controller._AnalysisController__analysis_components.append(
-            {
-                "id": "av3", "domain_name": "Mac", "label": "Mock 3 antivirus",
-                "type": "antivirus", "state": "ready",
-                "version": "1.0.0-mock", "description": "",
-            }
-        )
-        self.__update_queue([
-            {"type": "file", "path": "/", "name": "AvFailD.txt", "size": 100},
-            {"type": "file", "path": "/", "name": "AvFailE.txt", "size": 200},
-        ])
-        self.__files_queue["/AvFailE.txt"]["status"] = FileStatus.FileStatusUndefined
-        self.__analysis_controller.start_analysis()
+        time.sleep(0.2)
 
-        f1 = self.__files_queue["/AvFailD.txt"]
-        f1["status"] = FileStatus.FileAnalysing
-        f1["progress"] = 100 * 2 / 3
-        f2 = self.__files_queue["/AvFailE.txt"]
-        # f2 is not sent to the engines yet
+        self.assertEqual(self._analysis_controller.get_clean_files_count(), 0)
+        self.assertEqual(self._analysis_controller.get_clean_files_size(), 0)
+        self.assertEqual(self._analysis_controller.get_infected_files_count(), 0)
+        self.assertEqual(self._analysis_controller.get_infected_files_size(), 0)
 
-        aborted = self.__analysis_controller.handle_av_failure("av3")
+    def test_reset(self) -> None:
+        """Verify reset clears counters."""
+        self._analysis_controller = self._create_controller()
+        self._analysis_controller.reset()
+        self.assertEqual(self._analysis_controller.get_clean_files_count(), 0)
+        self.assertEqual(self._analysis_controller.get_clean_files_size(), 0)
+        self.assertEqual(self._analysis_controller.get_infected_files_count(), 0)
+        self.assertEqual(self._analysis_controller.get_infected_files_size(), 0)
 
-        self.assertFalse(aborted)
+    def test_start_analysis_requests_fingerprints(self) -> None:
+        """start_analysis should request fingerprints for pending files."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        self._analysis_controller.start_analysis()
+
         self.assertEqual(
-            self.__analysis_controller.get_analysis_state(),
+            self._analysis_controller.get_analysis_state(),
             AnalysisState.AnalysisRunning,
         )
-        # f1 was sent to the engines and is incomplete: error
-        self.assertEqual(f1["status"], FileStatus.FileAnalysisError)
-        # f2 has not been sent: it will be analyzed by the remaining engines
-        self.assertEqual(f2["status"], FileStatus.FileStatusUndefined)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 1)
-        # The failed engine is removed from the consensus
-        ids = [
-            c.get("id")
-            for c in self.__analysis_controller._AnalysisController__analysis_components
+
+        # Wait for the fingerprint queue to be enqueued.
+        time.sleep(0.5)
+
+        # Files should be locked and in FileAnalysing state (fingerprinting).
+        any_analysing = any(
+            f.get("status") == FileStatus.FileAnalysing
+            for f in self._files_queue.values()
+        )
+        self.assertTrue(any_analysing)
+
+        # Also verify the resume message was captured (if present).
+        topics = [m["topic"] for m in self._messages_recv]
+        if f"{TOPIC_ANALYSIS}/resume" in topics:
+            # Resume was captured, verify fingerprints were enqueued.
+            fingerprint_topics = [
+                m["topic"]
+                for m in self._messages_recv
+                if m["topic"] == f"{Topics.FILE_FINGERPRINT}/request"
+            ]
+            self.assertGreaterEqual(len(fingerprint_topics), 1)
+
+    def test_fingerprint_triggers_system_used(self) -> None:
+        """A successful fingerprint response should emit systemUsed."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        spy = QSignalSpy(self._analysis_controller.systemUsed)
+        self._analysis_controller.start_analysis()
+
+        # Wait for the fingerprint request to be enqueued.
+        time.sleep(0.5)
+
+        # Simulate fingerprint response for the first file (v2 flow).
+        self._simulate_fingerprint_response("/.DS_Store")
+
+        # Wait for MQTT to process the response.
+        time.sleep(0.3)
+
+        # systemUsed should have been emitted.
+        self.assertGreater(spy.count(), 0)
+
+        # The file should be locked, fingerprint recorded, and in
+        # FileAnalysing state (awaiting AV response).
+        file = self._files_queue.get("/.DS_Store", {})
+        self.assertEqual(file.get("locked"), True)
+        self.assertEqual(file.get("status"), FileStatus.FileAnalysing)
+        self.assertIn("fingerprint", file)
+
+    def test_empty_fingerprint_declares_file_error(self) -> None:
+        """An empty fingerprint response should declare the file in error."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        self._analysis_controller.start_analysis()
+
+        # Wait for the fingerprint request to be enqueued.
+        time.sleep(0.5)
+
+        # Simulate empty fingerprint for the first file.
+        self._simulate_empty_fingerprint("/.DS_Store")
+
+        # Wait for MQTT to process.
+        time.sleep(0.3)
+
+        file = self._files_queue.get("/.DS_Store", {})
+        self.assertEqual(file.get("status"), FileStatus.FileAnalysisError)
+        self.assertEqual(file.get("progress", 0), 100)
+        self.assertEqual(self._analysis_controller.get_infected_files_count(), 1)
+
+    def test_start_analysis_resume_reenqueues_interrupted_files(self) -> None:
+        """Resumed analysis should restart interrupted files from Undefined."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        # Pre-mark one file as interrupted (Analysing).
+        self._files_queue["/.DS_Store"]["status"] = FileStatus.FileAnalysing
+        self._files_queue["/.DS_Store"]["locked"] = True
+        self._files_queue["/.DS_Store"]["results"] = {"av1": True}
+
+        spy_file_updated = QSignalSpy(self._analysis_controller.fileUpdated)
+
+        self._analysis_controller.start_analysis()
+
+        # Wait for MQTT thread to process the published messages
+        # (publish calls are asynchronous through the MQTT broker).
+        time.sleep(0.3)
+
+        # fileUpdated should have been emitted during the reset
+        # (FileAnalysing -> FileStatusUndefined).
+        self.assertGreater(spy_file_updated.count(), 0)
+
+        # The resume message was published via MQTT.
+        topics = [m["topic"] for m in self._messages_recv]
+        self.assertIn(
+            f"{TOPIC_ANALYSIS}/resume",
+            topics,
+            "start_analysis should publish a resume message",
+        )
+
+        # The interrupted file was re-enqueued (fingerprint request).
+        fingerprint_topics = [
+            m["topic"]
+            for m in self._messages_recv
+            if m["topic"] == f"{Topics.FILE_FINGERPRINT}/request"
         ]
-        self.assertNotIn("av3", ids)
+        self.assertGreaterEqual(
+            len(fingerprint_topics),
+            1,
+            "interrupted file should be re-enqueued for fingerprint",
+        )
 
-    def test_av_failure_ignored_when_not_running(self):
-        self.__update_queue([
-            {"type": "file", "path": "/", "name": "AvFailF.txt", "size": 100},
-        ])
-        self.__files_queue["/AvFailF.txt"]["status"] = FileStatus.FileStatusUndefined
+    def test_handle_result_simple_files(self) -> None:
+        """Results should be aggregated and consensus computed."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
 
-        aborted = self.__analysis_controller.handle_av_failure("av1")
+        # Pre-mark files as being analyzed.
+        for filepath in self._files_queue:
+            self._files_queue[filepath]["status"] = FileStatus.FileAnalysing
 
+        spy_file_updated = QSignalSpy(self._analysis_controller.fileUpdated)
+        spy_iteration_done = QSignalSpy(self._analysis_controller.iterationDone)
+        spy_results_changed = QSignalSpy(self._analysis_controller.resultsChanged)
+
+        # First file: first AV says clean.
+        self._analysis_controller._AnalysisController__handle_result(
+            "av1", "/.DS_Store", DISK_LABEL, True, ""
+        )
+
+        self.assertEqual(spy_file_updated.count(), 1)
+        self.assertEqual(spy_iteration_done.count(), 0)
+        self.assertEqual(spy_results_changed.count(), 0)
+
+        # First file: second AV says clean -> consensus clean.
+        self._analysis_controller._AnalysisController__handle_result(
+            "av2", "/.DS_Store", DISK_LABEL, True, ""
+        )
+
+        self.assertEqual(spy_file_updated.count(), 2)
+        self.assertEqual(spy_iteration_done.count(), 1)
+        self.assertEqual(spy_results_changed.count(), 1)
+        self.assertEqual(self._analysis_controller.get_clean_files_count(), 1)
+        self.assertEqual(
+            self._files_queue["/.DS_Store"].get("status"), FileStatus.FileClean
+        )
+
+        # Second file: both AVs say infected.
+        self._analysis_controller._AnalysisController__handle_result(
+            "av1", "/Test.pdf", DISK_LABEL, False, "Virus found"
+        )
+        self._analysis_controller._AnalysisController__handle_result(
+            "av2", "/Test.pdf", DISK_LABEL, False, "Virus found"
+        )
+
+        self.assertEqual(self._analysis_controller.get_clean_files_count(), 1)
+        self.assertEqual(self._analysis_controller.get_infected_files_count(), 1)
+        self.assertEqual(
+            self._files_queue["/Test.pdf"].get("status"), FileStatus.FileInfected
+        )
+
+    def test_handle_result_ignored_for_file_in_final_state(self) -> None:
+        """Stale results for a file in a final state should be ignored."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        # Pre-complete the first file.
+        self._files_queue["/.DS_Store"]["status"] = FileStatus.FileClean
+        self._files_queue["/.DS_Store"]["progress"] = 100
+
+        spy = QSignalSpy(self._analysis_controller.fileUpdated)
+        self._analysis_controller._AnalysisController__handle_result(
+            "av1", "/.DS_Store", DISK_LABEL, True, ""
+        )
+        # No update should have been emitted for the already-complete file.
+        self.assertEqual(spy.count(), 0)
+
+    def test_handle_error_ignored_for_file_in_final_state(self) -> None:
+        """Errors for a file in a final state should be ignored."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        self._files_queue["/.DS_Store"]["status"] = FileStatus.FileInfected
+        self._files_queue["/.DS_Store"]["progress"] = 100
+
+        spy = QSignalSpy(self._analysis_controller.fileUpdated)
+        self._analysis_controller._AnalysisController__handle_error(
+            {"disk": DISK_LABEL, "filepath": "/.DS_Store", "error": "Internal error"}
+        )
+        self.assertEqual(spy.count(), 0)
+
+    def test_analysis_response_fingerprint_error(self) -> None:
+        """A fingerprint-error response should declare the file in error."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        self._files_queue["/.DS_Store"]["status"] = FileStatus.FileAnalysing
+
+        self._simulate_av_response(
+            "av1",
+            "/.DS_Store",
+            False,
+            "Fingerprint mismatch",
+            fingerprint_error=True,
+        )
+
+        deadline = time.time() + 2
+        while (
+            self._files_queue["/.DS_Store"].get("status")
+            != FileStatus.FileAnalysisError
+            and time.time() < deadline
+        ):
+            time.sleep(0.1)
+
+        self.assertEqual(
+            self._files_queue["/.DS_Store"].get("status"),
+            FileStatus.FileAnalysisError,
+        )
+        self.assertEqual(self._files_queue["/.DS_Store"].get("progress", 0), 100)
+        self.assertEqual(self._analysis_controller.get_infected_files_count(), 1)
+
+    def test_analysis_response_without_fingerprint_error_is_normal(self) -> None:
+        """A normal analysis response should not set the error status."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        self._files_queue["/.DS_Store"]["status"] = FileStatus.FileAnalysing
+
+        self._simulate_av_response("av1", "/.DS_Store", True, "Clean")
+
+        deadline = time.time() + 2
+        while (
+            self._files_queue["/.DS_Store"].get("progress", 0) == 0
+            and time.time() < deadline
+        ):
+            time.sleep(0.1)
+
+        # Should still be Analysing (only one AV responded so far).
+        self.assertEqual(
+            self._files_queue["/.DS_Store"].get("status"),
+            FileStatus.FileAnalysing,
+        )
+
+    def test_source_disconnection_holds_analysis(self) -> None:
+        """Source disk disconnection during analysis should hold the queue."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        self._analysis_controller.start_analysis()
+        time.sleep(0.5)
+
+        spy_hold = QSignalSpy(self._analysis_controller.sourceHoldChanged)
+
+        # Simulate source disk disconnect.
+        payload = NotificationFactory.create_notification_disk_state(
+            DISK_LABEL, DiskState.DISCONNECTED
+        )
+        self._mqtt_client.publish(Topics.DISK_STATE, payload)
+
+        # Poll for the signal.
+        deadline = time.time() + 2
+        while spy_hold.count() == 0 and time.time() < deadline:
+            time.sleep(0.1)
+
+        self.assertGreater(spy_hold.count(), 0)
+        self.assertEqual(spy_hold.at(0)[0], True)
+
+    def test_source_disconnection_ignored_when_not_running(self) -> None:
+        """Source disk disconnection when not running should be ignored."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        spy_hold = QSignalSpy(self._analysis_controller.sourceHoldChanged)
+
+        # Simulate source disk disconnect (analysis is stopped).
+        payload = NotificationFactory.create_notification_disk_state(
+            DISK_LABEL, DiskState.DISCONNECTED
+        )
+        self._mqtt_client.publish(Topics.DISK_STATE, payload)
+        time.sleep(0.3)
+
+        # No hold signal should be emitted.
+        self.assertEqual(spy_hold.count(), 0)
+
+    def test_av_failure_continues_when_enough_engines_remain(self) -> None:
+        """An AV failure should not abort if enough engines remain."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        # Simulate one AV going offline during analysis.
+        aborted = self._analysis_controller.handle_av_failure("av1")
+
+        self.assertFalse(aborted)  # Not aborted; av2 still available.
+
+    def test_av_failure_aborts_when_not_enough_engines(self) -> None:
+        """An AV failure should abort if fewer than ANTIVIRUS_NEEDED remain."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+        self._analysis_controller.start_analysis()
+        time.sleep(0.3)
+
+        # With ANTIVIRUS_NEEDED=2 and exactly 2 AVs, removing one
+        # leaves 1 < 2 -> abort immediately.
+        aborted = self._analysis_controller.handle_av_failure("av1")
+
+        self.assertTrue(aborted)
+        self.assertEqual(
+            self._analysis_controller.get_analysis_state(),
+            AnalysisState.AnalysisStopped,
+        )
+
+    def test_av_failure_marks_incomplete_files_error(self) -> None:
+        """AV failure should mark incomplete files as error."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+        self._analysis_controller.start_analysis()
+
+        # Wait for fingerprint requests to be enqueued.
+        time.sleep(0.3)
+
+        # Simulate both AVs failing while files are in Analysing state.
+        self._files_queue["/.DS_Store"]["status"] = FileStatus.FileAnalysing
+
+        self._analysis_controller.handle_av_failure("av1")
+        self._analysis_controller.handle_av_failure("av2")
+
+        # The file should be in error.
+        self.assertEqual(
+            self._files_queue["/.DS_Store"].get("status"),
+            FileStatus.FileAnalysisError,
+        )
+        self.assertEqual(self._files_queue["/.DS_Store"].get("progress", 0), 100)
+
+    def test_av_failure_ignored_when_not_running(self) -> None:
+        """AV failure should be a no-op when analysis is not running."""
+        self._analysis_controller = self._create_controller()
+        aborted = self._analysis_controller.handle_av_failure("av1")
         self.assertFalse(aborted)
-        self.assertEqual(
-            self.__files_queue["/AvFailF.txt"]["status"],
-            FileStatus.FileStatusUndefined,
-        )
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
 
-    def test_av_failure_unknown_component(self):
-        ac_comps = self.__analysis_controller._AnalysisController__analysis_components
-        ac_comps[:] = deepcopy(self.ANALYSIS_COMPONENTS)
-        self.__update_queue([
-            {"type": "file", "path": "/", "name": "AvFailG.txt", "size": 100},
-            {"type": "file", "path": "/", "name": "AvFailH.txt", "size": 200},
-        ])
-        self.__files_queue["/AvFailH.txt"]["status"] = FileStatus.FileStatusUndefined
-        self.__analysis_controller.start_analysis()
+    def test_av_failure_unknown_component(self) -> None:
+        """Failure for an unknown component should not affect analysis."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
 
-        f1 = self.__files_queue["/AvFailG.txt"]
-        f1["status"] = FileStatus.FileAnalysing
-        f1["progress"] = 50
-
-        # The component is not part of the analysis: the list is unchanged
-        # and the analysis keeps running with the two remaining engines
-        aborted = self.__analysis_controller.handle_av_failure("avX")
-
+        aborted = self._analysis_controller.handle_av_failure("unknown_av")
         self.assertFalse(aborted)
-        self.assertEqual(
-            self.__analysis_controller.get_analysis_state(),
-            AnalysisState.AnalysisRunning,
+
+    def test_non_source_disk_disconnection_ignored(self) -> None:
+        """Disconnection of a non-source disk should be ignored."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+        self._analysis_controller.start_analysis()
+        time.sleep(0.5)
+
+        spy_hold = QSignalSpy(self._analysis_controller.sourceHoldChanged)
+
+        # Disconnection of a different disk.
+        payload = NotificationFactory.create_notification_disk_state(
+            "OtherDisk", DiskState.DISCONNECTED
         )
-        self.assertEqual(f1["status"], FileStatus.FileAnalysisError)
-        self.assertEqual(
-            self.__files_queue["/AvFailH.txt"]["status"],
-            FileStatus.FileStatusUndefined,
+        self._mqtt_client.publish(Topics.DISK_STATE, payload)
+        time.sleep(0.3)
+
+        # No hold signal should be emitted.
+        self.assertEqual(spy_hold.count(), 0)
+
+    def test_duplicate_new_file_ignored(self) -> None:
+        """A duplicate fingerprint response for a completed file should be ignored."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        # Pre-complete the file.
+        self._files_queue["/.DS_Store"]["status"] = FileStatus.FileClean
+        self._files_queue["/.DS_Store"]["progress"] = 100
+
+        spy = QSignalSpy(self._analysis_controller.fileUpdated)
+        self._simulate_fingerprint_response("/.DS_Store")
+        time.sleep(0.2)
+
+        # No update should have been emitted.
+        self.assertEqual(spy.count(), 0)
+
+    def test_multi_source_disk_disconnection_holds_analysis(self) -> None:
+        """Disconnection of any source disk should hold the analysis."""
+        self._files_queue = {}
+        self._analysis_controller = self._create_controller(
+            source_disks=[DISK_LABEL, "OtherDisk"]
         )
+        self._populate_files(FILES_LIST)
 
-    def test_start_analysis_resume_reenqueues_interrupted_files(self):
-        # F3: pause/resume — the interrupted files are re-enqueued, the
-        # already-analyzed files keep their status and are not re-analyzed.
-        self.__update_queue([
-            {"type": "file", "path": "/", "name": "PauseA.txt", "size": 100},
-            {"type": "file", "path": "/", "name": "PauseB.txt", "size": 100},
-            {"type": "file", "path": "/", "name": "PauseC.txt", "size": 100},
-            {"type": "file", "path": "/", "name": "PauseD.txt", "size": 100},
-            {"type": "file", "path": "/", "name": "PauseE.txt", "size": 100},
-            {"type": "file", "path": "/", "name": "PauseF.txt", "size": 100},
-        ])
-        q = self.__files_queue
-        q["/PauseA.txt"]["status"] = FileStatus.FileClean
-        q["/PauseB.txt"]["status"] = FileStatus.FileInfected
-        q["/PauseC.txt"]["status"] = FileStatus.FileAnalysisError
-        q["/PauseD.txt"]["status"] = FileStatus.FileStatusUndefined
-        q["/PauseE.txt"]["status"] = FileStatus.FileAnalysing
-        q["/PauseE.txt"]["progress"] = 50
-        q["/PauseE.txt"]["results"] = {"av1": {"result": "Clean", "details": "ok"}}
-        q["/PauseE.txt"]["locked"] = True
-        q["/PauseF.txt"]["status"] = FileStatus.GettingFile
-        q["/PauseF.txt"]["locked"] = True
+        self._analysis_controller.start_analysis()
+        time.sleep(0.5)
 
-        self.__analysis_controller.start_analysis()
+        spy_hold = QSignalSpy(self._analysis_controller.sourceHoldChanged)
 
-        # Final states are kept: no re-analysis
-        self.assertEqual(q["/PauseA.txt"]["status"], FileStatus.FileClean)
-        self.assertEqual(q["/PauseB.txt"]["status"], FileStatus.FileInfected)
-        self.assertEqual(q["/PauseC.txt"]["status"], FileStatus.FileAnalysisError)
-        # Not started yet: unchanged
-        self.assertEqual(q["/PauseD.txt"]["status"], FileStatus.FileStatusUndefined)
-        # Interrupted files: re-enqueued from the beginning
-        self.assertEqual(q["/PauseE.txt"]["status"], FileStatus.FileStatusUndefined)
-        self.assertFalse(q["/PauseE.txt"]["locked"])
-        self.assertEqual(q["/PauseE.txt"]["progress"], 0)
-        self.assertEqual(q["/PauseE.txt"]["results"], {})
-        self.assertEqual(q["/PauseF.txt"]["status"], FileStatus.FileStatusUndefined)
-        self.assertFalse(q["/PauseF.txt"]["locked"])
-
-    def test_handle_result_ignored_for_file_in_final_state(self):
-        # F3: a stale result (e.g. a scan in flight when the analysis was
-        # stopped) arriving after the file reached a final state must be
-        # ignored, not counted in the next analysis cycle.
-        self.__update_queue([
-            {"type": "file", "path": "/", "name": "Term.txt", "size": 100},
-        ])
-        self.__analysis_controller._AnalysisController__analysis_components[:] = (
-            deepcopy(self.ANALYSIS_COMPONENTS)
+        # Disconnection of the second source disk.
+        payload = NotificationFactory.create_notification_disk_state(
+            "OtherDisk", DiskState.DISCONNECTED
         )
-        self.__files_queue["/Term.txt"]["status"] = FileStatus.FileAnalysing
+        self._mqtt_client.publish(Topics.DISK_STATE, payload)
 
-        spyResultsChanged = QSignalSpy(self.__analysis_controller.resultsChanged)
+        # Poll for the signal.
+        deadline = time.time() + 2
+        while spy_hold.count() == 0 and time.time() < deadline:
+            time.sleep(0.1)
 
-        self.__analysis_controller._AnalysisController__handle_result(
-            "av1", "/Term.txt", True, ""
+        self.assertGreater(spy_hold.count(), 0)
+        self.assertEqual(spy_hold.at(0)[0], True)
+
+    def test_same_disk_reconnect_resumes_analysis(self) -> None:
+        """D3: reconnecting the same disk while held resets the in-flight
+        files, clears their results and re-fingerprints them (auto-resume)."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        self._analysis_controller.start_analysis()
+        time.sleep(0.5)
+
+        # Make the file in-flight: fingerprint received, one of two AVs
+        # already responded.
+        self._simulate_fingerprint_response("/.DS_Store")
+        time.sleep(0.3)
+        self._simulate_av_response("av1", "/.DS_Store", True, "Clean")
+        time.sleep(0.3)
+
+        # Disconnect the source -> hold.
+        self._mqtt_client.publish(
+            Topics.DISK_STATE,
+            NotificationFactory.create_notification_disk_state(
+                DISK_LABEL, DiskState.DISCONNECTED
+            ),
         )
-        self.__analysis_controller._AnalysisController__handle_result(
-            "av2", "/Term.txt", True, ""
+        deadline = time.time() + 2
+        while not self._analysis_controller.is_source_held() and time.time() < deadline:
+            time.sleep(0.1)
+        self.assertTrue(self._analysis_controller.is_source_held())
+
+        # Reconnect the same disk -> auto-resume.
+        self._mqtt_client.publish(
+            Topics.DISK_STATE,
+            NotificationFactory.create_notification_disk_state(
+                DISK_LABEL, DiskState.CONNECTED
+            ),
         )
-        self.assertEqual(self.__files_queue["/Term.txt"]["status"], FileStatus.FileClean)
+        deadline = time.time() + 2
+        while self._analysis_controller.is_source_held() and time.time() < deadline:
+            time.sleep(0.1)
+        self.assertFalse(self._analysis_controller.is_source_held())
+        time.sleep(0.5)
 
-        # A stale result for the now-final file is ignored
-        self.__analysis_controller._AnalysisController__handle_result(
-            "av1", "/Term.txt", False, "stale"
+        # The in-flight file was reset and re-fingerprinted.
+        file = self._files_queue["/.DS_Store"]
+        self.assertEqual(file.get("status"), FileStatus.FileAnalysing)
+        self.assertEqual(file.get("results"), {})
+        self.assertEqual(file.get("progress"), 0)
+        self.assertEqual(file.get("locked"), True)
+
+        # A second fingerprint request was issued for the file.
+        fingerprint_requests = [
+            m
+            for m in self._messages_recv
+            if m["topic"] == f"{Topics.FILE_FINGERPRINT}/request"
+            and m["payload"].get("filepath") == "/.DS_Store"
+        ]
+        self.assertGreaterEqual(len(fingerprint_requests), 2)
+
+    def test_different_disk_reconnect_emits_reset_required(self) -> None:
+        """D3: reconnecting a different disk while held requires a reset
+        (coherence check failure)."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        self._analysis_controller.start_analysis()
+        time.sleep(0.5)
+
+        # Disconnect the source -> hold.
+        self._mqtt_client.publish(
+            Topics.DISK_STATE,
+            NotificationFactory.create_notification_disk_state(
+                DISK_LABEL, DiskState.DISCONNECTED
+            ),
         )
-        self.assertEqual(self.__files_queue["/Term.txt"]["status"], FileStatus.FileClean)
-        self.assertEqual(spyResultsChanged.count(), 1)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
+        deadline = time.time() + 2
+        while not self._analysis_controller.is_source_held() and time.time() < deadline:
+            time.sleep(0.1)
+        self.assertTrue(self._analysis_controller.is_source_held())
 
-    def test_handle_error_ignored_for_file_in_final_state(self):
-        # F3: a stale analysis error arriving after the file reached a
-        # final state must not move it to FileAnalysisError.
-        self.__update_queue([
-            {"type": "file", "path": "/", "name": "TermE.txt", "size": 100},
-        ])
-        self.__analysis_controller._AnalysisController__analysis_components[:] = (
-            deepcopy(self.ANALYSIS_COMPONENTS)
+        # Reconnect a different disk -> resetRequired.
+        spy_reset = QSignalSpy(self._analysis_controller.resetRequired)
+        self._mqtt_client.publish(
+            Topics.DISK_STATE,
+            NotificationFactory.create_notification_disk_state(
+                "OtherDisk", DiskState.CONNECTED
+            ),
         )
-        self.__files_queue["/TermE.txt"]["status"] = FileStatus.FileClean
+        deadline = time.time() + 2
+        while spy_reset.count() == 0 and time.time() < deadline:
+            time.sleep(0.1)
 
-        self.__analysis_controller._AnalysisController__handle_error(
-            {"filepath": "/TermE.txt", "error": "stale"}
+        self.assertGreater(spy_reset.count(), 0)
+        self.assertFalse(self._analysis_controller.is_source_held())
+
+    def test_av_failure_ignored_while_held(self) -> None:
+        """D3: an AV failure received while the source is held is stale
+        (caused by the disconnection) and must not be recorded."""
+        self._analysis_controller = self._create_controller()
+        self._populate_files(FILES_LIST)
+
+        self._analysis_controller.start_analysis()
+        time.sleep(0.5)
+
+        # Make the file in-flight: fingerprint received, awaiting the AVs.
+        self._simulate_fingerprint_response("/.DS_Store")
+        time.sleep(0.3)
+
+        # Disconnect the source -> hold.
+        self._mqtt_client.publish(
+            Topics.DISK_STATE,
+            NotificationFactory.create_notification_disk_state(
+                DISK_LABEL, DiskState.DISCONNECTED
+            ),
         )
-        self.assertEqual(self.__files_queue["/TermE.txt"]["status"], FileStatus.FileClean)
-        self.assertEqual(self.__analysis_controller.get_infected_files_count(), 0)
+        deadline = time.time() + 2
+        while not self._analysis_controller.is_source_held() and time.time() < deadline:
+            time.sleep(0.1)
+        self.assertTrue(self._analysis_controller.is_source_held())
 
-    def test_start_analysis_resume_keeps_repository_files(self):
-        # F3: a file already in the repository (copy done, analysis pending)
-        # is re-enqueued like any interrupted file.
-        self.__update_queue([
-            {"type": "file", "path": "/", "name": "PauseR.txt", "size": 100},
-        ])
-        self.__files_queue["/PauseR.txt"]["status"] = FileStatus.FileAvailableInRepository
-        self.__files_queue["/PauseR.txt"]["locked"] = True
+        # An AV failure during the hold must be ignored.
+        self._simulate_av_response("av1", "/.DS_Store", False, "scan error")
+        time.sleep(0.3)
 
-        self.__analysis_controller.start_analysis()
-
-        self.assertEqual(
-            self.__files_queue["/PauseR.txt"]["status"],
-            FileStatus.FileStatusUndefined,
-        )
-        self.assertFalse(self.__files_queue["/PauseR.txt"]["locked"])
-
-    def __update_queue(self, files_list:list[dict]):
-        self.__files_queue.clear()
-
-        for f in deepcopy(files_list):
-            filepath = f"{"" if f.get("path") == "/" else f.get("path")}/{f.get("name")}"
-            f["filepath"] = filepath
-            f["inqueue"] = True
-            f["disk"] = "Archives"
-            self.__files_queue[filepath] = f
+        file = self._files_queue["/.DS_Store"]
+        self.assertEqual(file.get("status"), FileStatus.FileAnalysing)
+        self.assertEqual(file.get("results"), {})

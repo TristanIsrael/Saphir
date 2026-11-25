@@ -1,6 +1,6 @@
 """C.2 — Target disconnection during copy: the copy is held and auto-resumes (8.6).
 
-Scenario:
+Scenario (Safecor v2):
   nominal cycle up to CopyCleanFiles -> detach target -> the copy is HELD
   (the system STAYS in CopyCleanFiles, no reset) -> re-attach the same
   target -> coherence check -> the copy auto-resumes -> SystemMustBeReset.
@@ -60,8 +60,7 @@ def bug_env():
     source_dir = os.path.join(tmp, "source")
     os.makedirs(source_dir, exist_ok=True)
 
-    # Enough content that the copy phase lasts a few seconds: the test
-    # must be able to unplug the target while the copy is in progress.
+    # Enough content that the copy phase lasts a few seconds
     filler = "x" * 30_000_000
     for i in range(NB_FILES):
         with open(os.path.join(source_dir, f"file_{i:02d}.txt"), "w") as f:
@@ -77,11 +76,14 @@ def bug_env():
     )
     em.start()
 
-    # Point the mock AVs at the emulator repository so the NFR-1
-    # fingerprint integrity check runs against the real test files.
-    repo_path = os.path.join(tmp, "repo")
-    av1 = MockAVManager("mock-clam", scan_delay=0.01, repository_path=repo_path)
-    av2 = MockAVManager("mock-eset", scan_delay=0.01, repository_path=repo_path)
+    av1 = MockAVManager(
+        "mock-clam",
+        scan_delay=0.01,
+    )
+    av2 = MockAVManager(
+        "mock-eset",
+        scan_delay=0.01,
+    )
     av1.start()
     av2.start()
 
@@ -95,6 +97,7 @@ def bug_env():
         [
             str(gui_dir / "src" / "Saphir"),
             str(gui_dir.parent / "libsaphir" / "src"),
+            env.get("PYTHONPATH", ""),
         ]
     )
 
@@ -184,8 +187,7 @@ def test_target_disconnection_during_copy_holds_and_resumes(bug_env):
         f"States: {tracker.states}"
     )
 
-    # The resume re-copied the remaining files (the target also holds the
-    # scan report and the journal, so check the source files by name)
+    # The resume re-copied the remaining files
     target_files = set(os.listdir(target_dir))
     missing = {f"file_{i:02d}.txt" for i in range(NB_FILES)} - target_files
     assert not missing, (

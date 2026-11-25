@@ -23,10 +23,11 @@ sys.path.insert(0, str(_libsaphir))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("DEVMODE", "1")
 
-from PySide6.QtGui import QGuiApplication  # noqa: E402
-from Saphir import ApplicationController  # noqa: E402
 from libsaphir import TOPIC_ANALYSIS
-from safecor import Api, Constants, Topics
+from PySide6.QtGui import QGuiApplication
+from safecor import Api
+
+from Saphir import ApplicationController
 
 api_ready = threading.Event()
 
@@ -42,7 +43,7 @@ def _test_hooks(controller):
     - command file: lines "<cmd>:<nonce>" (cmd in pause/resume) drive the
       analysis stop/start, like the GUI button would
     - TEST_EVENT lines make the analysis flow observable from the test
-      (one line per analysis request / repository file placement)
+      (one line per analysis request)
     """
     cmd_file = os.environ.get("SAPHIR_TEST_CMD")
 
@@ -52,10 +53,6 @@ def _test_hooks(controller):
                 f"TEST_EVENT analysis_request {payload.get('filepath', '')}",
                 flush=True,
             )
-        elif (
-            topic == Topics.NEW_FILE and payload.get("disk") == Constants.STR_REPOSITORY
-        ):
-            print(f"TEST_EVENT new_file {payload.get('filepath', '')}", flush=True)
 
     if cmd_file:
         Api().add_message_callback(on_message)

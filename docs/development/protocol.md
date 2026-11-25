@@ -44,7 +44,7 @@ The Safecor API is **asynchronous**: a call publishes a `/request`; the result a
 | Topic | Publisher | Subscriber | Purpose |
 |-------|-----------|------------|---------|
 | `saphir/analysis/request` | GUI `AnalysisController` | each AV domain | "analyse this file" `{filepath, fingerprint}` |
-| `saphir/analysis/response` | each AV domain | GUI `AnalysisController` | scan result `{component, filepath, success, details[, fingerprint_error]}`; on repository integrity failure (NFR-1) the payload carries `fingerprint_error: true` and the GUI marks the file `FileAnalysisError` |
+| `saphir/analysis/response` | each AV domain | GUI `AnalysisController` | scan result `{component, disk, filepath, success, details[, fingerprint_error]}`; on fingerprint mismatch (NFR-1) the payload carries `fingerprint_error: true` and the GUI marks the file `FileAnalysisError` |
 | `saphir/analysis/status` | each AV domain | GUI (currently ignored) | progress |
 | `saphir/analysis/error` | each AV domain | GUI `AnalysisController` | scan error |
 | `saphir/analysis/stop` / `resume` | GUI `AnalysisController` | each AV domain | pause / run |
@@ -54,49 +54,52 @@ The Safecor API is **asynchronous**: a call publishes a `/request`; the result a
 
 ### 3.2 `saphir/analysis/request` — "analyse this file"
 
-Published by the GUI's `AnalysisController` (`__on_file_available`) once the file has been staged in the repository (a `system/disks/new_file` notification was received for it).
+Published by the GUI's `AnalysisController` once the file's fingerprint has been obtained from `sys-usb` via `get_file_fingerprint(disk, filepath)`.
 
 ```json
-{ "filepath": "/my/folder/my_file.txt", "fingerprint": "12cfd565ff54caa12..." }
+{ "disk": "MyUSB", "filepath": "/my/folder/my_file.txt", "fingerprint": "12cfd565ff54caa12..." }
 ```
 
 | Field | Type | Required | Meaning |
 |-------|------|----------|---------|
-| `filepath` | str | yes | The path of the file **in the repository** (the AV domain resolves it against the repository path received from the platform). |
-| `fingerprint` | str | yes | The fingerprint recorded when the file was staged (`source_fingerprint` of the `new_file` notification). The AV domain compares it with the fingerprint of the file in the repository **before scanning** (NFR-1); on mismatch the analysis is not started and the response carries `fingerprint_error: true`. |
+| `disk` | str | yes | The USB disk label (the `/media/usb/<disk>` component on AV domains). Used to key the file's composite identity `(disk, filepath)`. |
+| `filepath` | str | yes | The file path **relative to the USB mount** (e.g. `/my/folder/my_file.txt`). The AV domain resolves it against `/media/usb/<disk>` to form the full path. |
+| `fingerprint` | str | yes | The fingerprint recorded from the `sys-usb` response (obtained via `get_file_fingerprint`). The AV domain compares it with the fingerprint of the file at `/media/usb/<disk><filepath>` **before scanning** (NFR-1); on mismatch the analysis is not started and the response carries `fingerprint_error: true`. |
 
-The AV domain validates `["filepath"]` before queuing the request.
+The AV domain validates `["disk", "filepath", "fingerprint"]` before queuing the request.
 
 ### 3.3 `saphir/analysis/response` — scan result
 
 Published by each AV domain via `AbstractAntivirusController.publish_result`, once per file per engine.
 
 ```json
-{ "component": "ClamAV", "filepath": "/my/folder/my_file.txt", "success": true, "details": "Clean" }
+{ "component": "ClamAV", "disk": "MyUSB", "filepath": "/my/folder/my_file.txt", "success": true, "details": "Clean" }
 ```
 
 | Field | Type | Required | Meaning |
 |-------|------|----------|---------|
 | `component` | str | yes | The name of the publishing AV component (e.g. `ClamAV`). |
-| `filepath` | str | yes | The requested repository path. |
+| `disk` | str | yes | The USB disk label, echoing the request's `disk`. Used to key the result to the composite identity `(disk, filepath)`. |
+| `filepath` | str | yes | The requested file path (relative to the USB mount). |
 | `success` | bool | yes | `true` = clean, `false` = infected **or** scan error (the engine never reports an error on this topic as such). |
 | `details` | str | yes | Engine details: the detected signature name (ClamAV, parsed from the `clamdscan` output), the odscan/lslog outcome or a translated error message (ESET), `Clean` on a clean verdict, or the error message. |
-| `fingerprint_error` | bool | no | Present and `true` only when the NFR-1 integrity check failed (the file was altered in the repository). The GUI then marks the file `FileAnalysisError` and does **not** count the response as a scan result. |
+| `fingerprint_error` | bool | no | Present and `true` only when the NFR-1 integrity check failed (the file at `/media/usb/<disk><filepath>` does not match the recorded fingerprint). The GUI then marks the file `FileAnalysisError` and does **not** count the response as a scan result. |
 
-The GUI validates `["component", "filepath", "success", "details"]` and aggregates the per-AV results until **all** engines have reported — the consensus is then applied (any "Infected" ⇒ infected; see [`../architecture/overview.md`](../architecture/overview.md) §6.2). A file already in a final state is terminal: stale or duplicate results for it are ignored.
+The GUI validates `["component", "disk", "filepath", "success", "details"]` and aggregates the per-AV results until **all** engines have reported — the consensus is then applied (any "Infected" ⇒ infected; see [`../architecture/overview.md`](../architecture/overview.md) §6.2). A file already in a final state is terminal: stale or duplicate results for it are ignored.
 
 ### 3.4 `saphir/analysis/status` — progress
 
 Published by each AV domain via `AbstractAntivirusController.update_status` at scan start and completion.
 
 ```json
-{ "component": "ClamAV", "filepath": "/my/folder/my_file.txt", "status": "FileAnalysing", "progress": 0 }
+{ "component": "ClamAV", "disk": "MyUSB", "filepath": "/my/folder/my_file.txt", "status": "FileAnalysing", "progress": 0 }
 ```
 
 | Field | Type | Meaning |
 |-------|------|---------|
 | `component` | str | The publishing AV component. |
-| `filepath` | str | The requested repository path. |
+| `disk` | str | The USB disk label (echoes the request). |
+| `filepath` | str | The requested file path. |
 | `status` | str | A `FileStatus` value (e.g. `FileAnalysing`, `FileClean`, `FileInfected`). |
 | `progress` | int | The scan progress, 0–100. |
 
@@ -105,7 +108,7 @@ Published by each AV domain via `AbstractAntivirusController.update_status` at s
 ### 3.5 `saphir/analysis/error` — scan error
 
 ```json
-{ "disk": "__repository__", "filepath": "/my/folder/my_file.txt", "error": "..." }
+{ "disk": "MyUSB", "filepath": "/my/folder/my_file.txt", "error": "..." }
 ```
 
 The GUI expects `["disk", "filepath", "error"]` and marks the file `FileAnalysisError` (the analysis **continues** — NFR-3). Note: no AV controller publishes on this topic today — scan errors surface on `response` with `success: false` + `details`, and whole-engine failures surface as component state changes on `system/discover/components` (workflow scenario 8.9).
@@ -116,7 +119,7 @@ All three carry an **empty payload** (`{}`).
 
 | Topic | Effect on the AV domain |
 |-------|-------------------------|
-| `stop` | The domain stops picking new files from its queue; in-flight scans run to completion. GUI usage: **Pause** (workflow v2.3) — the GUI also clears the sys-usb queues (`system/sys-usb/clear-queues`) and halts the repository-copy loop. |
+| `stop` | The domain stops picking new files from its queue; in-flight scans run to completion. GUI usage: **Pause** (workflow v2.3) — the GUI also clears the sys-usb queues (`system/sys-usb/clear-queues`) and halts the file-read loop. |
 | `resume` | The domain re-enables its queue and re-dispatches the pending files. GUI usage: resume after a pause — the GUI re-enqueues the files interrupted by the previous stop; files already analyzed keep their status and are not re-analyzed (scenario 8.2). |
 | `reset` | The domain drains its queue and stops the running engine processes immediately (`_stop_immediately`), then re-enables. GUI usage: system reset. |
 
@@ -124,7 +127,7 @@ All three carry an **empty payload** (`{}`).
 
 ## 4. Safecor system topics — offline reference copy
 
-> **Offline reference copy** — Source: Safecor wiki `Protocol.md` + Safecor repo. Synced: 2026-11-20. When Safecor changes, update here and log the divergence in `docs/safecor-divergences.md`.
+> **Offline reference copy** — Source: Safecor wiki `Protocol.md` + Safecor repo. Synced: 2026-11-24 (v2 topics). When Safecor changes, update here and log the divergence in `docs/safecor-divergences.md`.
 
 This section lists the Safecor `system/*` topics **that Saphir consumes or produces**, with their payload shapes and semantics. It is a reference copy for **offline** coding agents; the Safecor wiki remains the upstream human documentation.
 
@@ -132,7 +135,7 @@ Conventions:
 
 - Request/response functions are a `/request` + `/response` topic pair; the Safecor Python API (`Api()`) wraps each in a high-level method.
 - Notifications are single topics with no `/request`.
-- The repository is referenced as the disk name `__repository__` (mounted at `/mnt/storage`).
+- The `__repository__` disk is **disabled** in Saphir v4 (`repository.disabled: true` in the topology). Topics related to repository staging are **deprecated** and no longer used by Saphir.
 
 ### 4.0 Overview table
 
@@ -141,20 +144,21 @@ Conventions:
 | `system/disks/state` (`DISK_STATE`) | — (notification) | storage detection; source disconnection during analysis (scenario 8.8) |
 | `system/disks/list_disks` | `get_disks_list()` | storage list |
 | `system/disks/list_files` | `get_files_list()` | file browser |
-| `system/disks/read_file` | `read_file()` | repository staging (→ `new_file`) |
 | `system/disks/copy_file` | `copy_file()` | transfer to target |
 | `system/disks/create_file` | `create_file()` | report/journal copy |
-| `system/disks/delete_file` | `delete_file()` | free the repository slot after analysis (→ `deleted_file`) |
-| `system/disks/repository_path` | `request_repository_path()` | repository path (boot readiness + AV readiness condition) |
-| `system/disks/new_file` / `deleted_file` | — (notifications) | staging completion / slot freed (`AnalysisController`) |
+| `system/disks/file_fingerprint` | `get_file_fingerprint()` | fingerprint acquisition (analysis precondition) |
+| `system/disks/read_file` | `read_file()` | ~~deprecated~~ — no longer used (direct mount, see [0019](../architecture/decisions/0019-direct-usb-mount-data-path.md)) |
+| `system/disks/delete_file` | `delete_file()` | ~~deprecated~~ — no longer used (no repository staging) |
+| `system/disks/repository_path` | `request_repository_path()` | ~~deprecated~~ — no longer used (mountpoint ready via `System.is_usb_mountpoint_ready()`) |
+| `system/disks/new_file` / `deleted_file` | — (notifications) | ~~deprecated~~ — no longer used (no repository staging) |
 | `system/discover/components` | `discover_components()` | component readiness (F9), AV engine panic (NFR-3) |
 | `system/energy/state` | `request_energy_state()` | battery/plugged |
-| `system/info` | `request_system_info()` | system info (F9), repository capacity |
+| `system/info` | `request_system_info()` | system info (F9) |
 | `system/settings/languages/default` | `get_default_language()` | default language |
 | `system/gui/switch` | `switch_gui()` | swap to Viewer / back |
 | `system/workflow/{shutdown,restart_domain,gui_ready}` | `shutdown()`, `restart_domain()`, `notify_gui_ready()` | lifecycle |
 | `system/events/#` | — (notification) | `LogListModel` (journal); `system/events/error` also carries file-operation error notifications |
-| `system/sys-usb/clear-queues` | `clear_sys_usb_queues()` | cancel in-flight repository reads on Pause |
+| `system/sys-usb/clear-queues` | `clear_sys_usb_queues()` | cancel in-flight file reads on Pause |
 
 ### 4.1 Disks and files
 
@@ -169,7 +173,7 @@ A disk has been connected or disconnected.
 - `disk` (str): the disk whose state changed.
 - `state` (str): `connected` | `disconnected` | `mounted` | `unmounted` (`DiskState`).
 
-Saphir consumes it for storage detection (source/target assignment) and for the **source-disconnection-during-analysis** handling (the analysis continues on the repository; the copy loop is held until the source is re-inserted — scenario 8.8).
+Saphir consumes it for storage detection (source/target assignment) and for the **source-disconnection-during-analysis** handling (the analysis continues on in-flight files; the copy loop is held until the source is re-inserted — scenario 8.8).
 
 #### `system/disks/list_disks`
 
@@ -240,6 +244,8 @@ Saphir consumes it for storage detection (source/target assignment) and for the 
 
 Saphir uses it to copy the **PDF scan report** and the **event journal** (`journal.log`) to the target disk; the `success` field gates the transition to `SystemMustBeReset`.
 
+> **Deprecated topics**: `system/disks/read_file`, `system/disks/delete_file`, `system/disks/repository_path`, `system/disks/new_file`, `system/disks/deleted_file` are **no longer used** by Saphir (direct mount replaces repository staging, see [ADR 0019](../architecture/decisions/0019-direct-usb-mount-data-path.md)). The topic definitions are preserved here as an offline reference copy.
+
 #### `system/disks/delete_file`
 
 *Deletes a file from a disk, including the repository.*
@@ -258,9 +264,11 @@ Saphir uses it to **free the repository slot** after each analysed file.
 
 Consumed by both the GUI (a boot-readiness condition) and the AV domains (a readiness condition **and** the base path for the NFR-1 integrity check).
 
-> The protocol also defines `system/disks/mount_file` / `system/disks/unmount` (mount an archive as a virtual disk) and `system/disks/file_fingerprint`. Saphir does **not** use them: archive mounting was removed (see [decisions/0018](../architecture/decisions/0018-archive-mounting-removed.md)), and fingerprints are obtained from the `new_file` notification or computed locally by the AV domains.
+> The protocol also defines `system/disks/mount_file` / `system/disks/unmount` (mount an archive as a virtual disk) and `system/disks/file_fingerprint`. Saphir does **not** use `mount_file`/`unmount`: archive mounting was removed (see [decisions/0018](../architecture/decisions/0018-archive-mounting-removed.md)). The `file_fingerprint` topic **is used** in v4: the GUI calls `get_file_fingerprint(disk, filepath)` to obtain the authoritative fingerprint of a file on the source media before the analysis request (NFR-1).
 
 ### 4.2 File notifications
+
+> **Note**: `system/disks/new_file` and `system/disks/deleted_file` are **deprecated** in Saphir v4 — no longer used (direct mount replaces repository staging).
 
 #### `system/disks/new_file` (notification)
 
@@ -279,7 +287,7 @@ Sent when a file has been copied or created on a disk, **including the repositor
 - `filepath` (str): the complete path of the file.
 - `source_fingerprint` / `dest_fingerprint` (str): the fingerprint of the original file and of the file after the copy — **the two must match** (integrity).
 
-Saphir: marks the staged file `FileAvailableInRepository`, records the fingerprint, and publishes the `saphir/analysis/request` that carries it to the AV domains.
+Saphir: ~~marks the staged file `FileAvailableInRepository`, records the fingerprint, and publishes the `saphir/analysis/request` that carries it to the AV domains.~~ ~~deprecated~~ — no longer used (fingerprint obtained via `get_file_fingerprint`, see [ADR 0019](../architecture/decisions/0019-direct-usb-mount-data-path.md)).
 
 > The wiki page spells these fields `source_footprint` / `dest_footprint`; the Safecor repo and the Saphir consumers use `*_fingerprint` — that is the authoritative spelling.
 
@@ -291,7 +299,7 @@ Sent after a `delete_file` call.
 { "disk": "disk1", "filepath": "/my/file.ext" }
 ```
 
-Saphir: unlocks the queue entry (the repository slot is free again).
+Saphir: ~~unlocks the queue entry (the repository slot is free again).~~ ~~deprecated~~ — no longer used.
 
 ### 4.3 Workflow lifecycle
 
@@ -344,7 +352,7 @@ Sent by the GUI when it is ready; the platform removes the splash screen. Payloa
 
 Saphir **consumes** it: the component list (F9), the boot readiness condition (`analysisReady`), and AV **engine-panic** detection (component `error`/`off` ⇒ NFR-3, scenario 8.9).
 
-The AV domains **produce** it: each one answers a discovery request by publishing its state via `Api().publish_components(...)` with `type: "antivirus"`. A component reports `ready` only when **both** conditions are met: the repository path has been received **and** the engine-specific initialisation is complete (daemon ping for ClamAV, LXC container for ESET).
+The AV domains **produce** it: each one answers a discovery request by publishing its state via `Api().publish_components(...)` with `type: "antivirus"`. A component reports `ready` only when **both** conditions are met: the USB mountpoint is ready **and** the engine-specific initialisation is complete (daemon ping for ClamAV, LXC container for ESET).
 
 ### 4.5 Energy
 
@@ -384,7 +392,7 @@ Saphir: the energy indicator (`Energy.qml`) and the system information screen (F
 }
 ```
 
-Saphir: the system information screen (F9) and the **repository capacity** (number of files analyzed in parallel).
+Saphir: the system information screen (F9).
 
 ### 4.7 Settings (languages)
 

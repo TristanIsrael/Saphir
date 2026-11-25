@@ -1,11 +1,12 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
+from Saphir.enums import AnalysisMode, SystemState
+
 from Saphir import ApplicationController
-from Saphir.enums import SystemState, AnalysisMode
 
 
 class TestApplicationController(unittest.TestCase):
-
     def setUp(self):
         with patch("Saphir.application_controller.Api"):
             self.controller = ApplicationController()
@@ -14,13 +15,17 @@ class TestApplicationController(unittest.TestCase):
         self.assertEqual(self.controller.systemState, SystemState.SystemStarting.value)
 
     def test_set_system_state(self):
-        self.controller._ApplicationController__set_system_state(SystemState.SystemReady)
+        self.controller._ApplicationController__set_system_state(
+            SystemState.SystemReady
+        )
         self.assertEqual(self.controller.systemState, SystemState.SystemReady.value)
 
     def test_system_state_changed_signal(self):
         states = []
         self.controller.systemStateChanged.connect(lambda v: states.append(v))
-        self.controller._ApplicationController__set_system_state(SystemState.SystemReady)
+        self.controller._ApplicationController__set_system_state(
+            SystemState.SystemReady
+        )
         self.assertEqual(states, [SystemState.SystemReady.value])
 
     def test_source_name_initial(self):
@@ -51,7 +56,9 @@ class TestApplicationController(unittest.TestCase):
         self.assertEqual(self.controller.queueSize, 0)
 
     def test_queue_size_after_enqueue(self):
-        self.controller._ApplicationController__file_queue.enqueue("/test.txt", {"filepath": "/test.txt", "name": "test.txt", "size": 100})
+        self.controller._ApplicationController__file_queue.enqueue(
+            "/test.txt", {"filepath": "/test.txt", "name": "test.txt", "size": 100}
+        )
         self.assertEqual(self.controller.queueSize, 1)
 
     def test_analysis_ready_initial(self):
@@ -64,15 +71,21 @@ class TestApplicationController(unittest.TestCase):
         self.assertFalse(self.controller.plugged)
 
     def test_analysis_mode_initial(self):
-        self.assertEqual(self.controller.analysisMode, AnalysisMode.AnalyseSelection.value)
+        self.assertEqual(
+            self.controller.analysisMode, AnalysisMode.AnalyseSelection.value
+        )
 
     def test_set_analysis_mode(self):
         self.controller.analysisMode = AnalysisMode.AnalyseWholeSource.value
-        self.assertEqual(self.controller.analysisMode, AnalysisMode.AnalyseWholeSource.value)
+        self.assertEqual(
+            self.controller.analysisMode, AnalysisMode.AnalyseWholeSource.value
+        )
 
     def test_set_analysis_mode_invalid(self):
         self.controller.analysisMode = 999
-        self.assertEqual(self.controller.analysisMode, AnalysisMode.AnalyseSelection.value)
+        self.assertEqual(
+            self.controller.analysisMode, AnalysisMode.AnalyseSelection.value
+        )
 
     def test_long_process_running(self):
         self.assertFalse(self.controller.longProcessRunning)
@@ -91,7 +104,9 @@ class TestApplicationController(unittest.TestCase):
         self.assertFalse(self.controller.transferStarted)
 
     def test_transfer_started_after_transition(self):
-        self.controller._ApplicationController__set_system_state(SystemState.CopyCleanFiles)
+        self.controller._ApplicationController__set_system_state(
+            SystemState.CopyCleanFiles
+        )
         self.assertTrue(self.controller.transferStarted)
 
     def test_copied_files_count(self):
@@ -104,7 +119,9 @@ class TestApplicationController(unittest.TestCase):
         self.assertEqual(self.controller.storagesCount, 0)
 
     def test_storages_after_add(self):
-        self.controller._ApplicationController__storage_manager.on_storage_added("disk1")
+        self.controller._ApplicationController__storage_manager.on_storage_added(
+            "disk1"
+        )
         self.assertEqual(self.controller.storagesCount, 1)
         self.assertIn("disk1", self.controller.storages)
 
@@ -117,34 +134,56 @@ class TestApplicationController(unittest.TestCase):
 
     def test_set_system_loading_progress_same(self):
         signals = []
-        self.controller.systemLoadingProgressChanged.connect(lambda: signals.append(True))
+        self.controller.systemLoadingProgressChanged.connect(
+            lambda: signals.append(True)
+        )
         self.controller._ApplicationController__set_system_loading_progress(0.5)
         self.controller._ApplicationController__set_system_loading_progress(0.5)
         self.assertEqual(len(signals), 1)
 
     def test_is_file_in_queue(self):
         self.assertFalse(self.controller.is_file_in_queue("/nonexistent"))
-        self.controller._ApplicationController__file_queue.enqueue("/test.txt", {"filepath": "/test.txt", "name": "test.txt", "size": 100})
+        self.controller._ApplicationController__file_queue.enqueue(
+            "/test.txt", {"filepath": "/test.txt", "name": "test.txt", "size": 100}
+        )
         self.assertTrue(self.controller.is_file_in_queue("/test.txt"))
 
     def test_is_folder_in_queue(self):
         self.assertFalse(self.controller.is_folder_in_queue("/nonexistent"))
-        self.controller._ApplicationController__file_queue.enqueue("/folder/file.txt", {"filepath": "/folder/file.txt", "name": "file.txt", "size": 100})
+        self.controller._ApplicationController__file_queue.enqueue(
+            "/folder/file.txt",
+            {"filepath": "/folder/file.txt", "name": "file.txt", "size": 100},
+        )
         self.assertTrue(self.controller.is_folder_in_queue("/folder"))
 
     def test_language_initial(self):
         self.assertEqual(self.controller.language, "")
 
     def test_clean_files_count(self):
-        with patch.object(type(self.controller), '_ApplicationController__analysis_controller', create=True, new=None):
+        with patch.object(
+            type(self.controller),
+            "_ApplicationController__analysis_controller",
+            create=True,
+            new=None,
+        ):
             self.assertEqual(self.controller.cleanFilesCount, 0)
 
     def test_infected_files_count(self):
-        with patch.object(type(self.controller), '_ApplicationController__analysis_controller', create=True, new=None):
+        with patch.object(
+            type(self.controller),
+            "_ApplicationController__analysis_controller",
+            create=True,
+            new=None,
+        ):
             self.assertEqual(self.controller.infectedFilesCount, 0)
 
     def test_clean_files_size(self):
-        with patch.object(type(self.controller), '_ApplicationController__analysis_controller', create=True, new=None):
+        with patch.object(
+            type(self.controller),
+            "_ApplicationController__analysis_controller",
+            create=True,
+            new=None,
+        ):
             self.assertEqual(self.controller.cleanFilesSize, 0)
 
     def test_global_progress_empty(self):
@@ -187,8 +226,33 @@ class TestApplicationController(unittest.TestCase):
         self.assertIsNotNone(self.controller.inputFilesListProxyModel)
 
     def test_analysis_controller_property(self):
-        with patch.object(type(self.controller), '_ApplicationController__analysis_controller', create=True, new=None):
+        with patch.object(
+            type(self.controller),
+            "_ApplicationController__analysis_controller",
+            create=True,
+            new=None,
+        ):
             self.assertIsNone(self.controller.analysisController)
+
+    def test_resetRequired_signal_transitions_to_must_be_reset(self):
+        """When the analysis controller emits resetRequired the application
+        controller should transition to ``SystemMustBeReset`` and emit
+        ``systemMustBeReset`` (NFR-4 / I6)."""
+        states = []
+        reset_events = []
+        self.controller.systemStateChanged.connect(lambda v: states.append(v))
+        self.controller.systemMustBeReset.connect(lambda: reset_events.append(True))
+
+        # Inject a mock analysis controller so the attribute exists.
+        self.controller._ApplicationController__analysis_controller = (
+            unittest.mock.MagicMock()
+        )
+
+        # Manually invoke the handler that resetRequired connects to.
+        self.controller._ApplicationController__on_reset_required()
+
+        self.assertEqual(states, [SystemState.SystemMustBeReset.value])
+        self.assertEqual(len(reset_events), 1)
 
 
 if __name__ == "__main__":

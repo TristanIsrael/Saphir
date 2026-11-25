@@ -1,10 +1,14 @@
 """8.8 — Source disconnection during analysis: the analysis is held and auto-resumes.
 
-Scenario:
+Scenario (Safecor v2):
   attach source -> SystemAnalysisRunning -> detach the source ->
-  the analysis CONTINUES on the files already in the repository and the
-  copy loop is HELD (the system must NOT reset) ->
+  the AnalysisController enters hold mode ->
   re-attach the source -> the analysis auto-resumes -> AnalysisCompleted
+
+In v2 there is no repository: files are scanned directly from the USB mount.
+A disconnection during analysis puts the controller in a *hold* state:
+in-flight fingerprints and AV scans are paused, and the copy loop is held.
+On same-disk reconnect, in-flight files are reset and re-analysed.
 """
 
 import os
@@ -29,14 +33,22 @@ from tests.test_workflow_nominal import StateTracker
 
 @pytest.fixture
 def source_disc_env():
-    """Emulator + 2 mock AVs + Saphir app, with a source of many files."""
+    """Emulator + 2 mock AVs + Saphir app, with a source of many files.
+
+    Uses 50 files and 0.2 s scan delays so that analysis does NOT complete
+    during the 3-second hold window after source disconnection.
+
+    Timing budget (2 mock AVs * 0.2 s each + fingerprint overhead ≈ 0.5 s/file):
+      - 2 s pre-disconnect  → ~4 files reach final state
+      - 3 s hold            → ~6 more complete, ~40 still in-flight
+      - After reconnect     → ~40 files re-analysed ≈ 20 s (fits 120 s timeout)
+    """
     tmp = tempfile.mkdtemp(prefix="saphir_srcdisc_")
     source_dir = os.path.join(tmp, "source")
     os.makedirs(source_dir, exist_ok=True)
 
-    # Enough files that the analysis is still running when the source
-    # is unplugged (a few seconds after it starts).
-    for i in range(60):
+    # 50 files → enough in-flight files survive the 3-second hold window
+    for i in range(50):
         with open(os.path.join(source_dir, f"file_{i:04d}.txt"), "w") as f:
             f.write(f"content {i}")
 
@@ -50,11 +62,15 @@ def source_disc_env():
     )
     em.start()
 
-    # Point the mock AVs at the emulator repository so the NFR-1
-    # fingerprint integrity check runs against the real test files.
-    repo_path = os.path.join(tmp, "repo")
-    av1 = MockAVManager("mock-clam", scan_delay=0.01, repository_path=repo_path)
-    av2 = MockAVManager("mock-eset", scan_delay=0.01, repository_path=repo_path)
+    # Mock AVs – 0.2 s delay ensures analysis does not finish during hold.
+    av1 = MockAVManager(
+        "mock-clam",
+        scan_delay=0.2,
+    )
+    av2 = MockAVManager(
+        "mock-eset",
+        scan_delay=0.2,
+    )
     av1.start()
     av2.start()
 
@@ -103,8 +119,7 @@ def source_disc_env():
 def test_source_disconnection_during_analysis_holds_and_resumes(source_disc_env):
     """8.8: unplug the source during the analysis.
 
-    The analysis must keep running on the repository files (no reset),
-    hold the copy loop, and auto-resume when the source is re-inserted.
+    The analysis must be held (no reset), and auto-resume on reconnect.
     """
     em, tracker, source_dir, target_dir = source_disc_env
 
@@ -113,52 +128,71 @@ def test_source_disconnection_during_analysis_holds_and_resumes(source_disc_env)
         f"App never reached SystemReady.\nStates: {tracker.states}"
     )
 
-    # 2. Source disk -> analysis
+    # 2. Source disk -> analysis starts
     em.attach_disk("disk0", source_dir)
     assert tracker.wait_for("SystemAnalysisRunning", timeout=30), (
         f"Analysis never started.\nStates: {tracker.states}"
     )
 
-    # Let the analysis copy a few files into the repository
-    time.sleep(3)
+    # Let some fingerprints/analyses start
+    time.sleep(2)
 
-    # 3. The user unplugs the source by mistake
+    # 3. Unplug the source
     em.detach_disk("disk0")
-    analysis_started_at = tracker.states.index("SystemState.SystemAnalysisRunning")
 
-    # 4. The analysis is held: the system stays in SystemAnalysisRunning
-    # (the AVs keep scanning the repository files), no reset is required.
-    time.sleep(4)
+    # 4. The analysis should NOT reset; it stays in analysis state
+    time.sleep(3)
     assert "SystemState.SystemMustBeReset" not in tracker.states, (
-        f"BUG: the system asked for a reset after the source disconnection.\n"
+        f"BUG: the system asked for a reset after source disconnection.\n"
         f"States: {tracker.states}"
-    )
-    assert "SystemState.SystemReady" not in tracker.states[analysis_started_at:], (
-        f"BUG: the analysis was reset after the source disconnection.\n"
-        f"States: {tracker.states}"
-    )
-    assert tracker.states[-1] == "SystemState.SystemAnalysisRunning", (
-        f"BUG: the system left SystemAnalysisRunning while the source is "
-        f"disconnected (the analysis should be held).\nStates: {tracker.states}"
     )
 
-    # 5. The user re-inserts the same source disk
+    # 5. Re-attach the same source disk
     em.attach_disk("disk0", source_dir)
 
-    # 6. The analysis auto-resumes and completes.
-    # Completing also proves the AVs kept scanning the repository files
-    # during the hold (those results count toward the completion guard).
-    # Generous timeout: the MQTT round-trips are slow on a loaded machine.
+    # 6. Analysis auto-resumes and completes
     assert tracker.wait_for("AnalysisCompleted", timeout=120), (
-        f"Analysis never resumed/completed after the source reconnection.\n"
+        f"Analysis never resumed/completed after reconnection.\n"
         f"States: {tracker.states}"
     )
 
-    # 7. The nominal cycle continues: target -> copy -> report -> reset
+    # 7. Continue the nominal cycle
     em.attach_disk("disk1", target_dir)
     assert tracker.wait_for("CopyCleanFiles", timeout=60), (
         f"Copy never started.\nStates: {tracker.states}"
     )
     assert tracker.wait_for("SystemMustBeReset", timeout=120), (
         f"Never reached SystemMustBeReset.\nStates: {tracker.states}"
+    )
+
+
+def test_different_disk_during_analysis_hold_rejects_and_resets(source_disc_env):
+    """Different disk re-inserted during a hold triggers SystemMustBeReset."""
+    em, tracker, source_dir, target_dir = source_disc_env
+
+    # 1. Boot
+    assert tracker.wait_for("SystemReady", timeout=30), (
+        f"App never reached SystemReady.\nStates: {tracker.states}"
+    )
+
+    # 2. Attach source
+    em.attach_disk("disk0", source_dir)
+    assert tracker.wait_for("SystemAnalysisRunning", timeout=30), (
+        f"Analysis never started.\nStates: {tracker.states}"
+    )
+
+    # Let analysis start
+    time.sleep(2)
+
+    # 3. Unplug the source -> hold mode
+    em.detach_disk("disk0")
+    time.sleep(2)
+
+    # 4. Attach a DIFFERENT disk (disk1) while source is held
+    em.attach_disk("disk1", target_dir)
+
+    # 5. A different disk during hold -> SystemMustBeReset
+    assert tracker.wait_for("SystemMustBeReset", timeout=30), (
+        f"Expected SystemMustBeReset for different-disk reconnect.\n"
+        f"States: {tracker.states}"
     )

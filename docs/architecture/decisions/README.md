@@ -1,7 +1,7 @@
 # Architecture Decision Records (ADR)
 
 > **Status**: Living registry
-> **Last updated**: 2026-11-20
+> **Last updated**: 2026-11-24
 > **Scope**: one document per decision, numbered sequentially from `0001`. The registry consolidates the decisions previously recorded inline in `docs/architecture.md` §8 (D-arch-1…9), `docs/tech-stack-analysis.md` §8 (D-T1…5), and the workflow/specification documents (behaviour & scope decisions).
 
 ## Index
@@ -10,7 +10,7 @@
 |---|-------|--------|------------------|--------|
 | [0001](0001-event-driven-no-polling.md) | Event-driven, no polling | Accepted | The GUI reacts to MQTT events; the only polling is the 5 s energy poll | architecture.md §8 — D-arch-1 |
 | [0002](0002-per-domain-single-api-client.md) | Per-domain single API client | Accepted | One `Api()`/`MqttClient` per domain, all traffic over MQTT; `ApiLifecycle` is the sole owner (I1) | architecture.md §8 — D-arch-2 |
-| [0003](0003-repository-only-data-exchange.md) | Repository as the only data exchange point | Accepted | Files pass only through the `sys-usb` repository; AV domains are stateless w.r.t. file content | architecture.md §8 — D-arch-3 |
+| [0003](0003-repository-only-data-exchange.md) | Repository as the only data exchange point | **Superseded by 0019** | Files passed only through the `sys-usb` repository; superseded by direct USB mount | architecture.md §8 — D-arch-3 |
 | [0004](0004-template-method-av-controllers.md) | Template Method for AV controllers | Accepted | New engines plug in by implementing the abstract hooks — no changes to the GUI | architecture.md §8 — D-arch-4 |
 | [0005](0005-consensus-or-infected.md) | Consensus = OR on "infected" | Accepted | Infected if any engine flags; clean only when all agree; `ANTIVIRUS_NEEDED` is a gate, not a voting threshold | architecture.md §8 — D-arch-5 |
 | [0006](0006-stateless-system-no-persistence.md) | Stateless system, no persistence | Accepted | No persistence between cycles; reset destroys the disposable domains | architecture.md §8 — D-arch-6 |
@@ -26,6 +26,7 @@
 | [0016](0016-no-copy-cancellation.md) | No copy cancellation | Accepted | No cancel button; exits from the copy wait = target inserted / Reset / Shutdown | workflow-rules v2.2 |
 | [0017](0017-pause-not-stop.md) | Pause, not Stop | Accepted | Stop renamed Pause — a suspended analysis can be resumed; files keep their status | workflow-rules v2.3 — scenario 8.2 |
 | [0018](0018-archive-mounting-removed.md) | Archive mounting removed | Accepted | The dormant archive-mounting code is removed; re-introduction is a new, specified feature (F3) | workflow-rules — open question #2 / features backlog F3 |
+| [0019](0019-direct-usb-mount-data-path.md) | Direct USB mount as the analysis data path | Accepted | Safecor v2 removes the shared 9p repository; AV domains read directly from `/media/usb` via `direct_mount` | migration-safecor-v2.md |
 
 ## How to add a decision
 

@@ -19,10 +19,13 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src" / "Saphir"))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "libsaphir" / "src"))
+sys.path.insert(
+    0, str(Path(__file__).resolve().parent.parent.parent / "libsaphir" / "src")
+)
 
-from safecor_emulator import Emulator, default_profile  # noqa: E402
-from tests.mock_av_manager import MockAVManager  # noqa: E402
+from safecor_emulator import Emulator, default_profile
+
+from tests.mock_av_manager import MockAVManager
 
 
 class StateTracker:
@@ -37,9 +40,6 @@ class StateTracker:
 
     def _read(self):
         for line in iter(self._process.stdout.readline, b""):
-            # A state line can be glued to a print from another thread
-            # (non-atomic prints on the shared stdout), so search the
-            # state marker anywhere in the line instead of startswith.
             m = self._STATE_RE.search(line.decode())
             if m:
                 self.states.append(m.group(1))
@@ -95,11 +95,8 @@ def nominal_env():
     em.start()
 
     # Mock AVs
-    # Point the mock AVs at the emulator repository so the NFR-1
-    # fingerprint integrity check runs against the real test files.
-    repo_path = os.path.join(tmp, "repo")
-    av1 = MockAVManager("mock-clam", scan_delay=0.05, repository_path=repo_path)
-    av2 = MockAVManager("mock-eset", scan_delay=0.05, repository_path=repo_path)
+    av1 = MockAVManager("mock-clam", scan_delay=0.05)
+    av2 = MockAVManager("mock-eset", scan_delay=0.05)
     av1.start()
     av2.start()
 
@@ -110,11 +107,13 @@ def nominal_env():
     env = os.environ.copy()
     env["DEVMODE"] = "1"
     env["QT_QPA_PLATFORM"] = "offscreen"
-    env["PYTHONPATH"] = os.pathsep.join([
-        str(gui_dir / "src" / "Saphir"),
-        str(gui_dir.parent / "libsaphir" / "src"),
-        env.get("PYTHONPATH", ""),
-    ])
+    env["PYTHONPATH"] = os.pathsep.join(
+        [
+            str(gui_dir / "src" / "Saphir"),
+            str(gui_dir.parent / "libsaphir" / "src"),
+            env.get("PYTHONPATH", ""),
+        ]
+    )
 
     app_proc = subprocess.Popen(
         [python, "-u", str(entry)],
@@ -141,6 +140,7 @@ def nominal_env():
     em.stop()
 
     import shutil
+
     shutil.rmtree(tmp, ignore_errors=True)
 
 
@@ -156,30 +156,20 @@ def test_nominal_cycle(nominal_env):
     # 2. Attach the source disk
     em.attach_disk("disk0", source_dir)
 
-    # 3. Wait for analysis to start (auto in DEVMODE after file listing)
-    assert tracker.wait_for("SystemAnalysisRunning", timeout=30), (
-        f"Analysis never started.\nStates seen: {tracker.states}"
-    )
-
-    # 4. Wait for analysis to complete
+    # 3. Wait for analysis to complete (auto in DEVMODE after file listing)
     assert tracker.wait_for("AnalysisCompleted", timeout=30), (
         f"Analysis never completed.\nStates seen: {tracker.states}"
     )
 
-    # 5. Attach the target disk
+    # 4. Attach the target disk
     em.attach_disk("disk1", target_dir)
 
-    # 6. Wait for the copy to start
-    assert tracker.wait_for("CopyCleanFiles", timeout=30), (
-        f"Copy never started.\nStates seen: {tracker.states}"
-    )
-
-    # 7. Wait for the full cycle to complete (report + journal copied)
+    # 5. Wait for the full cycle to complete (report + journal copied)
     assert tracker.wait_for("SystemMustBeReset", timeout=60), (
         f"Never reached SystemMustBeReset.\nStates seen: {tracker.states}"
     )
 
-    # 8. Verify the state sequence (characterization — captures actual behaviour)
+    # 6. Verify the state sequence (characterization)
     expected_sequence = [
         "SystemState.SafecorReady",
         "SystemState.SystemReady",

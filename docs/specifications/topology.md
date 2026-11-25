@@ -55,7 +55,7 @@ From `topology.json`:
 | `vcpu.groups` | `gui` | `0.2` | vCPU group for the GUI domains (see §6) |
 | `vcpu.groups` | `antivirus` | `0.8` | vCPU group for the AV domains (see §6) |
 
-The topology also supports `repository` (disable the 9p shared repository) and `storage` (local encrypted storage) sections; **Saphir does not set either** — the shared repository is enabled by default (see [`../architecture/decisions/0003-repository-only-data-exchange.md`](../architecture/decisions/0003-repository-only-data-exchange.md)).
+The topology also supports `repository` (disable the 9p shared repository) and `storage` (local encrypted storage) sections; **Saphir sets `repository.disabled: true`** (see [`../architecture/decisions/0019-direct-usb-mount-data-path.md`](../architecture/decisions/0019-direct-usb-mount-data-path.md)) — the shared repository is no longer used.
 
 ---
 
@@ -106,7 +106,7 @@ The **viewer variant** adds a fourth domain, identical in shape to `saphir-gui`:
 | `saphir-av-eset` | ESET Endpoint antivirus engine. Runs the `EeaAntivirusController` in a trimmed Debian LXC container. |
 | `saphir-viewer` (viewer variant) | Read-only file/preview browser; swapped with the main GUI on the same screen via `Api().switch_gui(...)`. |
 
-The AV domains' `direct_mount: { "mode": "ro" }` lets them see the external media read-only directly from `sys-usb` (in addition to the shared repository they use for analysis — see §7).
+The AV domains' `direct_mount: { "mode": "ro" }` lets them see the external media read-only directly from `sys-usb` — this is the **sole** data path for analysis (the shared repository is disabled, see [ADR 0019](../architecture/decisions/0019-direct-usb-mount-data-path.md)).
 
 ---
 
@@ -117,7 +117,7 @@ The platform (Safecor core) creates and manages domains that are **not** declare
 | Domain | Type | Role |
 |--------|------|------|
 | `Dom0` | core | The trusted core (platform, hypervisor control). Not configurable in the topology. |
-| `sys-usb` | core | The disk/staging domain: manages the external media, mounts them under `/media/usb`, and hosts the **shared repository** (`__repository__`, mounted at `/mnt/storage`) that is the only data exchange point between domains. Created automatically with `memory: 512`. |
+| `sys-usb` | core | The disk management domain: manages the external media, mounts them under `/media/usb`, and serves sshfs for the `direct_mount` domains. The shared repository (`__repository__`) is **disabled** (`repository.disabled: true`). Created automatically with `memory: 512`. |
 | `sys-gui` | core | The platform's default graphical domain (default 20% of the allocatable vCPUs). In Saphir the business GUI domains take the GUI role; `sys-gui` is not declared by the product. |
 
 These platform domains are disposable per the platform reset/cleaning mechanism (the reset destroys `sys-usb` and the business domains and recreates them — see [`../specifications/features.md`](features.md) F10).
@@ -176,8 +176,8 @@ The platform reads `/etc/safecor/topology.json` at boot (Dom0) and builds the sy
 2. **Match the configuration** — the DMI identifier of the running machine is matched against `configurations[].identifier`; the matching `settings` (screen rotation, PCI blacklist) are applied.
 3. **Create the domains** — for every business domain, the platform creates a VM, allocates its `memory`, pins its vCPUs per its `vcpu_group`, creates the `temp_disk_size` `/tmp` disk and the `swap_size` swap disk, and installs the `app-package` APK.
 4. **Enable the screen** — because `screen.enabled: 1`, the platform sets up the display; the domain with `has_gui: 1` produces graphical content, and `screen.default_focus` (`saphir-gui`) receives the inputs on boot.
-5. **Enable USB** — because `usb.use: 1`, the `sys-usb` domain is started and manages the external media; the shared repository (`__repository__`) is exposed between Dom0 and the DomUs (9p) unless `repository.disabled` is set.
-6. **Apply direct mounts** — domains with `direct_mount` mount `/media/usb` directly from `sys-usb` via vchan+sshfs in the declared `mode` (`ro` for Saphir's AV domains).
+5. **Enable USB** — because `usb.use: 1`, the `sys-usb` domain is started and manages the external media; the shared repository (`__repository__`) is **disabled** (`repository.disabled: true` in the topology).
+6. **Enable direct mounts** — domains with `direct_mount` mount `/media/usb` directly from `sys-usb` via vchan+sshfs in the declared `mode` (`ro` for Saphir's AV domains). This is the **sole** read path for analysis and viewer.
 7. **Boot the product** — the `product` section provides the name and the `splash_bgcolor` for the boot logo.
 
-The result: a multi-VM system in which the product domains (GUI, AV engines, and optionally the Viewer) run in isolation and exchange data **only** through the shared repository and MQTT topics (see [`../development/protocol.md`](../development/protocol.md)).
+The result: a multi-VM system in which the product domains (GUI, AV engines, and optionally the Viewer) run in isolation. The AV domains and Viewer access external media via direct USB mount (`direct_mount: { "mode": "ro" }`); the GUI communicates with `sys-usb` exclusively via the Safecor file API. Data exchange happens through MQTT topics (see [`../development/protocol.md`](../development/protocol.md)).

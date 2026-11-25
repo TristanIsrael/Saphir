@@ -165,7 +165,6 @@ class ApplicationController(QObject):
         self.__api_lifecycle.set_all_ready_callback(self.__on_all_subscriptions_ready)
         self.__app_ready_done = False
         self.__ready_callback = None
-        self.__repository_path_received = False
 
         self.__workflow_controller = WorkflowController(self)
         self.__workflow_controller.systemStateChanged.connect(self.systemStateChanged)
@@ -555,7 +554,6 @@ class ApplicationController(QObject):
         Api().discover_components()
         self.__set_system_loading_progress(0.15)
         Api().request_system_info()
-        Api().request_repository_path()
 
         # Energy management
         self.__energy_monitor.start_polling()
@@ -579,6 +577,7 @@ class ApplicationController(QObject):
         self.__analysis_controller.sourceHoldChanged.connect(
             self.__on_source_hold_changed
         )
+        self.__analysis_controller.resetRequired.connect(self.__on_reset_required)
         self.__transfer_controller.init()
 
         self.__log_listmodel.listen_to_logs()
@@ -614,8 +613,6 @@ class ApplicationController(QObject):
             self.__handle_create_file(payload)
         elif topic == f"{Topics.DEFAULT_LANGUAGE}/response":
             self.__translation_manager.on_default_language_response(payload)
-        elif topic == f"{Topics.REPOSITORY_PATH}/response":
-            self.__handle_repository_path(payload)
 
     def __is_file_in_folder(self, filepath: str, folder: str) -> bool:
         return filepath.startswith(folder)  # type: ignore
@@ -702,9 +699,6 @@ class ApplicationController(QObject):
 
         # Now we check again the antiviruses
         ready &= len(self.__analysis_components) >= ANTIVIRUS_NEEDED
-
-        # The repository path is a core condition for SystemReady
-        ready &= self.__repository_path_received
 
         # The system is ready when all necessary components are ready
         # and the number of antiviruses needed is reached
@@ -810,7 +804,6 @@ class ApplicationController(QObject):
             else:
                 # The analysis has not started yet: this disk is a source
                 # (a partition of the source media or an additional media)
-                first_source = self.__storage_manager.source_name == ""
                 self.__storage_manager.add_source(disk)
                 self.__analysis_controller.set_source_disks(
                     self.__storage_manager.get_source_disks()
@@ -935,10 +928,7 @@ class ApplicationController(QObject):
         if len(disks) > 0:
             # Every disk listed before the scan starts is a source disk
             # (a partition of a media or an additional media)
-            if (
-                self.__storage_manager.target_name == ""
-                and not self.__scan_started
-            ):
+            if self.__storage_manager.target_name == "" and not self.__scan_started:
                 sources = self.__storage_manager.get_source_disks()
                 for disk in disks:
                     if disk not in sources:
@@ -1137,12 +1127,6 @@ class ApplicationController(QObject):
 
         self.__system_information_model.information_updated(payload)
 
-    def __handle_repository_path(self, payload: dict):
-        path = payload.get("path", "")
-        if path:
-            self.__repository_path_received = True
-            self.__check_components_availability()
-
     def __handle_create_file(self, payload: dict):
         disk = payload.get("disk", "")
         filepath = str(payload.get("filepath", ""))
@@ -1160,9 +1144,7 @@ class ApplicationController(QObject):
                     "The report and log could not be copied to the destination storage."
                 )
             )
-            self.__messages_model.addMessage(
-                self.tr("Please reset the system.")
-            )
+            self.__messages_model.addMessage(self.tr("Please reset the system."))
             return
 
         if filepath.endswith("journal.log"):
@@ -1287,6 +1269,12 @@ class ApplicationController(QObject):
             self.__messages_model.addMessage(
                 self.tr("The source storage is back: the analysis is resumed.")
             )
+
+    def __on_reset_required(self):
+        """A different disk was re-inserted while the source was held:
+        the coherence check fails → SystemMustBeReset (NFR-4 / I6)."""
+        self.__set_system_state(SystemState.SystemMustBeReset)
+        self.systemMustBeReset.emit()
 
     def __is_source_disconnected(self) -> bool:
         return self.__source_disconnected

@@ -11,6 +11,10 @@ Usage::
         # av1.name == "mock-clam"
         # av2.name == "mock-eset"
         ...
+
+The NFR-1 integrity check runs against the fake media tree when
+``usb_mount`` is set (the mock AV controller can corrupt files before
+the integrity check, exercising the fingerprint mismatch path).
 """
 
 from __future__ import annotations
@@ -23,6 +27,8 @@ import tempfile
 import time
 from pathlib import Path
 
+from typing_extensions import Self
+
 _SCRIPT_DIR = Path(__file__).resolve().parent
 
 
@@ -33,25 +39,28 @@ class MockAVManager:
     :param infected: set of filepaths to report as infected.
     :param default: default verdict for unlisted files (``"clean"`` or ``"infected"``).
     :param scan_delay: seconds to simulate scan time per file.
-    :param repository_path: local directory emulating the repository; when set,
-        the NFR-1 integrity check in the mock AV runs against it.
-    :param corrupt: set of filepaths to corrupt in the repository on analysis
-        request, so the NFR-1 integrity check rejects them.
+    :param usb_mount: path to a fake media tree; when set the NFR-1
+        integrity check runs against it (the mock AV can corrupt files
+        before the check to exercise the mismatch path).
+    :param corrupt: set of filepaths to corrupt in the USB mount tree on
+        analysis request.
     """
 
-    def __init__(self,
-                 name: str,
-                 infected: set[str] | None = None,
-                 default: str = "clean",
-                 scan_delay: float = 0.05,
-                 repository_path: str | None = None,
-                 corrupt: set[str] | None = None,
-                 request_log: str | None = None):
+    def __init__(
+        self,
+        name: str,
+        infected: set[str] | None = None,
+        default: str = "clean",
+        scan_delay: float = 0.05,
+        usb_mount: str | None = None,
+        corrupt: set[str] | None = None,
+        request_log: str | None = None,
+    ):
         self.name = name
         self._infected = infected or set()
         self._default = default
         self._scan_delay = scan_delay
-        self._repository_path = repository_path
+        self._usb_mount = usb_mount
         self._corrupt = corrupt or set()
         self._request_log = request_log
         self._process: subprocess.Popen | None = None
@@ -73,16 +82,26 @@ class MockAVManager:
             "corrupt": list(self._corrupt),
             "scan_delay": self._scan_delay,
         }
-        fd, self._config_file = tempfile.mkstemp(suffix=".json", prefix=f"mock_av_{self.name}_")
+        if self._usb_mount:
+            config["usb_mount"] = self._usb_mount
+
+        fd, self._config_file = tempfile.mkstemp(
+            suffix=".json", prefix=f"mock_av_{self.name}_"
+        )
         with os.fdopen(fd, "w") as f:
             json.dump(config, f)
 
         self._failure_flag = self._config_file + ".fail"
         python = sys.executable
         cmd = [
-            python, "-u", "-m", "libsaphir._mock_antivirus_controller",
-            "--name", self.name,
-            "--config", self._config_file,
+            python,
+            "-u",
+            "-m",
+            "libsaphir._mock_antivirus_controller",
+            "--name",
+            self.name,
+            "--config",
+            self._config_file,
         ]
         env = os.environ.copy()
         env["DEVMODE"] = "1"
@@ -100,7 +119,9 @@ class MockAVManager:
         # Give the subprocess time to connect to the broker
         time.sleep(1.0)
         if not self.is_running:
-            output = self._process.stdout.read().decode() if self._process.stdout else ""
+            output = (
+                self._process.stdout.read().decode() if self._process.stdout else ""
+            )
             raise RuntimeError(f"Mock AV '{self.name}' died at startup:\n{output}")
 
     def fail(self):
@@ -142,7 +163,7 @@ class MockAVManager:
 
         return os.pathsep.join(parts)
 
-    def __enter__(self) -> "MockAVManager":
+    def __enter__(self) -> Self:
         self.start()
         return self
 

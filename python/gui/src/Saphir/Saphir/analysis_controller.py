@@ -1,20 +1,26 @@
-"""Orchestrates multi-AV file analysis with worker pool and consensus verdict."""
+"""Orchestrates multi-AV file analysis on the Safecor v2 data path.
+
+Saphir 4.0 no longer stages files in the shared repository. For each selected
+file the controller asks ``sys-usb`` for the file's fingerprint
+(``Api().get_file_fingerprint``) and, once the fingerprint is returned,
+publishes ``saphir/analysis/request {disk, filepath, fingerprint}`` to the AV
+domains, which scan the file in place on the direct USB mount
+(``/media/usb/<disk><filepath>``).
+
+The system is marked as used (dirty) as soon as a file's fingerprint is
+returned successfully by ``sys-usb`` (decision D4): the file has been read,
+so the system has been in contact with untrusted media. A fingerprint-read
+failure keeps the system clean and the file is declared in error.
+"""
 
 from __future__ import annotations
 
-import threading
 import time
 from threading import Lock
 
-from libsaphir import (
-    ANTIVIRUS_NEEDED,
-    BIG_FILE_SIZE_IN_MB,
-    MOUNT_ARCHIVES,
-    TOPIC_ANALYSIS,
-    FileStatus,
-)
+from libsaphir import ANTIVIRUS_NEEDED, TOPIC_ANALYSIS, FileStatus
 from PySide6.QtCore import Property, QObject, Signal
-from safecor import Api, Constants, DiskState, FileHelper, MqttHelper, Topics
+from safecor import Api, DiskState, MqttHelper, Topics
 
 from . import AnalysisHelper, AnalysisMode, AnalysisState
 
@@ -25,24 +31,29 @@ class AnalysisController(QObject):
 
     En fonction des capacité de la machine, l'analyse peut être parallélisée ou
     séquentielle et utiliser plus ou moins en ressources.
+
+    En Safecor v2 il n'y a plus de staging dans le repository partagé : les
+    domaines antivirus analysent les fichiers en place sur le montage USB
+    direct. Les entrées du dictionnaire partagé (``FileQueue.files``) sont
+    indexées par le ``filepath`` brut et portent un champ ``"disk"`` ; tous
+    les appariements sont faits sur la paire ``(disk, filepath)`` afin que
+    deux disques sources exposant le même chemin relatif ne entrent pas en
+    collision.
     """
 
     __analysis_state = AnalysisState.AnalysisStopped
     __files: dict
     __analysis_components = []
-    __repository_capacity = 1
-    # __repository_size = 0
+    __source_disks = []
     __files_copy_queue_size = 0
     __start_times = {}
     __clean_files_count = 0
     __clean_files_size = 0
     __infected_files_count = 0
     __infected_files_size = 0
-    __archive_mounted_name = None
-    __archive_mounted_filepath = None
-    __archive_file = {}
     __queue_lock = Lock()
-    __copy_timer = None
+    __source_held = False
+    __held_disk = None
 
     # Signals
     stateChanged = Signal(AnalysisState)
@@ -51,6 +62,7 @@ class AnalysisController(QObject):
     systemUsed = Signal()
     iterationDone = Signal(float, int)  # duration in minutes, file size
     sourceHoldChanged = Signal(bool)
+    resetRequired = Signal()
 
     def __init__(
         self,
@@ -60,9 +72,19 @@ class AnalysisController(QObject):
         analysis_mode_: AnalysisMode,
         parent: QObject | None = None,
     ) -> None:
-        """Instanciates a new Analysis controller
+        """Instantiate a new AnalysisController.
 
-        The files list is provided by the Application controller and is a reference.
+        Parameters
+        ----------
+        files : dict
+            Shared file dictionary (``FileQueue.files``) keyed by bare
+            filepath. Each entry carries a ``"disk"`` field.
+        analysis_components : list
+            List of ``{"id": ..., "state": ...}`` dictionaries from Safecor.
+        source_disks : list[str]
+            Disk labels that are being analyzed.
+        analysis_mode_ : AnalysisMode
+            Whether the user selected individual files or the whole source.
         """
         QObject.__init__(self, parent)
 
@@ -70,37 +92,30 @@ class AnalysisController(QObject):
         self.__source_disks = list(source_disks)
         self.__analysis_components = analysis_components
         self.__analysis_mode = analysis_mode_
-        # True while the source disk is disconnected during the analysis:
-        # the file copy loop is held, the AVs keep scanning the repository.
+        self.__start_times = {}
         self.__source_held = False
+        self.__held_disk = None
 
         Api().add_message_callback(self.__on_api_message)
-        Api().subscribe(Topics.NEW_FILE)
-        Api().subscribe(Topics.DELETED_FILE)
         Api().subscribe(f"{TOPIC_ANALYSIS}/response")
         Api().subscribe(f"{TOPIC_ANALYSIS}/status")
         Api().subscribe(f"{TOPIC_ANALYSIS}/error")
         Api().subscribe(f"{Topics.SYSTEM_INFO}/response")
         Api().subscribe(Topics.DISK_STATE)
         Api().subscribe(f"{Topics.LIST_FILES}/response")
+        Api().subscribe(f"{Topics.FILE_FINGERPRINT}/response")
 
-        # Request system info to determine the number of files to analyze concurrently
-        Api().request_system_info()
+    # ------------------------------------------------------------------ #
+    # Public API
+    # ------------------------------------------------------------------ #
 
     def set_source_disks(self, source_disks: list):
-        """Set the names of the disks being analyzed."""
+        """Replace the list of source disk labels."""
         self.__source_disks = list(source_disks)
 
     def start_analysis(self) -> None:
-        """Start the analysis: resume the AV queue and copy the files to the repository.
-
-        On resume (F3), the files interrupted by the previous stop
-        (copy to the repository in flight, or analysis in progress) are
-        re-enqueued; the files already analyzed keep their status and
-        are not processed again.
-        """
+        """Begin the analysis pipeline for all pending files."""
         Api().info("Starting the analysis", "AnalysisController")
-
         self.__set_analysis_state(AnalysisState.AnalysisRunning)
 
         with self.__queue_lock:
@@ -112,92 +127,74 @@ class AnalysisController(QObject):
                     FileStatus.FileInfected,
                     FileStatus.FileAnalysisError,
                 ):
-                    # Not started yet, or already in a final state (F3:
-                    # the already-analyzed files keep their status and
-                    # are not re-analyzed).
                     continue
 
-                # Interrupted file (GettingFile / FileAvailableInRepository
-                # / FileAnalysing): restart it from the beginning.
+                # Restart interrupted files from the beginning (F3 resume).
                 file["status"] = FileStatus.FileStatusUndefined
                 file["locked"] = False
                 file["progress"] = 0
                 file["results"] = {}
                 self.fileUpdated.emit(file.get("filepath", ""), ["status", "progress"])
 
-        self.__files_copy_queue_size = 0
         Api().publish(f"{TOPIC_ANALYSIS}/resume", {})
 
-        # Iterate over the file list asynchronously to copy files into the
-        # repository as space becomes available
-        self.__copy_timer = threading.Timer(0.5, self.__do_copy_files_into_repository)
-        self.__copy_timer.start()
+        # Enqueue fingerprint requests (non-blocking).
+        self.__enqueue_fingerprints()
 
     def stop_analysis(self) -> None:
-        """Stop the analysis: ask the AVs to stop and clear the copy timer."""
+        """Ask the AVs to stop and release resources."""
         Api().info("Stopping the analysis", "AnalysisController")
         Api().publish(f"{TOPIC_ANALYSIS}/stop", {})
         Api().clear_sys_usb_queues()
-        if self.__copy_timer is not None:
-            self.__copy_timer.cancel()
-            self.__copy_timer = None
-        self.__source_held = False
+        self.__held_disk = None
+        self.__set_source_held(False)
         self.__set_analysis_state(AnalysisState.AnalysisStopped)
 
     def handle_av_failure(self, av_component_id: str) -> bool:
         """Handle an antivirus engine failure during the analysis (NFR-3).
 
-        The files that can no longer be analyzed by all the engines of the
-        analysis (already sent to them, or the analysis is aborting) are
-        declared in error; the files already analyzed keep their status.
-        If fewer than ANTIVIRUS_NEEDED engines remain available, the
-        analysis is aborted.
+        Files that could not reach a full consensus are declared in error.
+        If fewer than *ANTIVIRUS_NEEDED* engines remain, the analysis is
+        aborted.
 
-        Returns True when the analysis was aborted.
+        Returns
+        -------
+        bool
+            ``True`` when the analysis was aborted.
         """
         if self.__analysis_state != AnalysisState.AnalysisRunning:
             return False
 
         with self.__queue_lock:
-            # Remove the failed engine in place: this list is shared with
-            # the ApplicationController (same object), the progress
-            # denominator must stay consistent for the next analyses.
             for c in list(self.__analysis_components):
                 if c.get("id") == av_component_id:
                     self.__analysis_components.remove(c)
             aborted = len(self.__analysis_components) < ANTIVIRUS_NEEDED
 
             errored = []
-            for filepath, file in self.__files.items():
+            for file in self.__files.values():
                 status = file.get("status")
                 if status in (
                     FileStatus.FileClean,
                     FileStatus.FileInfected,
                     FileStatus.FileAnalysisError,
                 ):
-                    # Already analyzed: keep the status (NFR-3)
                     continue
-                # The file is incomplete and can no longer reach a valid
-                # consensus (it was sent to the engines, or the analysis
-                # is aborting and it never will be).
-                if aborted or status in (
-                    FileStatus.FileAnalysing,
-                    FileStatus.FileAvailableInRepository,
-                ):
+                if aborted or status in (FileStatus.FileAnalysing,):
                     file["status"] = FileStatus.FileAnalysisError
                     file["progress"] = 100
-                    errored.append((filepath, file))
+                    errored.append(file)
 
-            for filepath, file in errored:
+            for file in errored:
                 self.__infected_files_count += 1
                 self.__infected_files_size += file.get("size", 0)
-                self.fileUpdated.emit(filepath, ["status", "progress"])
+                self.fileUpdated.emit(file.get("filepath", ""), ["status", "progress"])
 
         if aborted:
             Api().error(
                 f"Antivirus engine {av_component_id} failed and "
                 f"fewer than {ANTIVIRUS_NEEDED} engines remain: "
-                f"the analysis is aborted"
+                "the analysis is aborted"
             )
             self.stop_analysis()
             return True
@@ -207,7 +204,7 @@ class AnalysisController(QObject):
         return False
 
     def reset(self):
-        """Reset the analysis counters and state to their initial values."""
+        """Reset analysis counters and internal state."""
         self.__clean_files_count = 0
         self.__clean_files_size = 0
         self.__infected_files_count = 0
@@ -215,324 +212,272 @@ class AnalysisController(QObject):
         self.__files_copy_queue_size = 0
         self.__start_times = {}
         self.__source_held = False
+        self.__held_disk = None
 
-    ######
-    ## Private functions
-    #
+    def is_source_held(self) -> bool:
+        """Return True when the analysis is held on a source disconnection."""
+        return self.__source_held
+
+    # ------------------------------------------------------------------ #
+    # MQTT message handler
+    # ------------------------------------------------------------------ #
+
     def __on_api_message(self, topic: str, payload: dict) -> None:
-        if topic == Topics.NEW_FILE:
-            if not MqttHelper.check_payload(payload, ["disk", "filepath"]):
-                Api().error(f"Malformed message for topic {topic}")
-                return
-
-            disk = payload.get("disk")
-
-            if disk != Constants.STR_REPOSITORY:
-                # We ignore the files if they are not in the source disk
-                return
-
-            filepath = payload.get("filepath", "")
-            fingerprint = payload.get("source_fingerprint", "")
-
-            self.__on_file_available(filepath, fingerprint)
-        elif topic == f"{TOPIC_ANALYSIS}/response":
-            if not MqttHelper.check_payload(
-                payload, ["component", "filepath", "success", "details"]
-            ):
-                Api().error(f"Malformed message for topic {topic}")
-                return
-
-            # NFR-1: the AV domain verifies the repository file integrity and
-            # reports a mismatch here. The file is declared in error (NFR-1).
-            if payload.get("fingerprint_error", False):
-                self.__handle_error(
-                    {
-                        "filepath": payload.get("filepath", ""),
-                        "error": "Fingerprint mismatch: the file was altered in the repository",
-                    }
-                )
-                return
-
-            self.__handle_result(
-                payload.get("component", ""),
-                payload.get("filepath", ""),
-                payload.get("success", False),
-                payload.get("details", ""),
-            )
+        if topic == f"{TOPIC_ANALYSIS}/response":
+            self.__on_analysis_response(payload)
         elif topic == f"{TOPIC_ANALYSIS}/status":
             pass
         elif topic == f"{TOPIC_ANALYSIS}/error":
             if not MqttHelper.check_payload(payload, ["disk", "filepath", "error"]):
-                # Filter out malformed payloads to avoid an infinite error loop
                 return
-
             self.__handle_error(payload)
         elif topic == f"{Topics.SYSTEM_INFO}/response":
             if not MqttHelper.check_payload(payload, ["system"]):
-                Api().warn(
-                    f"Wrong response format for system info response. Using {self.__repository_capacity} scans in parallel."
-                )
                 return
-
             self.__handle_sysinfo(payload)
         elif topic == Topics.DISK_STATE:
-            if not MqttHelper.check_payload(payload, ["disk", "state"]):
-                Api().error(f"Malformed message for topic {topic}")
-                return
-
-            disk = payload.get("disk", "")
-            state = payload.get("state", "")
-
-            # We only monitor the state mounted for the archives
-            if state == DiskState.MOUNTED.value:
-                self.__on_archive_mounted(disk)
-                return
-
-            # Source disconnection during the analysis (scenario 8.8):
-            # the analysis continues on the repository files, the copy loop
-            # is held until the source is re-inserted.
-            if disk in self.__source_disks:
-                if (
-                    state == DiskState.DISCONNECTED.value
-                    and self.__analysis_state == AnalysisState.AnalysisRunning
-                ):
-                    self.__set_source_held(True)
-                elif state == DiskState.CONNECTED.value and self.__source_held:
-                    self.__set_source_held(False)
+            self.__on_disk_state(payload)
         elif topic == f"{Topics.LIST_FILES}/response":
-            # We only monitor this message when we mounted an archive before
-            if self.__archive_mounted_name is None:
-                return
+            self.__on_list_files_received(payload)
+        elif topic == f"{Topics.FILE_FINGERPRINT}/response":
+            self.__on_fingerprint(payload)
 
-            if not MqttHelper.check_payload(payload, ["disk", "files"]):
-                Api().error(f"Malformed message for topic {topic}")
-                return
+    # ---------- fingerprint response (per-file dirty point) ---------- #
 
-            disk = payload.get("disk", "")
-            files = payload.get("files", [])
+    def __on_fingerprint(self, payload: dict) -> None:
+        """Handle fingerprint responses from ``sys-usb``.
 
-            self.__on_list_files_received(disk, files)
-        elif topic == Topics.DELETED_FILE:
-            if not MqttHelper.check_payload(payload, ["disk", "filepath"]):
-                Api().error(f"Malformed message for topic {topic}")
-                return
-
-            disk = payload.get("disk", "")
-            filepath = payload.get("filepath", "")
-
-            if disk == Constants.STR_REPOSITORY:
-                self.__on_deleted_file(disk, filepath)
-
-    def __on_file_available(self, filepath: str, fingerprint: str) -> None:
-        with self.__queue_lock:
-            self.__files_copy_queue_size -= 1
-
-            try:
-                # If any file has been read the system becomes dirty
-                self.systemUsed.emit()
-
-                file = (
-                    self.__files[filepath]
-                    if self.__archive_mounted_name is None
-                    else self.__archive_file.get("content", {}).get(filepath, {})
-                )
-
-                if not file:
-                    return
-
-                # Stale or duplicate NEW_FILE (e.g. a late notification for a
-                # file re-requested after a source reconnection): the file is
-                # already in the repository, do not start the analysis twice.
-                if file.get("status") not in (
-                    FileStatus.GettingFile,
-                    FileStatus.FileStatusUndefined,
-                ):
-                    return
-
-                file["status"] = FileStatus.FileAvailableInRepository
-                file["fingerprint"] = fingerprint
-                self.fileUpdated.emit(filepath, ["status"])
-
-                # Next step is to analyse the file.
-                # The recorded fingerprint is sent so the AV domain can verify
-                # the file integrity in the repository before analyzing it (NFR-1).
-                payload = {
-                    "filepath": filepath,
-                    "fingerprint": file.get("fingerprint", ""),
-                }
-                Api().publish(f"{TOPIC_ANALYSIS}/request", payload)
-            except Exception as e:  # noqa: BLE001 - MQTT publish can fail on disconnect
-                print("An error occured when handling the new_file notification")
-                print(e)
-
-    def __on_deleted_file(self, disk: str, filepath: str):
-        print(f"The file {filepath} has been removed from the repository")
-
-        with self.__queue_lock:
-            file = self.__files[filepath]
-            file["locked"] = False
-
-    def __on_list_files_received(self, disk: str, files: list):
-        with self.__queue_lock:
-            # If we receive a files list, it means that we have mounted a disk
-            if len(files) > 0:
-                for file in files:
-                    if file["type"] == "folder":
-                        continue
-
-                    file["disk"] = disk
-                    filepath = f"{file.get('path')}{'/' if file.get('path') != '/' else ''}{file.get('name')}"
-                    file["filepath"] = filepath
-                    file["status"] = FileStatus.FileStatusUndefined
-                    file["selected"] = True
-                    file["inqueue"] = True
-
-                    # Update the files list
-                    if "content" in self.__archive_file:
-                        archive_content = self.__archive_file["content"]
-                    else:
-                        self.__archive_file["content"] = {}
-                        archive_content = self.__archive_file["content"]
-
-                    archive_content[filepath] = file
-
-    def __on_archive_mounted(self, disk: str):
-        # When an archive has been mounted we need to query its files list
-        # And insert them into the analysis queue
-        self.__archive_mounted_name = disk
-        file = self.__files.get(self.__archive_mounted_filepath, {})
-        self.__archive_file = file
-        Api().get_files_list(disk, True)
-
-    def __handle_sysinfo(self, payload: dict):
-        # We look at the CPU count in the system information
-        # because of bug #54
-        cpu_count = 8
-
-        # TODO: the number of files analyzed in parallel should correspond to
-        # the number of CPU cores divided by the number of antivirus engines.
-        # For now, we are in an observation phase and the algorithm will be
-        # adjusted based on observed performance.
-        self.__repository_capacity = cpu_count
-
-        Api().info(f"Repository capacity is set to {self.__repository_capacity} files")
-
-    def __handle_status(self, filepath: str, status: FileStatus, progress: int):
-        pass
-
-    def __handle_result(
-        self, component: str, filepath: str, success: bool, details: str
-    ):
-        # We work in a critical sectionn because this function may be called by
-        # multiple threads at the same time
-        with self.__queue_lock:
-            file = self.__files.get(filepath)
-            if file is not None and file.get("status") in (
-                FileStatus.FileClean,
-                FileStatus.FileInfected,
-                FileStatus.FileAnalysisError,
-            ):
-                # A file in a final state is terminal: ignore stale or
-                # duplicate results for it (e.g. a scan that was in flight
-                # when the analysis was stopped, then re-analyzed on resume
-                # - F3).
-                return
-
-            # If the file is in an archive we put the results in the file content field
-            # We gather all the results inside this file entity
-            if self.__archive_mounted_name is None:
-                clean, file_size = AnalysisHelper.update_file_result(
-                    self.__files,
-                    filepath,
-                    success,
-                    component,
-                    details,
-                    self.__analysis_components,
-                )
-                self.fileUpdated.emit(filepath, ["status", "progress"])
-            else:
-                clean, file_size = AnalysisHelper.update_archive_result(
-                    self.__archive_file,
-                    filepath,
-                    success,
-                    component,
-                    details,
-                    self.__analysis_components,
-                )
-                # We update the status only at the end
-                self.fileUpdated.emit(self.__archive_mounted_filepath, ["progress"])
-
-            if self.__archive_mounted_name is None:
-                # If this is a regular file
-                if AnalysisHelper.is_analysis_finished(self.__files, filepath):
-                    if clean:
-                        self.__clean_files_count += 1
-                        self.__clean_files_size += file_size
-                    else:
-                        self.__infected_files_count += 1
-                        self.__infected_files_size += file_size
-
-                    start_time = self.__start_times.get(filepath, time.time())
-                    duration_in_secs = time.time() - start_time
-                    filesize = self.__files[filepath].get("size", 0)
-                    self.iterationDone.emit(duration_in_secs / 60, filesize)
-
-                    self.resultsChanged.emit()
-
-                    # Free the slot in the repository
-                    Api().delete_file(filepath, Constants.STR_REPOSITORY)
-            else:
-                file = AnalysisHelper.get_file_in_archive(self.__archive_file, filepath)
-                if file.get("progress", 0) == 100:
-                    # Free the slot in the repository for the file in the archive
-                    Api().delete_file(filepath, Constants.STR_REPOSITORY)
-
-                # If this is a file in an archive
-                if self.__archive_file.get("progress", 0) == 100:
-                    if clean:
-                        self.__clean_files_count += 1
-                        self.__clean_files_size += file_size
-                    else:
-                        self.__infected_files_count += 1
-                        self.__infected_files_size += file_size
-
-                    self.fileUpdated.emit(
-                        self.__archive_mounted_filepath, ["status", "progress"]
-                    )
-                    self.resultsChanged.emit()
-
-                    # We finished analyzing the image so we clean...
-                    Api().unmount(self.__archive_mounted_name)
-                    self.__archive_mounted_name = None
-                    self.__archive_mounted_filepath = None
-                    self.__archive_file = {}
-
-                    start_time = self.__start_times.get(filepath, time.time())
-                    duration = time.time() - start_time
-                    filesize = self.__files[filepath].get("size", 0)
-                    self.iterationDone.emit(duration / 60, filesize)
-
-    def __handle_error(self, payload):
-        filepath = payload.get("filepath", "")
-        error = payload.get("error", "unknown")
-
-        Api().warn(f"Analysis error for file {filepath}: {error}")
-
-        file = self.__files.get(filepath)
-        if file is None:
+        Success → emit ``systemUsed`` (D4), record the fingerprint and
+        request the analysis.  Failure (empty fingerprint) → the file was
+        not read, so the system stays clean; the file is declared in error
+        and the analysis continues with the next one.
+        """
+        if not MqttHelper.check_payload(payload, ["disk", "filepath", "fingerprint"]):
+            Api().error(f"Malformed fingerprint response: {payload}")
             return
 
+        disk = payload.get("disk", "")
+        filepath = payload.get("filepath", "")
+        fingerprint = payload.get("fingerprint", "")
+
         with self.__queue_lock:
+            file = self._find_file(filepath, disk)
+            if file is None:
+                Api().warn(f"Fingerprint response for unknown file {disk}{filepath}")
+                return
+
+            if not fingerprint:
+                # Failed to compute the fingerprint: the system stays clean
+                # for this file; declare the file in error and continue.
+                Api().warn(
+                    f"Could not compute the fingerprint of {disk}{filepath}: "
+                    "the file is declared in error"
+                )
+                file["status"] = FileStatus.FileAnalysisError
+                file["progress"] = 100
+                file["locked"] = False
+                self.__infected_files_count += 1
+                self.__infected_files_size += file.get("size", 0)
+                self.fileUpdated.emit(filepath, ["status", "progress"])
+                self.resultsChanged.emit()
+                return
+
+            if file.get("status") not in (
+                FileStatus.FileStatusUndefined,
+                FileStatus.FileAnalysing,
+            ):
+                # Already processed or final state → stale response.
+                return
+
+            # Now request analysis with the fingerprint.
+            file["fingerprint"] = fingerprint
+            file["disk"] = disk
+
+            Api().publish(
+                f"{TOPIC_ANALYSIS}/request",
+                {"disk": disk, "filepath": filepath, "fingerprint": fingerprint},
+            )
+
+        # D4: dirty point — the system becomes dirty only after a
+        # successful fingerprint is returned by sys-usb.
+        self.systemUsed.emit()
+
+    # ---------- analysis result ---------- #
+
+    def __on_analysis_response(self, payload: dict) -> None:
+        if not MqttHelper.check_payload(
+            payload, ["component", "disk", "filepath", "success", "details"]
+        ):
+            Api().error(f"Malformed analysis response: {payload}")
+            return
+
+        disk = payload.get("disk", "")
+        filepath = payload.get("filepath", "")
+        success = payload.get("success", False)
+        fingerprint_error = payload.get("fingerprint_error", False)
+
+        # D3 stale-failure guard: while the source is held (disconnected),
+        # scan failures are caused by the disconnection, not by the file:
+        # ignore them. The in-flight files are re-analysed on resume.
+        if self.__source_held and (not success or fingerprint_error):
+            Api().debug(
+                f"Ignoring AV failure for {disk}{filepath}: the source is "
+                "held (stale failure, D3)"
+            )
+            return
+
+        # NFR-1: fingerprint mismatch reported by the AV domain.
+        if fingerprint_error:
+            self.__handle_error(
+                {
+                    "filepath": filepath,
+                    "disk": disk,
+                    "error": "Fingerprint mismatch: file on the media does "
+                    "not match the recorded fingerprint",
+                }
+            )
+            return
+
+        self.__handle_result(
+            payload.get("component", ""),
+            filepath,
+            disk,
+            success,
+            payload.get("details", ""),
+        )
+
+    # ---------- disk state (hold / resume, D3) ---------- #
+
+    def __on_disk_state(self, payload: dict) -> None:
+        if not MqttHelper.check_payload(payload, ["disk", "state"]):
+            return
+
+        disk = payload.get("disk", "")
+        state = payload.get("state", "")
+
+        if state == DiskState.DISCONNECTED.value:
+            # Source disconnection during analysis (scenario 8.8 / D3):
+            if (
+                disk in self.__source_disks
+                and self.__analysis_state == AnalysisState.AnalysisRunning
+            ):
+                self.__held_disk = disk
+                self.__set_source_held(True)
+        elif state == DiskState.CONNECTED.value and self.__source_held:
+            if disk == self.__held_disk:
+                # D3: same-disk reconnect → auto-resume. Reset the
+                # in-flight files so they are re-fingerprinted and
+                # re-analysed (their stale AV failures were ignored).
+                with self.__queue_lock:
+                    for file in self.__files.values():
+                        if file.get("status") == FileStatus.FileAnalysing:
+                            file["status"] = FileStatus.FileStatusUndefined
+                            file["locked"] = False
+                            file["progress"] = 0
+                            file["results"] = {}
+                            self.fileUpdated.emit(
+                                file.get("filepath", ""), ["status", "progress"]
+                            )
+                self.__held_disk = None
+                self.__set_source_held(False)
+                self.__enqueue_fingerprints()
+            else:
+                # A different disk was re-inserted while the source was
+                # held → the coherence check fails, a reset is required.
+                self.__held_disk = None
+                self.__set_source_held(False)
+                self.resetRequired.emit()
+
+    # ---------- list-files response ---------- #
+
+    def __on_list_files_received(self, payload: dict) -> None:
+        """Handle list-files response — currently a no-op for v2."""
+
+    # ---------- internal helpers ---------- #
+
+    def __handle_sysinfo(self, payload: dict):
+        """Handle system-info response — no-op in v2 (no repository)."""
+
+    def _find_file(self, filepath: str, disk: str):
+        """Return the file entry matching ``(filepath, disk)``, or None.
+
+        The shared dict is keyed by bare filepath; the per-entry ``"disk"``
+        field disambiguates when two source disks expose the same relative
+        path. When no entry matches the disk exactly, a single unambiguous
+        filepath candidate (e.g. DEVMODE single disk) is returned.
+        """
+        candidates = [
+            f for f in self.__files.values() if f.get("filepath", "") == filepath
+        ]
+        if not candidates:
+            return None
+        for f in candidates:
+            if f.get("disk") == disk:
+                return f
+        if len(candidates) == 1:
+            return candidates[0]
+        return None
+
+    def __handle_result(
+        self, component: str, filepath: str, disk: str, success: bool, details: str
+    ) -> None:
+        with self.__queue_lock:
+            file = self._find_file(filepath, disk)
+            if file is None:
+                Api().warn(f"Analysis result for unknown file {disk}{filepath}")
+                return
+
             if file.get("status") in (
                 FileStatus.FileClean,
                 FileStatus.FileInfected,
                 FileStatus.FileAnalysisError,
             ):
-                # A file in a final state is terminal: ignore stale or
-                # duplicate errors for it.
-                # Already handled: both AV domains can report the same failure
-                # (e.g. NFR-1 integrity error), count it only once.
                 return
+
+            # The shared dict is keyed by the bare filepath.
+            clean, file_size = AnalysisHelper.update_file_result(
+                self.__files,
+                filepath,
+                success,
+                component,
+                details,
+                self.__analysis_components,
+            )
+            self.fileUpdated.emit(filepath, ["status", "progress"])
+
+            if AnalysisHelper.is_analysis_finished(self.__files, filepath):
+                if clean:
+                    self.__clean_files_count += 1
+                    self.__clean_files_size += file_size
+                else:
+                    self.__infected_files_count += 1
+                    self.__infected_files_size += file_size
+
+                start_time = self.__start_times.get(filepath, time.time())
+                duration_in_secs = time.time() - start_time
+                filesize = self.__files[filepath].get("size", 0)
+                self.iterationDone.emit(duration_in_secs / 60, filesize)
+
+                self.resultsChanged.emit()
+
+    def __handle_error(self, payload: dict) -> None:
+        filepath = payload.get("filepath", "")
+        disk = payload.get("disk", "")
+        error = payload.get("error", "unknown")
+        Api().warn(f"Analysis error for file {disk}{filepath}: {error}")
+
+        with self.__queue_lock:
+            file = self._find_file(filepath, disk)
+            if file is None:
+                return
+
+            if file.get("status") in (
+                FileStatus.FileClean,
+                FileStatus.FileInfected,
+                FileStatus.FileAnalysisError,
+            ):
+                return
+
             file["status"] = FileStatus.FileAnalysisError
             file["progress"] = 100
             self.__infected_files_count += 1
@@ -540,212 +485,47 @@ class AnalysisController(QObject):
             self.fileUpdated.emit(filepath, ["status", "progress"])
             self.resultsChanged.emit()
 
-        Api().delete_file(filepath, Constants.STR_REPOSITORY)
-
     def __set_source_held(self, held: bool) -> None:
         if held == self.__source_held:
             return
-
         self.__source_held = held
-
-        if not held:
-            # The source is back: re-request the files whose copy to the
-            # repository was in flight when the source was disconnected.
-            with self.__queue_lock:
-                for file in self.__files.values():
-                    if file.get("status") == FileStatus.GettingFile:
-                        file["status"] = FileStatus.FileStatusUndefined
-                        file["locked"] = False
-                        self.fileUpdated.emit(file.get("filepath", ""), ["status"])
-
         self.sourceHoldChanged.emit(held)
 
-    def __do_copy_files_into_repository(self):
-        # The source is disconnected: hold the loop (do not request files
-        # from a missing disk, do not exit) until it is re-inserted.
-        if self.__source_held:
-            self.__copy_timer = threading.Timer(
-                0.5, self.__do_copy_files_into_repository
-            )
-            self.__copy_timer.daemon = True
-            self.__copy_timer.start()
-            return
+    # ---------- fingerprint queue ---------- #
 
-        # We copy files in the repository until it is full (__repository_size)
-        # We handle a local value to avoid sending queries to Safecor
-        limit = self.__get_repository_free_slots()
+    def __enqueue_fingerprints(self) -> None:
+        """Iterate the file list and request fingerprints for pending files.
 
-        if limit <= 0:
-            self.__copy_timer = threading.Timer(
-                0.5, self.__do_copy_files_into_repository
-            )
-            self.__copy_timer.daemon = True
-            self.__copy_timer.start()
-            return
-
-        files = self.__get_next_group_of_files(limit)
-
+        For each file whose status is ``FileStatusUndefined`` the controller
+        asks ``sys-usb`` to compute the file's fingerprint.  Responses are
+        delivered asynchronously on ``Topics.FILE_FINGERPRINT/response`` and
+        trigger the analysis request.
+        """
         with self.__queue_lock:
-            for file in files:
-                file["locked"] = True
-
-                if (
-                    file.get("inqueue", False)
-                    or self.__analysis_mode == AnalysisMode.AnalyseWholeSource
-                ):
-                    filepath = file.get("filepath", None)
-
-                    if filepath is None:
-                        continue
-
-                    if (
-                        MOUNT_ARCHIVES
-                        and BIG_FILE_SIZE_IN_MB > -1
-                        and file.get("size", 0) > BIG_FILE_SIZE_IN_MB
-                        and FileHelper.is_archive_file(file["name"])
-                    ):
-                        # If the file is big and is an archive we mount it
-                        # If there is an archive inside an archive there will be problems...
-                        file["status"] = FileStatus.FileAnalysing
-                        self.fileUpdated.emit(
-                            self.__archive_mounted_name, [file["status"]]
-                        )
-                        self.__archive_mounted_filepath = file["filepath"]
-                        # The archive is read from the disk that contains it
-                        Api().mount_file(file["disk"], file["filepath"])
-                    else:
-                        file["status"] = FileStatus.GettingFile
-
-                        if self.__archive_mounted_name is None:
-                            self.fileUpdated.emit(filepath, [file["status"]])
-                        else:
-                            self.fileUpdated.emit(
-                                self.__archive_mounted_name, [file["status"]]
-                            )
-
-                        # The file is read from the disk that contains it
-                        # (the source disk or the mounted archive)
-                        Api().read_file(file["disk"], filepath)
-
-                        self.__start_times[filepath] = time.time()
-                        self.__files_copy_queue_size += 1
-
-        if self.__analysis_state == AnalysisState.AnalysisRunning and (
-            len(self.__files) > 0 or len(self.__archive_file.get("content", {})) > 0
-        ):
-            self.__copy_timer = threading.Timer(
-                0.5, self.__do_copy_files_into_repository
-            )
-            self.__copy_timer.daemon = True
-            self.__copy_timer.start()
-        else:
-            print("No more file to analyse... Exiting loop")
-
-    def __get_repository_free_slots(self):
-        """
-        Returns the free slots in the repository, which means the number of files
-        that can be downloaded before the repository is full.
-
-        The goal is to fill the repository but not overflow it.
-        """
-
-        nb_files = self.__repository_capacity - AnalysisHelper.get_repository_size(
-            self.__files
-        )
-        return nb_files
-
-    def __get_next_group_of_files(self, size_limit):
-        """Returns a new group of files to analyze
-
-        The quantity of files depends on the argument size_limit provided.
-        To avoid unexpected behaviours the single files are provided before the archives
-        and only one archive is provided at a time.
-        An archive is returned only when there is no other file currently being analyzed
-        """
-
-        group = []
-        files_list = (
-            self.__files
-            if self.__archive_mounted_name is None
-            else self.__archive_file.get("content", {})
-        )
-
-        # First of all we filter the files to consider only those whose state
-        # is "undefined" in the workflow
-        filtered = {
-            k: f
-            for k, f in files_list.items()
-            if not f.get("locked", False)
-            and f.get("status", FileStatus.FileStatusUndefined)
-            == FileStatus.FileStatusUndefined
-        }
-
-        for f in filtered.values():
-            # First we get the next non-archive files that is not currently being analyzed
-            if not FileHelper.is_archive_file(f.get("name", "")):
-                group.append(f)
-            else:
-                # If this is an archive
-                if MOUNT_ARCHIVES and f.get("size", 0) > BIG_FILE_SIZE_IN_MB:
-                    # If the file has to be mounted
+            for filepath, file in self.__files.items():
+                if file.get("status") != FileStatus.FileStatusUndefined:
                     continue
-                else:
-                    # If we don't mount archives, we simply add the file
-                    group.append(f)
+                if file.get("locked", False):
+                    continue
 
-            if len(group) >= size_limit:
-                # We stop adding files when the queue is full
-                break
+                disk = file.get("disk", "")
+                filepath_ = file.get("filepath", "")
+                if not filepath_ or not disk:
+                    continue
 
-        # If the group is empty and we still have archives we put them
-        # one by one after their analysis is completed
-        # The repository size is not reliable because the file may be
-        # being read when the function is called again. So we use
-        # another property that indicates that the analysis is ongoing
-        # on that file.
-        if (
-            MOUNT_ARCHIVES
-            and len(group) == 0
-            and AnalysisHelper.get_repository_size(self.__files) == 0
-            and self.get_working_files_count() == 0
-        ):
-            for f in filtered.values():
-                if FileHelper.is_archive_file(
-                    f.get("name", "")
-                ) and not AnalysisHelper.is_file_completed(f):
-                    group.append(f)
-                    break  # We return only one archive
+                file["locked"] = True
+                file["status"] = FileStatus.FileAnalysing  # "fingerprinting"
 
-        return group
+                self.__start_times[filepath] = time.time()
+                self.__files_copy_queue_size += 1
 
-    def get_working_files_count(self) -> int:
-        """Returns the number of files currently being worked on
+                # Request fingerprint from sys-usb
+                Api().get_file_fingerprint(filepath_, disk)
 
-        Those files are in a state different from Undefined
-        """
+    # ------------------------------------------------------------------ #
+    # Getters and setters
+    # ------------------------------------------------------------------ #
 
-        files_list = (
-            self.__files
-            if self.__archive_mounted_name is None
-            else self.__archive_file.get("content", {})
-        )
-
-        return len(
-            {
-                k: f
-                for k, f in files_list.items()
-                if f.get("status", None)
-                in [
-                    FileStatus.FileAnalysing,
-                    FileStatus.FileAvailableInRepository,
-                    FileStatus.FileCopySuccess,
-                ]
-            }
-        )
-
-    ######
-    ## Getters and setters
-    #
     def get_analysis_state(self) -> AnalysisState:
         """Return the current analysis state."""
         return self.__analysis_state
@@ -769,17 +549,5 @@ class AnalysisController(QObject):
     def __set_analysis_state(self, state: AnalysisState):
         self.__analysis_state = state
         self.stateChanged.emit(state)
-
-    def get_repository_capacity(self):
-        """Return the total capacity of the analysis repository in bytes."""
-        return self.__repository_capacity
-
-    def get_repository_size(self) -> int:
-        """Return the number of files currently held in the analysis repository."""
-        return AnalysisHelper.get_repository_size(self.__files)
-
-    def get_queue_size(self):
-        """Return the number of files in the analysis queue."""
-        return len(self.__files)
 
     state = Property(int, get_analysis_state, notify=stateChanged)
