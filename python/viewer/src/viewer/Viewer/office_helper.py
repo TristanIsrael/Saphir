@@ -2,7 +2,7 @@ import os
 import subprocess
 
 from PySide6.QtCore import QObject
-from safecor import Logger
+from safecor import Constants, Logger
 
 from . import DevModeHelper
 
@@ -11,8 +11,12 @@ class OfficeHelper:
     """This class deals with the Office documents files"""
 
     @staticmethod
-    def convert_to_pdf(document_filepath: str) -> str:
+    def convert_to_pdf(disk: str, document_filepath: str) -> str:
         """Converts an office document to a PDF file
+
+        The source document is read directly from the USB media
+        (``f"{Constants.USB_MOUNT_POINT}/{disk}{document_filepath}"`` in
+        production, the DEVMODE fake media tree otherwise).
 
         Returns the path of the file created
         """
@@ -21,17 +25,17 @@ class OfficeHelper:
 
         if DevModeHelper.DEVMODE:
             soffice_cmd = DevModeHelper.get_libreoffice_path()
-            repository_filepath = DevModeHelper.get_repository_path()
+            media_path = DevModeHelper.get_media_path()
         else:
             soffice_cmd = "soffice"
-            repository_filepath = "/mnt/storage"
+            media_path = Constants.USB_MOUNT_POINT
 
         cmd = [
             soffice_cmd,
             "--headless",
             "--convert-to",
             "pdf",
-            repository_filepath + document_filepath,
+            f"{media_path}/{disk}{document_filepath}",
             "--outdir",
             "/tmp",
         ]

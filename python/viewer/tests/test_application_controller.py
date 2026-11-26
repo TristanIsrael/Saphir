@@ -1,11 +1,13 @@
 """Unit tests for the viewer ApplicationController (plan 13.2)."""
 
+import os
 import unittest
 from unittest.mock import MagicMock, patch
 
-from safecor import DiskState, Topics
+from safecor import ConnectionType, DiskState, Topics
 from Viewer import (
     ApplicationController,
+    DevModeHelper,
     FileType,
     SafecorInputFilesListModel,
     ViewerConstants,
@@ -35,6 +37,15 @@ class ApplicationControllerTestCase(unittest.TestCase):
         self.controller._ApplicationController__on_api_ready()
         return mids
 
+    def _make_mount_ready(self):
+        """Simulates the USB mount point becoming ready."""
+        self.controller._ApplicationController__on_usb_mountpoint_ready()
+
+    def _trigger_api_ready(self):
+        """Runs __on_api_ready with a working (mocked) subscribe."""
+        self.api.subscribe.side_effect = lambda topic: (True, 1)
+        self.controller._ApplicationController__on_api_ready()
+
 
 class TestInit(ApplicationControllerTestCase):
     def test_creates_input_files_list_model(self):
@@ -54,9 +65,41 @@ class TestInit(ApplicationControllerTestCase):
         self.assertFalse(self.controller.plugged)
         self.assertTrue(self.controller.handheld)
         self.assertFalse(self.controller.sourceReady)
+        self.assertEqual(self.controller.repositoryPath, "")
 
     def test_repository_path_devmode(self):
-        self.assertEqual(self.controller.repositoryPath, "/tmp/saphir/repository")
+        # DEVMODE is forced by conftest: the media path is the fake tree,
+        # without a trailing slash, per current disk
+        self.controller._ApplicationController__handle_list_disks({"disks": ["usb1"]})
+        self.assertEqual(self.controller.repositoryPath, "/tmp/saphir/media/usb1")
+
+        self.controller.on_disk_selected("usb2")
+        self.assertEqual(self.controller.repositoryPath, "/tmp/saphir/media/usb2")
+
+
+class TestRepositoryPath(ApplicationControllerTestCase):
+    def test_repository_path_production(self):
+        with patch("Viewer.application_controller.DevModeHelper") as mock_dev:
+            mock_dev.DEVMODE = False
+            self.controller._ApplicationController__handle_list_disks(
+                {"disks": ["usb1"]}
+            )
+            self.assertEqual(self.controller.repositoryPath, "/media/usb/usb1")
+
+    def test_repository_path_is_empty_without_disk(self):
+        self.assertEqual(self.controller.repositoryPath, "")
+
+    def test_repository_path_notifies_on_disk_change(self):
+        events = []
+        self.controller.repositoryPathChanged.connect(lambda: events.append(1))
+
+        self.controller._ApplicationController__handle_list_disks({"disks": ["usb1"]})
+        self.assertEqual(self.controller.repositoryPath, "/tmp/saphir/media/usb1")
+        self.assertEqual(len(events), 1)
+
+        self.controller.on_disk_selected("usb2")
+        self.assertEqual(self.controller.repositoryPath, "/tmp/saphir/media/usb2")
+        self.assertEqual(len(events), 2)
 
 
 class TestStart(ApplicationControllerTestCase):
@@ -96,7 +139,6 @@ class TestReadyFlow(ApplicationControllerTestCase):
         self.assertEqual(
             mids,
             [
-                Topics.NEW_FILE,
                 Topics.DISK_STATE,
                 f"{Topics.LIST_DISKS}/response",
                 f"{Topics.LIST_FILES}/response",
@@ -115,11 +157,11 @@ class TestReadyFlow(ApplicationControllerTestCase):
             mock_dev.DEVMODE = True
             self.controller.start(ready)
 
-            mids = [1, 2, 3, 4, 5, 6, 7]
+            mids = [1, 2, 3, 4, 5, 6]
             self.api.subscribe.side_effect = lambda topic: (True, mids.pop())
             self.controller._ApplicationController__on_api_ready()
 
-            for mid in [7, 6, 5, 4, 3, 2]:
+            for mid in [6, 5, 4, 3, 2]:
                 self.controller._ApplicationController__on_subscribed(mid)
                 ready.assert_not_called()
 
@@ -135,13 +177,88 @@ class TestReadyFlow(ApplicationControllerTestCase):
     def test_on_subscribed_ignores_unknown_mid(self):
         mids = self._ready_flow()
         self.controller._ApplicationController__on_subscribed(999)
-        self.assertEqual(len(mids), 7)
+        self.assertEqual(len(mids), 6)
+
+
+class TestMountReadiness(ApplicationControllerTestCase):
+    def test_devmode_mount_gate_bypassed(self):
+        # DEVMODE is forced by conftest: the gate is bypassed in
+        # __on_api_ready
+        self._trigger_api_ready()
+        self.assertTrue(self.controller._ApplicationController__usb_mount_ready)
+
+    def test_production_mount_not_ready_is_not_ready(self):
+        with (
+            patch("Viewer.application_controller.DevModeHelper") as mock_dev,
+            patch("Viewer.application_controller.System") as mock_system,
+        ):
+            mock_dev.DEVMODE = False
+            mock_system.return_value.is_usb_mountpoint_ready.return_value = False
+
+            self._trigger_api_ready()
+            # The callback is registered with the platform watcher
+            mock_system.return_value.on_usb_mountpoint_ready.assert_called_once()
+            self.assertFalse(self.controller._ApplicationController__usb_mount_ready)
+
+            # A disk is connected but the mount is not ready: not ready
+            self.controller._ApplicationController__handle_disk_state(
+                {"disk": "usb1", "state": DiskState.CONNECTED.value}
+            )
+            self.assertFalse(self.controller.ready)
+
+    def test_production_mount_ready_callback_makes_ready(self):
+        with (
+            patch("Viewer.application_controller.DevModeHelper") as mock_dev,
+            patch("Viewer.application_controller.System") as mock_system,
+        ):
+            mock_dev.DEVMODE = False
+            mock_system.return_value.is_usb_mountpoint_ready.return_value = False
+
+            self._trigger_api_ready()
+            callback = mock_system.return_value.on_usb_mountpoint_ready.call_args[0][0]
+
+            self.controller._ApplicationController__handle_disk_state(
+                {"disk": "usb1", "state": DiskState.CONNECTED.value}
+            )
+            self.assertFalse(self.controller.ready)
+
+            # The mount point becomes ready: the readiness is re-evaluated
+            callback()
+            self.assertTrue(self.controller.ready)
+
+    def test_production_mount_already_ready(self):
+        with (
+            patch("Viewer.application_controller.DevModeHelper") as mock_dev,
+            patch("Viewer.application_controller.System") as mock_system,
+        ):
+            mock_dev.DEVMODE = False
+            mock_system.return_value.is_usb_mountpoint_ready.return_value = True
+
+            self._trigger_api_ready()
+            self.assertTrue(self.controller._ApplicationController__usb_mount_ready)
+
+            self.controller._ApplicationController__handle_disk_state(
+                {"disk": "usb1", "state": DiskState.CONNECTED.value}
+            )
+            self.assertTrue(self.controller.ready)
+
+    def test_mount_ready_without_disk_is_not_ready(self):
+        self._make_mount_ready()
+        self.assertFalse(self.controller.ready)
+
+    def test_mount_ready_callback_is_idempotent(self):
+        events = []
+        self.controller.readyChanged.connect(lambda v: events.append(v))
+        self._make_mount_ready()
+        self._make_mount_ready()
+        self.assertEqual(events, [])
 
 
 class TestDiskState(ApplicationControllerTestCase):
     def test_connected_disk_marks_ready(self):
         events = []
         self.controller.readyChanged.connect(lambda v: events.append(v))
+        self._make_mount_ready()
         self.controller._ApplicationController__handle_disk_state(
             {"disk": "usb1", "state": DiskState.CONNECTED.value}
         )
@@ -150,6 +267,7 @@ class TestDiskState(ApplicationControllerTestCase):
         self.assertIn("usb1", self.controller.disks)
 
     def test_disconnected_disk_clears_ready(self):
+        self._make_mount_ready()
         self.controller._ApplicationController__handle_disk_state(
             {"disk": "usb1", "state": DiskState.CONNECTED.value}
         )
@@ -158,6 +276,28 @@ class TestDiskState(ApplicationControllerTestCase):
             {"disk": "usb1", "state": DiskState.DISCONNECTED.value}
         )
         self.assertFalse(self.controller.ready)
+
+    def test_stale_current_disk_is_reset(self):
+        disk_events = []
+        repo_events = []
+        self.controller.currentDiskChanged.connect(lambda: disk_events.append(1))
+        self.controller.repositoryPathChanged.connect(lambda: repo_events.append(1))
+
+        self._make_mount_ready()
+        self.controller._ApplicationController__handle_list_disks({"disks": ["usb1"]})
+        self.assertEqual(self.controller.currentDisk, "usb1")
+        self.assertEqual(self.controller.repositoryPath, "/tmp/saphir/media/usb1")
+        nb_disk_events = len(disk_events)
+        nb_repo_events = len(repo_events)
+
+        # The current disk is disconnected
+        self.controller._ApplicationController__handle_disk_state(
+            {"disk": "usb1", "state": DiskState.DISCONNECTED.value}
+        )
+        self.assertEqual(self.controller.currentDisk, "")
+        self.assertEqual(self.controller.repositoryPath, "")
+        self.assertEqual(len(disk_events), nb_disk_events + 1)
+        self.assertEqual(len(repo_events), nb_repo_events + 1)
 
     def test_missing_disk_is_an_error(self):
         self.controller._ApplicationController__handle_disk_state(
@@ -172,6 +312,7 @@ class TestDiskState(ApplicationControllerTestCase):
 
 class TestListDisks(ApplicationControllerTestCase):
     def test_list_disks_sets_current_disk_and_requests_files(self):
+        self._make_mount_ready()
         self.controller._ApplicationController__handle_list_disks(
             {"disks": ["usb1", "usb2"]}
         )
@@ -183,6 +324,7 @@ class TestListDisks(ApplicationControllerTestCase):
         )
 
     def test_empty_list_disks_not_ready(self):
+        self._make_mount_ready()
         self.controller._ApplicationController__handle_list_disks({"disks": []})
         self.assertFalse(self.controller.ready)
         self.api.info.assert_called()
@@ -239,40 +381,52 @@ class TestListFiles(ApplicationControllerTestCase):
         self.api.error.assert_called_once()
 
 
-class TestNewFile(ApplicationControllerTestCase):
-    def test_office_file_is_converted_to_pdf(self):
+class TestViewFile(ApplicationControllerTestCase):
+    def test_native_file_is_viewed_directly(self):
+        # Safecor v2: no repository staging, the relative filepath is used
+        # as-is (the media path comes from repositoryPath in QML)
+        self.controller._ApplicationController__handle_list_disks({"disks": ["usb1"]})
+        self.controller.view_file("/folder/photo.jpg")
+
+        self.api.read_file.assert_not_called()
+        self.assertEqual(self.controller.currentFilepath, "/folder/photo.jpg")
+        self.assertEqual(self.controller.currentFiletype, FileType.Image.value)
+
+    def test_office_file_is_converted_from_the_media(self):
         with patch("Viewer.application_controller.OfficeHelper") as mock_office:
             mock_office.convert_to_pdf.return_value = "/tmp/doc.pdf"
-            self.controller._ApplicationController__handle_new_file(
-                {"filepath": "/folder/doc.docx"}
+            self.controller._ApplicationController__handle_list_disks(
+                {"disks": ["usb1"]}
             )
+            self.controller.view_file("/folder/doc.docx")
 
-        mock_office.convert_to_pdf.assert_called_once_with("/folder/doc.docx")
+        mock_office.convert_to_pdf.assert_called_once_with("usb1", "/folder/doc.docx")
         self.assertEqual(self.controller.currentFilepath, "/tmp/doc.pdf")
         self.assertEqual(self.controller.currentFiletype, FileType.Pdf.value)
         self.assertEqual(self.controller.currentStep, "File file has been converted")
 
-    def test_image_file_is_not_converted(self):
+    def test_office_file_without_disk(self):
         with patch("Viewer.application_controller.OfficeHelper") as mock_office:
-            self.controller._ApplicationController__handle_new_file(
-                {"filepath": "/folder/photo.jpg"}
-            )
+            mock_office.convert_to_pdf.return_value = "/tmp/doc.pdf"
+            self.controller.view_file("/folder/doc.docx")
+
+        # No disk selected: the conversion is still attempted with an
+        # empty disk
+        mock_office.convert_to_pdf.assert_called_once_with("", "/folder/doc.docx")
+
+    def test_native_file_without_disk(self):
+        self.controller.view_file("/folder/photo.jpg")
+        self.api.read_file.assert_not_called()
+        self.assertEqual(self.controller.currentFilepath, "/folder/photo.jpg")
+
+    def test_pdf_file_is_viewed_directly(self):
+        self.controller._ApplicationController__handle_list_disks({"disks": ["usb1"]})
+        with patch("Viewer.application_controller.OfficeHelper") as mock_office:
+            self.controller.view_file("/folder/report.pdf")
 
         mock_office.convert_to_pdf.assert_not_called()
-        self.assertEqual(self.controller.currentFilepath, "/folder/photo.jpg")
-        self.assertEqual(self.controller.currentFiletype, FileType.Image.value)
-
-    def test_malformed_payload_sets_error_step(self):
-        self.controller._ApplicationController__handle_new_file({})
-        self.assertEqual(
-            self.controller.currentStep, "An error occured when reading the file."
-        )
-
-    def test_view_file_reads_the_disk_file(self):
-        self.controller._ApplicationController__handle_list_disks({"disks": ["usb1"]})
-        self.controller.view_file("/folder/photo.jpg")
-        self.api.read_file.assert_called_once_with("usb1", "/folder/photo.jpg")
-        self.assertEqual(self.controller.currentStep, "Reading the file...")
+        self.assertEqual(self.controller.currentFilepath, "/folder/report.pdf")
+        self.assertEqual(self.controller.currentFiletype, FileType.Pdf.value)
 
 
 class TestEnergyState(ApplicationControllerTestCase):
@@ -297,6 +451,7 @@ class TestEnergyState(ApplicationControllerTestCase):
 
 class TestMessageDispatch(ApplicationControllerTestCase):
     def test_dispatch_by_topic(self):
+        self._make_mount_ready()
         self.controller._ApplicationController__on_message_received(
             Topics.DISK_STATE, {"disk": "usb1", "state": "connected"}
         )
@@ -313,12 +468,6 @@ class TestMessageDispatch(ApplicationControllerTestCase):
             {"disk": "usb1", "files": [{"path": "/", "name": "photo.jpg"}]},
         )
         self.assertEqual(self.controller.inputFilesListModel.rowCount(), 1)
-
-    def test_dispatch_new_file(self):
-        self.controller._ApplicationController__on_message_received(
-            Topics.NEW_FILE, {"filepath": "/photo.jpg"}
-        )
-        self.assertEqual(self.controller.currentFilepath, "/photo.jpg")
 
     def test_dispatch_energy_state(self):
         self.controller._ApplicationController__on_message_received(
@@ -362,19 +511,21 @@ class TestSlots(ApplicationControllerTestCase):
         )
 
     def test_on_disk_selected(self):
-        events = []
-        self.controller.currentDiskChanged.connect(lambda: events.append(1))
+        disk_events = []
+        repo_events = []
+        self.controller.currentDiskChanged.connect(lambda: disk_events.append(1))
+        self.controller.repositoryPathChanged.connect(lambda: repo_events.append(1))
         self.controller.on_disk_selected("usb2")
         self.assertEqual(self.controller.currentDisk, "usb2")
-        self.assertEqual(len(events), 1)
+        self.assertEqual(len(disk_events), 1)
+        self.assertEqual(len(repo_events), 1)
         self.api.get_files_list.assert_called_once_with(
             "usb2", True, "", ViewerConstants.FILES_FILTERS
         )
 
     def test_clear_current_file(self):
-        self.controller._ApplicationController__handle_new_file(
-            {"filepath": "/folder/photo.jpg"}
-        )
+        self.controller._ApplicationController__handle_list_disks({"disks": ["usb1"]})
+        self.controller.view_file("/folder/photo.jpg")
         self.controller.clear_current_file()
         self.assertEqual(self.controller.currentFilepath, "")
 
@@ -439,6 +590,15 @@ class TestSetters(ApplicationControllerTestCase):
         )
         self.assertEqual(len(events), 1)
 
+    def test_set_current_disk_emits_disk_and_repository_signals(self):
+        disk_events = []
+        repo_events = []
+        self.controller.currentDiskChanged.connect(lambda: disk_events.append(1))
+        self.controller.repositoryPathChanged.connect(lambda: repo_events.append(1))
+        self.controller._ApplicationController__set_current_disk("usb1")
+        self.assertEqual(len(disk_events), 1)
+        self.assertEqual(len(repo_events), 1)
+
     def test_on_shutdown_is_a_noop(self):
         self.controller._ApplicationController__on_shutdown(True, "test")
 
@@ -446,11 +606,6 @@ class TestSetters(ApplicationControllerTestCase):
         self.controller._ApplicationController__monitor_energy = False
         self.controller._ApplicationController__request_energy_state()
         self.api.request_energy_state.assert_not_called()
-
-    def test_repository_path_production(self):
-        with patch("Viewer.application_controller.DevModeHelper") as mock_dev:
-            mock_dev.DEVMODE = False
-            self.assertEqual(self.controller.repositoryPath, "/mnt/storage")
 
     def test_set_source_ready(self):
         events = []
@@ -487,6 +642,34 @@ class TestTranslations(ApplicationControllerTestCase):
         ):
             self.controller.language = "fr"
             self.assertEqual(self.controller.language, "fr")
+
+
+class TestDevModeHelper(unittest.TestCase):
+    def test_media_path(self):
+        # The fake media tree root (Safecor v2 USB direct mount emulation)
+        self.assertEqual(DevModeHelper.get_media_path(), "/tmp/saphir/media")
+
+    def test_create_mqtt_client_points_at_local_broker(self):
+        client = DevModeHelper.create_mqtt_client("Viewer")
+        self.assertEqual(client.identifier, "Viewer")
+        self.assertEqual(client.connection_type, ConnectionType.TCP_DEBUG)
+        self.assertEqual(client.connection_string, "localhost")
+
+    def test_set_qt_plugins_path(self):
+        saved = os.environ.get("QT_QPA_PLATFORM_PLUGIN_PATH")
+        try:
+            with patch.dict(os.environ, {"VIRTUAL_ENV": "/fake/venv"}):
+                DevModeHelper.set_qt_plugins_path()
+                self.assertEqual(
+                    os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"],
+                    "/fake/venv/lib/python3.14/site-packages/"
+                    "PySide6/Qt/plugins/platforms",
+                )
+        finally:
+            if saved is None:
+                os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH", None)
+            else:
+                os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = saved
 
 
 if __name__ == "__main__":

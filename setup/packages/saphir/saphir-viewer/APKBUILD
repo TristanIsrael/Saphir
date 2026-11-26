@@ -1,7 +1,7 @@
 # Contributor:
 # Maintainer: Tristan Israël <tristan.israel@icloud.com>
 pkgname=saphir-viewer
-pkgver=1.2
+pkgver=1.3
 pkgrel=0
 pkgdesc="Saphir - Viewer module"
 url="https://alefbet.net/"

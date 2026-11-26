@@ -4,8 +4,8 @@ import threading
 import time
 
 from libsaphir import AbstractAntivirusController
-from safecor import ComponentState, Constants
-from Saphir import DevModeHelper
+from safecor import ComponentState
+from Viewer import DevModeHelper
 
 
 class MockEeaAntivirusController(AbstractAntivirusController):
@@ -13,7 +13,9 @@ class MockEeaAntivirusController(AbstractAntivirusController):
 
     def __init__(self):
         super().__init__("Mock ESET", "Mock ESET antivirus", 1)
-        Constants.DOMU_REPOSITORY_PATH = DevModeHelper.get_storage_path()
+        # DEVMODE: the files are resolved under the fake media tree
+        # (the same tree the viewer and the mock sys-usb expose)
+        self._usb_mount_point = DevModeHelper.get_media_path()
 
     def _on_api_ready(self) -> None:
         pass
@@ -21,15 +23,16 @@ class MockEeaAntivirusController(AbstractAntivirusController):
     def _get_component_state(self) -> ComponentState:
         return ComponentState.READY
 
-    def _analyse_file(self, filepath: str) -> None:
+    def _analyse_file(self, filepath: str, disk: str) -> None:
         self.debug(f"Analysis triggered for the file {filepath}")
 
-        storage_filepath = Constants.DOMU_REPOSITORY_PATH
+        # Safecor v2: the file is read directly from the USB media
+        storage_filepath = f"{self._usb_mount_point}/{disk}{filepath}"
 
         if not os.path.exists(storage_filepath):
             errstr = f"The file {storage_filepath} does not exist or is not accessible."
             self.error(errstr)
-            self.publish_result(filepath, False, errstr)
+            self.publish_result(filepath, False, errstr, disk=disk)
             return
 
         filesize = os.path.getsize(storage_filepath) / (1024 * 1024)
@@ -37,8 +40,12 @@ class MockEeaAntivirusController(AbstractAntivirusController):
         time.sleep(duration_in_seconds)
 
         result = random.choices([0, 1], weights=[10, 90])[0]
-        self.publish_result(filepath, result == 1, "")
+        self.publish_result(filepath, result == 1, "", disk=disk)
         self.analysis_finished(result)
+
+    def _restart(self, domain_name: str):
+        # The mock goes offline for a while, like the libsaphir mock AV
+        self._perform_restart(10.0)
 
     def _stop_immediately(self):
         pass

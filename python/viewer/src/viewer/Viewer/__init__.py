@@ -1,7 +1,7 @@
 # ruff: noqa: I001
 # Import order is dependency-driven (circular import avoidance), not alphabetical.
 __author__ = "Tristan Israël (tristan.israel@alefbet.net)"
-__version__ = "1.0.0"
+__version__ = "1.3"
 
 from .enums import Enums, FileType, Roles, SystemState
 from .constants import ViewerConstants

@@ -14,21 +14,21 @@ class TestConvertToPdf(unittest.TestCase):
             patch("Viewer.office_helper.Logger"),
         ):
             mock_subprocess.run.return_value = MagicMock(returncode=0)
-            result = OfficeHelper.convert_to_pdf("/folder/doc.docx")
+            result = OfficeHelper.convert_to_pdf("usb1", "/folder/doc.docx")
 
         self.assertEqual(result, "/tmp/doc.pdf")
         cmd = mock_subprocess.run.call_args[0][0]
         self.assertIn("--headless", cmd)
         self.assertIn("--convert-to", cmd)
         self.assertIn("pdf", cmd)
-        self.assertIn("/tmp/saphir/repository/folder/doc.docx", cmd)
+        self.assertIn("/tmp/saphir/media/usb1/folder/doc.docx", cmd)
         self.assertIn("/tmp", cmd)
 
     def test_production_uses_system_libreoffice(self):
         fake_dev = SimpleNamespace(
             DEVMODE=False,
             get_libreoffice_path=MagicMock(),
-            get_repository_path=MagicMock(),
+            get_media_path=MagicMock(),
         )
         with (
             patch("Viewer.office_helper.subprocess") as mock_subprocess,
@@ -36,12 +36,12 @@ class TestConvertToPdf(unittest.TestCase):
             patch("Viewer.office_helper.DevModeHelper", fake_dev),
         ):
             mock_subprocess.run.return_value = MagicMock(returncode=0)
-            result = OfficeHelper.convert_to_pdf("/folder/doc.docx")
+            result = OfficeHelper.convert_to_pdf("usb1", "/folder/doc.docx")
 
         self.assertEqual(result, "/tmp/doc.pdf")
         cmd = mock_subprocess.run.call_args[0][0]
         self.assertEqual(cmd[0], "soffice")
-        self.assertIn("/mnt/storage/folder/doc.docx", cmd)
+        self.assertIn("/media/usb/usb1/folder/doc.docx", cmd)
 
     def test_conversion_error_returns_empty_path(self):
         with (
@@ -49,7 +49,7 @@ class TestConvertToPdf(unittest.TestCase):
             patch("Viewer.office_helper.Logger") as mock_logger,
         ):
             mock_subprocess.run.return_value = MagicMock(returncode=1)
-            result = OfficeHelper.convert_to_pdf("/folder/doc.docx")
+            result = OfficeHelper.convert_to_pdf("usb1", "/folder/doc.docx")
 
         self.assertEqual(result, "")
         mock_logger.return_value.warn.assert_called_once()
@@ -60,7 +60,9 @@ class TestConvertToPdf(unittest.TestCase):
             patch("Viewer.office_helper.Logger"),
         ):
             mock_subprocess.run.return_value = MagicMock(returncode=0)
-            result = OfficeHelper.convert_to_pdf("/folder/report.presentation.pptx")
+            result = OfficeHelper.convert_to_pdf(
+                "usb1", "/folder/report.presentation.pptx"
+            )
 
         self.assertEqual(result, "/tmp/report.presentation.pdf")
 

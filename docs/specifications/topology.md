@@ -1,7 +1,7 @@
 # Saphir — Topology
 
 > **Status**: Stable
-> **Last updated**: 2026-11-20
+> **Last updated**: 2026-11-26
 > **Audience**: developers and integrators working on the Saphir codebase or deployment
 > **Scope**: the Saphir multi-domain topology — the domains and their roles, the per-domain hardware allocation (memory, vCPU, GUI flag, mounts), the product-level settings, the hardware-specific configuration, and how Safecor consumes the topology.
 
@@ -34,7 +34,7 @@ Two topology variants live in the `saphir` package source (`setup/packages/saphi
 The two files are identical except for:
 
 - `topology.json.viewer` **adds** the `saphir-viewer` domain.
-- In `topology.json` the AV domains carry `direct_mount: { "mode": "ro" }` and `saphir-av-clamav` has `memory: 3000`; in `topology.json.viewer` the AV domains have **no** `direct_mount` and `saphir-av-clamav` has `memory: 2400`.
+- The AV domains and the `saphir-viewer` domain carry `direct_mount: { "mode": "ro" }` in both variants; `saphir-av-clamav` has `memory: 3000` in `topology.json` and `memory: 2400` in `topology.json.viewer`.
 - In `topology.json.viewer` the Durabook configuration blacklists one PCI device (`"00:0d.0"`); in `topology.json` the blacklist is empty.
 
 This document documents `topology.json` (the packaged file) as the reference and notes the viewer-variant differences inline.
@@ -72,7 +72,7 @@ The `business.domains` array of `topology.json` declares three domains:
 | `vcpu_group` | `gui` | `antivirus` | `antivirus` |
 | `temp_disk_size` (MB) | `1024` | `4096` | `4096` |
 | `swap_size` (MB) | — (absent) | `1024` | `1024` |
-| `direct_mount` | — (absent) | `{ "mode": "ro" }` (absent in the viewer variant) | `{ "mode": "ro" }` (absent in the viewer variant) |
+| `direct_mount` | — (absent) | `{ "mode": "ro" }` | `{ "mode": "ro" }` |
 
 Field meanings (Safecor topology keys):
 
@@ -87,7 +87,8 @@ Field meanings (Safecor topology keys):
 | `swap_size` | A swap disk of this size (MB) is created for the domain |
 | `direct_mount` | The domain mounts `/media/usb` directly from `sys-usb` via vchan+sshfs; `mode` is `"ro"` (read-only) or `"rw"` (default) |
 
-The **viewer variant** adds a fourth domain, identical in shape to `saphir-gui`:
+The **viewer variant** adds a fourth domain, identical in shape to `saphir-gui`
+plus the read-only direct mount (like the AV domains):
 
 | Field | `saphir-viewer` |
 |-------|-----------------|
@@ -96,6 +97,7 @@ The **viewer variant** adds a fourth domain, identical in shape to `saphir-gui`:
 | `has_gui` | `1` |
 | `vcpu_group` | `gui` |
 | `temp_disk_size` (MB) | `1024` |
+| `direct_mount` | `{ "mode": "ro" }` |
 
 ### 3.1 Domain roles
 

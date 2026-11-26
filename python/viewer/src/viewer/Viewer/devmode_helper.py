@@ -22,5 +22,7 @@ class DevModeHelper:
         return "/Applications/Bureautique/LibreOffice.app/Contents/MacOS/soffice"
 
     @staticmethod
-    def get_repository_path():
-        return "/tmp/saphir/repository"
+    def get_media_path():
+        # Root of the fake media tree emulating the Safecor v2 USB direct
+        # mount: each disk is a <label> symlink (or directory) under it
+        return "/tmp/saphir/media"

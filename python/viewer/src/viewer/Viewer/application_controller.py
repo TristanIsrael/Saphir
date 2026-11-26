@@ -14,10 +14,11 @@ from PySide6.QtCore import (
 )
 from safecor import (
     Api,
+    Constants,
     DiskState,
-    Logger,
     MqttFactory,
     MqttHelper,
+    System,
     Topics,
 )
 
@@ -47,6 +48,7 @@ class ApplicationController(QObject):
     longProcessRunningChanged = Signal()
     sourceReadyChanged = Signal()
     currentDiskChanged = Signal()
+    repositoryPathChanged = Signal()
     filesListChanged = Signal()
     currentStepChanged = Signal()
     currentFilepathChanged = Signal()
@@ -74,6 +76,7 @@ class ApplicationController(QObject):
         self.__current_folder = ""
         self.__input_files_list = {}
         self.__source_ready = False
+        self.__usb_mount_ready = False
         self.__current_disk = ""
         self.__current_step = ""
         self.__current_filepath = ""
@@ -106,10 +109,6 @@ class ApplicationController(QObject):
         Api().add_shutdown_callback(self.__on_shutdown)
 
         # Handle the subscriptions
-        result, mid = Api().subscribe(Topics.NEW_FILE)
-        if result:
-            self.__subscriptions.append(mid)
-
         result, mid = Api().subscribe(Topics.DISK_STATE)
         if result:
             self.__subscriptions.append(mid)
@@ -133,6 +132,34 @@ class ApplicationController(QObject):
         result, mid = Api().subscribe(f"{Topics.DEFAULT_LANGUAGE}/response")
         if result:
             self.__subscriptions.append(mid)
+
+        # Safecor v2: the viewer reads the files directly from the USB
+        # mount, so its readiness is gated on the mount point.
+        if DevModeHelper.DEVMODE:
+            # DEVMODE: no appliance, no real mount; bypass the gate and
+            # consider the media tree available.
+            self.__usb_mount_ready = True
+            Api().debug("DEVMODE: USB mount point readiness gate bypassed.")
+        else:
+            # The watcher thread fires the callback whenever the mount
+            # becomes available, including if it is already mounted.
+            if System().is_usb_mountpoint_ready():
+                self.__on_usb_mountpoint_ready()
+            System().on_usb_mountpoint_ready(self.__on_usb_mountpoint_ready)
+
+    def __on_usb_mountpoint_ready(self):
+        """Callback invoked when the USB mount point becomes available."""
+        if self.__usb_mount_ready:
+            return
+
+        self.__usb_mount_ready = True
+        Api().debug(f"USB mount point ready: {Constants.USB_MOUNT_POINT}")
+
+        # Re-evaluate the readiness: a disk may already be connected
+        ready = len(self.__disks) > 0 and self.__usb_mount_ready
+        if ready != self.__ready:
+            self.__ready = ready
+            self.readyChanged.emit(ready)
 
     def __on_subscribed(self, mid):
         if mid in self.__subscriptions:
@@ -169,8 +196,6 @@ class ApplicationController(QObject):
             self.__handle_list_files(payload)
         # elif topic == f"{Topics.DISCOVER_COMPONENTS}/response":
         #    self.__handle_discover_components(payload)
-        elif topic == Topics.NEW_FILE:
-            self.__handle_new_file(payload)
         elif topic == f"{Topics.ENERGY_STATE}/response":
             self.__handle_energy_state(payload)
         elif (
@@ -235,9 +260,19 @@ class ApplicationController(QObject):
 
     @Slot(str)
     def view_file(self, filepath: str):
-        # First we read the file
-        self.__set_current_step(QObject.tr("Reading the file..."))
-        Api().read_file(self.__current_disk, filepath)
+        # Safecor v2: the file is opened directly from the USB media
+        # (the current disk), no repository staging
+        file_type = self.__get_file_type(filepath)
+        file_path = filepath
+
+        # Depending on the file type we may need to convert it
+        if file_type == FileType.Office:
+            # The office document is converted to a PDF before being shown
+            self.__set_current_step(QObject.tr("Converting the file"))
+            file_path = OfficeHelper.convert_to_pdf(self.__current_disk, filepath)
+            self.__set_current_step(QObject.tr("File file has been converted"))
+
+        self.__set_current_filepath(file_path)
 
     @Slot()
     def clear_current_file(self):
@@ -316,7 +351,12 @@ class ApplicationController(QObject):
         else:
             self.__disks.remove(disk)
 
-        self.__ready = len(self.__disks) > 0
+            # The current disk has been disconnected: the media path
+            # depends on the disk, so reset the current disk
+            if disk == self.__current_disk:
+                self.__set_current_disk("")
+
+        self.__ready = len(self.__disks) > 0 and self.__usb_mount_ready
         self.readyChanged.emit(self.__ready)
 
     def __handle_list_disks(self, payload: dict):
@@ -325,7 +365,7 @@ class ApplicationController(QObject):
             return
 
         self.__disks = payload.get("disks", [])
-        self.__ready = len(self.__disks) > 0
+        self.__ready = len(self.__disks) > 0 and self.__usb_mount_ready
         self.readyChanged.emit(self.__ready)
 
         if len(self.__disks) == 0:
@@ -335,8 +375,7 @@ class ApplicationController(QObject):
         Api().debug(f"Disks list received : {self.__disks}")
 
         self.__set_source_ready(len(self.__disks) > 0)
-        self.__current_disk = self.__disks[0]
-        self.currentDiskChanged.emit()
+        self.__set_current_disk(self.__disks[0])
 
         self.update_source_files_list()
 
@@ -383,29 +422,6 @@ class ApplicationController(QObject):
             #self.__check_components_availability()
             self.__components_model.components_updated()"""
 
-    def __handle_new_file(self, payload: dict):
-        if not MqttHelper.check_payload(payload, ["filepath"]):
-            self.__set_current_step(
-                QObject.tr("An error occured when reading the file.")
-            )
-            Logger().error(f"Incorrect response format for {Topics.READ_FILE}")
-            return
-
-        self.__set_current_step(QObject.tr("The file has been read."))
-
-        file_path = payload.get("filepath", "")
-        file_type = self.__get_file_type(file_path)
-
-        # Depending on the file type we may need to convert it
-        if file_type == FileType.Office:
-            # We have to convert this file
-            self.__set_current_step(QObject.tr("Converting the file"))
-            file_path = OfficeHelper.convert_to_pdf(file_path)
-            file_type = FileType.Pdf
-            self.__set_current_step(QObject.tr("File file has been converted"))
-
-        self.__set_current_filepath(file_path)
-
     def __handle_energy_state(self, payload: dict):
         if not MqttHelper.check_payload(payload, ["battery_level", "plugged"]):
             return
@@ -432,8 +448,7 @@ class ApplicationController(QObject):
 
     @Slot(str)
     def on_disk_selected(self, disk: str):
-        self.__current_disk = disk
-        self.currentDiskChanged.emit()
+        self.__set_current_disk(disk)
         self.update_source_files_list()
 
     @Slot()
@@ -447,8 +462,8 @@ class ApplicationController(QObject):
         """
         @brief Indicates whether the app is ready
 
-        The app is ready when the messaging connection is opened and its internal
-        modules are started, and the antiviruses are started
+        The app is ready when the USB mount point is available and at
+        least one disk is connected
         """
         return self.__ready
 
@@ -497,6 +512,12 @@ class ApplicationController(QObject):
     def __get_current_disk(self):
         return self.__current_disk
 
+    def __set_current_disk(self, disk: str):
+        self.__current_disk = disk
+        self.currentDiskChanged.emit()
+        # The media path of the current disk changes with it
+        self.repositoryPathChanged.emit()
+
     def __get_current_step(self):
         return self.__current_step
 
@@ -519,10 +540,14 @@ class ApplicationController(QObject):
         self.currentFiletypeChanged.emit()
 
     def __get_repository_path(self):
+        # The media path of the current disk (Safecor v2 direct mount),
+        # without a trailing slash. It is empty when no disk is selected.
+        if self.__current_disk == "":
+            return ""
+
         if DevModeHelper.DEVMODE:
-            return DevModeHelper.get_repository_path()
-        else:
-            return "/mnt/storage"
+            return f"{DevModeHelper.get_media_path()}/{self.__current_disk}"
+        return f"{Constants.USB_MOUNT_POINT}/{self.__current_disk}"
 
     ready = Property(bool, __is_ready, __set_ready, notify=readyChanged)
     batteryLevel = Property(int, __get_battery_level, notify=batteryLevelChanged)
@@ -539,7 +564,7 @@ class ApplicationController(QObject):
     currentFilepath = Property(
         str, __get_current_filepath, notify=currentFilepathChanged
     )
-    repositoryPath = Property(str, __get_repository_path, constant=True)
+    repositoryPath = Property(str, __get_repository_path, notify=repositoryPathChanged)
     currentFiletype = Property(
         int, __get_current_file_type, notify=currentFiletypeChanged
     )

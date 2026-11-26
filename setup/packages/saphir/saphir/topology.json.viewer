@@ -32,7 +32,8 @@
                 "memory": 2400,
                 "vcpu_group": "antivirus",
                 "temp_disk_size": 4096,
-                "swap_size": 1024
+                "swap_size": 1024,
+                "direct_mount": { "mode": "ro" }
             },
             {
                 "name": "saphir-av-eset",
@@ -40,7 +41,8 @@
                 "memory": 2100,
                 "vcpu_group": "antivirus",
                 "temp_disk_size": 4096,
-                "swap_size": 1024
+                "swap_size": 1024,
+                "direct_mount": { "mode": "ro" }
             },
             {
                 "name": "saphir-viewer",
@@ -48,7 +50,8 @@
                 "memory": 1200,
                 "has_gui": 1,
                 "vcpu_group": "gui",
-                "temp_disk_size": 1024
+                "temp_disk_size": 1024,
+                "direct_mount": { "mode": "ro" }
             }
         ]
     },
