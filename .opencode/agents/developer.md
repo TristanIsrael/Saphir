@@ -44,6 +44,19 @@ permissions:
   - action: shell
     resource: "git log *"
     effect: allow
+  # State-changing stash forms are denied (last rule wins): a stash on the
+  # shared working tree risks stranding uncommitted work if the session is
+  # interrupted between push and pop. Only the read-only listing is allowed,
+  # placed AFTER the denies so it still matches.
+  - action: shell
+    resource: "git stash *"
+    effect: deny
+  - action: shell
+    resource: "git stash"
+    effect: deny
+  - action: shell
+    resource: "git stash list"
+    effect: allow
   - action: shell
     resource: "git commit *"
     effect: ask  
@@ -55,7 +68,7 @@ permissions:
     effect: ask
   - action: shell
     resource: "which *"
-    effect: ask
+    effect: allow
   - action: shell
     resource: "echo *"
     effect: allow
@@ -128,6 +141,37 @@ permissions:
   - action: shell
     resource: "kill *"
     effect: allow
+  - action: shell
+    resource: "read *"
+    effect: allow
+
+  # --- Test-runner forms (added 2026-11-26) ---
+  # Leading "*" makes these match env-var-prefixed and venv-path forms,
+  # e.g. "PYTHONPATH=... python3 -m pytest" or ".venv/bin/python -m pytest",
+  # which the anchored "python3 *" / "ruff *" patterns do not cover.
+  - action: shell
+    resource: "*-m pytest*"
+    effect: allow
+  - action: shell
+    resource: "*-m coverage*"
+    effect: allow
+  - action: shell
+    resource: "pytest *"
+    effect: allow
+  - action: shell
+    resource: "sh -n *"
+    effect: allow
+  - action: shell
+    resource: "bash -n *"
+    effect: allow
+  - action: shell
+    resource: "bash *setup_dev_env.sh*"
+    effect: allow
+
+  # --- Guard: re-assert after the unanchored allows above (last rule wins) ---
+  - action: shell
+    resource: "rm *"
+    effect: deny
 ---
 
 You are the project developer.
@@ -150,6 +194,15 @@ Environment:
 - hatchling/poetry packaging, ruff, pytest.
 - MQTT (paho-mqtt), mosquitto (emulator).
 - Alpine Linux packages (APKBUILD).
+- Canonical dev venv: `python/gui/.venv` (covers the GUI and viewer suites;
+  libsaphir has no test suite of its own and is exercised through both).
+  If it does not exist, create it BEFORE running any test suite:
+  `bash python/gui/setup_dev_env.sh` (set SAFECOR_ROOT only if the Safecor
+  checkout is not at /home/onyxia/work/Safecor). Its .pth files resolve the
+  local Safecor packages, so no PYTHONPATH prefix is needed; the GUI and
+  viewer pyproject.toml files add the local source paths (including libsaphir).
+  Run suites with `python/gui/.venv/bin/python -m pytest` from the app
+  directory (python/gui, python/viewer).
 
 Never modify an architectural decision without prior validation.
 

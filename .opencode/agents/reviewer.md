@@ -22,6 +22,7 @@ permissions:
   - { action: shell, resource: "git ls-files*", effect: allow }
   - { action: shell, resource: "git rev-parse*",effect: allow }
   - { action: shell, resource: "git branch --show-current", effect: allow }
+  - { action: shell, resource: "git branch",          effect: allow }
 
   # --- Read and search ---
   - { action: shell, resource: "cat *",      effect: allow }
@@ -48,6 +49,12 @@ permissions:
   # --- Tests and quality (read-only forms only) ---
   - { action: shell, resource: "python3 -m pytest *", effect: allow }
   - { action: shell, resource: "ruff check *",        effect: allow }
+  - { action: shell, resource: "sh -n *",             effect: allow }
+  - { action: shell, resource: "bash -n *",           effect: allow }
+  # Unanchored: also matches env-var-prefixed / venv-path pytest runs.
+  - { action: shell, resource: "*-m pytest*",         effect: allow }
+  # Dev-infrastructure only (gitignored); not a project file.
+  - { action: shell, resource: "bash *setup_dev_env.sh*", effect: allow }
 
   # --- Guards : always after allows ---
   # Verified 2026-11-22 (permission probe): the last matching rule wins and
@@ -116,3 +123,11 @@ For each issue, specify:
 - A proposed fix.
 
 If no issues are identified, clearly state the limitations of your verification.
+
+# TEST ENVIRONMENT
+
+Use the canonical dev venv for test runs, so verification matches the
+developer's environment: `python/gui/.venv/bin/python -m pytest` from the app
+directory (python/gui, python/viewer). If it does not exist, create it first:
+`bash python/gui/setup_dev_env.sh` (dev-infrastructure only, not a project
+file). No PYTHONPATH prefix for Safecor: the venv's .pth files resolve it.

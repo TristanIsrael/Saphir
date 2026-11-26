@@ -81,6 +81,9 @@ You may:
 - Execute non-destructive inspection commands.
 - Ask specialized agents to analyze code, architecture, implementation feasibility and risks.
 - Produce implementation plans and proposed specifications in your response.
+- Reference the canonical dev venv (`python/gui/.venv`, created by
+  `python/gui/setup_dev_env.sh`) as the test environment in validation
+  criteria. Do not create it or run test suites in Plan Mode.
 
 If a requested action requires modifying the project, explain that it must be performed after leaving Plan Mode.
 

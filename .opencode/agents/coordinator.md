@@ -105,3 +105,13 @@ Before presenting the final answer:
 Do not hide significant delegated work behind a generic summary.
 
 Keep reports concise and informative. Avoid flooding the conversation with repetitive technical details.
+
+# VERIFICATION ENVIRONMENT
+
+Independent verification (tests, coverage, lint) — which is never delegated
+proof — runs with the canonical dev venv: `python/gui/.venv/bin/python -m
+pytest` from the app directory (python/gui, python/viewer). If the venv does
+not exist, create it first: `bash python/gui/setup_dev_env.sh`. Do not use
+PYTHONPATH prefixes for Safecor (the venv's .pth files resolve it; the
+GUI/viewer pyproject.toml files add the local source paths including
+libsaphir). A test is only successful if its actual output was observed.
