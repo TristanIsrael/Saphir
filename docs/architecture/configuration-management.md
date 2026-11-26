@@ -1,20 +1,20 @@
 # Saphir — Configuration Management
 
 > **Status**: Stable
-> **Last updated**: 2026-11-20
+> **Last updated**: 2026-11-26
 > **Audience**: developers (human and AI agents) maintaining the Saphir packages, topology, or build environment
-> **Scope**: what is configured where in Saphir (topology / VM allocation, per-hardware settings, boot services, the repository path at runtime, languages, dev mode) and how it flows from the APK packages to the running domains — plus an offline reference copy of the Safecor platform configuration-management concepts.
+> **Scope**: what is configured where in Saphir (topology / VM allocation, per-hardware settings, boot services, the USB mount point at runtime, languages, dev mode) and how it flows from the APK packages to the running domains — plus an offline reference copy of the Safecor platform configuration-management concepts.
 
 ## Related documents
 
 | Concern | Document |
 |---------|----------|
 | Topology fields, domain inventory & viewer variant (detail) | [`../specifications/topology.md`](../specifications/topology.md) |
-| MQTT contract (`system/disks/repository_path`, `system/settings/languages/default`, …) | [`../development/protocol.md`](../development/protocol.md) |
+| MQTT contract (`system/disks/file_fingerprint`, `system/settings/languages/default`, …) | [`../development/protocol.md`](../development/protocol.md) |
 | Package contents, APKBUILDs & build flow | [`../development/packaging.md`](../development/packaging.md) |
 | Build paths (local dev Docker image, CI, chroot) | [`../development/building.md`](../development/building.md) |
 | DevMode & Safecor emulator (test simulation) | [`../development/testing.md`](../development/testing.md) |
-| Repository as the only data exchange point | [`decisions/0003-repository-only-data-exchange.md`](decisions/0003-repository-only-data-exchange.md) |
+| Direct USB mount as the analysis data path (supersedes the v1 repository) | [`decisions/0019-direct-usb-mount-data-path.md`](decisions/0019-direct-usb-mount-data-path.md) |
 | Stateless system (no persistence of configuration/state) | [`decisions/0006-stateless-system-no-persistence.md`](decisions/0006-stateless-system-no-persistence.md) |
 | Safecor divergences log | [`../safecor-divergences.md`](../safecor-divergences.md) |
 
@@ -30,13 +30,13 @@
 | Boot services (per domain) | `/etc/init.d/*` + `rc-update` | package install scripts (`*.initd`, `*.post-install`) (§4) |
 | ClamAV engine tuning | `clamd.conf`, `freshclam.conf` | packaged by `saphir-av-clamav` (APKBUILD) |
 | ESET LXC container (rootfs, config) | `/var/lib/saphir/saphir-container-eset.sqfs` + `/var/lib/lxc/saphir-container-eset/config` | `saphir-container-eset` APK, patched at install time (§4) |
-| Repository mount path (runtime) | — (no static setting) | `system/disks/repository_path` request to the platform (§5.1) |
+| USB mount point (runtime) | — (fixed platform constant `Constants.USB_MOUNT_POINT`) | direct mount served by `sys-usb`; readiness via `System.on_usb_mountpoint_ready` (§5.1) |
 | Default language | platform setting | `system/settings/languages/default`; user switch at runtime, no persistence (§5.2) |
 | Dev mode (no appliance) | `DEVMODE` environment variable; `.env` (PYTHONPATH) | dev environment (§5.3, §6) |
 
 There is **no runtime configuration file written by the product**: everything is either baked in
 at packaging time (topology, initd scripts, engine configs) or resolved at runtime from the
-platform (repository path, default language). This is a direct consequence of the stateless
+platform (USB mount point, default language). This is a direct consequence of the stateless
 design ([`decisions/0006`](decisions/0006-stateless-system-no-persistence.md)) — the system keeps
 no configuration state between cycles.
 
@@ -65,11 +65,14 @@ field semantics — this document does not duplicate them):
 Two additional facts about the topology file:
 
 - A second variant, `topology.json.viewer`, is kept in the package source (it adds the
-  `saphir-viewer` domain and has slightly different AV sizing); it is **not** installed by any
-  build — `topology.json` is the reference.
-- The topology format also supports `repository` and `storage` sections; **Saphir sets neither**
-  — the shared `sys-usb` repository is enabled by default (the repository is the only data
-  exchange point, [`decisions/0003`](decisions/0003-repository-only-data-exchange.md)).
+  `saphir-viewer` domain, has slightly different AV sizing, and carries the same
+  `direct_mount: { "mode": "ro" }` entries as the main topology on the three domains);
+  it is **not** installed by any build — `topology.json` is the reference.
+- The topology format also supports `repository` and `storage` sections. In Safecor v2 the
+  shared `sys-usb` repository is **no longer used by any Saphir component** — the direct USB
+  mount is the analysis read path ([`decisions/0019`](decisions/0019-direct-usb-mount-data-path.md));
+  the topology will set `"repository": { "disabled": true }` (decision D2 of the [migration
+  plan](../plans/migration-safecor-v2.md), applied in the packaging phase).
 
 ---
 
@@ -174,9 +177,9 @@ install the files; the `*.post-install` scripts register and start the services 
 | `saphir` | `saphir.initd` | `hostname saphir.local`; run `/usr/lib/safecor/bin/post-install.sh` |
 | `saphir-gui` | `gui-bundle.initd` (PyInstaller binary) / `gui-folder.initd` (dev variant via `start.sh`) | `rc-update add gui` + start |
 | `saphir-viewer` | `viewer.initd` | `rc-update add viewer` + start |
-| `saphir-av-clamav` | `clamav.initd` (starts `clamd`, `before av-controller`), `av-controller.initd` (starts the Python controller) | add `clamav` user to group `safecor`; create `/var/log/clamav` + `/run/clamav` (owned `clamav`); `rc-update add` + start both services; **remount the shared storage read-only** (9p, `nosuid,noexec,nodev`) |
-| `saphir-av-eset` | `av-controller.initd` | start `cgroups`; `rc-update add av-controller` + start; patch the LXC config (bind-mount `/tmp` → `tmp` and `var/tmp`, `noexec,nodev,nosuid`); `lxc-start -n saphir-container-eset`; sysctl tuning (`vm.vfs_cache_pressure=200`, `vm.compaction_proactiveness=100`, `vm.min_free_kbytes=102400`) |
-| `saphir-container-eset` | — | mount the squashfs rootfs read-only (`loop,ro`) + overlay (upper/work) under `/mnt/merged`; remount the shared storage read-only (no-op on CI where mounting is unavailable); pre-deinstall removes `/var/lib/lxc/saphir-container-eset` |
+| `saphir-av-clamav` | `clamav.initd` (starts `clamd`, `before av-controller`), `av-controller.initd` (starts the Python controller) | add `clamav` user to group `safecor`; create `/var/log/clamav` + `/run/clamav` (owned `clamav`); `rc-update add` + start both services (read-only access to the USB media comes from the `direct_mount: { "mode": "ro" }` topology flag) |
+| `saphir-av-eset` | `av-controller.initd` | start `cgroups`; `rc-update add av-controller` + start; patch the LXC config (bind-mount `/tmp` → `tmp` and `var/tmp`, `noexec,nodev,nosuid`); **wait (bounded, 60 s) for `/media/usb` to be mounted in the DomU, failing loudly otherwise** (the LXC `optional` bind for `/media/usb` would be silently skipped if the mount is not up yet); `lxc-start -n saphir-container-eset`; sysctl tuning (`vm.vfs_cache_pressure=200`, `vm.compaction_proactiveness=100`, `vm.min_free_kbytes=102400`) |
+| `saphir-container-eset` | — | mount the squashfs rootfs read-only (`loop,ro`) + overlay (upper/work) under `/mnt/merged`; the APKBUILD appends the LXC bind entries at build time (`/media/usb` → `media/usb` for the direct-mount scan path, see ADR 0019, and `/tmp` → `tmp`); pre-deinstall removes `/var/lib/lxc/saphir-container-eset` |
 
 Key points:
 
@@ -185,25 +188,33 @@ Key points:
 - **GUI/Viewer services** run under `DISPLAY=:0` and declare `need xserver`; the post-install
   scripts also create `/var/log/saphir`.
 - **`saphir.post-deinstall`** removes `/var/log/safecor` (no log retention — stateless).
-- The **ClamAV domain remounts the repository read-only** in its post-install — a belt-and-braces
-  enforcement on top of the `direct_mount: { "mode": "ro" }` topology flag (NFR-2 territory: the
-  source media is never written by Saphir — see
-  [`../security/security-model.md`](../security/security-model.md)).
+- **Read-only source media (v2)**: the v1 belt-and-braces 9p remount is gone; the read-only
+  guarantee now comes solely from the `direct_mount: { "mode": "ro" }` topology flag — `sys-usb`
+  serves the sshfs channel read-only, so the DomUs cannot write to the source media (NFR-2
+  territory — see [`../security/security-model.md`](../security/security-model.md)).
+- **ESET container boot order**: the `saphir-av-eset` post-install waits up to 60 s for
+  `/media/usb` before `lxc-start` — the `optional` LXC bind would otherwise be silently
+  skipped and the container would start without its scan path.
 
 ---
 
 ## 5. Runtime configuration
 
-### 5.1 Repository path
+### 5.1 USB mount point (Safecor v2)
 
-The mount path of the shared `sys-usb` repository is **not configured by Saphir** — it is
-*queried* from the platform with `system/disks/repository_path`
-(`request_repository_path()`), which responds `{ "path": "/mnt/storage" }`. It is consumed by:
+In Safecor v2 the shared repository is gone (ADR 0019): domains that declare
+`direct_mount` in the topology get `/media/usb` mounted over an sshfs channel served by
+`sys-usb`, and a USB disk mounted at `/media/usb/<label>` on `sys-usb` appears at the **same
+path** in the client domain. The mount point is **not configured by Saphir** — it is the fixed
+constant `Constants.USB_MOUNT_POINT` (`/media/usb`) from the Safecor Python API. Readiness is
+*reactive*, not polled: the **AV domains** gate their component state on
+`System.on_usb_mountpoint_ready(cb)` (+ `System.is_usb_mountpoint_ready()` at start) and use the
+mount as the base path for the NFR-1 fingerprint check; the **GUI** no longer needs a readiness
+gate for a mount (it only uses the file API).
 
-- the **GUI**: a boot-readiness condition;
-- the **AV domains**: a readiness condition **and** the base path for the NFR-1 fingerprint check.
-
-See [`../development/protocol.md`](../development/protocol.md) for the request/response contract.
+See [`../development/protocol.md`](../development/protocol.md) for the topic contracts and
+[`decisions/0019-direct-usb-mount-data-path.md`](decisions/0019-direct-usb-mount-data-path.md)
+for the data-path decision.
 
 ### 5.2 Language
 

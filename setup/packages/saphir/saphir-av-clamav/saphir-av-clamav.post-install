@@ -15,7 +15,8 @@ rc-service clamav start
 rc-update add av-controller
 rc-service av-controller start
 
-# Remount the storage read-only
-mount -o remount,ro,trans=xen,version=9p2000.L,cache=none,nosuid,noexec,nodev,misze=131072 storage /mnt/storage
+# Safecor v2: the read-only guarantee now comes from the topology flag
+# direct_mount: { "mode": "ro" } (the sshfs mount is read-only); the v1
+# 9p repository remount is gone.
 
 exit 0

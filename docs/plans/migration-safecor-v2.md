@@ -200,8 +200,8 @@ Key properties:
 | 0 Specs & ADR | ✅ done | — | ADR 0019 created; 0003 superseded; workflow/features/protocol/topology/python-api all updated |
 | 1 libsaphir AV controllers | ✅ done | — | All 5 controllers rewritten: no staging, direct `/media/usb/<disk><filepath>` paths, `Constants.USB_MOUNT_POINT` used; DEVMODE readiness gate on `System.on_usb_mountpoint_ready` (G7) |
 | 2 GUI analysis flow | ✅ done | — | Phase 2.1–2.4 all done: `analysis_controller.py` rewritten with `_find_file()` (bare keys + `disk` field for G1/G2), stale-failure guard (G3), `resetRequired` signal + handler (G4), disk field validation (G5), NFR-1 wording + `disk` param on `update_status` (G6), mock AV injectable `usb_mount` (G8). Round-2 integrity failure (see log 2026-11-25): v2 sources were restored by the coordinator and re-verified end to end |
-| 3 Viewer | ⬜ pending | — | |
-| 4 ESET container | ⬜ pending | — | |
+| 3 Viewer | ✅ done | — | Data path on the direct mount: per-disk `repositoryPath`, synchronous `view_file`, readiness via `System().on_usb_mountpoint_ready`, 4 mocks + 2 test files rewritten (v1 DEVMODE launcher was already broken at HEAD), versions 1.3 in 3 places, `topology.json.viewer` `direct_mount: ro` on the 3 domains, no QML/GUI/libsaphir changes. Verified: viewer 90 passed, coverage 100% (370/370) on the rewritten modules, no v1 remnants, GUI suite identical to the 2026-11-25 baseline |
+| 4 ESET container | ✅ done | — | container-eset 2.2 (LXC bind `/media/usb` replaces `/mnt/storage`, hvc1 bind removed), av-eset 1.1-r0 (bounded 60 s `/media/usb` wait before `lxc-start`, plan §7 high risk), av-clamav 1.1-r0 (dead 9p remount removed — plan gap). Reviewer APPROVE 6/6, 0 issues; 4 open items for appliance validation (acceptance 4.4) |
 | 5 Packaging & platform | ⬜ pending | — | |
 | 6 Integration validation | ⬜ pending | — | |
 
@@ -258,3 +258,76 @@ Key properties:
   emulator change remains uncommitted in the Safecor repository. Note:
   `python/gui/.coverage` is tracked in the repository (pre-existing); it must
   be untracked + gitignored in a separate cleanup.
+
+### 2026-11-26 — Phase 3 (viewer) + Phase 4 (ESET container & AV domains)
+
+- **Phase 3 (viewer), implemented by a delegated developer, verified
+  independently by the coordinator (canonical venv, no PYTHONPATH):**
+  per-disk `repositoryPath` (prod `/media/usb/<disk>` via
+  `Constants.USB_MOUNT_POINT`, DEVMODE `/tmp/saphir/media/<disk>`, empty when
+  no disk is present, QML property change notified on disk change),
+  synchronous `view_file()` (v1 `read_file`/`NEW_FILE` path removed),
+  readiness via `System().on_usb_mountpoint_ready` +
+  `is_usb_mountpoint_ready()` with a DEVMODE bypass and a stale-disk reset of
+  `__current_disk`; `office_helper.convert_to_pdf(disk, filepath)` →
+  `/tmp/<name>.pdf`; 4 mock files + 2 test files rewritten. The v1 DEVMODE
+  mock launcher was already broken at HEAD (non-existent
+  `DevModeHelper.get_storage_path()`, 3-arg `MockSysUsbController.start`,
+  wrong import) — fixed by the rewrite. Viewer versions bumped to 1.3 in all
+  three places (also fixes the pre-existing pyproject 1.0.0 vs APKBUILD 1.2
+  incoherence). `topology.json.viewer`: `direct_mount: { "mode": "ro" }` on
+  `saphir-viewer` and its two AV domains (variant not installed by any build;
+  kept in sync). No QML, GUI or libsaphir changes.
+- **Phase 3 verification (coordinator, actual runs):** viewer suite
+  **90 passed**; coverage **100 %** (370/370 statements) on
+  `application_controller` / `office_helper` / `devmode_helper` (gate ≥ 85 %);
+  `ruff check` + `ruff format --check` clean; no v1 remnants in
+  `python/viewer/src/` (grep: `mnt/storage`, `NEW_FILE`, `read_file`,
+  `DOMU_REPOSITORY_PATH`, `STR_REPOSITORY`, `get_storage_path`); full GUI
+  suite **538 passed / 4 failed / 1 xfailed** in 270 s — identical to the
+  2026-11-25 baseline (the 4 = pre-existing translation failures). Four GUI
+  workflow test failures observed during a concurrent full run were
+  load-induced flakiness: isolated re-run of the 3 workflow files =
+  **5 passed** in 127 s.
+- **Phase 4 (ESET container + AV domains), implemented by the coordinator,
+  reviewed by an independent reviewer:**
+  - `saphir-container-eset` 2.1 → 2.2: LXC bind entry `/media/usb` replaces
+    the v1 `/mnt/storage` bind; obsolete `/dev/hvc1` (XEN PV channel) bind
+    removed; `/tmp` bind kept. The read-only guarantee now comes solely from
+    the topology `direct_mount: { "mode": "ro" }`.
+  - `saphir-av-eset` 1.0-r1 → 1.1-r0: bounded 60 s wait (1 s cadence) for
+    `/media/usb` in `/proc/mounts` before `lxc-start`, failing loudly
+    otherwise — mitigates the plan §7 High risk (an `optional` LXC bind is
+    silently skipped when the direct-mount service has not come up yet).
+  - `saphir-av-clamav` 1.0-r1 → 1.1-r0: dead v1 9p read-only remount removed.
+    **Plan gap:** the §4 impact table only listed the ESET package, but the
+    ClamAV package carried the identical dead line that would fail at boot on
+    v2.
+  - Docs: `configuration-management.md` synced (scope line, related-docs
+    table, config table, §4 boot services + key points, §5.1 rewritten as
+    "USB mount point (Safecor v2)", viewer-variant note carries
+    `direct_mount`).
+- **Phase 4 review:** independent reviewer verdict **APPROVE**, 6/6 checks
+  PASS (diff hygiene, plan conformance 4.1–4.3, boot-order correctness — apk
+  dependency order, guard placement, portable `/proc/mounts` test, `sh -n`
+  on all three scripts —, no v1 remnants, version coherence, doc accuracy),
+  0 issues. Open items for appliance validation (acceptance 4.4, cannot be
+  verified in-repo): ESET container sees the disk through the bind, `odscan`
+  scan on the bind path, write attempts blocked by the `ro` mount, cold-boot
+  timing of the 60 s guard.
+- **Deferred (noted, not done):** `docs/architecture/overview.md` still
+  describes the v1 repository data path (§1 diagram, §3.1, §3.2, §6.3) — to
+  be rewritten in the Phase 6.4 documentation wrap-up. The viewer native-PDF
+  raw-path display quirk is pre-existing and out of scope.
+- **Dev environment (cross-cutting, validated by the user):** canonical venv
+  `python/gui/.venv` created via `python/gui/setup_dev_env.sh` (covers the
+  GUI and viewer suites; `.pth` files resolve the local Safecor checkout, no
+  PYTHONPATH prefix needed). Viewer dev env fixed: `requirements-dev.txt` +=
+  `pytest` (was missing), `pyproject.toml` pythonpath += `../libsaphir/src`
+  (mirrors the GUI config) — the viewer suite now runs self-contained
+  (`90 passed` with no prefix). Agent definitions (all 7) audited and
+  corrected: unanchored test-runner permission patterns (anchored patterns
+  miss env-var-prefixed / venv-path commands), venv auto-creation
+  instructions for every test-running agent, `git stash` (state-changing)
+  denied for the developer after an interrupted session stranded Phase 3
+  files in a stash (fully recovered via `git stash pop`, no loss).

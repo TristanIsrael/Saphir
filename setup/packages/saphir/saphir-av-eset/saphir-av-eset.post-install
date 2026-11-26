@@ -11,6 +11,26 @@ rc-service av-controller start
 echo "lxc.mount.entry = /tmp tmp none bind,optional,create=dir,noexec,nodev,nosuid" | sudo tee -a /var/lib/lxc/saphir-container-eset/config > /dev/null
 echo "lxc.mount.entry = /tmp var/tmp none bind,optional,create=dir,noexec,nodev,nosuid" | sudo tee -a /var/lib/lxc/saphir-container-eset/config > /dev/null
 
+# Safecor v2: the LXC bind entry for /media/usb (added by the container
+# package) is evaluated at container start and silently skipped when the
+# source is not mounted yet (bind flag "optional"). The direct-mount
+# service brings /media/usb up at boot; wait for it (bounded) so the
+# order is deterministic. Fail loudly if it never comes up.
+usb_mount_ready() {
+    grep -q " /media/usb " /proc/mounts
+}
+
+i=0
+while ! usb_mount_ready && [ "$i" -lt 60 ]; do
+    sleep 1
+    i=$((i + 1))
+done
+
+if ! usb_mount_ready; then
+    echo "ERROR: /media/usb is not mounted after 60s; the ESET container cannot start" >&2
+    exit 1
+fi
+
 lxc-start -n saphir-container-eset
 
 # Optimize cache and memory
