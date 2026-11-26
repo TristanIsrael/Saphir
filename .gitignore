@@ -79,3 +79,4 @@ setup/packages/saphir/.DS_Store
 
 # Code coverage
 **/.coverage
+.coverage
